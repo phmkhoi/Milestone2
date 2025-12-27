@@ -1,6 +1,6 @@
 import re
 
-def clean_text_final(text):
+def clean_text(text):
     if not text: return ""
 
     text = text.replace('\n', ' ').replace('\r', ' ').replace('~', ' ')
@@ -25,13 +25,13 @@ def clean_text_final(text):
  
 def format_authors(text):
     if not text: return ""
-    text = clean_text_final(text)
+    text = clean_text(text)
     text = re.sub(r',?\s+et\s+al\.?', ' and others', text, flags=re.IGNORECASE)
     text = text.replace(', ', ' and ')
     text = re.sub(r'\s+and\s+and\s+', ' and ', text)
     return text
 
-def parse_bbl_final(bbl_content):
+def parse_bbl(bbl_content):
     entry_pattern = re.compile(r"\\bibitem\[.*?\]\{(.*?)\}([\s\S]*?)(?=\\bibitem|\\end\{thebibliography\})", re.MULTILINE)
     bib_entries = []
 
@@ -50,10 +50,10 @@ def parse_bbl_final(bbl_content):
         # Tách Author - Title - Info
         if len(blocks) >= 2:
             fields['author'] = format_authors(blocks[0])
-            fields['title'] = clean_text_final(blocks[1])
+            fields['title'] = clean_text(blocks[1])
             info_text = " ".join(blocks[2:]) if len(blocks) > 2 else ""
         else:
-            fields['title'] = clean_text_final(blocks[0])
+            fields['title'] = clean_text(blocks[0])
             info_text = blocks[0]
 
         source_match = re.search(r'(\{\\em\s+(.*?)\}|\\emph\{(.*?)\})', info_text)
@@ -61,7 +61,7 @@ def parse_bbl_final(bbl_content):
         source_name = ""
         if source_match:
             raw_source = source_match.group(2) if source_match.group(2) else source_match.group(3)
-            source_name = clean_text_final(raw_source)
+            source_name = clean_text(raw_source)
             info_text = info_text.replace(source_match.group(0), '')
         
         # Year
@@ -112,7 +112,7 @@ def parse_bbl_final(bbl_content):
 
         elif fields.get('pages'):
              entry_type = "article"
-             remaining = clean_text_final(info_text)
+             remaining = clean_text(info_text)
              if remaining and len(remaining) > 3: 
                  fields['journal'] = remaining
 
@@ -138,7 +138,7 @@ def bbl2bib(bbl_input_path: str, bib_output_path: str):
     with open(bbl_input_path, "r", encoding="utf-8") as f:
         content = f.read()
 
-    result = parse_bbl_final(content)
+    result = parse_bbl(content)
 
     with open(bib_output_path, "w", encoding="utf-8") as f:
         f.write(result)
