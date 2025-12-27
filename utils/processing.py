@@ -104,4 +104,4 @@ def normalize_equation(text: str) -> str:
     return text
 
 
-print(json.dumps(preprocessing(mock_data), indent=4))
+# print(json.dumps(preprocessing(mock_data), indent=4))

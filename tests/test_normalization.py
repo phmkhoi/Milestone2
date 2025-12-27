@@ -1,6 +1,6 @@
 import unittest
 
-from preprocessing import normalize_equation
+from utils.processing import normalize_equation
 
 class TestNormalization(unittest.TestCase):
     def test_equation_normalization(self):
