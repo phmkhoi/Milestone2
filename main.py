@@ -2,8 +2,9 @@ from utils.parser import parse_paper
 import os
 
 folder_path = './MockFolder/'
-parse_paper(folder_path)
-# tex_folder = folder_path + 'tex/'
-# version_folders = os.listdir(tex_folder)
 
-# print(version_folders)
+dirs = os.listdir(folder_path)
+
+for dir in dirs:
+    path = os.path.join(folder_path, dir)
+    parse_paper(path)
