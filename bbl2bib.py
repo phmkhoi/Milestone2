@@ -32,10 +32,12 @@ def format_authors(text):
     return text
 
 def parse_bbl(bbl_content):
-    entry_pattern = re.compile(r"\\bibitem\[.*?\]\{(.*?)\}([\s\S]*?)(?=\\bibitem|\\end\{thebibliography\})", re.MULTILINE)
+    # entry_pattern = re.compile(r"\\bibitem\[.*?\]\{(.*?)\}([\s\S]*?)(?=\\bibitem|\\end\{thebibliography\})", re.MULTILINE)
+    entry_pattern = re.compile(r"\\bibitem(?:\[.*?\])?\{(.*?)\}([\s\S]*?)(?=\\bibitem|\\end\{thebibliography\})", re.MULTILINE)
     bib_entries = []
 
     for match in entry_pattern.finditer(bbl_content):
+        print("Found bibitem!")
         key = match.group(1).strip()
         raw_body = match.group(2).strip()
         
@@ -56,7 +58,8 @@ def parse_bbl(bbl_content):
             fields['title'] = clean_text(blocks[0])
             info_text = blocks[0]
 
-        source_match = re.search(r'(\{\\em\s+(.*?)\}|\\emph\{(.*?)\})', info_text)
+        # source_match = re.search(r'(\{\\em\s+(.*?)\}|\\emph\{(.*?)\})', info_text)
+        source_match = re.search(r'(\{\\em\s+((?:[^{}]|\{.*?\})*)\}|\\emph\{((?:[^{}]|\{.*?\})*)\})', info_text)
         
         source_name = ""
         if source_match:
@@ -65,10 +68,12 @@ def parse_bbl(bbl_content):
             info_text = info_text.replace(source_match.group(0), '')
         
         # Year
-        year_match = re.search(r'\b(19|20)\d{2}\b', info_text)
+        year_match = re.search(r'\b(19|20)\d{2}\b(?=[^0-9]*$)', info_text)
+        if not year_match:
+            year_match = re.search(r'\b(19|20)\d{2}\b', info_text)
         if year_match:
             fields['year'] = year_match.group(0)
-            info_text = info_text.replace(fields['year'], '') # Xóa năm
+            info_text = info_text[:year_match.start()] + info_text[year_match.end():]
 
         # Pages
         pages_match = re.search(r'pages\s+([0-9\-]+)', info_text)
@@ -145,7 +150,11 @@ def bbl2bib(bbl_input_path: str, bib_output_path: str):
 
 if __name__ == "__main__":
     # Code nhận đầu vào là một file .bbl, sau đó tạo ra file .bib tương ứng đã chuẩn dạng bibtex
+    # bbl_input_file = "test.bbl"
+    # bib_output_file = "test_references.bib"
+
     bbl_input_file = "main.bbl"
     bib_output_file = "references.bib"
     
     bbl2bib(bbl_input_file, bib_output_file)
+    print("done")
