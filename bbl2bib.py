@@ -37,7 +37,6 @@ def parse_bbl(bbl_content):
     bib_entries = []
 
     for match in entry_pattern.finditer(bbl_content):
-        print("Found bibitem!")
         key = match.group(1).strip()
         raw_body = match.group(2).strip()
         
@@ -150,11 +149,11 @@ def bbl2bib(bbl_input_path: str, bib_output_path: str):
 
 if __name__ == "__main__":
     # Code nhận đầu vào là một file .bbl, sau đó tạo ra file .bib tương ứng đã chuẩn dạng bibtex
-    # bbl_input_file = "test.bbl"
-    # bib_output_file = "test_references.bib"
+    bbl_input_file = "test.bbl"
+    bib_output_file = "test_references.bib"
 
-    bbl_input_file = "main.bbl"
-    bib_output_file = "references.bib"
+    # bbl_input_file = "main.bbl"
+    # bib_output_file = "references.bib"
     
     bbl2bib(bbl_input_file, bib_output_file)
     print("done")
