@@ -59,7 +59,7 @@ def parse_bbl(bbl_content):
             fields['title'] = clean_text(blocks[0])
             info_text = blocks[0]
 
-        source_match = re.search(r'(\{\\em\s+(.*?)\}|\\emph\{(.*?)\})', info_text)
+        source_match = re.search(r'(\{\\em\s+((?:[^{}]|\{.*?\})*)\}|\\emph\{((?:[^{}]|\{.*?\})*)\})', info_text)
         
         source_name = ""
         if source_match:
@@ -68,10 +68,12 @@ def parse_bbl(bbl_content):
             info_text = info_text.replace(source_match.group(0), '')
         
         # Year
-        year_match = re.search(r'\b(19|20)\d{2}\b', info_text)
+        year_match = re.search(r'\b(19|20)\d{2}\b(?=[^0-9]*$)', info_text)
+        if not year_match:
+            year_match = re.search(r'\b(19|20)\d{2}\b', info_text)
         if year_match:
             fields['year'] = year_match.group(0)
-            info_text = info_text.replace(fields['year'], '') # Xóa năm
+            info_text = info_text[:year_match.start()] + info_text[year_match.end():]
 
         # Pages
         pages_match = re.search(r'pages\s+([0-9\-]+)', info_text)
