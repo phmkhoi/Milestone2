@@ -5,101 +5,10 @@ import json
 from models.hierarchy_tree import HierarchyTree, Node
 from models.hierarchy_manager import HierarchyManager
 from utils.processing import normalize_equation
+from utils.utils import find_root_file, get_document_body, get_paper_content
 
 
 BLOCK_PATTERN = re.compile(r'\\(begin|end){([^}]+)\*?\}')
-
-
-def find_root_file(directory):
-    for _, _, files in os.walk(directory):
-        considered_files = []
-        for file in files:
-            if file.endswith('.tex'):
-                path = os.path.normpath(os.path.join(directory, file))
-                with open(path, 'r', encoding='utf-8', errors='ignore') as fr:
-                    content = fr.read()
-                    if r'\begin{document}' in content:
-                        pattern = r'\\(?:input|include)\b\{?([^}\s%]+)\}?'
-                        match_lists = re.findall(pattern, content)
-                        considered_files.append((path, len(match_lists)))
-        
-        if considered_files:
-            return max(considered_files, key=lambda x: x[1])[0]
-             
-    return None
-
-
-def gather_files(current_file_path, parent_dir_name=None, collected_path_lists=None):
-    if collected_path_lists is None:
-        collected_path_lists = []
-    
-    if parent_dir_name is None:
-        parent_dir_name = os.path.dirname(current_file_path)
-    else:
-        current_file_path = os.path.normpath(os.path.join(parent_dir_name, current_file_path))
-    
-    if current_file_path in collected_path_lists or not os.path.exists(current_file_path):
-        return collected_path_lists
-    
-    collected_path_lists.append(current_file_path)
-    
-    with open(current_file_path, 'r', encoding='utf-8', errors='ignore') as fr:
-        content = re.sub(r'%.*', '', fr.read())
-        
-        pattern = r'\\(?:input|include)\b\{?([^}\s%]+)\}?'
-        match_lists = re.findall(pattern, content)
-        
-        for file_name in match_lists:
-            
-            if not file_name.endswith('.tex'):
-                file_name += '.tex'
-                
-            gather_files(file_name, parent_dir_name, collected_path_lists)
-            
-    return collected_path_lists
-
-
-def get_document_body(raw_content):
-    start_tag = r'\begin{document}'
-    end_tag = r'\end{document}'
-    
-    start_idx = raw_content.find(start_tag)
-    end_idx = raw_content.find(end_tag)
-    
-    if start_idx == -1:
-        return ''
-    
-    if end_idx == -1:
-        end_idx = len(raw_content)
-    
-    return raw_content[start_idx + len(start_tag):end_idx]
-
-
-def get_paper_content(current_file_path, parent_dir_name=None):
-    if parent_dir_name is None:
-        parent_dir_name = os.path.dirname(current_file_path)
-    else:
-        current_file_path = os.path.normpath(os.path.join(parent_dir_name, current_file_path))
-    
-    if not os.path.exists(current_file_path):
-        return f'% File {current_file_path} not found'
-    
-    with open(current_file_path, 'r', encoding='utf-8', errors='ignore') as fr:
-        content = re.sub(r'(?<!\\)%.*', '', fr.read())
-        
-        
-    input_pattern = r'\\(?:input|include)\b\{?([^}\s%]+)\}?'
-    
-    def replace_content(match):
-        included_file_name = match.group(1).strip()
-        
-        if not included_file_name.endswith('.tex'):
-            included_file_name += '.tex'
-        
-        return get_paper_content(included_file_name, parent_dir_name)
-    
-    return re.sub(input_pattern, replace_content, content)
-
 
 def add_sentences_to_tree(paragraph, tree):
     if not paragraph:
@@ -335,9 +244,8 @@ def clean_tex(raw_content):
     return content
     
 
-def parse_paper(folder_path):
-    tex_folder = folder_path + '/tex/'
-    version_folders = os.listdir(tex_folder)
+def parse_paper(tex_path):
+    version_folders = os.listdir(tex_path)
     
     if not version_folders:
         return
@@ -345,24 +253,19 @@ def parse_paper(folder_path):
     versions = {}
     
     for idx, folder in enumerate(version_folders):
-        full_path = tex_folder + folder
+        full_path = tex_path + folder
         
         root_path = find_root_file(full_path)
         content = get_paper_content(root_path)
         
         cleaned_content = clean_tex(content)
-        # with open ('./after.tex', 'w', encoding='utf-8') as fr:
-        #     fr.write(cleaned_content)
         
         tree = convert_paper_to_tree(cleaned_content)
-        
-        # with open(f'./tree{idx + 1}.txt', 'w') as fr:
-        #     fr.write(tree.to_string())
 
         versions[f'{idx + 1}'] = tree
 
     result_dict = get_hierarchy_structure(versions)
-    output_path = os.path.join(folder_path, os.path.dirname(tex_folder).split('/')[-2] + '.json')
+    output_path = os.path.join(os.path.dirname(tex_path)[:-(len('tex'))], os.path.dirname(tex_path).split('/')[-2] + '.json')
 
     with open(output_path, 'w') as f:
         json.dump(result_dict, f, ensure_ascii=False, indent=4)

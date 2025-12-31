@@ -1,6 +1,6 @@
 import re
 import os
-import json
+from utils.utils import find_root_file, get_paper_content
 
 def clean_text(text):
     if not text: return ""
@@ -138,23 +138,32 @@ def parse_bbl(bbl_content):
 #     result = parse_bbl(content)
 #     return result
 
-def bbl2bib(folder_path: str, bib_output_path: str) -> None:
+def bbl2bib(folder_path: str, bib_output_folder: str) -> None:
     '''
         folder_path: tex
     '''
     references = []
     for folder_version_path in os.listdir(folder_path):
         #Do t dùng macbook nên cần...
-        if folder_version_path == ".DS_Store":
-            continue
-        with open(os.path.join(folder_path,folder_version_path, 'ms.tex'), "r", encoding="utf-8") as f:
-            content = f.read()
+        # if folder_version_path == ".DS_Store":
+        #     continue
+        # with open(os.path.join(folder_path,folder_version_path, 'ms.tex'), "r", encoding="utf-8") as f:
+        #     content = f.read()
+        full_path = folder_path + folder_version_path
+        
+        # 2 dòng này dùng để lấy content của file tex, không phải lấy file bib
+        # Hướng xử lí: dò theo file bib nếu paper có đính kém
+        root_path = find_root_file(full_path)
+        content = get_paper_content(root_path)
+        
 
         references.append(parse_bbl(content))
     result = deduplicate_reference(references)
     
-    with open(bib_output_path, "w", encoding="utf-8") as f:
+    output_path = os.path.join(bib_output_folder, os.path.dirname(folder_path).split('/')[-2] + '.bib')
+    with open(output_path, "w", encoding="utf-8") as f:
         f.write(result)
+
 
 def deduplicate_reference(results: list[str]) -> str:
     title_map = {obj['title']: obj for obj in results[0]}
@@ -190,12 +199,10 @@ def deduplicate_reference(results: list[str]) -> str:
         bib_entries.append(entry_str)
     return "\n".join(bib_entries)
 
-if __name__ == "__main__":
-    # Code nhận đầu vào là một file .bbl, sau đó tạo ra file .bib tương ứng đã chuẩn dạng bibtex
-    bbl_input_file = "main.bbl"
-    bib_output_file = "references.bib"
+# if __name__ == "__main__":
+#     bib_output_file = "references.bib"
     
-    # bbl2bib(bbl_input_file, bib_output_file)
+#     # bbl2bib(bbl_input_file, bib_output_file)
 
-    #Truyền vào folder gốc
-    bbl2bib("1706-03762/tex", bib_output_file)
+#     #Truyền vào folder gốc
+#     bbl2bib("1706-03762/tex", bib_output_file)
