@@ -1,0 +1,38 @@
+
+
+\begin{figure}[ht]
+\begin{center}
+\includegraphics[width=0.9\linewidth]{Fig/AME-CAM.png}
+
+\caption{An overview of the proposed AME-CAM method, which contains multiple-exit network based activation extraction phase and attention based activation aggregation phase. The operator $\odot$ and $\otimes$ denote the pixel-wise weighted sum and the pixel-wise multiplication, respectively.
+}
+\label{Fig.AME-CAM}
+\end{center}
+\end{figure}
+
+The proposed AME-CAM method consists of two training phases: activation extraction and activation aggregation, as shown in Fig. \ref{Fig.AME-CAM}. In the activation extraction phase, we use a binary classification network, e.g., ResNet-18, to obtain the class probability $y=f(I)$ of the input image $I$. To enable multiple-exit training, we add one internal classifier after each residual block, which generates the activation map $M_i$ of different resolutions. We use a cross-entropy loss to train the multiple-exit classifier, which is defined as
+\begin{equation}
+\label{eq.mloss}
+loss = \sum_{i=1}^4 CE(GAP(M_i), L)
+\end{equation}
+where $GAP(\cdot)$ is the global-average-pooling operation, $CE(\cdot)$ is the cross-entropy loss, and $L$ is the image-wise ground-truth label.
+
+In the activation aggregation phase, we create an efficient hierarchical aggregation method to generate the aggregated activation map $M_f$ by calculating the pixel-wise weighted sum of the activation maps $M_i$. We use an attention network $A(\cdot)$ to estimate the importance of each pixel from each activation map. The attention network takes in the input image $I$ masked by the activation map and outputs the pixel-wised importance score $S_{xyi}$ of each activation map. We formulate the operation as follows:
+\begin{equation}
+\label{eq.anet}
+S_{xyi} = A([I\otimes n(M_i)]_{i=1}^4)
+\end{equation}
+where $[\cdot]$ is the concatenate operation, $n(\cdot)$ is the min-max normalization to map the range to [0,1], and $\otimes$ is the pixel-wise multiplication, which is known as image masking. The aggregated activation map $M_f$ is then obtained by the pixel-wise weighted sum of $M_i$, which is $M_f = \sum_{i=1}^4 (S_{xyi} \otimes M_i)$.
+
+We train the attention network with unsupervised contrastive learning, which forces the network to disentangle the foreground and the background of the aggregated activation map $M_f$. We mask the input image by the aggregated activation map $M_f$ and its opposite $(1-M_f)$ to obtain the foreground feature and the background feature, respectively. The loss function is defined as follows:
+\begin{equation}
+\label{eq.closs}
+\begin{aligned}
+loss = SimMin(v_i^f, v_j^b)+ SimMax(v_i^f, v_j^f) + SimMax(v_i^b, v_j^b)
+\end{aligned}
+\end{equation}
+where $v_i^f$ and $v_i^b$ denote the foreground and the background feature of the i-th sample, respectively. $SimMin$ and $SimMax$ are the losses that minimize and maximize the similarity between two features (see C$^2$AM\cite{xie2022c2am} for details).
+
+Finally, we average the activation maps $M_1$ to $M_4$ and the aggregated map $M_f$ to obtain the final CAM results for each image. We apply the Dense Conditional Random Field (DenseCRF)\cite{krahenbuhl2011efficient} algorithm to generate the final segmentation mask. It is worth noting that the proposed method is flexible and can be applied to any classification network architecture.
+
+\input{Table/Compare_CAM_BraTS}

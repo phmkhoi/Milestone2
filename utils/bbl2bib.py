@@ -1,4 +1,6 @@
 import re
+import os
+from utils.utils import find_root_file, get_paper_content
 
 def clean_text(text):
     if not text: return ""
@@ -34,14 +36,13 @@ def format_authors(text):
 def parse_bbl(bbl_content):
     # entry_pattern = re.compile(r"\\bibitem\[.*?\]\{(.*?)\}([\s\S]*?)(?=\\bibitem|\\end\{thebibliography\})", re.MULTILINE)
     entry_pattern = re.compile(r"\\bibitem(?:\[.*?\])?\{(.*?)\}([\s\S]*?)(?=\\bibitem|\\end\{thebibliography\})", re.MULTILINE)
-    bib_entries = []
+    bib_references = []
 
     for match in entry_pattern.finditer(bbl_content):
         key = match.group(1).strip()
         raw_body = match.group(2).strip()
         
         raw_body_flat = raw_body.replace('\n', ' ').replace('\r', ' ')
-        
         blocks = re.split(r'\\newblock', raw_body_flat)
         blocks = [b.strip() for b in blocks if b.strip()]
         
@@ -125,35 +126,83 @@ def parse_bbl(bbl_content):
             fields['title'] = "Holy Bible, Matthew 1, 1--17"
             if 'author' in fields: del fields['author']
 
-        # Tạo bibtex
-        entry_str = f"@{entry_type}{{{key},\n"
+        fields['entry_type'] = entry_type
+        fields['cite_key'] = key
+        bib_references.append(fields)
+    return bib_references
+
+# def bbl2bib(bbl_input_path: str, bib_output_path: str):
+#     with open(bbl_input_path, "r", encoding="utf-8") as f:
+#         content = f.read()
+
+#     result = parse_bbl(content)
+#     return result
+
+def bbl2bib(folder_path: str, bib_output_folder: str) -> None:
+    '''
+        folder_path: tex
+    '''
+    references = []
+    for folder_version_path in os.listdir(folder_path):
+        #Do t dùng macbook nên cần...
+        # if folder_version_path == ".DS_Store":
+        #     continue
+        # with open(os.path.join(folder_path,folder_version_path, 'ms.tex'), "r", encoding="utf-8") as f:
+        #     content = f.read()
+        full_path = folder_path + folder_version_path
+        
+        # 2 dòng này dùng để lấy content của file tex, không phải lấy file bib
+        # Hướng xử lí: dò theo file bib nếu paper có đính kém
+        root_path = find_root_file(full_path)
+        content = get_paper_content(root_path)
+        
+
+        references.append(parse_bbl(content))
+    result = deduplicate_reference(references)
+    
+    output_path = os.path.join(bib_output_folder, os.path.dirname(folder_path).split('/')[-2] + '.bib')
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(result)
+
+
+def deduplicate_reference(results: list[str]) -> str:
+    title_map = {obj['title']: obj for obj in results[0]}
+    cite_key_map = {obj['cite_key']: obj for obj in results[0]}
+    for i in range(1, len(results)):
+        for j in range(len(results[i])):
+            title = results[i][j]['title']
+            cite_key = results[i][j]['cite_key']
+            #Title trùng thì chắc chắn đúng.
+            if title in title_map:
+                for key in results[i][j]:
+                    #Check xem liệu trong result_map có trường nào không có key không. Nếu như có thì bổ sung
+                    if key not in title_map[title]:
+                        title_map[title][key] = results[i][j][key]
+            #Nếu title không trùng thì xét tiếp cite_key
+            elif (title not in title_map and cite_key in cite_key_map):
+                for key in results[i][j]:
+                    #Check xem liệu trong result_map có trường nào không có key không. Nếu như có thì bổ sung
+                    if key not in cite_key_map[cite_key]:
+                        cite_key_map[cite_key][key] = results[i][j][key]
+            else:
+                title_map[title] = results[i][j]
+    
+    bib_entries = []
+    for fields in title_map.values():
+        entry_str = f"@{fields['entry_type']}{{{fields['cite_key']},\n"
         order = ['author', 'title', 'booktitle', 'journal', 'publisher', 'year', 'volume', 'number', 'pages', 'howpublished']
         
         for k in order:
             if k in fields and fields[k]:
                 entry_str += f"  {k} = {{{fields[k]}}},\n"
         entry_str += "}\n"
-        
         bib_entries.append(entry_str)
-
     return "\n".join(bib_entries)
 
-def bbl2bib(bbl_input_path: str, bib_output_path: str):
-    with open(bbl_input_path, "r", encoding="utf-8") as f:
-        content = f.read()
-
-    result = parse_bbl(content)
-
-    with open(bib_output_path, "w", encoding="utf-8") as f:
-        f.write(result)
-
-if __name__ == "__main__":
-    # Code nhận đầu vào là một file .bbl, sau đó tạo ra file .bib tương ứng đã chuẩn dạng bibtex
-    bbl_input_file = "test.bbl"
-    bib_output_file = "test_references.bib"
-
-    # bbl_input_file = "main.bbl"
-    # bib_output_file = "references.bib"
+# if __name__ == "__main__":
+#     bib_output_file = "references.bib"
     
-    bbl2bib(bbl_input_file, bib_output_file)
-    print("done")
+#     # bbl2bib(bbl_input_file, bib_output_file)
+
+#     #Truyền vào folder gốc
+#     bbl2bib("1706-03762/tex", bib_output_file)
