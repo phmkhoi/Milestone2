@@ -34,10 +34,11 @@ def format_authors(text):
     return text
 
 def parse_bbl(bbl_content):
-    # entry_pattern = re.compile(r"\\bibitem\[.*?\]\{(.*?)\}([\s\S]*?)(?=\\bibitem|\\end\{thebibliography\})", re.MULTILINE)
-    entry_pattern = re.compile(r"\\bibitem(?:\[.*?\])?\{(.*?)\}([\s\S]*?)(?=\\bibitem|\\end\{thebibliography\})", re.MULTILINE)
+    entry_pattern = re.compile(
+        r"\\bibitem(?:\[[^\]]*\])?\{(.*?)\}([\s\S]*?)(?=\\bibitem|\\end\{thebibliography\})",
+        re.MULTILINE
+    )    
     bib_references = []
-
     for match in entry_pattern.finditer(bbl_content):
         key = match.group(1).strip()
         raw_body = match.group(2).strip()
@@ -58,7 +59,6 @@ def parse_bbl(bbl_content):
             fields['title'] = clean_text(blocks[0])
             info_text = blocks[0]
 
-        # source_match = re.search(r'(\{\\em\s+(.*?)\}|\\emph\{(.*?)\})', info_text)
         source_match = re.search(r'(\{\\em\s+((?:[^{}]|\{.*?\})*)\}|\\emph\{((?:[^{}]|\{.*?\})*)\})', info_text)
         
         source_name = ""
