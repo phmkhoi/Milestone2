@@ -245,6 +245,7 @@ def clean_tex(raw_content):
     
 
 def parse_paper(tex_path):
+    if not os.path.isdir(tex_path): return None
     version_folders = os.listdir(tex_path)
     
     if not version_folders:

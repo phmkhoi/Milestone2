@@ -1,6 +1,7 @@
 import re
 import os
 from utils.utils import find_root_file, get_paper_content
+import bibtexparser
 
 def clean_text(text):
     if not text: return ""
@@ -91,10 +92,10 @@ def parse_bbl(bbl_content):
         elif "Cambridge" in info_text: fields['publisher'] = "Cambridge University Press"
 
         # PHÂN LOẠI (book/article/misc/proceedings)
-        entry_type = "misc" 
+        ENTRYTYPE = "misc" 
         
         if "arxiv" in raw_body_flat.lower():
-            entry_type = "misc"
+            ENTRYTYPE = "misc"
             arxiv_match = re.search(r'(arXiv\s+preprint\s+arXiv:[0-9\.]+)', raw_body_flat, re.IGNORECASE)
             if arxiv_match:
                 fields['howpublished'] = arxiv_match.group(1)
@@ -104,30 +105,30 @@ def parse_bbl(bbl_content):
         elif source_name:
             source_lower = source_name.lower()
             if re.search(r'(proceedings|symposium|conf\.|conference|workshop|focs|stoc|neurips|iclr|icml|aaai|acl|emnlp)', source_lower):
-                entry_type = "inproceedings"
+                ENTRYTYPE = "inproceedings"
                 fields['booktitle'] = source_name
 
             elif re.search(r'(press|publisher|sons|wiley|handbook)', source_lower):
-                entry_type = "book"
+                ENTRYTYPE = "book"
                 fields['publisher'] = source_name 
 
             else:
-                entry_type = "article"
+                ENTRYTYPE = "article"
                 fields['journal'] = source_name
 
         elif fields.get('pages'):
-             entry_type = "article"
+             ENTRYTYPE = "article"
              remaining = clean_text(info_text)
              if remaining and len(remaining) > 3: 
                  fields['journal'] = remaining
 
         if key == "Mat":
-            entry_type = "misc"
+            ENTRYTYPE = "misc"
             fields['title'] = "Holy Bible, Matthew 1, 1--17"
             if 'author' in fields: del fields['author']
 
-        fields['entry_type'] = entry_type
-        fields['cite_key'] = key
+        fields['ENTRYTYPE'] = ENTRYTYPE
+        fields['ID'] = key
         bib_references.append(fields)
     return bib_references
 
@@ -138,11 +139,30 @@ def parse_bbl(bbl_content):
 #     result = parse_bbl(content)
 #     return result
 
+def read_bibs_in_dir(dir_path: str):
+    if not os.path.isdir(dir_path):
+        return None
+    bib_files = [f for f in os.listdir(dir_path) if f.endswith(".bib")]
+
+    if not bib_files:
+        return None
+
+    references = []
+    for bib_file in bib_files:
+        bib_path = os.path.join(dir_path, bib_file)
+        with open(bib_path, "r", encoding="utf-8", errors="ignore") as f:
+            refs_parsed = bibtexparser.loads(f.read())
+            references.extend(refs_parsed.entries)
+
+    return references
+
 def bbl2bib(folder_path: str, bib_output_folder: str) -> None:
     '''
         folder_path: tex
     '''
     references = []
+    if not os.path.isdir(folder_path): return None
+
     for folder_version_path in os.listdir(folder_path):
         #Do t dùng macbook nên cần...
         # if folder_version_path == ".DS_Store":
@@ -152,44 +172,46 @@ def bbl2bib(folder_path: str, bib_output_folder: str) -> None:
         full_path = folder_path + folder_version_path
         
         # 2 dòng này dùng để lấy content của file tex, không phải lấy file bib
-        # Hướng xử lí: dò theo file bib nếu paper có đính kém
-        root_path = find_root_file(full_path)
-        content = get_paper_content(root_path)
+        # Hướng xử lí: dò theo file bib nếu paper có đính kèm
+        ref_dicts = read_bibs_in_dir(full_path)
+        if ref_dicts is None:
+            root_path = find_root_file(full_path)
+            content = get_paper_content(root_path)
+            ref_dicts.extend(parse_bbl(content))
         
-
-        references.append(parse_bbl(content))
+        references.append(ref_dicts)
     result = deduplicate_reference(references)
     
     output_path = os.path.join(bib_output_folder, os.path.dirname(folder_path).split('/')[-2] + '.bib')
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(result)
-
+        print(f"Write refs in {output_path}")
 
 def deduplicate_reference(results: list[str]) -> str:
     title_map = {obj['title']: obj for obj in results[0]}
-    cite_key_map = {obj['cite_key']: obj for obj in results[0]}
+    ID_map = {obj['ID']: obj for obj in results[0]}
     for i in range(1, len(results)):
         for j in range(len(results[i])):
             title = results[i][j]['title']
-            cite_key = results[i][j]['cite_key']
+            ID = results[i][j]['ID']
             #Title trùng thì chắc chắn đúng.
             if title in title_map:
                 for key in results[i][j]:
                     #Check xem liệu trong result_map có trường nào không có key không. Nếu như có thì bổ sung
                     if key not in title_map[title]:
                         title_map[title][key] = results[i][j][key]
-            #Nếu title không trùng thì xét tiếp cite_key
-            elif (title not in title_map and cite_key in cite_key_map):
+            #Nếu title không trùng thì xét tiếp ID
+            elif (title not in title_map and ID in ID_map):
                 for key in results[i][j]:
                     #Check xem liệu trong result_map có trường nào không có key không. Nếu như có thì bổ sung
-                    if key not in cite_key_map[cite_key]:
-                        cite_key_map[cite_key][key] = results[i][j][key]
+                    if key not in ID_map[ID]:
+                        ID_map[ID][key] = results[i][j][key]
             else:
                 title_map[title] = results[i][j]
     
     bib_entries = []
     for fields in title_map.values():
-        entry_str = f"@{fields['entry_type']}{{{fields['cite_key']},\n"
+        entry_str = f"@{fields['ENTRYTYPE']}{{{fields['ID']},\n"
         order = ['author', 'title', 'booktitle', 'journal', 'publisher', 'year', 'volume', 'number', 'pages', 'howpublished']
         
         for k in order:
