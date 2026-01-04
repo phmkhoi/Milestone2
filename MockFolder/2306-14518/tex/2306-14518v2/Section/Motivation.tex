@@ -1,0 +1,60 @@
+In this section, we will discuss the motivation behind our work. The soft nearest neighbor loss (SNNL), as introduced in \cite{frosst2019analyzing}, measures the entanglement degree between features for different classes in the embedded space, and can serve as a proxy for analyzing the degree of fairness in a model. Precisely, we measure the features of SNNL concerning the different sensitive attributes. When the measured SNNL is high, the entangled features are indistinguishable among sensitive attributes. On the other hand, when the SNNL is low, the feature becomes more distinguishable between the sensitive attributes, leading to a biased performance in downstream tasks since the features consist of sensitive information.
+
+To evaluate the SNNL, we analyzed the performance of ResNet18 \cite{he2016deep} and VGG-11 \cite{simonyan2014very} on the ISIC 2019 and Fitzpatrick-17k datasets. We compute the SNNL of sensitive attributes at different inference positions and observed that the SNNL in both datasets decreased by an average of 1.1\% and 0.5\%, respectively, for each inference position from shallow to deep in ResNet18. For VGG-11, the SNNL in both datasets decreases by an average of 1.4\% and 1.2\%, respectively. This phenomenon indicates that the features become more distinguishable to sensitive attributes. The details are provided in the supplementary materials.
+
+% To evaluate the SNNL, we analyzed the performance of ResNet18 \cite{he2016deep} and VGG-11 \cite{simonyan2014very} on the ISIC 2019 and Fitzpatrick-17k datasets. We computed the SNNL of sensitive attributes for ResNet18 and VGG-11 at different inference positions. We observed that the SNNL of sensitive attributes in both datasets decreased as the inference position became deeper. This phenomenon indicates that the features become more distinguishable to sensitive attributes. We provide the experimental details in the Appendix.
+
+A practical approach to avoiding using features that are distinguishable to sensitive attributes for prediction is to choose the result at a shallow layer for the final prediction. To the best of our knowledge, we are the first work that leverages the multi-exit network to improve fairness. In Section \ref{sec:result}, we demonstrate that our framework can be applied to different network architectures and datasets.
+
+% In this section, we will discuss the motivation behind our work. The soft nearest neighbor loss (SNNL), as introduced in \cite{frosst2019analyzing}, measures the entanglement degree between features for different classes in the embedded space.
+
+% \textbf{Definition.} The soft nearest neighbor computes the features' entanglement degree, where $x$ are the features and $y$ is the label that can be either target attribute or sensitive attribute with batch size $b$.
+% \begin{equation}
+%   l_{s n}(x, y, T)=-\frac{1}{b} \sum_{i \in 1 . . b} \log \left(\frac{\sum_{\substack{j \in 1 . . b \\ j \neq i \\ y_i=y_j}} e^{-\frac{\left\|x_i-x_j\right\|^2}{T}}}{\sum_{\substack{\in \in 1 . . b \\ k \neq i}} e^{-\frac{\left\|x_i-x_k\right\|^2}{T}}}\right),
+% \end{equation}
+
+
+% With the ability to quantify the entanglement degree, SNNL can serve as a proxy for analyzing the degree of fairness in a model. Precisely, we measure the features of SNNL concerning the different sensitive attributes. When the measured SNNL is high, the entangled features are indistinguishable among sensitive attributes. On the other hand, when the SNNL is low, the feature becomes more distinguishable between the sensitive attributes. In the latter case, if the model uses these features to classify, it may lead to a biased performance in downstream tasks since the features consist of sensitive information.
+
+% To evaluate the SNNL, we analyzed the performance of ResNet18 \cite{he2016deep} and VGG-11 \cite{simonyan2014very} on the ISIC 2019 and Fitzpatrick-17k datasets. We computed the SNNL of sensitive attributes for ResNet18 with the features at the end of each residual block and for VGG-11 with the features from the latter four max pooling layer. We compute the SNNL of sensitive and target attributes at different inference positions and observed that the SNNL of sensitive attributes in both datasets decreased by an average of 1.1\% and 0.5\%, respectively, for each inference position from shallow to deep in ResNet18. For VGG-11, the SNNL of sensitive attributes in both datasets decreases by an average of 1.4\% and 1.2\%, respectively. Moreover, the SNNL of target attributes decreases by 0.6\% and 1.0\% for ResNet18 and by 3.7\% and 2.5\% for VGG-11. This phenomenon indicates that the features become more distinguishable with respect to both sensitive and target attributes.
+
+% As a result, to avoid using features that are distinguishable to sensitive attributes for prediction, a practical approach is to choose the result at a shallow layer for final prediction, which helps to ameliorate the bias condition of the model. In Section \ref{sec:result}, we demonstrate that our observation can be applied to different network architectures and datasets.
+
+% \label{Fig.Motivation}
+% \end{center}
+% \end{figure}
+
+% \begin{figure*}[ht]
+% % \setlength{\belowcaptionskip}{-20pt} 
+% \begin{center}
+
+% \includegraphics[width=0.95\linewidth]{Fig/Motivation.png}
+% % \includegraphics[width=0.9\columnwidth]{Fig/Method.png}
+% \caption{Motivation for our paper.
+% }
+% \label{Fig.Motivation}
+% \end{center}
+% \end{figure*}
+
+% In this section, we will discuss our motivation for our work. The soft nearest neighbor loss (SNNL) \cite{frosst2019analyzing} measure the entanglement degree, which measures how close the feature of the same class is in the embedded space, of the features over different classes. 
+
+% % \textbf{Definition.} The soft nearest neighbor loss is computed with a batch of data pair $(x, y)$, where data point $ x \in X$ and label $y \in Y$ with batch size $b$.
+% % \begin{equation}
+% %   l_{s n}(x, y, T)=-\frac{1}{b} \sum_{i \in 1 . . b} \log \left(\frac{\sum_{\substack{j \in 1 . . b \\ j \neq i \\ y_i=y_j}} e^{-\frac{\left\|x_i-x_j\right\|^2}{T}}}{\sum_{\substack{\in \in 1 . . b \\ k \neq i}} e^{-\frac{\left\|x_i-x_k\right\|^2}{T}}}\right)
+% % \end{equation}
+
+% With the ability to measure the entanglement degree of features, SNNL is a suitable proxy for analyzing the fairness degree. That is, if the SNNL of the sensitive attributes  (i.e. $y \in Y_p$) is high, we cannot differentiate the sensitive attributes  that are entangled together. If the SNNL is low, the feature is distinguishable from the sensitive attributes ; and thus will cause the bias performance in the downstream task. As shown in Fig. \ref{Fig.Motivation}, we report the SNNL of ISIC2018 and Fitzpatrick-17k dataset on two architecture ResNet18 \cite{he2016deep} and VGG-11 \cite{simonyan2014very}. For ResNet18, we compute the sensitive attributes' SNNL with the features at the end of each residual block. For Vgg-11 we compute SNNL XXX layers of. In Fig. \ref{Fig.Motivation}, as the features goes deeper into a CNN, both the SNNL of sensitive attributes and target attribute become greater, indicating the features become more distinguishable concerning sensitive attributes and target attributes.
+
+% As lower SNNL stands for larger bias (unfair) of the predicted result, intuitively, choosing the result at a shallow layer for final prediction could ameliorate the bias condition of the model. Our extensive experiments demonstrate that our observation could be applied to different network architectures and datasets.
+
+% For CelebA dataset, in the experiments of the ResNet-18 (Fig. \ref{Fig.Motivation}(a)) and the ResNet-50 (Fig. \ref{Fig.Motivation}(b)), both the equalized odds (EO) and accuracy (Acc.) increase when the features are extracted from deeper layers. When comparing the accuracy between conv2\_x and the final layer in ResNet-18, the final layer has improved 6\% on average. However, the EO also increases over six times larger on average. As for the ResNet-50, the accuracy increased by about 16\%, and the EO increased more than eight times larger on average.
+
+% In Fig. \ref{Fig.Motivation}(c) and (d), results on UTK Face dataset again show a similar trend on the increasing EO and accuracy from shallow to deep layers. The ResNet-18 (Fig. \ref{Fig.Motivation}(c)) shows a 47\% improvement in accuracy with 1.7 times higher EO from the shallow layer (conv2\_x) to the deeper layer (Final layer). As for the ResNet-50 (Fig. \ref{Fig.Motivation}(d)), accuracy increases about 52\% and EO increases over 2.3 times.
+
+% As shown in Fig. \ref{Fig.Motivation}, we observe that despite the features from a deep layer of a neural network bring high accuracy in classification, they cause fairness condition to deteriorate. We report the equalized odds (EO) and accuracy (Acc.) of ResNet-18 and ResNet-50 on the CelebA and the UTK Face dataset. We first trained a vanilla CNN, and froze the backbone. Then, we trained 3 MLP classifiers with the features from each residual module (i.e., Conv2\_x, Conv3\_x, Conv4\_x, Conv5\_x).
+
+% For CelebA dataset, in the experiments of the ResNet-18 (Fig. \ref{Fig.Motivation}(a)) and the ResNet-50 (Fig. \ref{Fig.Motivation}(b)), both the equalized odds (EO) and accuracy (Acc.) increase when the features are extracted from deeper layers. When comparing the accuracy between conv2\_x and the final layer in ResNet-18, the final layer has improved 6\% on average. However, the EO also increases over six times larger on average. As for the ResNet-50, the accuracy increased by about 16\%, and the EO increased more than eight times larger on average.
+
+% In Fig. \ref{Fig.Motivation}(c) and (d), results on UTK Face dataset again show a similar trend on the increasing EO and accuracy from shallow to deep layers. The ResNet-18 (Fig. \ref{Fig.Motivation}(c)) shows a 47\% improvement in accuracy with 1.7 times higher EO from the shallow layer (conv2\_x) to the deeper layer (Final layer). As for the ResNet-50 (Fig. \ref{Fig.Motivation}(d)), accuracy increases about 52\% and EO increases over 2.3 times.
+
+% As higher EO stands for larger bias (unfair) of the predicted result, intuitively, choosing the result at a shallow layer for final prediction could ameliorate the bias condition of the model. Our extensive experiments demonstrate that our observation could be applied to different network architectures and datasets.

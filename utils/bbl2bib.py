@@ -132,13 +132,6 @@ def parse_bbl(bbl_content):
         bib_references.append(fields)
     return bib_references
 
-# def bbl2bib(bbl_input_path: str, bib_output_path: str):
-#     with open(bbl_input_path, "r", encoding="utf-8") as f:
-#         content = f.read()
-
-#     result = parse_bbl(content)
-#     return result
-
 def read_bibs_in_dir(dir_path: str):
     if not os.path.isdir(dir_path):
         return None
@@ -156,7 +149,7 @@ def read_bibs_in_dir(dir_path: str):
 
     return references
 
-def bbl2bib(folder_path: str, bib_output_folder: str) -> None:
+def bbl2bib(folder_path: str) -> None:
     '''
         folder_path: tex
     '''
@@ -165,28 +158,22 @@ def bbl2bib(folder_path: str, bib_output_folder: str) -> None:
     if not os.listdir(folder_path): return
 
     for folder_version_path in os.listdir(folder_path):
-        #Do t dùng macbook nên cần...
-        # if folder_version_path == ".DS_Store":
-        #     continue
-        # with open(os.path.join(folder_path,folder_version_path, 'ms.tex'), "r", encoding="utf-8") as f:
-        #     content = f.read()
         full_path = folder_path + folder_version_path
         
-        # 2 dòng này dùng để lấy content của file tex, không phải lấy file bib
-        # Hướng xử lí: dò theo file bib nếu paper có đính kèm
         ref_dicts = read_bibs_in_dir(full_path)
         if ref_dicts is None:
             root_path = find_root_file(full_path)
             content = get_paper_content(root_path)
-            ref_dicts.extend(parse_bbl(content))
+            ref_dicts = parse_bbl(content)
         
         references.append(ref_dicts)
-    result = deduplicate_reference(references)
+    if references:
+        result = deduplicate_reference(references)
     
-    output_path = os.path.join(bib_output_folder, os.path.dirname(folder_path).split('/')[-2] + '.bib')
+    output_path = os.path.join(os.path.dirname(folder_path)[:-(len('tex'))], 'extracted.bib')
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(result)
-        print(f"Write refs in {output_path}")
+        # print(f"Write refs in {output_path}")
 
 def deduplicate_reference(results: list[str]) -> str:
     title_map = {obj['title']: obj for obj in results[0]}

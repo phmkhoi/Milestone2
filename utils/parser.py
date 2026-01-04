@@ -15,7 +15,7 @@ def add_sentences_to_tree(paragraph, tree):
         return
     
     if isinstance(paragraph, list):
-        paragraph = ' '.join(paragraph)
+        paragraph = ''.join(paragraph).strip()
     
     abbreviations = [
         (r'et al\.', 'et al_'), 
@@ -53,7 +53,7 @@ def add_block_to_tree(content_list, tree):
     
     if tag in LEAF_BLOCKS:
         content = ' '.join(content_list).replace('\n', ' ')
-        current_node = Node(content)
+        current_node = Node(content.strip())
         tree.add_node(current_node, 'leaf')
         return
         
@@ -236,7 +236,7 @@ def clean_tex(raw_content):
                 r'\\quad', r'\\noindent', 
                 r'\\item', r'\\\\',
                 r'\\smallskip',
-                r'\\centuring']
+                r'\\centering']
     
     for replace in REPLACES:
         content = re.sub(replace, '', content)
@@ -257,6 +257,7 @@ def parse_paper(tex_path):
         full_path = tex_path + folder
         
         root_path = find_root_file(full_path)
+        if not root_path: return
         content = get_paper_content(root_path)
         
         cleaned_content = clean_tex(content)
