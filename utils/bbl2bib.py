@@ -35,11 +35,10 @@ def format_authors(text):
     return text
 
 def parse_bbl(bbl_content):
-    entry_pattern = re.compile(
-        r"\\bibitem(?:\[[^\]]*\])?\{(.*?)\}([\s\S]*?)(?=\\bibitem|\\end\{thebibliography\})",
-        re.MULTILINE
-    )    
+    # entry_pattern = re.compile(r"\\bibitem\[.*?\]\{(.*?)\}([\s\S]*?)(?=\\bibitem|\\end\{thebibliography\})", re.MULTILINE)
+    entry_pattern = re.compile(r"\\bibitem(?:\[.*?\])?\{(.*?)\}([\s\S]*?)(?=\\bibitem|\\end\{thebibliography\})", re.MULTILINE)
     bib_references = []
+
     for match in entry_pattern.finditer(bbl_content):
         key = match.group(1).strip()
         raw_body = match.group(2).strip()
@@ -60,6 +59,7 @@ def parse_bbl(bbl_content):
             fields['title'] = clean_text(blocks[0])
             info_text = blocks[0]
 
+        # source_match = re.search(r'(\{\\em\s+(.*?)\}|\\emph\{(.*?)\})', info_text)
         source_match = re.search(r'(\{\\em\s+((?:[^{}]|\{.*?\})*)\}|\\emph\{((?:[^{}]|\{.*?\})*)\})', info_text)
         
         source_name = ""
@@ -162,6 +162,7 @@ def bbl2bib(folder_path: str, bib_output_folder: str) -> None:
     '''
     references = []
     if not os.path.isdir(folder_path): return None
+    if not os.listdir(folder_path): return
 
     for folder_version_path in os.listdir(folder_path):
         #Do t dùng macbook nên cần...
