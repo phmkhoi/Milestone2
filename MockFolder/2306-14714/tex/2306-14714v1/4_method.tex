@@ -1,0 +1,42 @@
+
+\setlength\textfloatsep{5pt}
+\begin{figure*}[t]
+\centering
+\includegraphics[width=17cm]{1_overview.eps}
+\caption{
+Example of a deep predictive learning framework consisting of a feature extractor and time-series predictor.
+}
+\label{fig_overview}
+\end{figure*}
+
+
+\section{Implementation}
+\label{sec_implementation}
+This section describes the detailed structure and implementation methods of deep prediction learning. Figure \ref{fig_overview} shows the overall structure of deep prediction learning with three phases: training data collection, learning, and motion generation. The following subsections describe the outline and features of each phase.
+
+\subsection{Data collection}
+In deep predictive learning, motion generation models are acquired in a data-driven manner using the robot's sensorimotor information (time-series data comprising motion and sensor information) as training data. Therefore, the training data must contain information about the interaction between the robot's body and the environment. In addition, since the quantity and quality of the training data influence model performance, high-quality demonstration data must be collected efficiently. In Phase 1, the training data is collected by performing the desired motions on the robot and recording motion information, such as joint angles, and sensor information, such as camera images, at a constant sampling rate. Typical teaching methods for robot motion include program description, direct teaching, and teleoperation. Although describing the robot's motion in advance using a robot programming language is simple, it may not be feasible due to the complexity of the description when a robot needs to perform a long-term motion. In contrast, training data without precise modeling and parameter adjustment can be obtained by teaching movements through human manipulation of the robot. Among them, remotely controlling the manipulator from the actual robot's perspective (Wizard of Oz \cite{Koma2016ral}) is desirable because it can intuitively teach the robot human manipulation skills for a task. The operator interacts naturally with the environment by controlling the robot as if he were controlling his body. In addition, since the operator makes decisions about actions based on information obtained from sensor information, the acquired teaching dataset is expected to contain information necessary for motion learning and be effective in acquiring data for model training.
+
+
+\subsection{Integrated learning of sensorimotor information}
+In deep predictive learning, the learning target is the time-series relationships between sensorimotor information in a system in which the environment and the body interact dynamically. The training data are not labeled with correct answers, and the model is trained to predict the robot state in the next step using the current robot state as input. This autoregressive learning eliminates the need for the detailed design of a physical model of the environment, as required in conventional robotics. In addition, the model can be represented as a dynamic system integrating environment recognition and motion generation functions across multiple modalities.
+
+The model consists of feature extraction and time series learning parts to learn the robot's sensorimotor information. The feature extraction part extracts features from sensor information values acquired by the robot, and the time series learning part learns sensorimotor information that integrates the extracted features and robot motion information ( e.g., joint angles and torque). Although each part is connected end-to-end or learned independently, the roles of each part are explicitly separated in this chapter.
+
+
+\subsubsection{Feature extractor}
+Because the inputs the robot acquires using sensors, such as camera and tactile sensors, from the real environment are often high-dimensional, feature extraction is critical. To learn sensorimotor information appropriately, the extracted sensor features must reflect the relationship between the robot body and manipulated object. This is because it affects the prediction performance of the motion information in the time series learning section at a later stage, e.g., the approach to the manipulated object in the manipulation task. Therefore, to obtain detailed information, the feature extractor should be able to handle high-dimensional sensor inputs as they are. 
+
+For example, consider raw image data containing unnecessary information for the robot task, such as background images, that become noise for model training. Most of our models use a convolutional autoencoder (CAE) structure as a feature extractor, which performs unsupervised learning so that the input and output are identity maps. In CAE, low-dimensional features are acquired in the middle layer by performing self-supervised learning to provide output values equal to the input values. The encoded feature vector represents the state of the input image and can be used to provide high-dimensional input information using fewer dimensions, making it robust to unwanted noise. Moreover, the above feature vectors can be further constrained to useful information for task learning by introducing an attention mechanism\cite{ichiwara2022contact, ito2022integrated}.
+
+
+\subsubsection{Time-series predictor}
+We use RNNs with recursive inputs and outputs in the middle layer as time series predictors. RNN models time dependency and functions as a learning-based controller that takes the current state as input and outputs the next state, including the motion trajectory. RNN has feature vectors obtained by the sensor feature extraction and robot motion information (such as joint angles, torque values, and gripper values) as input and output at each time and is trained to reduce the error between the output and input at the next time. A robust model can be constructed by adjusting the ratio of how much of the model output from the previous time is used as input. Moreover, the prediction of sensor values in a subtask manner contributes to the model's prediction performance. 
+
+In addition, generating composite motions by representing long-term tasks as a combination of dynamics embedded in the learner is possible. RNNs can retain different dynamics obtained from the learning process of time-series data as unique internal states. During motion generation, the RNN predicts the next state based on the internal and current sensorimotor information, but the prediction error increases in the unlearned state. When the prediction error increases, the system switches from the learned dynamics to minimize the prediction error; this property can be used to switch modules. In addition, by explicitly designing an intermediate layer with multiple timescales, short- and long-term subtasks can be represented \cite{Hochreiter1997nc, Yamashita2008plos}. Thus, various task learning is possible using top-down and bottom-up hierarchical structures across multiple time scales and an engineering-like design of internal states. More detailed examples are described in section \ref{sec_case_studies}.
+
+
+\subsection{Motion generation}
+When performing the task, RNN performs three processes sequentially: (1) Acquire sensor information from the robot, (2) predict the next state based on the sensor information, and (3) send control commands to the robot based on the predicted values. By performing the forward computation of the model at each step, RNN predicts the robot's state for the next time-step based on the context information and inputs it holds internally. The RNN output is then used as the target state to control each joint. By repeating the above process online, the RNN predicts the sensorimotor motion of the robot while sequentially changing the state of each neuron in the context layer. Based on the results of this prediction and the prediction error in the real environment, the robot generates motions that dynamically respond to the input.
+
+Another advantage of using deep learning models for motion generation is the online motion generation speed. The proposed framework comprises lightweight models, and the computational time and cost required for motion generation are low. Moreover, implementing each of the previous functions as components makes it possible to easily reuse the implemented system when tasks or robot hardware changes, or devices are added ~\cite{Kanamura2021sensors}.

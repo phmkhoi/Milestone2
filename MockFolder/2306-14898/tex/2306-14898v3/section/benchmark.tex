@@ -1,0 +1,77 @@
+\section{The \benchmark{} Benchmark}
+\label{sec:benchmark}
+
+We present the \benchmark{} benchmark, a framework for designing interactive code environments. In this section, we first discuss the task formulation put forth by \benchmark{}. We then dive into the implementation of the \benchmark{} interface and how it enables the creation of efficient, reproducible, and configurable interactive coding tasks from existing and novel datasets. Finally, we demonstrate \benchmark{}'s potential to bring forth the variety of language grounding and understanding challenges that exist in the space of interactive coding.
+
+\subsection{Formulation}
+\label{sec:benchmark:formulation}
+The \benchmark{} benchmark formalizes the interactive coding task as a partially observable Markov decision process (POMDP) with instruction space $\mathcal{U}$, state space $\mathcal{S}$, action space $\mathcal{A}$, state observation space $\mathcal{O}$, transition function $\mathcal{T}: \mathcal{S} \times \mathcal{A} \to \mathcal{S}$, and reward function $\mathcal{R}: \mathcal{S} \times \mathcal{A} \to \{0, 1\}$. Mirroring real world coding paradigms, the primary interactive setup presented by \benchmark{} is, given a natural language instruction $u \in \mathcal{U}$, an agent issues code as an action $a_t \in \mathcal{A}$ and receives execution output as a text observation $o_{t+1} \in \mathcal{O}$ across multiple turns. Depending on the nature of the task and system, the action space consists of 1) one or more programming languages and 2) the \texttt{submit} keyword. Given the constraints imposed by the environment, task episode, and execution context at a particular timestep, an action is deemed \textit{admissible} if can be parsed and executed within the environment ($\mathcal{T}(s, a) \neq s$)~\cite{yao2020calm}. Upon submission of the \texttt{submit} action at the state at timestep $T$, the task episode ends and a reward $r \in \mathcal{R}(s_T, \texttt{submit}) = \{0, 1\}$ is computed, where $1$ is awarded for successful completion of the task in its entirety, and $0$ for otherwise. We use the \textbf{Success Rate (SR)} metric, defined as the proportion of task episodes where $r = 1$. We also define the \textbf{Error \%} metric, which corresponds to the percentage of actions across a single task episode that is \textit{not} admissible.
+
+A state $s_t \in \mathcal{S}$ generally represents the system or setting that the interactive coding task is taking place in (i.e. MySQL Database, Bourne Shell). Depending on the system, the state includes information such files/tables/folders, permissions, current working directory, execution context, and details about the OS or installed dependencies, to name a few. This latent state is not directly available to an agent, but can be uncovered via observations from agent actions. At a high level, the task formulation and feedback loop presented by the \benchmark{} task formulation reflects the development practices of programmers and software engineers.
+
+
+
+\subsection{Design Choices}
+\label{sec:benchmark:principles} \benchmark{} aims to serve as an expressive, safe, and lightweight framework for interactive code settings that subscribe to the aforementioned task formulation and can be used as a tool or training platform.
+The \texttt{\benchmark{}Env} is the main deliverable towards this objective, providing foundational scaffolding for defining an interactive task environment that handles interaction efficiently and safely while also exposing a curated set of functions for task customization at numerous levels of granularity.
+
+\textbf{Virtual Containers.} For developing lightweight and transferable interactive code settings with rich and diverse observation $\mathcal{O}$ and state $\mathcal{S}$ spaces, \benchmark{} leverages virtual containers, specifically Docker~\cite{merkel2014docker}, as a general execution sandbox.
+Docker images, which can be custom made with a \texttt{Dockerfile}, provide excellent coverage of operating systems, languages, dependencies, and packages.
+This affords task designers an exciting level of expressivity to manifest a wide range of task settings that can be accessed via a uniform, task-agnostic interface.
+Execution in a virtual setting also provides safety against actions $\mathcal{A}$ that might be catastrophic on real world systems.
+% \jy{Intercode makes it easy to set guardrails on the action space, so it serves as a good interface for interacting with real world systems too.}
+
+% \textbf{Two Usage Modes.} \benchmark{} can run in two modes: \texttt{tool} and \texttt{eval}. In tool mode, \benchmark{}’s interface for interactive code settings can be used as a tool that language models can use to solve downstream tasks, or as a wrapper for connecting code agents to real world code tasks and settings. The inclusion of a dataset, which sets InterCode in \texttt{eval} mode, enables InterCode’s use as a training and testing environment for code and language agents. \sy{do we even use these terms? let's just say we use execution for both observation and reward}
+
+\textbf{Customizable Execution, Dataset, Reward Function.} Within the interactive coding task formulation, \benchmark{} exposes key functionality that allows users to tailor an environment according a task's specific requirements and preferences. These include how an action is executed in a container (transition function $\mathcal{T}$), the criteria for task completion (reward function $\mathcal{R}$), and the dataset for training and evaluation (instruction space $\mathcal{U}$). A description of the \texttt{\benchmark{}Env} base class and methods for customization are fully described in \S\ref{appx:env:interface}.
+
+\subsection{Usage of \benchmark{}}
+\label{sec:benchmark:usage}
+\sy{shorten? and tie to formulation terms}
+\benchmark{} unifies the logic for facilitating interactive coding, and abstracts this functionality away such that what remains to implement are only task specific details.
+To this end, creating an interactive coding task and environment using \benchmark{} requires task designers to provide three components.
+\begin{itemize}[noitemsep,topsep=0pt]
+    \item A \textit{Dockerfile} to define a containerized application for code execution.
+    \item A \textit{dataset} containing pairs of (natural language query, reference gold command)
+    \item A \textit{reward function} that evaluates an agent's actions against the reference gold command to determine task completion.
+\end{itemize}
+
+\textbf{Define Task Setting.} Given the name of a docker image, \benchmark{} handles creating and connecting to a corresponding virtual container that serves as a sand-boxed execution environment.
+The container entity is also exposed as a variable to task designers in the case that custom logic is required to implement how to 1) Execute an action $a \in \mathcal{A}$  within the container and/or 2) Retrieve information from the container for reward calculation purposes.
+
+Specifying a docker image from Docker Hub or defining a custom one with \texttt{Dockerfile} is the task designer's responsibility and creative outlet to select or design a suitable task setting, which can further be enriched with additional features (i.e. custom file system, more database tables, extra packages/dependencies, ) as needed for the task.
+In this manner, a task setting can be configured without any impact on the downstream interaction logic.
+
+\textbf{Define Dataset.} \benchmark{} requires that a dataset has at minimum two fields: \texttt{query}, a natural language instruction $u \in \mathcal{U}$, and \texttt{gold}, a code block that is a procedure for generating the correct answer. 
+Additional fields can be included and incorporated for task-level customization via the \texttt{\benchmark{}Env} API.
+Per task episode, the instruction text from an entry is shown directly or wrapped in a more elaborate prompt. Upon performing the \texttt{submit} action, the latest state and observation are graded against the \texttt{gold} command output.
+
+This basic specification makes it easy to both conform existing datasets and devise new ones that fit \benchmark{}'s task formulation while offering flexibility for fabricating a wide range of coding task instructions.
+In addition, the choice of <\texttt{query}, \texttt{gold}> pairs (as opposed to <\texttt{query}, \texttt{answer}>) encourages the construction of datasets that can be readily employed across different \benchmark{} task settings that may share the same programming language(s) for interaction such that the answer may vary across these settings. This presents opportunities to assess the generalizability, robustness, and adaptability of generations on top of completion correctness.
+
+\textbf{Define Task Completion.} Across a single task episode, each interaction iteration of an action, observation, and state modification are implicitly logged by \benchmark{}.
+At the \texttt{submit} time step, the simplest way to decide whether these sequence of actions complete the original task is with exact match comparison against the corresponding trajectory and outputs from executing the \texttt{gold} command.
+With that said, given that the definition of completion can be heavily influenced by the nature of the instruction, task setting, and modes of interaction, exact match may often be too stringent of a rating style to use. 
+Consequently, we make it possible to override exact match with custom reward functions using \texttt{\benchmark{}Env}, discussed further in \S\ref{appx:env:interface}.
+
+\subsection{\benchmark{} Based Environments}
+Following the procedure discussed in Section~\ref{sec:benchmark:usage}, we create two separate \benchmark{} based environments where Bash and SQL are the action spaces respectively. Table~\ref{table:env-compare} summarizes each environment.
+
+\input{figures/tables/methods-env-compare}
+
+\textbf{Bash Environment.} Figure~\ref{fig:preview} visualize the interactive flow and evaluation procedure for the \benchmark{}-Bash environment. We define a \texttt{bash} shell within an Ubuntu Operating System as the task setting.
+To evaluate an agent's ability to adapt generations to different situations, we architect four distinct file systems that can be swapped into the Bash environment by changing a single line in the \texttt{Dockerfile}.
+We bootstrap the NL2Bash~\cite{lin-etal-2018-nl2bash} dataset to create an interactive coding task where an agent completes an instruction via \texttt{bash} actions. Transferring NL2Bash to the interactive task setting requires simple transformations to ground instructions and \texttt{gold} code blocks in the file system.
+Finally, we define a custom reward function that evaluates an agent's performance against file system modifications and the latest execution output.
+For instance, an instruction asking an agent to write content to a text file then get the file's new size in human readable format would check that both 1. The text file was modified correctly (i.e. \texttt{echo "Hello" $>>$ file.txt} and 2. The file's updated size is shown in the latest execution output (i.e. \texttt{ls -lh file.txt})
+More specific details are in \S~\ref{appx:env:bashenv}.
+
+\textbf{SQL Environment.} We define an SQL interpreter within MySQL database as the task setting, then similarly adapt the Spider~\cite{yu-etal-2018-spider} dataset to create an interactive coding task where an agent answers questions in the form of instructions with a set of records as execution output from \texttt{SQL} actions. We perform an intersection over union comparison of the latest execution outputs of the agent's commands and gold command(s) to determine task completion. Visualizations like Figure~\ref{fig:preview} for SQL along with a more extensive implementation discussion for this environment are in \S~\ref{appx:env:sqlenv}
+
+\subsection{Research Challenges Imposed by \benchmark{}}
+\label{sec:benchmark:challenges}
+\benchmark{}'s interface and design provides fertile ground for constructing language understanding and decision making challenges spanning across NLP and RL.
+Solving a task across multiple iterations implicitly relies on a model's ability to perform \textit{error correction} by determining what action to perform next based on past execution output(s).
+Given a possibly high-level, ambiguous, or under-specified natural language instruction, a code agent should demonstrate capacity for \textit{planning}, such as navigating the task setting to gain a better understanding of the environment and identify relevant context.
+Such \textit{reasoning} is also useful for breaking down a high level objective into separate tasks that can then be completed in a modular fashion.
+Beyond correctness and efficiency, it may also be important that a model's task execution approaches align with human preferences (i.e. \textit{how} to do a task, not just \textit{what}) and can adjust its approach in response to evolving feedback. Across a longer task horizon that involves repetitive engagement with a common user or user group, an agent's ability to selectively apply historical dialogue and context can improve the efficiency and accuracy with which it carries out future tasks. In addition to exploring the capabilities of a single actor, \benchmark{} can also serve as a playground for evaluating multi-agent collaboration~\cite{havrylov2017emergence, wong2022deep}; such directions can draw heavily on existing software engineering paradigms for cooperation~\cite{dingsoyr2012decade, williams2000strengthening} to explore how teams of agents might be able to complete more significant engineering undertakings such as building and deploying a full stack application. \sy{make it more readable; can also cut if mentioned in sec 4}

@@ -1,0 +1,474 @@
+{\huge Appendix}
+
+\input{theory}
+
+\section{More on Restart Algorithm}
+\subsection{EDM Discretization Scheme}
+\label{app:edm-time}
+\cite{Karras2022ElucidatingTD} proposes a discretization scheme for ODE given the starting $\tmax$ and end time $\tmin$. Denote the number of steps as $N$, then the EDM discretization scheme is:
+\begin{align*}
+    t_{i<N} = \left(\tmax^{\frac{1}{\rho}} + \frac{i}{N-1}(\tmin^{\frac{1}{\rho}}- \tmax^{\frac{1}{\rho}})\right)^\rho
+\end{align*}
+with $t_0 = \tmax$ and $t_{N-1}=\tmin$. $\rho$ is a hyperparameter that determines the extent to which steps near $\tmin$ are shortened. We adopt the value $\rho=7$ suggested by \cite{Karras2022ElucidatingTD} in all of our experiments. We apply the EDM scheme to creates a time discretization in each Restart interval $[\tmax, \tmin]$ in the Restart backward process, as well as the main backward process between $[0,T]$~(by additionally setting $\tmin=0.002$ and $t_N=0$ as in \cite{Karras2022ElucidatingTD}). It is important to note that $\tmin$ should be included within the list of time steps in the main backward process to seamlessly incorporate the Restart interval into the main backward process. We summarize the scheme as a function in Algorithm~\ref{alg:edm}.
+
+\begin{algorithm}[htb]
+  \caption{{EDM\_Scheme($\tmin, \tmax, N, \rho=7)$}}
+  \label{alg:edm}
+\begin{algorithmic}[1]
+  \Return $\left\{(\tmax^{\frac{1}{\rho}} + \frac{i}{N-1}(\tmin^{\frac{1}{\rho}}- \tmax^{\frac{1}{\rho}}))^\rho\right\}_{i=0}^{N-1}$
+\end{algorithmic}
+\end{algorithm}
+
+
+
+\subsection{Restart Algorithm}
+\label{app:restart-alg}
+
+We present the pseudocode for the Restart algorithm in Algorithm~\ref{alg:restart}. In this pseudocode, we describe a more general case that applies $l$-level Restarting strategy. For each Restart segment, the include the number of steps in the Restart backward process $N_{\textrm{Restart}}$, the Restart interval $[\tmin, \tmax]$ and the number of Restart iteration $K$. We further denote the number of steps in the main backward process as $N_{\textrm{main}}$. We use the EDM discretization scheme~(Algorithm~\ref{alg:edm}) to construct time steps for the main backward process~($t_0=T, t_{N_{\textrm{main}}}=0$) as well as the Restart backward process, when given the starting/end time and the number of steps.
+
+Although Heun's $2^{\textrm{nd}}$ order method~\cite{Ascher1998ComputerMF} (Algorithm~\ref{alg:heun}) is the default ODE solver in the pseudocode, it can be substituted with other ODE solvers, such as Euler's method or the DPM solver~\cite{lu2022dpm}. 
+
+The provided pseudocode in Algorithm~\ref{alg:restart} is tailored specifically for diffusion models~\cite{Karras2022ElucidatingTD}. To adapt Restart for other generative models like PFGM++~\cite{Xu2023PFGMUT}, we only need to modify the Gaussian perturbation kernel in the Restart forward process (line 10 in Algorithm~\ref{alg:restart}) to the one used in PFGM++.
+
+\begin{algorithm}[h]
+  \caption{Restart sampling}
+  \label{alg:restart}
+\begin{algorithmic}[1]
+  \State {\bfseries Input:} Score network $s_\theta$, time steps in main backward process $t_{i \in \{0, N_{\textrm{main}}\}}$, Restart parameters $\{(N_{\textrm{Restart}, j}, K_j, t_{\textrm{min}, j}, t_{\textrm{max}, j})\}_{j=1}^l$ 
+  \State Round $t_{\textrm{min}, j\in \{1, l\}}$ to its nearest neighbor in $t_{i \in \{0, N_{\textrm{main}}\}}$
+  \State Sample $x_0 \sim \gN(\bm{0}, T^2\bm{I})$
+  \For{$i=0 \dots N_{\textrm{main}}-1$}\Comment{Main backward process}
+  \State $x_{t_{i+1}}=\textrm{OneStep\_Heun}(s_\theta, t_i, t_{i+1})$\Comment{Running single step ODE}
+    \If{$\exists j \in \{1, \dots,l \}, t_{i+1} = t_{\textrm{min}, j}$}
+    
+    \State $\tmin = t_{\textrm{min}, j}, \tmax = t_{\textrm{max}, j}, K=K_j, N_{\textrm{Restart}} = N_{\textrm{Restart}, j}$
+    \State $x^0_{\tmin} = x_{t_{i+1}}$
+      \For{$k=0 \dots K-1$}\Comment{\textbf{Restart for $K$ iterations}}
+      \State $\varepsilon_{\tmin \to \tmax} \sim  \gN(\bm{0}, (\tmax^2-\tmin^2)\bm{I})$
+          \State $x^{k+1}_{\tmax} = x^k_{\tmin} + \varepsilon_{\tmin \to \tmax}$ \Comment{\textbf{Restart forward process}}
+          \State $\{\bar{t}_{m}\}_{m=0}^{N_{\textrm{Restart}}-1} = \textrm{EDM\_Scheme}(\tmin, \tmax,N_{\textrm{Restart} })$
+          \For{$m=0 \dots N_{\textrm{Restart}}-1$}\Comment{\textbf{Restart backward process}}
+          \State $x^{k+1}_{\bar{t}_{m+1}}=\textrm{OneStep\_Heun}(s_\theta, \bar{t}_{m}, \bar{t}_{m+1})$
+          \EndFor
+      \EndFor
+    \EndIf
+  \EndFor
+  \Return $x_{t_{N_{\textrm{main}}}}$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[htb]
+  \caption{{OneStep\_Heun($s_\theta, x_{t_i}, t_i, t_{i+1}$)}}
+  \label{alg:heun}
+\begin{algorithmic}[1]
+    \State $d_i = t_is_\theta(x_{t_i}, t_i)$
+  \State $x_{t_{i+1}} = x_{t_i} - (t_{i+1}-t_i) d_i$
+  \If{$t_{i+1}\not=0$}
+  \State $d'_i = t_{i+1}s_\theta(x_{t_{i+1}}, t_{i+1})$
+  \State $x_{t_{i+1}} = x_{t_i} - (t_{i+1}-t_i)(\frac12d_i+\frac12d_i')$
+  \EndIf
+  \Return $x_{t_{i+1}}$
+\end{algorithmic}
+\end{algorithm}
+
+\section{Experimental Details}
+\label{app:exp-details}
+
+In this section, we discuss the configurations for different samplers in details. All the experiments are conducted on eight NVIDIA A100 GPUs.
+
+\subsection{Configurations for Baselines}
+
+We select \textbf{Vanilla SDE}~\cite{Song2020ScoreBasedGM}, \textbf{Improved SDE}~\cite{Karras2022ElucidatingTD}, \textbf{Gonna Go Fast}~\cite{JolicoeurMartineau2021GottaGF} as SDE baselines and the \textbf{Heun}'s $2^{\textrm{nd}}$ order method~\cite{Ascher1998ComputerMF}~(Alg~\ref{alg:heun}) as ODE baseline on standard benchmarks CIFAR-10 and ImageNet $64\times 64$. We choose \textbf{DDIM}~\cite{Song2020DenoisingDI}, \textbf{Heun}'s $2^{\textrm{nd}}$ order method, and \textbf{DDPM}~\cite{Ho2020DenoisingDP} for comparison on Stable Diffusion model.
+
+Vanilla SDE denotes the reverse-time SDE sampler in \cite{Song2020ScoreBasedGM}. For Improved SDE, we use the recommended dataset-specific hyperparameters~(\eg $S_{\textrm{max}}, S_{\textrm{min}}, S_{\textrm{churn}}$) in Table 5 of the EDM paper~\cite{Karras2022ElucidatingTD}. They obtained these hyperparameters by grid search. Gonna Go Fast~\cite{JolicoeurMartineau2021GottaGF} applied an adaptive step size technique based on Vanilla SDE and we directly report the FID scores listed in \cite{JolicoeurMartineau2021GottaGF} for Gonna Go Fast on CIFAR-10~(VP). For fair comparison, we use the EDM discretization scheme~\cite{Karras2022ElucidatingTD} for Vanilla SDE, Improved SDE, Heun as well as Restart.
+
+We borrow the hyperparameters such as discretization scheme or initial noise scale on Stable Diffusion models in the diffuser~\footnote{\url{https://github.com/huggingface/diffusers}} code repository. We directly use the DDIM and DDPM samplers implemented in the repo. We apply the same set of hyperparameters to Heun and Restart.
+
+
+
+\subsection{Configurations for Restart}
+\label{app:config}
+
+We report the configurations for Restart for different models and NFE on standard benchmarks CIFAR-10 and ImageNet $64\times 64$. The hyperparameters of Restart include the number of steps in the main backward process $N_{\textrm{main}}$, the number of steps in the Restart backward process $N_{\textrm{Restart}}$, the Restart interval $[\tmin, \tmax]$ and the number of Restart iteration $K$. In Table~\ref{tab:app-cifar-restart}~(CIFAR-10, VP) we provide the quintuplet $(N_{\textrm{main}}, N_{\textrm{Restart}}, \tmin, \tmax, K)$ for each experiment. Since we apply the multi-level Restart strategy for ImageNet $64\times 64$, we provide $N_{\textrm{main}}$ as well as a list of quadruple $\{(N_{\textrm{Restart}, i}, K_i, t_{\textrm{min}, i}, t_{\textrm{max}, i})\}_{i=1}^l$~($l$ is the number of Restart interval depending on experiments) in Table~\ref{tab:app-imagenet-restart}. In order to integrate the Restart time interval to the main backward process, we round $t_{\textrm{min}, i}$ to its nearest neighbor in the time steps of main backward process, as shown in line 2 of Algorithm~\ref{alg:restart}. We apply Heun method for both main/backward process. The formula for NFE calculation is $\textrm{NFE}=\underbrace{2\cdot N_{\textrm{main}} -1}_{\textrm{main backward process}} + \sum_{i=1}^l\underbrace{K_i}_{\textrm{number of repetitions}}\cdot \underbrace{(2 \cdot (N_{\textrm{Restart}, i}-1))}_{\textrm{per iteration in }i^{\textrm{th}}\textrm{ Restart interval}}$ in this case. Inspired by \cite{Karras2022ElucidatingTD}, we inflate the additive noise in the Restart forward process by multiplying $S_{\textrm{noise}}=1.003$ on ImageNet $64\times 64$, to counteract the over-denoising tendency of neural networks. We also observe that setting $\gamma=0.05$ in Algorithm 2 of EDM~\cite{Karras2022ElucidatingTD} would sligtly boost the Restart performance on ImageNet $64\times 64$ when $t \in [0.01,1]$. 
+
+We further include the configurations for Restart on Stable Diffusion models in Table~\ref{tab:config-sd}, with a varying guidance weight $w$. Similar to ImageNet $64\times 64$, we use multi-level Restart with a fixed number of steps $N_{\textrm{main}}=30$ in the main backward process. We utilize the Euler method for the main backward process and the Heun method for the Restart backward process, as our empirical observations indicate that the Heun method doesn't yield significant improvements over the Euler method, yet necessitates double the steps. The number of steps equals to $N_{\textrm{main}} + \sum_{i=1}^lK_i\cdot (2 \cdot (N_{\textrm{Restart}, i}-1))$ in this case. We set the total number of steps to $66$, including main backward process and Restart backward process.
+
+Given the prohibitively large search space for each Restart quadruple, a comprehensive enumeration of all possibilities is impractical due to computational limitations. Instead, we adjust the configuration manually, guided by the heuristic that weaker/smaller models or more challenging tasks necessitate a stronger Restart strength (e.g., larger $K$, wider Restart interval, etc). On average, we select the best configuration from $5$ sets for each experiment; these few trials have empirically outperformed previous SDE/ODE samplers. We believe that developing a systematic approach for determining Restart configurations could be of significant value in the future.
+
+\subsection{Pre-trained Models}
+
+For CIFAR-10 dataset, we use the pre-trained VP and EDM models from the EDM repository~\footnote{\url{https://github.com/NVlabs/edm}}, and PFGM++~($D=2048$) model from the PFGM++ repository~\footnote{\url{https://github.com/Newbeeer/pfgmpp}}. For ImageNet $64\times 64$, we borrow the pre-trained EDM model from EDM repository as well.
+
+
+\subsection{Classifier-free Guidance}
+
+We follow the convention in \cite{Saharia2022PhotorealisticTD}, where each step in classifier-free guidance is as follows:
+\begin{align*}
+    \Tilde{s}_\theta(x,c, t) = w{s}_\theta(x,c, t) + (1-w){s}_\theta(x, t)
+\end{align*}
+where $c$ is the conditions, and${s}_\theta(x,c, t)/{s}_\theta(x, t)$ is the conditional/unconditional models, sharing parameters. Increasing $w$ would strength the effect of guidance, usually leading to a better text-image alignment~\cite{Saharia2022PhotorealisticTD}.
+
+\subsection{More on the Synthetic Experiment}
+\label{app:syn}
+
+\subsubsection{Discrete Dataset}
+
+We generate the underlying discrete dataset $S$ with $|S|=2000$ as follows. Firstly, we sample 2000 points, denoted as $S_1$, from a mixture of two Gaussians in $\mathbb{R}^4$. Next, we project these points onto $\mathbb{R}^{20}$. To ensure a variance of 1 on each dimension, we scale the coordinates accordingly. This setup aims to simulate data points that primarily reside on a lower-dimensional manifold with multiple modes.
+
+The specific details are as follows: $S_1 \sim 0.3 N(a, s^2I) + 0.7(-a, s^2I)$, where $a=(3,3,3,3)\subset \mathbb{R}^4$ and $s=1$. Then, we randomly select a projection matrix $P\in \mathbb{R}^{20\times 4}$, where each entry is drawn from $N(0, 1)$, and compute $S_2=PS_1$. Finally, we scale each coordinate by a constant factor to ensure a variance of 1.
+
+\subsubsection{Model Architecture}
+
+We employ a common MLP architecture with a latent size of 64 to learn the score function. The training method is adapted from \cite{Karras2022ElucidatingTD}, which includes the preconditioning technique and denoising score-matching objective~\cite{Vincent2011ACB}.
+
+\subsubsection{Varying Hyperparameters}
+
+To achieve the best trade-off between contracted error and additional sampling error, and optimize the NFE versus FID (Fréchet Inception Distance) performance, we explore various hyperparameters. \cite{Karras2022ElucidatingTD} shows that the Vanilla SDE can be endowed with additional flexibility by varying the coefficient $\beta(t)$~(Eq.(6) in \cite{Karras2022ElucidatingTD}). Hence, regarding SDE, we consider NFE values from $\{20, 40, 80, 160, 320\}$, and multiply the original $\beta(t)=\dot{\sigma}(t)/\sigma(t)$~\cite{Karras2022ElucidatingTD} with values from $\{0, 0.25, 0.5, 1, 1.5, 2, 4, 8\}$. It is important to note that larger NFE values do not lead to further performance improvements. For restarts, we tried the following two settings: first we set the number of steps in Restart backward process to 40 and vary the number of Restart iterations $K$ in the range $\{0, 5, 10, 15, 20, 25, 30, 35\}$. We also conduct a grid search with the number of Restart iterations $K$ ranging from 5 to 25 and the number of steps in Restart backward process varying from 2 to 7. For ODE, we experiment with the number of steps set to $\{20, 40, 80, 160, 320, 640\}$.
+
+\begin{figure*}[tt] 
+\centering 
+\subfigure[]{\includegraphics[width=0.33\textwidth]{img/approx_vs_contracted.pdf}\label{fig:approx_contract_sde}}\hfill
+\subfigure[]{\includegraphics[width=0.325\textwidth]{img/approx_vs_fid_scatter.pdf}\label{fig:approx_fid_sde}}\hfill
+\subfigure[]{\includegraphics[width=0.32\textwidth]{img/NFE_vs_FID.pdf}\label{fig:nfe_total_sde}}
+\vspace{-6pt}
+\caption{Comparison of additional sampling error versus \textbf{(a)} contracted error (plotting the Pareto frontier) and \textbf{(b)} total error (using a scatter plot). \textbf{(c)} Pareto frontier of NFE versus total error.} \label{fig:toy-with-sde}
+\vspace{-12pt}
+\end{figure*}
+
+
+Additionally, we conduct an experiment for Improved SDE in EDM. We try different values of $S_{\text{churn}}$ in the range of $\{0, 1, 2, 4, 8, 16, 32, 48, 64\}$. We also perform a grid search where the number of steps ranged from $20$ to $320$ and $S_{\text{churn}}$ takes values of $[0.2 \times\text{steps}, 0.5 \times \text{steps}, 20, 60]$. The plot combines the results from SDE and is displayed in Figure \ref{fig:toy-with-sde}.
+
+To mitigate the impact of randomness, we collect the data by averaging the results from five runs with the same hyperparameters. To compute the Wasserstein distance between two discrete distributions, we use minimum weight matching.
+
+\subsubsection{Plotting the Pareto frontier}
+
+We generate the Pareto frontier plots as follows. For the additional sampling error versus contracted error plot, we first sort all the data points based on their additional sampling error and then connect the data points that represent prefix minimums of the contracted error. Similarly, for the NFE versus FID plot, we sort the data points based on their NFE values and connect the points where the FID is a prefix minimum.
+
+
+\section{Extra Experimental Results}
+\label{app:extra-exp}
+
+\subsection{Numerical Results}
+\label{app:extra-numerical}
+In this section, we provide the corresponding numerical reuslts of \Figref{fig:cifar10} and \Figref{fig:imagenet}, in Table~\ref{tab:app-cifar},~\ref{tab:app-cifar-restart}~(CIFAR-10 VP, EDM, PFGM++) and Table~\ref{tab:app-imagenet},~\ref{tab:app-imagenet-restart}~(ImageNet $64\times 64$ EDM), respectively. We also include the performance of Vanilla SDE in those tables. For the evaluation, we compute the Fréchet distance between 50000 generated samples and the pre-computed statistics of CIFAR-10 and ImageNet $64\times 64$. We follow the evaluation protocol in EDM~\cite{Karras2022ElucidatingTD} that calculates each FID scores three times with different seeds and report the minimum. 
+
+We also provide the numerical results on the Stable Diffusion model~\cite{Rombach2021HighResolutionIS}, with a classifier guidance weight $w=2,3,5,8$ in Table~\ref{tab:w=2},~\ref{tab:w=3},~\ref{tab:w=5},~\ref{tab:w=8}. As in \cite{Meng2022OnDO}, we report the zero-shot FID score on 5K random prompts sampled from the COCO validation set. We evaluate CLIP score~\cite{Hessel2021CLIPScoreAR} with the open-sourced ViT-g/14~\cite{ilharco_gabriel_2021_5143773}, Aesthetic score by the more recent LAION-Aesthetics Predictor V2~\footnote{https://github.com/christophschuhmann/improved-aesthetic-predictor}. We average the CLIP and Aesthetic scores over 5K generated samples. The number of function evaluations is two times the sampling steps in Stable Diffusion model, since each sampling step involves the evaluation of the conditional and unconditional model.
+
+
+ 
+\begin{table}[H]
+    \centering
+    \caption{CIFAR-10 sample quality~(FID score) and number of function evaluations~(NFE) on VP~\cite{Song2020ScoreBasedGM} for baselines}
+    \begin{tabular}{c c c c c}
+    \toprule
+         & NFE & FID \\
+          \midrule
+\textit{ODE~(Heun)}~\cite{Karras2022ElucidatingTD} 
+& 1023 & 2.90 &  \\
+& 511 & 2.90\\
+& 255 & 2.90\\
+& 127 & 2.90 \\
+& 63 & 2.89\\
+& 35& 2.97 \\
+\midrule
+          \textit{Vanilla SDE}~\cite{Song2020ScoreBasedGM} & 1024& 2.79 \\
+          & 512& 4.01 \\
+          & 256 & 4.79\\
+          & 128 & 12.57\\
+          \midrule
+          \textit{Gonna Go Fast}~\cite{JolicoeurMartineau2021GottaGF} 
+          & 1000& 2.55 \\
+          & 329 & 2.70\\
+          & 274 & 2.74\\
+          & 179 & 2.59\\
+          & 147 & 2.95\\
+          & 49 & 72.29\\
+          \midrule
+        \textit{Improved SDE}~\cite{Karras2022ElucidatingTD} & 1023&  2.35\\
+          & 511& 2.37\\
+          & 255&  2.40\\
+        & 127& 2.58 \\
+        & 63& 2.88\\
+        & 35 & 3.45\\
+        \bottomrule
+    \end{tabular}
+    \label{tab:app-cifar}
+\end{table}
+
+\begin{table}[H]
+    \centering
+    \caption{CIFAR-10 sample quality~(FID score), number of function evaluations~(NFE) and Restart configurations on VP~\cite{Song2020ScoreBasedGM}, EDM~\cite{Karras2022ElucidatingTD} and PFGM++~\cite{Xu2023PFGMUT}}
+    \begin{tabular}{c c c c c}
+    \toprule
+         \multirow{2}*{Method} & \multirow{2}*{NFE} & \multirow{2}*{FID} & Configuration \\ & &  & $(N_{\textrm{main}}, N_{\textrm{Restart}, i}, K_i, t_{\textrm{min}, i}, t_{\textrm{max}, i})$ \\
+        \midrule
+        \textit{VP}\\
+        \midrule
+        & 519 & 2.11 & $(20, 9, 30, 0.06, 0.20)$\\ 
+        %& 373 & 2.18 \\
+        & 115 & 2.21& $(18, 3, 20, 0.06, 0.30)$\\
+        & 75 & 2.27 & $(18, 3, 10, 0.06, 0.30)$\\
+        & 55 & 2.45 & $(18, 3, 5, 0.06, 0.30)$ \\
+        & 43 & 2.70 & $(18, 3, 2, 0.06, 0.30)$ \\
+        \midrule
+        \textit{EDM}\\
+        \midrule
+        & 43 & 1.90 & $(18, 3, 2, 0.14, 0.30)$\\ 
+        \midrule
+        \textit{PFGM++}\\
+        \midrule
+        & 43 & 1.88& $(18, 3, 2, 0.14, 0.30)$\\
+        \bottomrule
+    \end{tabular}
+    \label{tab:app-cifar-restart}
+\end{table}
+
+
+\begin{table}[htbp]
+    \centering
+    \caption{ImageNet $64\times 64$ sample quality~(FID score) and number of function evaluations~(NFE) on EDM~\cite{Karras2022ElucidatingTD} for baselines} 
+    \begin{tabular}{c c c c c}
+    \toprule
+         & NFE & FID~(50k)  \\
+          \midrule
+\textit{ODE~(Heun)}~\cite{Karras2022ElucidatingTD} 
+& 1023 & 2.24\\
+& 511 &  2.24\\
+& 255 & 2.24\\
+& 127 & 2.25\\
+& 63 & 2.30\\
+& 35& 2.46\\
+\midrule
+      \textit{Vanilla SDE}~\cite{Song2020ScoreBasedGM}  
+           & 1024 & 1.89\\
+           & 512 & 3.38\\
+           & 256 & 11.91 \\
+           & 128 & 59.71\\
+          \midrule
+        \textit{Improved SDE}~\cite{Karras2022ElucidatingTD} &1023 & 1.40\\
+        & 511 & 1.45\\
+        & 255 & 1.50\\
+        & 127 &  1.75\\
+        & 63 &  2.24\\
+        & 35 &  2.97\\
+        \bottomrule
+    \end{tabular}
+    \label{tab:app-imagenet}
+\end{table}
+
+\begin{table}[H]
+    \centering
+    \caption{ImageNet $64\times 64$ sample quality~(FID score), number of function evaluations~(NFE) and Restart configurations on EDM~\cite{Karras2022ElucidatingTD}} 
+    \begin{tabular}{c c c c c}
+    \toprule
+         & NFE & FID~(50k) & Configuration \\ & & & $N_{\textrm{main}}$, $\{(N_{\textrm{Restart}, i}, K_i, t_{\textrm{min}, i}, t_{\textrm{max}, i})\}_{i=1}^l$ \\
+        \midrule
+        & \multirow{3}*{623} &  \multirow{3}*{1.36}& 36, \{(10, 3, 19.35, 40.79),(10, 3, 1.09, 1.92), \\
+        & & & (7, 6, 0.59, 1.09), (7, 6, 0.30, 0.59),\\
+        & & & (7, 25, 0.06, 0.30)\} \\
+        & \multirow{3}*{535} & \multirow{3}*{1.39}& 36, \{(6, 1, 19.35, 40.79),(6, 1, 1.09, 1.92), \\
+        & & & (7, 6, 0.59, 1.09), (7, 6, 0.30, 0.59),\\
+        & & & (7, 25, 0.06, 0.30)\}\\
+        & \multirow{3}*{385} &  \multirow{3}*{1.41} & 36, \{(3, 1, 19.35, 40.79),(6, 1, 1.09, 1.92), \\
+        & & & (6, 5, 0.59, 1.09), (6, 5, 0.30, 0.59),\\
+        & & & (6, 20, 0.06, 0.30)\}\\
+        & \multirow{3}*{203} &  \multirow{3}*{1.46} & 36, \{(4, 1, 19.35, 40.79),(4, 1, 1.09, 1.92), \\
+        & & & (4, 5, 0.59, 1.09), (4, 5, 0.30, 0.59),\\
+        & & & (6, 6, 0.06, 0.30)\} \\
+        & \multirow{3}*{165} &  \multirow{3}*{1.51} & 18, \{(3, 1, 19.35, 40.79),(4, 1, 1.09, 1.92), \\
+        & & & (4, 5, 0.59, 1.09), (4, 5, 0.30, 0.59),\\
+        & & & (4, 10, 0.06, 0.30)\} \\
+        & \multirow{3}*{99} & \multirow{3}*{1.71} & 18, \{(3, 1, 19.35, 40.79),(4, 1, 1.09, 1.92), \\
+        & & & (4, 4, 0.59, 1.09), (4, 1, 0.30, 0.59),\\
+        & & & (4, 4, 0.06, 0.30)\} \\  
+        & \multirow{2}*{67} & \multirow{2}*{1.95}& 18, \{(5, 1, 19.35, 40.79),(5, 1, 1.09, 1.92), \\
+        & & & (5, 1, 0.59, 1.09), (5, 1, 0.06, 0.30)\} \\ 
+        \multirow{2}*{}& \multirow{2}*{39} & \multirow{2}*{2.38} & 14, \{(3, 1, 19.35, 40.79), \\
+        & & & (3, 1, 1.09, 1.92), (3, 1, 0.06, 0.30)\} \\
+        %& 123 & 4.36 (10k)\\& 165& 1.61 \\
+        \bottomrule
+    \end{tabular}
+    \label{tab:app-imagenet-restart}
+\end{table}
+
+
+\begin{table}[H]
+    \centering
+    \caption{Numerical results on Stable Diffusion v1.5 with a classifier-free guidance weight $w=2$}
+    \begin{tabular}{c c c c c}
+        \toprule
+         & Steps & FID~(5k) $\downarrow$ & CLIP score $\uparrow$& Aesthetic score $\uparrow$ \\
+          \midrule
+\textit{DDIM}~\cite{Song2020DenoisingDI} 
+    & 50 & 16.08 & 0.2905 & 5.13\\
+    &100 & 15.35 & 0.2920 & 5.15\\
+          \midrule
+          \textit{Heun} & 51 & 18.80 & 0.2865 & 5.14\\
+    &101 & 18.21 & 0.2871 & 5.15\\
+    \midrule
+\textit{DDPM}~\cite{Ho2020DenoisingDP} & 100 & 13.53 & {0.3012} & {5.20}\\
+        & 200 & 13.22 & 0.2999 & 5.19\\
+        \midrule
+        \textit{Restart} & 66 & {13.16}& 0.2987 & 5.19 \\
+        \bottomrule
+    \end{tabular}
+    \label{tab:w=2}
+\end{table}
+
+\begin{table}[H]
+    \centering
+    \caption{Numerical results on Stable Diffusion v1.5 with a classifier-free guidance weight $w=3$}
+    \begin{tabular}{c c c c c}
+        \toprule
+         & Steps & FID~(5k) $\downarrow$ & CLIP score $\uparrow$& Aesthetic score $\uparrow$ \\
+          \midrule
+\textit{DDIM}~\cite{Song2020DenoisingDI} 
+    & 50 & 14.28 & 0.3056 & 5.22\\
+    &100 & 14.30 & 0.3056 & 5.22\\
+          \midrule
+          \textit{Heun} & 51 & 15.63 & 0.3022 & 5.20\\
+    &101 & 15.40 & 0.3026 & 5.21\\
+    \midrule
+\textit{DDPM}~\cite{Ho2020DenoisingDP} & 100 & 15.72 & 0.3129 & 5.28\\
+        & 200 & 15.13 & {0.3131} & {5.28}\\
+        \midrule
+        \textit{Restart} & 66 & {14.48} & 0.3079 & 5.25 \\
+        \bottomrule
+    \end{tabular}
+    \label{tab:w=3}
+\end{table}
+
+\begin{table}[H]
+    \centering
+    \caption{Numerical results on Stable Diffusion v1.5 with a classifier-free guidance weight $w=5$}
+    \begin{tabular}{c c c c c}
+        \toprule
+         & Steps & FID~(5k) $\downarrow$ & CLIP score $\uparrow$& Aesthetic score $\uparrow$ \\
+          \midrule
+\textit{DDIM}~\cite{Song2020DenoisingDI} 
+    & 50 & 16.60 & 0.3154 & 5.31\\
+    &100 & 16.80 & 0.3157 & 5.31\\
+          \midrule
+          \textit{Heun} & 51 & 16.26 & 0.3135 & 5.28\\
+    &101 & 16.38 & 0.3136 & 5.29\\
+    \midrule
+\textit{DDPM}~\cite{Ho2020DenoisingDP} & 100 & 19.62 & 0.3197 & 5.36\\
+        & 200 & 18.88 & 0.3200 & 5.35\\
+        \midrule
+        \textit{Restart} & 66 & 16.21 & 0.3179 & 5.33 \\
+        \bottomrule
+    \end{tabular}
+    \label{tab:w=5}
+\end{table}
+
+
+\begin{table}[H]
+    \centering
+    \caption{Numerical results on Stable Diffusion v1.5 with a classifier-free guidance weight $w=8$}
+    \begin{tabular}{c c c c c}
+    \toprule
+         & Steps & FID~(5k) $\downarrow$ & CLIP score $\uparrow$& Aesthetic score $\uparrow$ \\
+          \midrule
+\textit{DDIM}~\cite{Song2020DenoisingDI} 
+    & 50 & 19.83 &   0.3206  & 5.37\\
+    & 100 & 19.82 &   0.3200  & 5.37\\
+          \midrule
+\textit{Heun}
+    & 51 & 18.44 &   0.3186  & 5.35\\
+    & 101 & 18.72 &   0.3185  & 5.36\\
+    \midrule
+\textit{DDPM}~\cite{Ho2020DenoisingDP} & 100 & 22.58    & 0.3223 & 5.39\\
+        & 200 & 21.67    & 0.3212 & 5.38\\
+        \midrule
+        \textit{Restart} & 47 & {18.40}& {0.3228} & {5.41} \\
+        \bottomrule
+    \end{tabular}
+    \label{tab:w=8}
+\end{table}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Restart~(Steps=66) configurations on Stable Diffusion v1.5}
+    \begin{tabular}{c c c }
+    \toprule
+         \multirow{2}*{$w$}  & Configuration \\ & $N_{\textrm{main}}$, $\{(N_{\textrm{Restart}, i}, K_i, t_{\textrm{min}, i}, t_{\textrm{max}, i})\}_{i=1}^l$ \\
+          \midrule
+        2& 30, \{(5, 2, 1, 9), (5, 2, 5, 10)\}\\
+        3& 30, \{(10, 2, 0.1, 3)\}\\
+        5& 30, \{(10, 2 0.1, 2)\}\\
+        8& 30, \{(10, 2, 0.1, 2)\}\\
+        \bottomrule
+    \end{tabular}
+    \label{tab:config-sd}
+\end{table}
+
+\begin{figure*}[h]
+    \centering
+    \subfigure[FID versus CLIP score]{\includegraphics[width=0.48\textwidth]
+    {img/clip_fid5k.pdf}   }\hfill
+   \subfigure[FID versus Aesthetic score]{\includegraphics[width=0.48\textwidth]{img/aes_fid5k.pdf} }
+    \caption{FID score versus \textbf{(a)} CLIP ViT-g/14 score and \textbf{(b)} Aesthetic score for text-to-image generation at $512 \times 512$ resolution,  using Stable Diffusion v1.5 with varying classifier-free guidance weight $w=2,3,5,8$. }
+\end{figure*}
+
+\subsection{Study on Adjusting \texorpdfstring{$\tmin$}{Lg}}
+
+\begin{figure*}
+\centering
+    \includegraphics[width=0.4\textwidth]{img/cifar_t_min.pdf}
+    \caption{Adjusting $\tmin$ in Restart on VP/EDM}
+    \label{fig:tmin}
+\end{figure*}
+We also investigate the impact of varying $\tmin$ when $\tmax=\tmin+0.3$. \Figref{fig:tmin} reveals that FID scores achieve a minimum at a $\tmin$ close to $0$ on VP, indicating higher accumulated errors at the end of sampling and poor neural estimations at small $t$. Note that the Restart interval $0.3$ is about twice the length of the one in Table~\ref{tab:cifar10-edm} and Restart does not outperform the ODE baseline on EDM. This suggests that, as a rule of thumb, we should apply greater Restart strength (\eg larger $K$, $\tmax-\tmin$) for weaker or smaller architectures and vice versa. 
+
+\section{Extended Generated Images}
+\label{app:extended-gen}
+In this section, we provide extended generated images by Restart, DDIM, Heun and DDPM on text-to-image Stable Diffusion v1.5 model~\cite{Rombach2021HighResolutionIS}. We showcase the samples of four sets of text prompts in \Figref{fig:app_horse}, \Figref{fig:app_raccoon}, \Figref{fig:app_fox}, \Figref{fig:app_duck}, with a classifier-guidance weight $w=8$.
+
+\begin{figure*}[htbp]
+    \centering
+    \subfigure[Restart (Steps=66)]{\includegraphics[width=0.48\textwidth]{img/mars_DDIM_restart_True_30.png}}\hfill
+    \subfigure[DDIM (Steps=100)]{\includegraphics[width=0.48\textwidth]{img/mars_DDIM_restart_False_100.png}}
+    \subfigure[Heun (Steps=101)]{\includegraphics[width=0.48\textwidth]{img/mars_DDIM_restart_False_51_second.png}}
+    \subfigure[DDPM (Steps=100)]{\includegraphics[width=0.48\textwidth]{img/mars_DDPM_restart_False_100.png}}
+    \caption{Generated images with text prompt="A photo of an astronaut riding a horse on mars" and $w=8$.}
+    \label{fig:app_horse}
+\end{figure*}
+
+
+
+\begin{figure*}[htbp]
+    \centering
+    \subfigure[Restart (Steps=66)]{\includegraphics[width=0.48\textwidth]{img/tennis_DDIM_restart_True_30.png}}\hfill
+    \subfigure[DDIM (Steps=100)]{\includegraphics[width=0.48\textwidth]{img/tennis_DDIM_restart_False_100.png}}
+    \subfigure[Heun (Steps=101)]{\includegraphics[width=0.48\textwidth]{img/tennis_DDIM_restart_False_51_second.png}}
+    \subfigure[DDPM (Steps=100)]{\includegraphics[width=0.48\textwidth]{img/tennis_DDPM_restart_False_100.png}}
+    \caption{Generated images with text prompt="A raccoon playing table tennis" and $w=8$.}
+    \label{fig:app_raccoon}
+\end{figure*}
+
+\begin{figure*}[htbp]
+    \centering
+    \subfigure[Restart (Steps=66)]{\includegraphics[width=0.48\textwidth]{img/forest_DDIM_restart_True_30.png}}\hfill
+    \subfigure[DDIM (Steps=100)]{\includegraphics[width=0.48\textwidth]{img/forest_DDIM_restart_False_100.png}}
+    \subfigure[Heun (Steps=101)]{\includegraphics[width=0.48\textwidth]{img/forest_DDIM_restart_False_51_second.png}}
+    \subfigure[DDPM (Steps=100)]{\includegraphics[width=0.48\textwidth]{img/forest_DDPM_restart_False_100.png}}
+    \caption{Generated images with text prompt="Intricate origami of a fox in a snowy forest" and $w=8$.}
+    \label{fig:app_fox}
+\end{figure*}
+
+
+\begin{figure*}[htbp]
+    \centering
+    \subfigure[Restart (Steps=66)]{\includegraphics[width=0.48\textwidth]{img/glass_DDIM_restart_True_30.png}}\hfill
+    \subfigure[DDIM (Steps=100)]{\includegraphics[width=0.48\textwidth]{img/glass_DDIM_restart_False_100.png}}
+    \subfigure[Heun (Steps=101)]{\includegraphics[width=0.48\textwidth]{img/glass_DDIM_restart_False_51_second.png}}
+    \subfigure[DDPM (Steps=100)]{\includegraphics[width=0.48\textwidth]{img/glass_DDPM_restart_False_100.png}}
+    \caption{Generated images with text prompt="A transparent sculpture of a duck made out of glass" and $w=8$.}
+    \label{fig:app_duck}
+\end{figure*}
+
+
+
+\section{Broader Impact}
+
+The field of deep generative models incorporating differential equations is rapidly evolving and holds significant potential to shape our society. Nowadays, a multitude of photo-realistic images generated by text-to-image Stable Diffusion models populate the internet. Our work introduces Restart, a novel sampling algorithm that outperforms previous samplers for diffusion models and PFGM++. With applications extending across diverse areas, the Restart sampling algorithm is especially suitable for generation tasks demanding high quality and rapid speed. Yet, it is crucial to recognize that the utilization of such algorithms can yield both positive and negative repercussions, contingent on their specific applications. On the one hand, Restart sampling can facilitate the generation of highly realistic images and audio samples, potentially advancing sectors such as entertainment, advertising, and education. On the other hand, it could also be misused in \textit{deepfake} technology, potentially leading to social scams and misinformation. In light of these potential risks, further research is required to develop robustness guarantees for generative models, ensuring their use aligns with ethical guidelines and societal interests. 

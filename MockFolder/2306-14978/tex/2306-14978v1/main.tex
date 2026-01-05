@@ -1,0 +1,2052 @@
+
+\documentclass{article}
+\usepackage[dvipsnames]{xcolor}
+% if you need to pass options to natbib, use, e.g.:
+%     \PassOptionsToPackage{numbers, compress}{natbib}
+% before loading neurips_2022
+
+% ready for submission
+% \usepackage{neurips_2023}
+\usepackage[colorinlistoftodos]{todonotes}
+
+% to compile a preprint version, e.g., for submission to arXiv, add add the
+% [preprint] option:
+    \usepackage[preprint, nonatbib]{neurips_2023}
+
+
+% to compile a camera-ready version, add the [final] option, e.g.:
+%     \usepackage[final]{neurips_2023}
+
+% to avoid loading the natbib package, add option nonatbib:
+   % \usepackage[nonatbib]{neurips_2023}
+
+\usepackage[utf8]{inputenc} % allow utf-8 input
+\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{url}            % simple URL typesetting
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{amsfonts}       % blackboard math symbols
+\usepackage{nicefrac}       % compact symbols for 1/2, etc.
+\usepackage{microtype}      % microtypography
+% \usepackage{xcolor}         % colors
+\usepackage{comment}
+\usepackage{mathtools}
+\usepackage{subcaption}
+\usepackage{amsmath}
+\usepackage{listings}
+\usepackage{multirow}
+\usepackage{graphicx}
+\usepackage{tabularx}
+\usepackage{makecell}
+\lstdefinestyle{base}{
+  frame=single,
+  emptylines=1,
+  breaklines=true,
+  basicstyle=\tiny,
+  moredelim=**[is][\color{red}]{@}{@},
+  moredelim=**[is][\color{Cyan}]{!}{!},
+  moredelim=**[is][\color{OliveGreen}]{&}{&},
+  moredelim=**[is][\color{Orchid}]{_}{_},
+}
+
+\newcommand{\topic}[1]{\noindent\textcolor{gray}{[{\emph{#1}}]}}
+
+\usepackage{amsopn}
+\DeclareMathOperator{\cost}{\mathsf{cost}}
+\DeclareMathOperator{\rc}{\mathsf{rc}}
+\DeclareMathOperator{\rcd}{\mathsf{rcd}}
+
+\DeclareMathOperator{\eff}{\mathsf{eff}}
+
+\DeclareMathOperator{\cov}{\mathsf{cov}}
+
+\DeclareMathOperator{\aeff}{\mathsf{aeff}}
+\DeclareMathOperator{\aeffmi}{\mathsf{aeff_{\mu}}}
+\DeclareMathOperator{\aeffma}{\mathsf{aeff_M}}
+
+\DeclareMathOperator{\ecd}{\mathsf{ecd}}
+\DeclareMathOperator{\ecdmi}{\mathsf{ecd_{\mu}}}
+\DeclareMathOperator{\ecdma}{\mathsf{ecd_M}}
+
+
+\newtheorem{definition}{Definition}[section]
+
+\title{Fairness Aware Counterfactuals for Subgroups}
+
+
+% The \author macro works with any number of authors. There are two commands
+% used to separate the names and addresses of multiple authors: \And and \AND.
+%
+% Using \And between authors leaves it to LaTeX to determine where to break the
+% lines. Using \AND forces a line break at that point. So, if LaTeX puts 3 of 4
+% authors names on the first line, and the last on the second line, try using
+% \AND instead of \And before the third author name.
+
+
+\author{%
+  Loukas Kavouras
+  % \thanks{Use footnote for providing further information
+  %   about author (webpage, alternative address)---\emph{not} for acknowledging
+  %   funding agencies.} 
+    \\
+  IMSI/Athena Research Center\\
+  Athens, Greece\\
+  \texttt{kavouras@athenarc.gr} \\
+  \And
+  % \And
+  % Coauthor \\
+  % Affiliation \\
+  % Address \\
+  % \texttt{email} \\
+  Konstantinos Tsopelas
+  % \thanks{Use footnote for providing further information
+  %   about author (webpage, alternative address)---\emph{not} for acknowledging
+  %   funding agencies.} 
+    \\
+  IMSI/Athena Research Center\\
+Athens, Greece\\
+  \texttt{k.tsopelas@athenarc.gr} \\
+  \And
+  Giorgos Giannopoulos
+  % \thanks{Use footnote for providing further information
+  %   about author (webpage, alternative address)---\emph{not} for acknowledging
+  %   funding agencies.} 
+    \\
+  IMSI/Athena Research Centerr\\
+ Athens, Greece\\
+  \texttt{giann@athenarc.gr} \\
+  \And
+  Dimitris Sacharidis
+  % \thanks{Use footnote for providing further information
+  %   about author (webpage, alternative address)---\emph{not} for acknowledging
+  %   funding agencies.} 
+    \\
+  Université Libre De Bruxelles\\
+Brussels, Belgium \\
+  \texttt{dimitris.sacharidis@ulb.be} \\
+  \And
+  Eleni Psaroudaki \\
+National Technical University of Athens\\ Athens, Greece\\
+   \texttt{epsaroudaki@mail.ntua.gr} \\
+   \And
+    Nikolaos Theologitis\\
+  IMSI/Athena Research Center\\
+  Athens, Greece\\
+  \texttt{n.theologitis@athenarc.gr} \\
+  \And
+  Dimitrios Rontogiannis\\
+  IMSI/Athena Research Center\\
+ Athens, Greece\\
+  \texttt{sdi1900165@di.uoa.gr} \\
+  \And
+  Dimitris Fotakis\\
+ National Technical University of Athens\\ 
+   Athens, Greece\\
+   \texttt{fotakis@cs.ntua.gr} \\
+   \And
+  Ioannis Emiris\\
+  IMSI/Athena Research Center\\
+  Athens, Greece \\
+  \texttt{emiris@athenarc.gr} \\
+  % \And
+  % Coauthor \\
+  % Affiliation \\
+  % Address \\
+  % \texttt{email} \\
+  % \And
+  % Coauthor \\
+  % Affiliation \\
+  % Address \\
+  % \texttt{email} \\
+}
+
+
+\begin{document}
+
+
+\maketitle
+
+
+\begin{abstract}
+In this work, we present Fairness Aware Counterfactuals for Subgroups (FACTS), a framework for auditing subgroup fairness through counterfactual explanations. We start with revisiting (and generalizing) existing notions and introducing new, more refined notions of subgroup fairness. We aim to (a) formulate different aspects of the difficulty of individuals in certain subgroups to achieve recourse, i.e. receive the desired outcome, either at the micro level, considering members of the subgroup individually, or at the macro level, considering the subgroup as a whole, and (b) introduce notions of subgroup fairness that are robust, if not totally oblivious, to the cost of achieving recourse. We accompany these notions with an efficient, model-agnostic, highly parameterizable, and explainable framework for evaluating subgroup fairness.
+%Our approach relies on the efficient identification of counterfactual explanations that cover a significant part of the target subgroup, thus avoiding the (significantly more demanding) computation of individual recourse costs and achieving robustness to such costs. 
+We demonstrate the advantages, the wide applicability, and the efficiency of our approach through a thorough experimental evaluation of different benchmark datasets. 
+\end{abstract}
+
+\section{Introduction}
+
+Machine learning is now an integral part of decision-making processes across various domains, e.g., medical applications \cite{kyrimi2020medical}, employment \cite{bogen2018help, cohen2019efficient},  recommender systems \cite{pitoura2021fairness}, education \cite{loftus2018causal}, credit assessment \cite{boer2019just}. Its decisions affect our everyday life directly, and, if unjust or discriminative, could potentially harm our society \cite{osoba2017intelligence}. Multiple examples of discrimination or bias towards specific population subgroups in such applications \cite{Tashea_2017} create the need not only for explainable and interpretable machine learning that is more trustworthy \cite{burkart2021survey}, but also for auditing models in order to detect hidden bias for subgroups \cite{raji2019actionable}.
+
+Bias towards protected subgroups is most often detected by various notions of \emph{fairness of prediction}, e.g., statistical parity, where all subgroups defined by a protected attribute should have the same probability of being assigned the positive (favorable) predicted class. These definitions capture the \emph{explicit} bias reflected in the model's predictions. Nevertheless, an \emph{implicit} form of bias is the difficulty for, or the \emph{burden} \cite{2020_AIES_SHG,kuratomi2023measuring} of, an individual (or a group thereof) to achieve \emph{recourse}, i.e., perform the necessary \emph{actions} to change their features so as to obtain the favorable outcome \cite{gupta2019equalizing, ustun2019actionable}. Recourse provides explainability (i.e., a counterfactual explanation \cite{wachter2017counterfactual}) and actionability to an affected individual, and is a legal necessity in various domains, e.g., the Equal Credit Opportunity Act mandates that an individual can demand to learn the reasons for a loan denial. \emph{Fairness of recourse} captures the notion that the protected subgroups should bear equal burden \cite{gupta2019equalizing,karimi2022survey,KugelgenKBVWS22,kuratomi2023measuring}.
+
+
+To illustrate these notions, consider a company that supports its promotion decisions with an AI system that classifies employees as good candidates for promotion, the favorable positive class, based on various performance metrics, including their cycle time efficiency (CTE) and the annual contract value (ACV) for the projects they lead. Figure~\ref{fig:ex:macro} draws ten employees from the negative predicted class as points in the CTE-ACV plane and also depicts the decision boundary of the classifier. Race is the protected attribute, and there are two protected subgroups with five employees each, depicted as circles and triangles. For each employee, the arrow depicts the best \emph{action} to achieve recourse, i.e., to cross the decision boundary, and the number indicates the \emph{cost} of the action, here simply computed as the distance to the boundary \cite{gupta2019equalizing}. For example, $x_1$ may increase their chances for promotion mostly by acquiring more high-valued projects, while $x_2$ mostly by increasing their efficiency.
+Burden is defined as the mean cost for a protected subgroup \cite{2020_AIES_SHG}. For the protected race 0, the burden is 2, while it is 2.2 for race 1, indicating thus unfairness of recourse against race 1. In contrast, assuming there is an equal number of employees of each race in the company, the classifier satisfies fairness of prediction in terms of statistical parity (equal positive rate in the subgroups).
+
+\begin{figure}[h!]
+\centering
+\begin{subfigure}[b]{0.36\textwidth}
+\centering
+\includegraphics[width=\textwidth]{images/ex_macro.pdf}
+\caption{}
+\label{fig:ex:macro}
+\end{subfigure}%
+\hfill%
+\begin{subfigure}[b]{0.26\textwidth}
+\centering
+\includegraphics[width=\textwidth]{images/ex_distr.pdf}
+\caption{}
+\label{fig:ex:distr}
+\end{subfigure}%
+\hfill
+\begin{subfigure}[b]{0.36\textwidth}
+\centering
+\includegraphics[width=\textwidth]{images/ex_cost.pdf}
+\caption{}
+\label{fig:ex:cost}
+\end{subfigure}%
+\caption{(a) An example of affected individuals, the decision boundary, actions, and a subpopulation (in the shaded region), depicted in the feature space; (b) Cumulative distribution of cost of recourse for the individuals in (a); (c) Comparison of two actions to achieve recourse for two individuals.}
+\label{fig:example}
+\end{figure}
+
+While fairness of recourse is an important concept that captures a distinct notion of algorithmic bias, as also explained in \cite{karimi2022survey,KugelgenKBVWS22}, we argue that it is much more nuanced than the mean cost of recourse (aka burden) considered in all prior work \cite{gupta2019equalizing,2020_AIES_SHG,KugelgenKBVWS22,kuratomi2023measuring}, and raise three issues.
+
+
+First, the mean cost, which comprises a \textit{micro viewpoint} of the problem, does not provide the complete picture of how the cost of recourse varies among individuals and may lead to contrasting conclusions. Consider again Figure~\ref{fig:ex:macro}, and observe that for race 1 all but one employee can achieve recourse with cost at most 2, while an outlier achieves recourse with cost 6. It is this outlier that raises the mean cost for race 1 above that of race 0. For the two race subgroups, Figure~\ref{fig:ex:distr} shows the cumulative distribution of cost, termed the \emph{effectiveness-cost distribution} ($\ecd$) in Section~\ref{sec:def}. These distributions allow the fairness auditor to inspect the \emph{tradeoff} between cost and recourse, and define the appropriate fairness of recourse notion. For example, they may consider that actions with a cost of more than 2 are unrealistic (e.g., because they cannot be realized within some timeframe), and thus investigate how many employees can achieve recourse under this constraint; we refer to this as \emph{equal effectiveness within budget} in Section~\ref{sec:fairdef}.
+Under this notion, there is unfairness against race 0, as only 60\% of race 0 employees (compared to 80\% of race 1) can realistically achieve recourse. 
+
+
+There are several options to go beyond the mean cost. One is to consider fairness of recourse at the individual level, and compare an individual with their counterfactual counterpart had their protected attribute changed value \cite{KugelgenKBVWS22}. However, this approach is impractical as, similar to other causal-based definitions of fairness, e.g., \cite{kusner2017counterfactual}, it requires strong assumptions about the causal structure in the domain \cite{KarimiSV21}. In contrast, we argue that it's preferable to investigate fairness in subpopulations and inspect the trade-off between cost and recourse.
+
+Second, there are many cases where the aforementioned micro-level aggregation of individuals' costs is not meaningful in auditing real-world systems. To account for this, we introduce a \emph{macro viewpoint} where a group of individuals is considered as a whole, and an action is applied to and assessed \emph{collectively} for all individuals in the group. An action represents an external horizontal intervention, such as an affirmative action in society, or focused measures in an organization that would change the attributes of some subpopulation (e.g., decrease tax or loan interest rates, increase productivity skills). In the macro viewpoint, the cost of recourse does not burden the individuals, but the external third party, e.g., the society or an organization. Moreover, the macro viewpoint offers a more intuitive way to \emph{audit} a system for fairness of recourse, as it seeks to uncover systemic biases that apply to a large number of individuals.
+
+
+To illustrate the macro viewpoint, consider the group within the shaded region in Figure~\ref{fig:ex:macro}. In the micro viewpoint, each employee seeks recourse individually, and both race subgroups have the same distribution of costs. However, we can observe that race 0 employees, like $x_1$ achieve recourse by actions in the ACV direction, while race 1 employees, like $x_2$ in the orthogonal CTE direction. This becomes apparent when we take the macro viewpoint, and investigate the effect of action $a_1$, depicted on the border of the shaded region, discovering that it is disproportionally effective on the race subgroups (leads to recourse for two-thirds of one subgroup but for none in the other). In this example, action $a_1$ might represent the effect of a training program to enhance productivity skills, and the macro viewpoint finds that it would perpetuate the existing burden of race 0 employees.
+
+
+Third, existing notions of fairness of recourse have an important practical limitation: they require a cost function that captures one's ability to modify one's attributes, whose definition may involve a learning process \cite{rawal2020beyond}, or an adaptation of off-the-shelf functions by practitioners \cite{ustun2019actionable}. Even the idea of which attributes are actionable, in the sense that one can change (e.g., one cannot get younger), or ``ethical'' to suggest as actionable (e.g., change of marital status from married to divorced) hides many complications \cite{venkatasubramanian2020philosophical}. 
+
+
+
+Conclusions drawn about fairness of recourse crucially depend on the cost definition. Consider individuals $x_1$, $x_2$, and actions $a_1$, $a_2$, shown in Figure~\ref{fig:ex:cost}. Observe that is hard to say which action is cheaper, as one needs to compare changes \emph{within} and \emph{across} very dissimilar attributes.
+Suppose the cost function indicates action $a_1$ is cheaper; both individuals achieve recourse with the same cost. However, if action $a_2$ is cheaper, only $x_2$ achieves recourse. Is the classifier fair?
+
+To address this limitation, we propose definitions that are \emph{oblivious to the cost function}. The idea is to compare the effectiveness of actions to the protected subgroups, rather than the cost of recourse for the subgroups. One way to define a cost-oblivious notion of fairness of recourse is the \emph{equal choice for recourse} (see Section~\ref{sec:fairdef}), which we illustrate using the example in Figure~\ref{fig:ex:cost}. According to it, the classifier is unfair against $x_1$, as $x_1$ has only one option, while $x_2$ has two options to achieve recourse among the set of actions $\{a_1, a_2\}$.
+
+
+
+
+\paragraph{Contribution}
+%
+Our aim is to showcase that fairness of recourse is an important and distinct notion of algorithmic fairness with several facets not previously explored. We make a series of conceptual and technical contributions.
+
+Conceptually, we distinguish between two different viewpoints. 
+The \emph{micro viewpoint} follows literature on recourse fairness \cite{gupta2019equalizing,karimi2022survey,KugelgenKBVWS22,kuratomi2023measuring} in that each individual chooses the action that is cheaper for them, but revisits existing notions. It considers the trade-off between cost and recourse, and defines several novel notions that capture different aspects of it.
+The \emph{macro viewpoint} considers how an action collectively affects a group of individuals, and quantifies its effectiveness. It allows the formulation of \emph{cost-oblivious} notions of recourse fairness. It also leads to an alternative trade-off between cost and recourse that may reveal systemic forms of bias.
+
+
+Technically, we propose an efficient, interpretable, model-agnostic, highly parametrizable framework termed FACTS (Fairness-Aware Countefactuals for Subgroups) to audit for fairness of recourse. FACTS is \emph{efficient} in computing the effectiveness-cost distribution, which captures the trade-off between cost and recourse, in both the micro or macro viewpoint. The key idea is that instead of determining the best action for each individual independently (i.e., finding their nearest counterfactual explanation \cite{wachter2017counterfactual}), it enumerates the space of actions and determines how many and which individuals achieve recourse through each action. Furthermore, FACTS employs a systematic way to explore the feature space and discover any subspace such that recourse bias exists among the protected subgroups within. FACTS ranks the subspaces in decreasing order of recourse bias it detects, and for each provides an \emph{interpretable} summary of its findings. 
+
+
+\paragraph{Related Work}
+
+We distinguish between \emph{fairness of predictions} and \emph{fairness of recourse}. The former aims to capture and quantify unfairness by comparing directly the model's predictions \cite{10.1145/3457607, binns2018fairness} at: the individual level, e.g., individual fairness \cite{dwork2012fairness}, counterfactual/causal-based fairness \cite{kusner2017counterfactual,kilbertus2017avoiding,loftus2018causal}; and the group level, e.g., demographic parity \cite{zafar2017fairness}, equal odd/opportunity \cite{hardt2016equality}.
+
+Fairness of recourse is a more recent notion, related to \emph{counterfactual explanations} \cite{wachter2017counterfactual}, which explain a prediction for an individual (the factual) by presenting the ``best'' counterfactual that would result in the opposite prediction, offering thus \emph{recourse} to the individual. Best, typically means the \emph{nearest counterfactual} in terms of a distance metric in the feature space. Another perspective, which we adopt here, is to consider the \emph{action} that transforms a factual into a counterfactual, and specify a \emph{cost function} to quantify the effort required by an individual to perform an action. In the simplest case, the cost function can be the distance between factual and counterfactual, but it can also encode the \emph{feasibility} of an action (e.g., it is impossible to decrease age) and the \emph{plausibility} of a counterfactual (e.g., it is out-of-distribution). It is also possible to view actions as interventions that act on a structural causal model capturing cause-effect relationships among attributes \cite{KarimiSV21}. Hereafter, we adopt the most general definition, where a cost function is available, and assume that the best counterfactual explanation is the one that comes from the minimum cost action.
+Counterfactual explanations have been suggested as a mechanism to detect possible bias against protected subgroups, e.g., when they require changes in protected attributes \cite{2020_AISTATS_KBBV}. 
+
+
+Fairness of recourse, first introduced in \cite{ustun2019actionable} and formalized in \cite{gupta2019equalizing}, is defined at the group level as the disparity of the mean cost to achieve recourse (called burden in subsequent works) among the protected subgroups. Fairness of recourse for an individual is when they require the same cost to achieve recourse in the actual world and in an imaginary world where they would have a different value in the protected attribute \cite{KugelgenKBVWS22}. This definition however only applies when a structural causal model of the world is available.
+Our work expands on these ideas and proposes alternate definitions that capture a macro and a micro viewpoint of fairness of recourse.
+
+
+There is a line of work on auditing models for fairness of predictions at the subpopulation level \cite{kearns2018preventing, kearns2019empirical}. For example, \cite{tramer2017fairtest} identifies subpopulations that show dependence between a performance measure and the protected attribute. \cite{black2020fliptest} determines whether people are harmed due to their membership in a specific group by examining a ranking of features that are most associated with the model's behavior. 
+There is no equivalent work for fairness of recourse, although the need to consider the subpopulation is recognized in \cite{karimi2020algorithmic} due to uncertainty in assumptions or to intentionally study fairness. 
+Our work is the first that audits for fairness of recourse at the subpopulation level.
+
+
+A final related line of work is global explainability. For example, recourse summaries \cite{rawal2020beyond,ley2022global} summarizes individual counterfactual explanations \emph{globally}, and as the authors in \cite{rawal2020beyond} suggest can be used to manually audit for unfairness in subgroups of interest. \cite{lakkaraju2019faithful} aims to explain how a model behaves in subspaces characterized by certain features of interest. \cite{cornacchia2023auditing} uses counterfactuals to unveil whether a black-box model, that already complies with the regulations that demand the omission of sensitive attributes, is still biased or not, by trying to find a relation between proxy features and bias.
+Our work is related to these methods in that we also compute counterfactual explanations for all instances, albeit in a more efficient manner, and with a specific goal.
+
+
+% \input{definitions}
+
+\section{Fairness of Recourse for Subgroups}
+\label{sec:def}
+
+\subsection{Preliminaries}
+\label{sec:def:prelim}
+
+We consider a \textbf{feature space} $X = X_1 \times \dots \times X_n$, where $X_n$ denotes the \textbf{protected feature}, which, for ease of presentation, takes two protected values $\{0, 1\}$. For an instance $x \in X$, we use the notation $x.X_i$ to refer to its value in feature $X_i$.
+
+We consider a binary \textbf{classifier} $h: X \to \{-1, 1\}$ where the positive outcome is the favorable. For a given $h$, we are concerned with a dataset $D$ of \textbf{adversely affected individuals}, i.e., those who receive the unfavorable outcome. We prefer the term instance to refer to any point in the feature space $X$, and the term individual to refer to an instance from the dataset $D$.
+
+ 
+
+We define an \textbf{action} $a$ as a set of changes to feature values, e.g., $a = \{\textit{country} \to \textit{US}, \textit{education-num} \to 12\}$. We denote as $A$ the set of possible actions.
+An action $a$ when applied to an individual (a factual instance) $x$ results in a \textbf{counterfactual} instance $x' = a(x)$. If the individual $x$ was adversely affected ($h(x) =-1$) and the action results in a counterfactual that receives the desired outcome ($h(a(x)) = 1$), we say that action $a$ offers recourse to the individual $x$ and is thus \textbf{effective}.
+In line with the literature, we also refer to an effective action as a \textbf{counterfactual explanation} for individual $x$ \cite{wachter2017counterfactual}.
+
+An action $a$ incurs a \textbf{cost} to an individual $x$, which we denote as $\cost(a, x)$. The cost function captures both how \emph{feasible} the action $a$ is for the individual $x$, and how \emph{plausible} the counterfactual $a(x)$ is \cite{karimi2022survey}.
+
+
+Given a set of actions $A$, we define the \textbf{recourse cost} $\rc(A,x)$ of an individual $x$ as the minimum cost among effective actions if there is one, or otherwise some maximum cost represented as $c_\infty$:
+%
+\[
+\rc(A,x) = %
+\begin{dcases}
+\min \{ \cost(a,x) | a \in A : h(a(x)) = 1 \}, & \text{if\ } \exists a \in A : h(a(x)) = 1; \\
+c_\infty, & \text{otherwise}.\\
+\end{dcases}
+\]
+%
+An effective action of minimum cost is also called a \textbf{nearest counterfactual explanation} \cite{karimi2022survey}.
+
+
+
+We define a \textbf{subspace} $X_p \subseteq X$ using a \textbf{predicate} $p$, which is a conjunction of feature-level predicates of the form ``\emph{feature}-\emph{operator}-\emph{value}'', e.g., the predicate $p = (\textit{country}=\textit{US}) \land (\textit{education-num}\ge 9)$ defines instances from the US that have more than 9 years of education.
+
+
+Given a predicate $p$, we define the subpopulation \textbf{group} $G_p \subseteq D$ as the set of affected individuals that satisfy $p$, i.e., $G_p = \{x \in D | p(x) \}$. We further distinguish between the \textbf{protected subgroups} $G_{p,1} = \{x \in D | p(x) \land x.X_n=1 \}$ and $G_{p,0} = \{x \in D | p(x) \land x.X_n=0 \}$. When the predicate $p$ is understood, we may omit it in the designation of a group to simplify notation. 
+
+
+\subsection{Effectiveness-Cost Trade-Off}
+\label{sec:def:tradeoff}
+
+For a specific action $a$, we naturally define its \textbf{effectiveness} ($\eff$) for a group $G$, as the proportion of individuals from $G$ that achieve recourse through $a$: 
+%
+\[
+\eff(a,G) = \frac{1}{|G|} | \{x \in G | h(a(x)) = 1 \} |.
+\]
+
+We want to examine how recourse is achieved for the group $G$ through a set of possible actions $A$. We define the \textbf{aggregate effectiveness} ($\aeff$) of $A$ for $G$ in two distinct ways.
+
+In the \emph{micro viewpoint}, the individuals in the group are considered independently, and each may choose the action that benefits itself the most.
+Concretely, we define the \textbf{micro-effectiveness} of set of actions $A$ for group $G$ as the proportion of individuals in $G$ that can achieve recourse through \emph{some} action in $A$, i.e.,:
+%
+\[
+\aeffmi(A,G) = \frac{1}{|G|} | \{x \in G | \exists a \in A, \eff(a,x) = 1 \} |.
+\]
+
+In the \emph{macro viewpoint}, the group is considered as a whole, and an action is applied collectively to all individuals in the group.
+Concretely, we define the \textbf{macro-effectiveness} of set of actions $A$ for group $G$ as the largest proportion of individuals in $G$ that can achieve recourse through \emph{the same} action in $A$, i.e.,: 
+%
+\[
+\aeffma(A,G) =  \max_{a \in A} \frac{1}{|G|} | \{x \in G | \eff(a,x) = 1 \} |.
+\]
+For a group $G$, actions $A$, and a cost budget $c$, we define the \textbf{in-budget actions} as the set of actions that cost at most $c$ for any individual in $G$:
+% $A_c = \{ a \in A | \forall x \in G, \cost(a,x) \le c \}.$
+\[
+A_c = \{ a \in A | \forall x \in G, \cost(a,x) \le c \}.
+\]
+
+We define the \textbf{effectiveness-cost distribution} ($\ecd$) as the function that for a cost budget $c$ returns the aggregate effectiveness possible with in-budget actions:
+ % $\ecd(c; A, G) = \aeff(A_c,G).$
+
+\[
+\ecd(c; A, G) = \aeff(A_c,G).
+\]
+
+We use $\ecdmi$, $\ecdma$ to refer to the micro, macro viewpoints of aggregate effectiveness.
+
+The value $\ecd(c; A, G)$ is the proportion of individuals in $G$ that can achieve recourse through actions $A$ with cost at most $c$. Therefore, the $\ecd$ function has an intuitive probabilistic interpretation. 
+Consider the subspace $X_p$ determined by predicate $p$, and define the random variable $C$ as the cost required by an instance $x \in X_p$ to achieve recourse. The function $\ecd(c; A, G_p)$ is the empirical cumulative distribution function of $C$ using sample $G_p$.
+
+The \textbf{inverse effectiveness-cost distribution} function $\ecd^{-1}(\phi; A, G)$ takes as input an effectiveness level $\phi \in [0, 1]$ and returns the minimum cost required so that $\phi |G|$ individuals achieve recourse.
+
+
+\subsection{Definitions of Subgroup Recourse Fairness}
+\label{sec:fairdef}
+
+We define recourse fairness of classifier $h$ for a group $G$ by comparing the $\ecd$ functions of the protected subgroups $G_{0}$, $G_{1}$ in different ways.
+
+The first two definitions are \emph{cost-oblivious}, and simply compare the aggregate effectiveness of a set of actions of the protected subgroups.
+
+\smallskip\noindent\textbf{Equal Effectiveness}
+%
+This definition has a micro and a macro interpretation, and says that the classifier is fair if the same proportion of individuals in the protected subgroups can achieve recourse: 
+$\aeff(A, G_{0}) = \aeff(A, G_{1})\,.$
+%
+% \[
+% \aeff(A, G_{0}) = \aeff(A, G_{1})\,.    
+% \]
+%
+
+% This definition has a micro and a macro interpretation.
+% variant is useful to investigate the impact of a social intervention (e.g., parents are to receive a family benefit, increasing thus their income) or of a structured change in the classifier (e.g., a decrease in the minimum required income).
+
+\smallskip\noindent\textbf{Equal Choice for Recourse}
+%
+This definition has only a macro interpretation and claims that the classifier is fair if the protected subgroups can choose among the same number of sufficiently effective actions to achieve recourse, where sufficiently effective means the actions should work for at least $100\phi \%$ (for $\phi \in [0,1]$) of the subgroup:
+%
+\[
+| \{ a \in A | \eff(a, G_0) \ge \phi  \} | = | \{ a \in A | \eff(a, G_1) \ge \phi  \} |.
+\]
+%
+
+The next three definitions assume the $\cost$ function is known, and have both a micro and a macro interpretation.
+
+\smallskip\noindent\textbf{Equal Effectiveness within Budget}
+%
+The classifier is fair if the same proportion of individuals in the protected subgroups can achieve recourse with a cost at most $c$:
+% $\ecd(c; A, G_{0}) = \ecd(c; A, G_{1}).$
+%
+\[
+\ecd(c; A, G_{0}) = \ecd(c; A, G_{1}).
+\] 
+%
+\smallskip\noindent\textbf{Equal Cost of Effectiveness}
+%
+The classifier is fair if the minimum cost to achieve aggregate effectiveness of $\phi \in [0, 1]$ in the protected subgroups is equal:
+% $\ecd^{-1}(\phi; A, G_{0}) = \ecd^{-1}(\phi; A, G_{1})$.
+%
+\[
+\ecd^{-1}(\phi; A, G_{0}) = \ecd^{-1}(\phi; A, G_{1}).
+\]
+
+
+\smallskip\noindent\textbf{Fair Effectiveness-Cost Trade-Off}
+%
+The classifier is fair if the protected subgroups have the same effectiveness-cost distribution, or equivalently for each cost budget $c$, their aggregate effectiveness is equal:
+% $\max_{c} |\ecd(c; A, G_{0}) - \ecd(c; A, G_{1})|  = 0$
+%
+\[
+\max_{c} |\ecd(c; A, G_{0}) - \ecd(c; A, G_{1})|  = 0 .
+\]
+%
+
+The left-hand side represents the two-sample Kolmogorov-Smirnov statistic for the empirical cumulative distributions ($\ecd$) of the protected subgroups.
+We say that the classifier is fair with confidence $\alpha$ if this statistic is less than $\sqrt{ -\ln({\alpha}/2) \frac{|G_{p,0}| + |G_{p,1}| }{2 |G_{p,0}| |G_{p,1}|} }$.
+
+The last definition takes a micro viewpoint and extends the notion of \emph{burden} \cite{2020_AIES_SHG} from literature to the case where not all individuals may achieve recourse.
+The \textbf{mean recourse cost} of a group $G$,
+%
+\[
+\bar{\rc}(A,G)  = \frac{1}{|G|} \sum_{x \in G} \rc(A,x)
+\]
+%
+considers individuals that cannot achieve recourse through $A$ and have a recourse cost of $c_\infty$. To exclude them, we denote as as $G^*$ the set of individuals of $G$ that can achieve recourse through an action in $A$, i.e., $G^* = \{ x \in G | \exists a \in A, h(a(x)) = 1 \}$. Then the \textbf{conditional mean recourse cost} is the mean recourse cost among those that can achieve recourse:
+%
+\[
+\bar{\rc}^*(A,G)  = \frac{1}{|G^*|} \sum_{x \in G^*} \rc(A,x).
+\]
+%
+If $G=G^*$, the definitions coincide with burden.
+
+% \begin{definition}[Equal (Conditional) Mean Recourse]
+% The classifier is fair if the (conditional) mean recourse cost for the protected subgroups is the same:
+% $\bar{\rc}^*(A,G_{0};A) = \bar{\rc}^*(A, G_{1})$.
+% \end{definition}
+
+\smallskip\noindent\textbf{Equal (Conditional) Mean Recourse}
+%
+The classifier is fair if the (conditional) mean recourse cost for the protected subgroups is the same: 
+% $\bar{\rc}^*(A,G_{0};A) = \bar{\rc}^*(A, G_{1}).$
+%
+\[
+\bar{\rc}^*(A,G_{0};A) = \bar{\rc}^*(A, G_{1}).
+\]
+%
+
+Note that when the group $G$ is the entire dataset of affected individuals, and all individuals can achieve recourse through $A$, this fairness notion coincides with fairness of burden \cite{ustun2019actionable,2020_AIES_SHG}.
+
+
+
+
+
+
+% \input{method}
+
+\section{Fairness-aware Counterfactuals for Subgroups}
+\label{sec:method}
+
+This section presents FACTS (Fairness-aware Counterfactuals for Subgroups), a framework that implements both the micro and the macro viewpoint, and all respective fairness definitions provided in Section \ref{sec:fairdef} to support auditing of the ``difficulty to achieve recourse'' in subgroups. The output of FACTS comprises population groups that are assigned (a) an unfairness score that captures the disparity between protected subgroups according to different fairness definitions and allows us to rank groups and (b) a user-intuitive, easily explainable counterfactual summary, which we term \emph{Comparative Subgroup Counterfactuals} (CSC).
+
+Figure~\ref{fig-example} presents an example result of FACTS derived from the adult dataset \cite{Bache+Lichman:2013}. The ``if clause'' represents the subgroup $G_p$, which contains all the affected individuals that \mbox{satisfy} the predicate
+$p=(\textit{hours-per-week = FullTime}) \land (\textit{marital-status = Married-civ-spouse}) \land (\textit{occupation = Adm-clerical})$. The information below the predicate refers to the protected subgroups $G_{p,0}$ and $G_{p,1}$ which are the female and male individuals of $G_{p}$ respectively. With blue color, we highlight the percentage $\cov(G_{p,i})=|G_{p,i}|/|D_{i}|$ which serves as an indicator of the size of the protected subgroup. The most important part of the representation is the actions applied that appear below each protected subgroup and are evaluated in terms of fairness metrics. In this example, the metric is the \textit{Equal Cost of Effectiveness} with effectiveness threshold $\phi=0.7$. For $G_{p,0}$ there is no action surpassing the threshold $\phi=0.7$, therefore we display a message accordingly. On the contrary, the action $a = \{\textit{hours-per-week} \to \textit{Overtime}, \textit{occupation} \to \textit{Exec-managerial} \}$ has
+effectiveness $0.72> \phi$ for $G_{p,1}$, thus allowing a respective $72\%$ of the male individuals of $G_{p}$ to achieve recourse.
+The unfairness score is ``inf'', since no recourse is achieved for the female subgroup.
+
+
+
+\begin{figure}[ht]
+\centering
+\begin{minipage}{1\linewidth}
+\begin{lstlisting}[style = base]
+If hours-per-week=FullTime,marital-status=Married-civ-spouse,occupation=Adm-clerical:
+    Protected Subgroup = `Male', !1.87%! covered
+       Make @hours-per-week=Overtime@,@occupation=Exec-managerial@ with effectiveness &72.00%&
+    Protected Subgroup = `Female', !1.80%! covered
+       @No recourses for this subgroup.@
+    _Bias against `Female' due to Equal Cost of Effectiveness (threshold=0.7). Unfairness score = inf._
+\end{lstlisting}
+\end{minipage}
+\caption{CSC for a highly biased subgroup in terms of \textit{Equal Cost of Effectiveness} with $\phi=0.7$. }
+% \caption{Comparative Subgroup Counterfactual (CSC) representation example. Specifically the CSC for the subgroup $G_p$ with predicate $p=(\textit{hours-per-week = FullTime}) \land (\textit{marital-status = Married-civ-spouse}) \land (\textit{occupation = Adm-clerical})$, evaluated in terms of \textit{Equal Cost of Effectiveness} with  threshold $\phi=0.7$.}
+\label{fig-example}
+\end{figure}
+
+
+\smallskip\noindent\textbf{Method overview} Deploying FACTS comprises three main steps: (a) \textit{Subgroup and action space generation}, where frequent subgroups defined as frequent sets of feature-operator-value combinations in the affected population are derived and, respectively, frequent actions are collected in similar way from the unaffected population; (b) \textit{Counterfactual summaries generation}, where proper matching of subgroups and actions is performed to produce valid counterfactual summaries for each subgroup and (c) \textit{CSC construction and fairness ranking}, where each counterfactual summary is scored according to each definition from Section~\ref{sec:fairdef}, producing a respective number of CSCs for each subgroup and allowing to produce separate subgroup rankings per definition. Next, we describe these steps in detail.
+
+
+\smallskip\noindent\textbf{(a) Subgroup and action space generation} Subgroups are generated by executing the fp-growth \cite{DBLP:conf/sigmod/HanPY00} frequent itemset mining algorithm on $D_{0}$ and on $D_{1}$ resulting to the sets of subgroups $\mathcal{G}_{0}$ and $\mathcal{G}_{1}$ and then by computing the intersection $\mathcal{G} = \mathcal{G}_{0} \bigcap \mathcal{G}_{1}$. In our setting, an item is a feature-level predicate of the form ``feature-operator-value'' and, consequently, an itemset is a predicate $p$ defining a subgroup $G_p$. This step guarantees that the evaluation in terms of fairness will be performed between the common subgroups $\mathcal{G}$ of the protected populations. The set of all actions $A$ is generated by executing fp-growth on the unaffected population to increase the chance of more effective actions and to reduce the computational complexity. The above process is parameterizable w.r.t. the selection of the protected attribute(s) and the minimum frequency threshold for obtaining candidate subgroups.
+
+
+\smallskip\noindent\textbf{(b) Counterfactual summaries generation}  For each subgroup $G_p \in \mathcal{G}$, the following steps are performed: (i) Find valid actions, i.e., the actions in $A$ that contain a subset of the features appearing in $p$ and at least one different value in these features; (ii) For each valid action $a$ compute $\eff(a,G_{p,0})$ and $\eff(a,G_{p,1})$.
+The aforementioned process extracts, for each subgroup $G_p$, a subset $V_p$ of the actions $A$, with each action having exactly the same cost for all individuals of $G_p$. Therefore, individuals of $G_{p,0}$ and $G_{p,1}$ are evaluated in terms of subgroup-level actions, with a fixed cost for all individuals of the subgroup, in contrast to methods that rely on aggregating the cost of individual counterfactuals. This approach provides a key advantage to our method in cases where the definition of the exact costs for actions is either difficult or ambiguous: a misguided or even completely erroneous attribution of a cost to an action will equally affect all individuals of the subgroup and only to the extent that the respective fairness definition allows it. In the setting of individual counterfactual cost aggregation, changes in the same sets of features could lead to highly varying action costs for different individuals within the same subgroup.
+
+\smallskip\noindent\textbf{(c) CSC construction and fairness ranking}  At this stage, FACTS evaluates all definitions of Section~\ref{sec:fairdef} on all subgroups, producing an unfairness score per definition, per subgroup. 
+In particular, each definition of Section \ref{sec:fairdef} quantifies a different aspect of the difficulty for a protected subgroup to achieve recourse. This quantification directly translates to difficulty scores for the protected subgroups $G_{p,0}$ and $G_{p,1}$ of each subgroup $G_p$, which we compare accordingly (computing the absolute difference between them) to arrive at the unfairness score of each $G_p$ based on the particular fairness metric.
+
+The outcome of this process is the generation, for each fairness definition, of a ranked list of CSC representations, in decreasing order of their unfairness score. Apart from unfairness ranking, the CSC representations will allow users to intuitively understand unfairness by directly comparing differences in actions between the protected populations within a subgroup.
+
+
+
+
+
+% \input{experiments}
+
+\section{Experiments}\label{sec-experiments}
+
+This section presents the experimental evaluation of FACTS on the Adult dataset \cite{Bache+Lichman:2013}. First, we briefly describe the experimental setting and then present and discuss Comparative Subgroup Counterfactuals for subgroups ranked as the most unfair according to various definitions of Section~\ref{sec:fairdef}.
+
+\begin{table}[ht]
+\caption{Unfair subgroups identified in the Adult dataset.}
+  \label{table:subgroup-results}
+  \centering
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{lccccccccc}
+\toprule
+
+\multicolumn{1}{r}{} & \multicolumn{3}{c}{\textbf{Subgroup 1}} & \multicolumn{3}{c}{\textbf{Subgroup 2}} & \multicolumn{3}{c}{\textbf{Subgroup 3}} \\ \cmidrule(r){2-10} 
+\multicolumn{1}{c}{} & \multicolumn{1}{c}{rank} & \multicolumn{1}{c}{bias against} & \multicolumn{1}{c}{unfairness score} & \multicolumn{1}{c}{rank} & \multicolumn{1}{c}{bias against} & \multicolumn{1}{c}{unfairness score} & \multicolumn{1}{c}{rank} & \multicolumn{1}{c}{bias against} & \multicolumn{1}{c}{unfairness score} \\  \midrule
+Equal Effectiveness & 2950 & Male & 0.11 & 10063 & Female & 0.0004 & 275 & Female & 0.32 \\
+Equal Choice for Recourse ($\phi=0.3$) & Fair & - & 0 & 12 & Female & 2 & Fair & - & 0 \\
+Equal Choice for Recourse ($\phi=0.7$) & 6 & Male & 1 & \textbf{\textcolor{red}{1}} & Female & 6 & Fair & - & 0 \\
+Equal Effectiveness within Budget ($c=5$) & Fair & - & 0 & 2806 & Female & 0.056 & 70 & Female & 0.3 \\
+Equal Effectiveness within Budget  ($c=10$) & 2350 & Male & 0.11 & 8518 & Female & 0.0004 & 226 & Female & 0.3 \\
+Equal Effectiveness within Budget  ($c=18$) & 2675 & Male &  0.11 & 9222 & Female & 0.0004 & 272 & Female &  0.3\\
+Equal Cost of Effectiveness ($\phi=0.3$) & Fair & - & 0 & Fair & - & 0 & \textbf{\textcolor{red}{1}} & Female & inf\\
+Equal Cost of Effectiveness ($\phi=0.7$) & \textbf{\textcolor{red}{1}} & Male & inf & 12 & Female & 2 & Fair & - & 0 \\
+Fair Effectiveness-Cost Trade-Off & 4065 & Male & 0.11 & 3579 & Female & 0.13 & 306 & Female & 0.32 \\
+Equal (Conditional) Mean Recourse & Fair & - & 0 & 3145 & Female & 0.35 & Fair & - & 0 \\
+
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+\smallskip\noindent\textbf{Experimental Setting} 
+
+The first step was the dataset cleanup (e.g., removing missing values and duplicate features, creating bins for continuous features like age). The resulting dataset was split randomly with a  70:30 split ratio. It was used for the training of a logistic regression model (consequently used as the black-box model to audit). For the generation of the subgroups and the set of actions we used fp-growth with a 1\% support threshold on the test set. We also implemented various cost functions, depending on the type of feature, i.e., categorical, ordinal, and numerical. A detailed description of the experimental setting, the models used, and the processes of our framework can be found in the supplementary material.
+
+
+\smallskip\noindent\textbf{Unfair subgroups}
+Table~\ref{table:subgroup-results} presents three subgroups
+which were ranked at position 1 according to three different definitions: \textit{Equal Cost of Effectiveness ($\phi$ = 0.7)}, \textit{Equal Choice for Recourse ($\phi$ = 0.7)} and \textit{Equal Cost of Effectiveness ($\phi$ = 0.3)}, meaning that these subgroups were detected to have the highest unfairness according to the respective definitions.
+For each subgroup, its \textit{rank}, \textit{bias against}, and \textit{unfairness score} are provided for all definitions presented in the left-most column. When the unfairness score is 0, we display the value ``Fair'' in the rank column. Note that subgroups with exactly the same score w.r.t. a definition will receive the same rank. The CSC representations for the fairness metric that ranked the three subgroups of Table~\ref{table:subgroup-results} at the first position are shown in Figure \ref{fig-subgroups}.
+
+
+Subgroup~1 is ranked first (highly unfair) based on \textit{Equal Cost of Effectiveness with $\phi=0.7$}, while it is ranked much lower or it is even considered as fair according to most of the remaining definitions (see the values of the ``rank'' column for Subgroup~1). The same pattern is observed for Subgroup~2 and Subgroup~3: they are ranked first based on \textit{Equal Choice for Recourse with $\phi=0.7$} and \textit{Equal Cost of Effectiveness with $\phi=0.3$} accordingly, but much lower according to the remaining definitions. This finding provides a strong indication of the utility of the different fairness definitions, i.e., the fact that they are able to capture different aspects of the difficulty in achieving recourse.\footnote{Additional examples, as well as statistics measuring this pattern on a significantly larger sample, are included in the supplementary material to further support this finding.}
+
+\begin{figure}[ht]
+\centering
+\begin{minipage}{1\linewidth}
+
+\begin{lstlisting}[style = base,escapechar=+]
++\textbf{Subgroup 1}+
+If age=(41.0, 50.0],marital-status=Never-married,race=White,relationship=Not-in-family:
+    Protected Subgroup = `Male', !1.34%! covered
+        @No recourses for this subgroup.@
+    Protected Subgroup = `Female', !1.47%! covered
+        Make @marital-status=Married-civ-spouse@,@relationship=Married@ with effectiveness &70.49%&
+    _Bias against `Male' due to Equal Cost of Effectiveness (threshold = 0.7). Unfairness score = inf._
+\end{lstlisting}
+% \vspace{-2pt}
+\vspace{-5pt}
+\begin{lstlisting}[style = base,escapechar=+]
++\textbf{Subgroup 2}+
+If worklass=Private,hours-per-week=FullTime,marital-status=Married-civ-spouse,occupation=Adm-clerical,race=White:
+  Protected Subgroup = `Male', !1.04%! covered
+    Make @hours-per-week=OverTime@,@occupation=Exec-managerial@ with effectiveness &70.00%&
+    Make @hours-per-week=OverTime@,@occupation=Prof-specialty@ with effectiveness &70.00%&
+    Make @hours-per-week=BrainDrain@,@occupation=Exec-managerial@ with effectiveness &70.00%&
+    Make @hours-per-week=BrainDrain@,@occupation=Prof-specialty@ with effectiveness &70.00%&
+    Make @Workclass=Self-emp-in@,@occupation=Exec-managerial@ with effectiveness &70.00%&
+    Make @Workclass=Self-emp-in@,@hours-per-week=OverTime@,@occupation=Exec-managerial@ with effectiveness &80.00%&
+    Make @Workclass=Self-emp-in@,@hours-per-week=OverTime@,@occupation=Sales@ with effectiveness &70.00%&
+    Make @Workclass=Self-emp-in@,@hours-per-week=BrainDrain@,@occupation=Exec-managerial@ with effectiveness &70.00%&
+  Protected Subgroup = `Female', !3.51%! covered
+    Make @Workclass=Self-emp-in@,@hours-per-week=OverTime@,@occupation=Exec-managerial@ with effectiveness &74.51%&
+    Make @Workclass=Self-emp-in@,@hours-per-week=BrainDrain@,@occupation=Exec-managerial@ with effectiveness &74.51%&
+  _Bias against `Female' due to Equal Choice for Recourse (threshold = 0.7). Unfairness score = 6_
+\end{lstlisting}
+% \vspace{-2pt}
+\vspace{-5pt}
+\begin{lstlisting}[style = base,escapechar=+]
++\textbf{Subgroup 3}+
+If age=(41.0, 50.0],occupation=Sales:
+    Protected Subgroup `Male', !1.18%! covered
+        Make @occupation Craft-repair@ with effectiveness &0.00%&
+        Make @occupation=Adm-clerical@ with effectiveness &0.00%&
+        Make @occupation=Tech-support@ with effectiveness &19.23%&
+        Make @occupation=Prof-specialty@ with effectiveness &28.21%&
+        Make @occupation=Exec-managerial@ with effectiveness &39.74%&
+    Protected Subgroup `Female', !1.56%! covered
+        Make @occupation=Craft-repair@ with effectiveness &0.00%&
+        Make @occupation=Adm-clerical@ with effectiveness &0.00%&
+        Make @occupation=Tech-support@ with effectiveness &0.00%&
+        Make @occupation=Exec-managerial@ with effectiveness &6.94%&
+        Make @occupation=Prof-specialty@ with effectiveness &6.94%&
+        Make @age=(50.0,90.0]@ with effectiveness &6.94%&
+        Make @age=(50.0,90.0]@,@occupation=Prof-specialty@ with effectiveness &6.94%&
+        Make @age=(50.0,90.0]@,@occupation=Craft-repair@ with effectiveness &6.94%&
+        Make @age=(50.0,90.0]@,@occupation=Adm-clerical@ with effectiveness &6.94%&
+        Make @age=(50.0,90.0]@,@occupation=Exec-managerial@ with effectiveness &6.94%&
+    _Bias against `Female' due to Equal Cost of Effectiveness (threshold = 0.3). Unfairness score = inf._
+\end{lstlisting}
+\caption{Comparative Subgroup Counterfactuals for the subgroups of Table~\ref{table:subgroup-results}.}
+\label{fig-subgroups}
+\end{minipage}
+\end{figure}
+
+What is more, these different aspects can easily be motivated by real-world auditing needs. For example, out of the aforementioned definitions, \textit{Equal Cost of Effectiveness with $\phi=0.7$} would be suitable in a scenario where a horizontal intervention to support a subpopulation needs to be performed, but a limited number of actions is affordable. In this case, the macro viewpoint demonstrated in the CSC Subgroup~1 (top result in Figure \ref{fig-subgroups}) serves exactly this purpose: one can easily derive single, group-level actions that can effectively achieve recourse for a desired percentage of the unfavored subpopulation.
+On the other hand, \textit{Equal Choice for Recourse ($\phi=0.3$)}, for which the CSC of a top result is shown in the middle of Figure \ref{fig-subgroups}, is mainly suitable for cases where assigning costs to actions might be cumbersome or even dangerous/unethical. This definition is oblivious to costs and measures bias based on the difference in the number of sufficiently effective actions to achieve recourse between the protected subgroups.
+
+
+
+  
+Another important observation comes again from Subgroup~1, where bias against the \textit{Male} protected subgroup is detected, contrary to empirical findings from works employing more statistical-oriented approaches (e.g., \cite{tramer2017fairtest}), where only subgroups with bias against the \textit{Female} protected subgroup are reported. We deem this finding important, since it directly links to the problem of gerrymandering \cite{kearns2018preventing}, which consists in partitioning attributes in such way and granularity to mask bias in subgroups. Our framework demonstrates robustness to this phenomenon, given that it can be properly configured to examine sufficiently small subgroups via the minimum frequency threshold described in Section~\ref{sec:method}.
+
+
+
+
+
+% \input{conclusion}
+
+
+\section{Conclusion}\label{conclusion}
+In this work, we delve deeper into the difficulty (or burden) of achieving recourse, an implicit and less studied type of bias. In particular, we go beyond existing works, by introducing a framework of fairness notions and definitions that, among others, conceptualizes the distinction between the micro and macro viewpoint of the problem, allows the consideration of a subgroup as a whole when exploring recourses, and supports \textit{oblivious to action cost} fairness auditing. We complement this framework with an efficient implementation that allows the detection and ranking of subgroups according to the introduced fairness definitions and produces intuitive, explainable subgroup representations in the form of counterfactual summaries. 
+%Our experimental findings demonstrate the utility of our framework. 
+Our next steps include the extension of the set of fairness definitions, focusing on the comparison of the effectiveness-cost distribution; improvements on the exploration, filtering, and ranking of the subgroup representations, via considering hierarchical relations or high-coverage of subgroups; and the development of a fully-fledged auditing tool.
+
+
+ \begin{ack}The authors were partially supported by the EU’s Horizon Programme call, under Grant Agreement No. 101070568 (AutoFair)\end{ack}
+
+
+\bibliographystyle{plain}
+\bibliography{bibliography}
+
+\newpage
+\appendix
+% \input{appendix}
+
+% \setcounter{figure}{3}
+% \setcounter{table}{1}
+
+% This is the appendix to the main paper, describing in detail the experimental setting (Section~\ref{sec:exp-setting}), presenting the datasets (Section~\ref{sec:datasets}), providing additional results and discussion (Section~\ref{sec:add_results}), and quantitatively comparing the various fairness notions (Section~\ref{sec:comparison}).
+
+\section{Experimental Setting}\label{sec:exp-setting}
+% \begin{enumerate}
+%     \item Computation, saved rules?
+% \end{enumerate}
+
+
+
+\paragraph{Models}
+To conduct our experiments, we have used the Logistic Regression\footnote{\url{https://scikit-learn.org/stable/modules/generated/sklearn.linear\_model.LogisticRegression.html}} classification model, where we use the default implementation of the python package \verb|scikit-learn|\footnote{\url{https://scikit-learn.org/stable/index.html}}. This model corresponds to the black box one that our framework audits in terms of fairness of recourse.
+% \item Gradient Boosted Trees, where we use the implementation of the library xgboost\footnote{\url{https://xgboost.readthedocs.io/en/stable/python/python\_intro.html}}.
+
+% We treat these models as black boxes that will be audited in terms of fairness of recourse by our framework.
+
+% As such, the data splitting, training and testing of the models we shall briefly describe are actually all steps \emph{before} our actual contribution; Whitech is an algorithm that, given a dataset and a candidate (black-box) model for an ML problem, searches for population subgroups Whitech the model treats in an, in some way, unfair manner.
+
+
+
+\paragraph{Train-Test Split} %which
+For our experiments, all datasets are split into training and test sets with proportions 70\% and 30\%, respectively. Both shuffling of the data and stratification based on the labels were employed.
+% This is the only part of our experiments that is non-deterministic. 
+Our results can be reproduced using the random seed value $131313$ in the data split function (\verb|train_test_split|\footnote{\url{https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.train_test_split.html}} from the python package \verb|scikit-learn|). FACTS is deployed solely on the test set.
+
+% Note, also, that a validation set is not strictly relevant to us. Our main results target the auditing of an \emph{existing, black-box} model, whose prediction accuracy is, in a sense, irrelevent. To put it plainly, we do not care if the model is wrong, only if it is fair. As such, we deemed not strictly necassary to fine-tune our models in order to maximize their accuracy (of course, we believe that the general principle ``garbage in, garbage out'' still applies here, so we would like a decent model at least).
+
+% As for the test set, we use it, of course, to check whether our model is at least a little satisfactory in its predictions, but its main purpose is for our algorithm (Whitech is completely post-hoc) to use as a dataset. Note that, considering the model as a complete black box, we do not allow ourselves to have access to the exact data it was trained on.
+
+
+
+\paragraph{Frequent Itemset Mining}
+The set of subgroups and the set of actions are generated by executing the fp-growth\footnote{\url{https://rasbt.github.io/mlxtend/user_guide/frequent_patterns/fpgrowth/}} algorithm for frequent itemset mining. We used the implementation in the Python package \verb|mlxtend| \footnote{\url{https://github.com/rasbt/mlxtend}}. We deploy fp-growth with support threshold \textbf{1\%}, i.e., we require the return of subgroups and actions with at least 1\% frequency in the respective populations. Recall that subgroups are derived from the affected populations $D_0$ and $D_1$ and actions are derived from the unaffected population.
+%which means that the produced itemsets contain at least 1\% of the population, on Whitech the algorithm is applied. 
+
+% We provide some more detail in the following paragraphs.
+% In the first phase of our algorithm, we search the affected instances of our dataset for a set of candidate subgroups, in Whitech we will search for unfairness. Moreover, we want to establish a `good' initial set of candidate actions to be used as possible counterfactual explanations for the aforementioned subgroups.
+
+% search the unaffected individuals for characteristics Whitech may be helpful, in general, for an instance to achieve the positive decision from the model.
+
+% For both purposes, we use the known frequent itemset mining algorithm fp-growth on our dataset, as implemented in the python package \verb|mlxtend|; specifically, in the terminology of frequent itemset mining, we treat the instances as the `baskets' and all possible values of all features as the `items'.
+
+% By default, we use a support threshold of \textbf{1\%} (although this is also a parameter Whitech the user can change); Whitech roughly means that we will only search for subgroups that contain at least 1\% of affected individuals. We provide some more detail in the following paragraphs.
+
+
+% \subparagraph{Generation of Candidate Subgroups}
+
+% To compute the candidate subgroups, defined as combinations of feature values, the steps we follow are:
+% \begin{enumerate}
+%     \item Split the set $D$ of affected instances (as defined in \ref{sec:def:prelim}) into 2 groups $D_0, D_1$ based on the protected attribute, i.e. $D_i = \{x \in D | x.X_n = i\}$.
+%     \item Generate frequent itemsets separately for $D_0$ and $D_1$. The itemsets are computed for each $D_i$ in isolation.
+%     \item Compute the intersection of the 2 sets of frequent itemsets. The candidate subgroups are then exactly those defined by the itemsets in the intersection.
+% \end{enumerate}
+
+% In plain words, we keep only those subgroups that contain at least 1\% not only of affected individuals in general, but 1\% of both affected individuals having 0 for the protected attribute and affected individuals having 1 for the protected attribute.
+
+
+% \subparagraph{Generation of Candidate Counterfactual Explanations}
+
+% To generate actions that are candidates to be effective counterfactual explanations, we compute freqent itemsets on the set of all unaffected instances.
+
+% The rationale here is that the unaffected instances have combinations of feature values that are more likely to result in the model giving the favorable outcome.
+
+
+
+% \subparagraph{Generation of Candidate CSCs}
+
+% Finally, we create the cartesian product of candidate subgroups (`if' clauses) and counterfactuals (`then' clauses), but keep only those pairs that are `valid'. In the simplest case, validity means that the features that appear in the subgroup and the counterfactual are the same, and that the counterfactual has at least one feature with a different value than the subgroup (i.e. it actually changes the instances of the subgroup).
+
+
+
+% \paragraph{Calculating Effectiveness}
+
+% We have two due calculations of effectiveness, corresponding to the `micro' and `macro' viewpoints discussed in the main paper.
+
+% \subparagraph{Macro viewpoint} For each subgroup $G$, each candidate counterfactual $a$ is treated independently of the others, and we simply compute $\eff(a, G)$, as defined in \ref{sec:def:tradeoff}.
+
+% \subparagraph{Micro viewpoint} Given the costs of each available action in the set of candidate actions $A$, here we essentially compute the whole distribution $\ecd_\mu$ (as defined in \ref{sec:def:tradeoff}), by sorting all actions in $A$ according to their cost in ascending order and then computing $\aeff_\mu(A_p, G)$ for every prefix $A_p$ of $A$. Since the number of actions is finite, the interpolation needed to get the distribution for all values of $c$ is straightforward: for any $c$, $\ecd_\mu(c; A, G) = \aeff_\mu(A_p, G)$ for that prefix $A_p$ Whitech is the maximal with cost at most $c$.
+
+
+
+% \paragraph{Calculation of Fairness Metrics}
+
+% The next phase of our algorithm is to calculate 
+
+
+
+% \paragraph{Ranking of Candidate Subgroups}
+
+
+
+% \paragraph{Filtering of Candidate Subgroups}
+
+
+
+\paragraph{Effectiveness and Budgets}
+As we have stated in Section~2 our main paper , the metrics \textit{Equal Choice for Recourse} and \textit{Equal Cost of Effectiveness} require the definition of a target effectiveness level $\phi$, while the metric \textit{Equal Effectiveness within Budget} requires the definition of a target cost level (or budget) $c$.
+
+Regarding the metrics that require  the definition of an effectiveness level $\phi$, we used two different values arbitrarily, i.e., a relatively low effectiveness level of $\phi = 30\%$ and a relatively high effectiveness level of $\phi = 70\%$.
+
+% For the effectiveness level, we have chosen to apply a respective metric for a relatively low effectiveness level of 30\% and a relatively high effectiveness level of 70\%. 
+For the estimation of budget-level values $c$
+we followed a more elaborate procedure. Specifically, 
+\begin{enumerate}
+    \item Compute the \textit{Equal Cost of Effectiveness} (micro definition) with a target effectiveness level of $\phi = 50\%$ to calculate, for all subgroups $G$, the minimum cost required to flip the prediction for at least $50\%$ of both $G_0$ and $G_1$.
+    \item Gather all such minimum costs of step 1 in an array.
+    \item Choose budget values as percentiles of this set of cost values. We have chosen the \textbf{30\%, 60\%} and \textbf{90\%} percentiles arbitrarily.
+\end{enumerate}
+
+% The estimation for the 3 values on the budget level $c$ of the metric \textit{Equal Effectiveness within Budget} has been determined through the following procedure :
+% \begin{enumerate}
+%     \item Run the \textit{Equal Cost of Effectiveness} (micro) definition with a target effectiveness level of \textbf{50\%} to calculate, for all subgroups $G$, the minimum cost required to flip the prediction for at least 50\% of both $G_0$ and $G_1$.
+%     \item Gather all such minimum costs in an array.
+%     \item Choose budget values as quantiles of this set of cost values. We have chosen the \textbf{30\%, 60\%} and \textbf{90\%} quantile points by default.
+% \end{enumerate}
+
+
+\paragraph{Cost Functions} Our implementation allows the user to define any cost function based on their domain knowledge and requirements.
+For evaluation and demonstration purposes, we implement an indicative set of cost functions, according to which,
+%The cost functions we implement capture the fact that we have numerical, categorical, and ordinal features. 
+%According to this categorization,
+the cost of a change of a feature value $v$ to the value $v'$ is defined as follows:
+\begin{enumerate}
+    \item \textbf{Numerical features:} $|norm(v)-norm(v')|$, where $norm$ is a function that normalizes values to $[0,1]$.
+    \item \textbf{Categorical features:} $1$ if $v \neq v'$, and $0$ otherwise.
+    \item \textbf{Ordinal features:} $|pos(v)-pos(v')|$, where $pos$ is a function that provides the order for each value.
+\end{enumerate}
+Additionally to the above costs, the user is able to define a feature-specific weight that indicates the difficulty to change the given feature through an action. Thus, for each dataset, the cost of actions can be simply determined by specifying the numerical, categorical, and ordinal features, as well as the weights for each feature.
+
+\paragraph{Feasibility} Apart from the cost of actions, we also take care of some obvious unfeasible actions such as that the age and education features can not be reduced and actions should not lead to unknown or missing values.
+
+\paragraph{Compute resources} Experiments were run on commodity hardware (AMD Ryzen 5 5600H processor, 8GB RAM). On the software side, all experiments were run in an isolated conda environment using Python 3.9.16.
+
+
+% \paragraph{Other parameters: }
+% In order to provide more meaningful results and to improve output exposition, the fairness metrics use also the following parameters:
+% \begin{enumerate}
+%     \item \verb|top_count|: The number of the most biased subgroups based on the specific fairness metric. If this parameter is set to $K$, then only the $K$ most unfair CSCs will appear.
+%     \item \verb|remove_contained|: Keeps only the subgroup with max bias between similar subgroups.
+%     \item \verb|remove-below-thr| : Removes recourses that don't surpass the given effectiveness threshold.
+%     \item \verb|keep-only-min-change| : Keeps only the recourse with the minimum cost from the recourses that surpass the given effectiveness threshold.
+%     \item \verb|remove-fair-rules| : Removes CSCs that have no-bias between the protected attributes.
+% \end{enumerate}
+% \paragraph{Other parameters used in our fairness metrics and feasibility}
+% In order to provide more meaningful results and to improve output exposition, the fairness metrics use also the following parameters:
+% \begin{enumerate}
+%     \item \verb|top_count|: The number of the most biased subgroups based on the specific fairness metric. If \verb|top_count=K$, then only the $K$ most unfair CSCs will appear.
+%     \item \verb|top_count|:
+% \end{enumerate}
+
+
+
+\section{Datasets Description}\label{sec:datasets}
+
+We have used four datasets in our experimental evaluation; the main paper presented results only on the first.
+For each dataset, we provide details about the preprocessing procedure, specify feature types, and list the cost feature weights applied.
+
+% \begin{enumerate}
+%     \item the \textbf{adult} dataset\footnote{https://raw.githubusercontent.com/columbia/fairtest/master/data/adult/adult.csv}, 
+%     \item the \textbf{COMPAS} dataset\footnote{https://aif360.readthedocs.io/en/latest/modules/generated/aif360.sklearn.datasets.fetch\_compas.html},  
+%     \item the \textbf{ssl} dataset\footnote{https://raw.githubusercontent.com/samuel-yeom/fliptest/master/exact-ot/chicago-ssl-clean.csv}, and 
+%     \item the \textbf{ad campaign} dataset\footnote{https://developer.ibm.com/exchanges/data/all/bias-in-advertising/}. 
+% \end{enumerate}
+ 
+
+
+
+
+\subsection{Adult}
+We have generated CSCs in the Adult dataset\footnote{https://raw.githubusercontent.com/columbia/fairtest/master/data/adult/adult.csv} using two different features as protected attributes, i.e., `sex', and `race'. The assessment of bias for each protected attribute is done separately. The results for `sex' as the protected attribute are presented in the main paper. Before we present our results for race as the protected attribute, we briefly discuss the preprocessing procedures and feature weights used for the adult dataset.   
+\paragraph{Preprocessing} We removed the features `fnlwgt' and `education' and any rows with unknown values. The `hours-per-week' and `age' features have been discretized into 5 bins each.
+
+\paragraph{Features} All features have been treated as categorical, except for `capital-gain' and `capital-loss', which are numeric, and `education-num' and `hours-per-week', which we treat as ordinal. The feature weights that we used for the cost function are presented in Table \ref{table:feature-weights-adult}. We need to remind here that this comprises only an indicative weight assignment to serve our experimentation; the weight below try to capture the notion of how feasible/actionable it is to perform a change to a specific feature.
+
+% to reduce the possible values they can take as much as possible.
+% The former because it is a rather cryptic attribute Whitech only represents how many individuals have the exact characteristics of that instance and the model ends up giving substantial weight to this feature. The latter because it is only a proxy feature for `education-num', so we omit it for clarity of the results.
+
+% This is affordable, since such rows comprise only 3620 out of 48842 instances.
+% For the `relationship' feature, the values `Husband' and `Wife' are replaced with `Married', as one way to avoid infeasible changes from `Husband' to `Wife' and vice versa.
+    % \item 
+% \end{enumerate}
+
+
+\begin{table}[ht]
+    \small
+    \centering
+    \caption{Cost Feature Weights for Adult}
+    \begin{tabular}{lclc}
+        \toprule
+        \textbf{feature name} & \textbf{weight value} & \textbf{feature name} & \textbf{weight value}\\
+        \midrule
+        native-country & 4 & Workclass & 2 \\
+        marital-status & 5 & hours-per-week & 2 \\
+        relationship & 5 & capital-gain & 1 \\
+        age & 10 & capital-loss & 1 \\
+        occupation & 4 & education-num & 3 \\
+        \bottomrule
+    \end{tabular}
+    \label{table:feature-weights-adult}
+\end{table}
+
+
+
+% The rationale here goes along these lines: race and sex are features Whitech are impossible to change, so we assign them very high costs for any change. Age is also something very difficult to actively change, other than waiting. From then on, to change relationship and / or marital status are more actionable, etc etc.
+
+% Of course, we do not claim that these weights are in some way ``the correct ones''. However, on one hand we allow our user to specify custom cost funstion, and on the other, as we have discussed in the main body of the paper, the cost functions are not as important in our framework as in other similar work. If we make a `mistake' in assigning costs, we will make the same mistake for all subpopulations, so we will still find some difference between them.
+
+
+% \section{Adult-race}
+% \paragraph{features}
+
+% We have chosen the same parameters as in the previous section.
+
+% for the same subgroups, the 
+
+
+\subsection{COMPAS}
+We have generated CSCs in the COMPAS dataset\footnote{https://aif360.readthedocs.io/en/latest/modules/generated/aif360.sklearn.datasets.fetch\_compas.html} for race as the protected attribute. Apart from our results, we provide some brief information regarding 
+preprocessing procedures and the cost feature weights for the COMPAS dataset. 
+
+\paragraph{Preprocessing} We discard the features `age' and `c\_charge\_desc'. The `priors\_count' feature has been discretized into 5 bins: [-0.1,1), [1, 5) [5, 10) [10, 15) and [15, 38), while trying to keep the frequencies of each bin approximately equal (the distribution of values is highly asymmetric so this is not possible with the direct use of e.g., \verb|pandas.qcut|\footnote{\url{https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.qcut.html}}).
+
+\paragraph{Features} We treat the features `juv\_fel\_count', `juv\_misd\_count', `juv\_other\_count' as numerical and the rest as categorical. The feature weights used for the cost function are shown in Table~\ref{table:feature-weights-compas}.
+\begin{table}[ht]
+\small
+\caption{Cost Feature Weights for COMPAS}
+    \label{table:feature-weights-compas}
+    \centering
+    
+    \begin{tabular}{lc}
+        \toprule
+        \textbf{feature name} & \textbf{weight value}  \\
+        \midrule
+        age\_cat & 10  \\
+        juv\_fel\_count & 1 \\
+        juv\_fel\_count & 1 \\
+        juv\_other\_count & 1 \\
+        priors\_count & 1 \\
+        c\_charge\_degree & 1\\
+        \bottomrule
+    \end{tabular}
+    
+\end{table}
+
+
+
+
+\subsection{SSL}
+We have generated CSCs in the SSL dataset\footnote{https://raw.githubusercontent.com/samuel-yeom/fliptest/master/exact-ot/chicago-ssl-clean.csv} for race as the protected attribute. Before we move to our results, we discuss briefly preprocessing procedures and feature weights applied in the SSL dataset.
+
+\paragraph{Preprocessing} We remove all rows with missing values (`U' or `X') from the dataset. We also discretize the feature `PREDICTOR RAT TREND IN CRIMINAL ACTIVITY' into 6 bins. Finally, since the target labels are values between 0 and 500, we `binarize' them by assuming values above 344 to be positively impacted and below 345 negatively impacted (following the principles used in \cite{black2020fliptest}.
+
+
+\paragraph{Features} In this dataset, we treat all features as numerical (apart from the protected race feature). The feature weights used for the cost function are presented in Table \ref{table:feature-weights-SSL}.
+\begin{table}[ht]
+    \small
+    \centering
+    \caption{Cost Feature Weights for SSL}
+    \begin{tabular}{lc}
+        \toprule
+        \textbf{feature name} & \textbf{weight value} \\
+        \midrule
+        PREDICTOR RAT AGE AT LATEST ARREST & 10 \\
+        PREDICTOR RAT VICTIM SHOOTING INCIDENTS & 1 \\
+        PREDICTOR RAT VICTIM BATTERY OR ASSAULT & 1 \\
+        PREDICTOR RAT ARRESTS VIOLENT OFFENSES & 1 \\
+        PREDICTOR RAT GANG AFFILIATION & 1 \\
+        PREDICTOR RAT NARCOTIC ARRESTS & 1 \\
+        PREDICTOR RAT TREND IN CRIMINAL ACTIVITY & 1 \\
+        PREDICTOR RAT UUW ARRESTS & 1 \\
+        \bottomrule
+    \end{tabular}
+    \label{table:feature-weights-SSL}
+\end{table}
+
+
+
+
+
+\subsection{Ad Campaign}
+We have generated CSCs in the Ad Campaign dataset\footnote{https://developer.ibm.com/exchanges/data/all/bias-in-advertising/} for gender as the protected attribute. 
+% Again, we first discuss shortly the preprocessing procedures and feature weights applied to this dataset.
+
+\paragraph{Preprocessing} We decided not to remove missing values, since they represent the vast majority of values for all features. However, we did not allow actions that lead to missing values in the CSCs representation.
+\paragraph{Features} In this dataset, we treat all features, apart from the protected one, as categorical.
+The feature weights used for the cost function are shown in Table \ref{table:feature-weights-ad-campaign}.
+
+\begin{table}[ht]
+    \small
+    \centering
+    \caption{Cost Feature Weights for Ad Campaign}
+    \begin{tabular}{lc}
+        \toprule
+        \textbf{feature name} & \textbf{weight value} \\
+        \midrule
+        religion & 5 \\
+        politics & 2 \\
+        parents & 3 \\
+        age & 10 \\
+        income & 3 \\
+        area & 2 \\
+        college\_educated & 3 \\
+        homeowner & 1 \\
+        \bottomrule
+    \end{tabular}
+    \label{table:feature-weights-ad-campaign}
+\end{table}
+
+
+
+\section{Additional Results}
+\label{sec:add_results}
+
+
+This section repeats the experiment described in the main paper, concerning the Adult dataset with `gender' as the protected attribute (Section~4), in three other cases. 
+Specifically, we provide three subgroups that were ranked first in terms of unfairness according to a metric, highlight why they were marked as unfair by our framework, and summarize their unfairness scores according to rest of the metrics.
+% we highlight unfair subgroups that appear in the first positions of some metrics and provide their ranking in the remaining metrics.
+
+
+\subsection{Results for Adult with race as the protected attribute}
+
+% \paragraph{Results for `race' as the protected attribute.}
+We showcase
+% , as we did in the main body of our work, 
+three prevalent subgroups for which the rankings assigned by different fairness definitions truly yield different kinds of information. This is showcased in Table \ref{table:subgroup-results-adult-race}.
+We once again note that the results presented here are for `race' as a protected attribute, while the corresponding results  for `gender' are presented in Section 4 of the main paper.
+
+\begin{table}[ht]
+\caption{Example of three unfair subgroups in Adult (protected attribute race)}
+  \label{table:subgroup-results-adult-race}
+  \centering
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{lccccccccc}
+\toprule
+\multicolumn{1}{r}{} & \multicolumn{3}{c}{\textbf{Subgroup 1}} & \multicolumn{3}{c}{\textbf{Subgroup 2}} & \multicolumn{3}{c}{\textbf{Subgroup 3}}  \\ \cmidrule(r){2-10}
+
+\multicolumn{1}{c}{} & \multicolumn{1}{c}{rank} & \multicolumn{1}{c}{bias against} & \multicolumn{1}{c}{unfairness score} & \multicolumn{1}{c}{rank} & \multicolumn{1}{c}{bias against} & \multicolumn{1}{c}{unfairness score} & \multicolumn{1}{c}{rank} & \multicolumn{1}{c}{bias against} & \multicolumn{1}{c}{unfairness score} \\ \midrule
+Equal Effectiveness & Fair & Fair & 0.0 & 3047.0 &  Non-White & 0.115 & 1682.0 &  Non-White & 0.162 \\
+Equal Choice for Recourse ($\phi$ = 0.3) & \textbf{\textcolor{red}{1}} &  Non-White & 10.0 & 10.0 &  Non-White & 1.0 & Fair & Fair & 0.0 \\
+Equal Choice for Recourse ($\phi$ = 0.7) & Fair & Fair & 0.0 & Fair & Fair & 0.0 & Fair & Fair & 0.0 \\
+Equal Effectiveness within Budget (c = 1.15) & Fair & Fair & 0.0 & Fair & Fair & 0.0 & Fair & Fair & 0.0 \\
+Equal Effectiveness within Budget (c = 10.0) & 303.0 &  Non-White & 0.242 & 2201.0 &  Non-White & 0.115 & 4035.0 &  Non-White & 0.071 \\
+Equal Effectiveness within Budget (c = 21.0) & Fair & Fair & 0.0 & 2978.0 &  Non-White & 0.115 & 1663.0 &  Non-White & 0.162 \\
+Equal Cost of Effectiveness ($\phi$ = 0.3) & 18.0 &  Non-White & 0.15 & \textbf{\textcolor{red}{1}} &  Non-White & inf & Fair & Fair & 0.0 \\
+Equal Cost of Effectiveness ($\phi$ = 0.7) & Fair & Fair & 0.0 & Fair & Fair & 0.0 & Fair & Fair & 0.0 \\
+Fair Effectiveness-Cost Trade-Off & 909.0 &  Non-White & 0.242 & 4597.0 &  Non-White & 0.115 & 2644.0 &  Non-White & 0.162 \\
+Equal (Conditional) Mean Recourse & 5897.0 &  White & 0.021 & 5309.0 &  White & 0.047 & \textbf{\textcolor{red}{1}} &  Non-White & inf \\
+
+
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+In Figure \ref{fig:comparative-subgroup-counterfactuals-adult-race} we present the  
+Comparative Subgroup Counterfactual representation for the subgroups of Table \ref{table:subgroup-results-adult-race}
+%\ref{table:aggregated-adult} 
+that corresponds to the fairness metric for which each subgroup presents the minimum rank.
+
+These results are in line with the findings reported in the main paper (Section 4), on the same dataset (Adult), but on a different protected attribute (race instead of gender). Subgroups that are ranked first (highly unfair) with respect to a specific definition, are ranked much lower or even considered as fair according to most of the remaining definitions. This serves as an indication for the utility of the different fairness definitions, which is further strengthen by the diversity of the respective CSCs of Table \ref{table:subgroup-results-adult-race}. For example, the Subgroup~1 CSC (ranked first \textit{Equal Choice for Recourse ($\phi=0.3$)}), demonstrates unfairness by contradicting a plethora of actions for the ``White'' protected subgroup, as opposed to much less actions for the the ``Non-White'' protected subgroup. For Subgroup~2, a much more concise representation is provided, tied to the respective definition (\textit{Equal Cost of Effectiveness ($\phi=0.3$)}): no recourses are identified for the desired percentage of the ``Non-White'' unfavored population, as opposed to the ``White'' unfavored population.
+
+\begin{figure}[ht]
+\centering
+\begin{minipage}{1\linewidth}
+\begin{lstlisting}[style = base,escapechar=+]
++\textbf{Subgroup 1}+
+If workclass=Private, age=(34.0, 41.0], capital-gain=0, capital-loss=0, marital-status=Never-married, native-country=United-States, relationship=Not-in-family:
+    Protected Subgroup = `Non-White', !1.09%! covered
+        Make @Workclas=Federal-gov@, @age=(41.0, 50.0]@, @marital-status=Married-civ-spouse@, @relationship=Married@ with effectiveness &36.84%&.
+        Make @capital-gain=15024@, @marital-status=Married-civ-spouse@, @relationship=Married@ with effectiveness &100.00%&.
+        Make @age=(41.0, 50.0]@, @capital-gain=15024@, @marital-status=Married-civ-spouse@, @relationship=Married@ with effectiveness &100.00%&.
+    Protected Subgroup = `White', !1.94%! covered
+        Make @age=(41.0, 50.0]@, @marital-status=Married-civ-spouse@, @relationship=Married@ with effectiveness &45.14%&.
+        Make @marital-status=Married-civ-spouse@, @relationship=Married@ with effectiveness &40.00%&.
+        Make @age=(50.0, 90.0]@, @marital-status= Married-civ-spouse@, @relationship=Married@ with effectiveness &42.86%&.
+        Make @Workclass=Local-gov@, @age=(41.0, 50.0]@, @marital-status=Married-civ-spouse@, @relationship=Married@ with effectiveness &44.00%&.
+        Make @Workclass=Local-gov@, @age=(41.0, 50.0]@, @marital-status=Married-civ-spouse@, @relationship=Married@ with effectiveness &44.00%&.
+	Make @Workclas=Self-emp-inc@, @age=(41.0, 50.0]@, @marital-status=Married-civ-spouse@, @relationship=Married@ with effectiveness &52.57%&.
+	Make @Workclass=Self-emp-inc@, @age=(50.0, 90.0]@, @marital-status=Married-civ-spouse@, @relationship=Married@ with effectiveness &49.71%&.
+	Make @Workclass=Local-gov@, @marital-status=Married-civ-spouse@, @relationship=Married@ with effectiveness &36.00%&.
+        Make @Workclass=Self-emp-inc@, @marital-status=Married-civ-spouse@, @relationship=Married@ with effectiveness &45.14%&.
+        Make @Workclass= Federal-gov@, @age=(41.0, 50.0]@, @marital-status=Married-civ-spouse@, @relationship=Married@ with effectiveness &62.29%&.
+	Make @Workclass=State-gov@, @age=(41.0, 50.0]@, @marital-status=Married-civ-spouse@, @relationship=Married@ with effectiveness &40.57%&.
+	Make @capital-gain=15024@, @marital-status=Married-civ-spouse@, @relationship=Married@ with effectiveness &99.43%&.
+	Make @Workclass=Local-gov@, @age=(50.0, 90.0]@, @marital-status=Married-civ-spouse@, @relationship=Married@ with effectiveness &40.00%&.
+        Make @age=(41.0, 50.0]@, @capital-gain=15024@, @marital-status=Married-civ-spouse@, @relationship=Married@ with effectiveness &100.00%&.
+    _Bias against `Non-White' due to Equal Choice for Recourse (threshold = 0.3). Unfairness score = 10._
+\end{lstlisting}
+
+\begin{lstlisting}[style = base,escapechar=+]
++\textbf{Subgroup 2}+
+If hours-per-week = FullTime, native-country =  United-States, occupation =  Adm-clerical, relationship =  Married:
+    Protected Subgroup = `Non-White', !1.66%! covered
+        @No recourses for this subgroup.@
+    Protected Subgroup = `White', !1.66%! covered
+        Make @hours-per-week = BrainDrain@, @occupation =  Exec-managerial@ with effectiveness &70.00%&.
+    _Bias against 'Non-White' due to Equal Cost of Effectiveness (threshold = 0.3). Unfairness score = inf._
+\end{lstlisting}
+
+\begin{lstlisting}[style = base,escapechar=+]
++\textbf{Subgroup 3}+
+If hours-per-week = PartTime, marital-status =  Divorced, native-country =  United-States:
+    Protected Subgroup = `Non-White', !1.15%! covered
+        Make @marital-status=Married-civ-spouse@ with effectiveness &0.00%&.
+        Make @hours-per-week=MidTime@, @marital-statu=Married-civ-spouse@ with effectiveness &0.00%&.
+        Make @hours-per-week=FullTime@, @marital-status=Married-civ-spouse@ with effectiveness &0.00%&.
+        Make @hours-per-week=OverTime@, @marital-status=Married-civ-spouse@ with effectiveness &0.00%&.
+        Make @hours-per-week=OverTime@, @marital-status=Never-married@ with effectiveness &0.00%&.
+        Make @hours-per-week=BrainDrain@, @marital-status=Married-civ-spouse@ with effectiveness &0.00%&.
+    Protected Subgroup = `White', !1.66%! covered
+        Make @marital-status=Married-civ-spouse@ with effectiveness &1.01%&.
+        Make @hours-per-week=MidTime@, @marital-statu=Married-civ-spouse@ with effectiveness &1.01%&.
+        Make @hours-per-week=FullTime@, @marital-status=Married-civ-spouse@ with effectiveness &7.07%&.
+        Make @hours-per-week=OverTime@, @marital-status=Married-civ-spouse@ with effectiveness &7.07%&.
+        Make @hours-per-week=OverTime@, @marital-status=Never-married@ with effectiveness &15.15%&.
+        Make @hours-per-week=BrainDrain@, @marital-status=Married-civ-spouse@ with effectiveness &16.16%&.
+    _Bias against 'Non-White' due to Equal Conditional Mean Recourse. Unfairness score = inf._
+\end{lstlisting}
+
+\caption{Example of three Comparative Subgroup Counterfactuals in Adult (protected attribute race); ref.\ Table~\ref{table:subgroup-results-adult-race}}
+\label{fig:comparative-subgroup-counterfactuals-adult-race}
+\end{minipage}
+\end{figure}
+
+
+
+\subsection{Results for COMPAS}
+
+%\paragraph{Results for `race' as the protected attribute.}
+We present some ranking statistics for three interesting subgroups for all fairness definitions (Table \ref{table:subgroup-results-COMPAS}). 
+The Comparative Subgroup Counterfactuals for the same three subgroups are shown in Figure \ref{fig:comparative-subgroup-counterfactuals-COMPAS}.
+
+\begin{table}[ht]
+\caption{Example of three unfair subgroups in COMPAS}
+  \label{table:subgroup-results-COMPAS}
+  \centering
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{lccccccccc}
+\toprule
+\multicolumn{1}{r}{} & \multicolumn{3}{c}{\textbf{Subgroup 1}} & \multicolumn{3}{c}{\textbf{Subgroup 2}} & \multicolumn{3}{c}{\textbf{Subgroup 3}}  \\ \cmidrule(r){2-10}
+
+\multicolumn{1}{c}{} & \multicolumn{1}{c}{rank} & \multicolumn{1}{c}{bias against} & \multicolumn{1}{c}{unfairness score} & \multicolumn{1}{c}{rank} & \multicolumn{1}{c}{bias against} & \multicolumn{1}{c}{unfairness score} & \multicolumn{1}{c}{rank} & \multicolumn{1}{c}{bias against} & \multicolumn{1}{c}{unfairness score} \\ \midrule
+Equal Effectiveness & Fair & Fair & 0.0 & 116.0 & African-American & 0.151 & 209.0 & African-American & 0.071 \\
+Equal Choice for Recourse ($\phi$ = 0.3) & Fair & Fair & 0.0 & 3.0 & African-American & 1.0 & Fair & Fair & 0.0 \\
+Equal Choice for Recourse ($\phi$ = 0.7) & \textbf{\textcolor{red}{1}} & African-American & 3.0 & Fair & Fair & 0.0 & Fair & Fair & 0.0 \\
+Equal Effectiveness within Budget (c = 1) & 66.0 & African-American & 0.167 & 79.0 & African-American & 0.151 & 185.0 & African-American & 0.071 \\
+Equal Effectiveness within Budget (c = 10) & 84.0 & African-American & 0.167 & 108.0 & African-American & 0.151 & 220.0 & African-American & 0.071 \\
+Equal Cost of Effectiveness ($\phi$ = 0.3) & Fair & Fair & 0.0 & \textbf{\textcolor{red}{1}} & African-American & inf & Fair & Fair & 0.0 \\
+Equal Cost of Effectiveness ($\phi$ = 0.7) & Fair & Fair & 0.0 & Fair & Fair & 0.0 & Fair & Fair & 0.0 \\
+Fair Effectiveness-Cost Trade-Off & 3.0 & African-American & 0.5 & 214.0 & African-American & 0.151 & 376.0 & African-American & 0.071 \\
+Equal (Conditional) Mean Recourse & 59.0 & African-American & 1.667 & Fair & Fair & 0.0 & \textbf{\textcolor{red}{1}} & African-American & inf \\
+
+
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+
+\begin{figure}[ht]
+\centering
+\begin{minipage}{1\linewidth}
+\begin{lstlisting}[style = base,escapechar=+]
++\textbf{Subgroup 1}+
+If age+\_+cat = 25 - 45, c+\_+charge+\_+degree = M, juv+\_+misd+\_+count = 0, priors+\_+count = (10.0, 15.0]:
+    Protected Subgroup = `Caucasian', !1.03%! covered
+        Make @c+\_+charge+\_+degree=F@, @priors+\_+count=(-0.1, 1.0]@ with effectiveness &100.00%&.
+        Make @priors+\_+count=(-0.1, 1.0]@ with effectiveness &100.00%&.
+        Make @priors+\_+count=(1.0, 5.0]@ with effectiveness &100.00%&.
+	Make @age+\_+cat=Greater than 45@, @priors+\_+count=(-0.1, 1.0]@ with effectiveness &100.00%&.
+	Make @age+\_+cat=Greater than 45@, @c+\_+charge+\_+degree=F@, @priors+\_+count=(-0.1, 1.0]@ with effectiveness &100.00%&.
+	Make @age+\_+cat=Greater than 45@, @c+\_+charge+\_+degree=F@, @priors+\_+count=(1.0, 5.0]@ with effectiveness &100.00%&.
+	Make @age+\_+cat=Greater than 45@, @priors+\_+count=(1.0, 5.0]@ with effectiveness &100.00%&.
+    Protected Subgroup = `African-American', !1.16%! covered
+	Make @priors+\_+count=(-0.1, 1.0]@ with effectiveness &83.33%&.
+	Make @age+\_+cat=Greater than 45@, @priors+\_+count=(-0.1, 1.0]@ with effectiveness &100.00%&.
+	Make @age+\_+cat=Greater than 45@, @c+\_+charge+\_+degree=F@, @priors+\_+count=(-0.1, 1.0]@ with effectiveness &100.00%&.
+	Make @age+\_+cat=Greater than 45@, @priors+\_+count=(1.0, 5.0]@ with effectiveness &83.33%&.
+    _Bias against African-American due to Equal Choice for Recourse (threshold = 0.7). Unfairness score = 3._
+\end{lstlisting}
+\begin{lstlisting}[style = base,escapechar=+]
++\textbf{Subgroup 2}+
+If c+\_+charge+\_+degree = M, juv+\_+other+\_+count = 1:
+    Protected Subgroup = `Caucasian', !3.59%! covered
+        Make @juv+\_+other+\_+count = 0@ with effectiveness &42.86%&.
+    Protected Subgroup = `African-American', !3.48%! covered
+	@No recourses for this subgroup.@
+    _Bias against African-American due to Equal Cost of Effectiveness (threshold = 0.3). Unfairness score = inf._
+\end{lstlisting}
+\begin{lstlisting}[style = base,escapechar=+]
++\textbf{Subgroup 3}+
+If age+\_+cat = Greater than 45, c+\_+charge+\_+degree = F, juv+\_+fel+\_+count = 0, juv+\_+misd+\_+count = 0, juv+\_+other+\_+count = 0, sex = Male:
+    Protected Subgroup = `Caucasian', !7.18%! covered
+        Make @c+\_+charge+\_+degree=M@ with effectiveness &7.14%&.
+    Protected Subgroup = `African-American', !6.00%! covered
+	Make @c+\_+charge+\_+degree=M@ with effectiveness &0.00%&.
+    _Bias against African-American due to Equal Conditional Mean Recourse. Unfairness score = inf._
+\end{lstlisting}
+
+\caption{Example of three Comparative Subgroup Counterfactuals in COMPAS; ref. Table~\ref{table:subgroup-results-COMPAS}}
+\label{fig:comparative-subgroup-counterfactuals-COMPAS}
+\end{minipage}
+\end{figure}
+
+
+\subsection{Results for SSL}
+
+In Table \ref{table:subgroup-results-SSL} we present a summary of the ranking statistics for three interesting subgroups.
+and their respective Comparative Subgroup Counterfactuals in Figure \ref{fig:comparative-subgroup-counterfactuals-SSL}.
+
+\begin{table}[ht]
+\caption{Example of three unfair subgroups in SSL}
+  \label{table:subgroup-results-SSL}
+  \centering
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{lccccccccc}
+\toprule
+\multicolumn{1}{r}{} & \multicolumn{3}{c}{\textbf{Subgroup 1}} & \multicolumn{3}{c}{\textbf{Subgroup 2}} & \multicolumn{3}{c}{\textbf{Subgroup 3}}  \\ \cmidrule(r){2-10}
+
+\multicolumn{1}{c}{} & \multicolumn{1}{c}{rank} & \multicolumn{1}{c}{bias against} & \multicolumn{1}{c}{unfairness score} & \multicolumn{1}{c}{rank} & \multicolumn{1}{c}{bias against} & \multicolumn{1}{c}{unfairness score} & \multicolumn{1}{c}{rank} & \multicolumn{1}{c}{bias against} & \multicolumn{1}{c}{unfairness score} \\ \midrule
+Equal Effectiveness & 1630.0 & Black & 0.076 & 70.0 & Black & 0.663 & 979.0 & Black & 0.151 \\
+Equal Choice for Recourse ($\phi$ = 0.3) & Fair & Fair & 0.0 & 12.0 & Black & 1.0 & 12.0 & Black & 1.0 \\
+Equal Choice for Recourse ($\phi$ = 0.7) & 13.0 & Black & 3.0 & Fair & Fair & 0.0 & Fair & Fair & 0.0 \\
+Equal Effectiveness within Budget (c = 1) & Fair & Fair & 0.0 & 195.0 & Black & 0.663 & 1692.0 & White & 0.138 \\
+Equal Effectiveness within Budget (c = 2) & 2427.0 & Black & 0.111 & 126.0 & Black & 0.663 & 3686.0 & White & 0.043 \\
+Equal Effectiveness within Budget (c = 10) & 2557.0 & Black & 0.076 & 73.0 & Black & 0.663 & 1496.0 & Black & 0.151 \\
+Equal Cost of Effectiveness ($\phi$ = 0.3) & Fair & Fair & 0.0 & \textbf{\textcolor{red}{1}} & Black & inf & \textbf{\textcolor{red}{1}} & Black & inf \\
+Equal Cost of Effectiveness ($\phi$ = 0.7) & \textbf{\textcolor{red}{1}} & Black & inf & Fair & Fair & 0.0 & Fair & Fair & 0.0 \\
+Fair Effectiveness-Cost Trade-Off & 3393.0 & Black & 0.111 & 443.0 & Black & 0.663 & 2685.0 & Black & 0.151 \\
+Equal (Conditional) Mean Recourse & 3486.0 & Black & 0.053 & \textbf{\textcolor{red}{1}} & Black & inf & 1374.0 & White & 0.95 \\
+
+
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+
+
+\begin{figure}[ht]
+\centering
+\begin{minipage}{1\linewidth}
+\begin{lstlisting}[style = base,escapechar=+]
++\textbf{Subgroup 1}+
+If PREDICTOR RAT ARRESTS VIOLENT OFFENSES = 1, PREDICTOR RAT NARCOTIC ARRESTS = 1, PREDICTOR RAT VICTIM BATTERY OR ASSAULT = 1:
+  Protected Subgroup = `Black', !1.04%! covered
+    		@No recourses for this subgroup.@
+  Protected Subgroup = `White', !1.00%! covered
+    Make @PREDICTOR RAT ARRESTS VIOLENT OFFENSES = 0, PREDICTOR RAT NARCOTIC ARRESTS = 0, PREDICTOR RAT VICTIM BATTERY OR ASSAULT = 0@ with effectiveness &72.73%&
+    Make @PREDICTOR RAT ARRESTS VIOLENT OFFENSES = 0, PREDICTOR RAT NARCOTIC ARRESTS = 1, PREDICTOR RAT VICTIM BATTERY OR ASSAULT = 0@ with effectiveness &72.73%&
+    Make @PREDICTOR RAT ARRESTS VIOLENT OFFENSES = 0, PREDICTOR RAT NARCOTIC ARRESTS = 2, PREDICTOR RAT VICTIM BATTERY OR ASSAULT = 0@ with effectiveness &72.73%&
+  _Bias against `Black' due to Equal Cost of Effectiveness (threshold = 0.7). Unfairness score = inf._
+\end{lstlisting}
+\begin{lstlisting}[style = base,escapechar=+]
++\textbf{Subgroup 2}+
+If PREDICTOR RAT NARCOTIC ARRESTS = 0, PREDICTOR RAT TREND IN CRIMINAL ACTIVITY = (-0.2, -0.1], PREDICTOR RAT UUW ARRESTS = 0, PREDICTOR RAT VICTIM SHOOTING INCIDENTS = 0:
+  Protected Subgroup = `Black', !2.51%! covered
+    Make @PREDICTOR RAT NARCOTIC ARRESTS = 0, PREDICTOR RAT TREND IN CRIMINAL ACTIVITY = (-8.200999999999999, -0.3], PREDICTOR RAT UUW ARRESTS = 0, PREDICTOR RAT VICTIM SHOOTING INCIDENTS = 0@ with effectiveness &0.00%&
+    Make @PREDICTOR RAT NARCOTIC ARRESTS = 0, PREDICTOR RAT TREND IN CRIMINAL ACTIVITY = (-0.1, 0.1], PREDICTOR RAT UUW ARRESTS = 0, PREDICTOR RAT VICTIM SHOOTING INCIDENTS = 0@ with effectiveness &0.00%&
+    Make @PREDICTOR RAT NARCOTIC ARRESTS = 0, PREDICTOR RAT TREND IN CRIMINAL ACTIVITY = (0.1, 0.3], PREDICTOR RAT UUW ARRESTS = 0, PREDICTOR RAT VICTIM SHOOTING INCIDENTS = 0@ with effectiveness &0.00%&
+    Make @PREDICTOR RAT NARCOTIC ARRESTS = 1, PREDICTOR RAT TREND IN CRIMINAL ACTIVITY = (-8.200999999999999, -0.3], PREDICTOR RAT UUW ARRESTS = 0, PREDICTOR RAT VICTIM SHOOTING INCIDENTS = 0@ with effectiveness &0.00%&
+    Make @PREDICTOR RAT NARCOTIC ARRESTS = 0, PREDICTOR RAT TREND IN CRIMINAL ACTIVITY = (0.3, 7.3], PREDICTOR RAT UUW ARRESTS = 0, PREDICTOR RAT VICTIM SHOOTING INCIDENTS = 0@ with effectiveness &0.00%&
+    Make @PREDICTOR RAT NARCOTIC ARRESTS = 0, PREDICTOR RAT TREND IN CRIMINAL ACTIVITY = (-0.3, -0.2], PREDICTOR RAT UUW ARRESTS = 0, PREDICTOR RAT VICTIM SHOOTING INCIDENTS = 0@ with effectiveness &0.00%&
+    Make @PREDICTOR RAT NARCOTIC ARRESTS = 1, PREDICTOR RAT TREND IN CRIMINAL ACTIVITY = (-0.1, 0.1], PREDICTOR RAT UUW ARRESTS = 0, PREDICTOR RAT VICTIM SHOOTING INCIDENTS = 0@ with effectiveness &0.00%&
+    Make @PREDICTOR RAT NARCOTIC ARRESTS = 1, PREDICTOR RAT TREND IN CRIMINAL ACTIVITY = (-0.2, -0.1], PREDICTOR RAT UUW ARRESTS = 0, PREDICTOR RAT VICTIM SHOOTING INCIDENTS = 0@ with effectiveness &0.00%&
+    Make @PREDICTOR RAT NARCOTIC ARRESTS = 1, PREDICTOR RAT TREND IN CRIMINAL ACTIVITY = (0.1, 0.3], PREDICTOR RAT UUW ARRESTS = 0, PREDICTOR RAT VICTIM SHOOTING INCIDENTS = 0@ with effectiveness &0.00%&
+    Make @PREDICTOR RAT NARCOTIC ARRESTS = 2, PREDICTOR RAT TREND IN CRIMINAL ACTIVITY = (-8.200999999999999, -0.3], PREDICTOR RAT UUW ARRESTS = 0, PREDICTOR RAT VICTIM SHOOTING INCIDENTS = 0@ with effectiveness &0.00%&
+    Make @PREDICTOR RAT NARCOTIC ARRESTS = 1, PREDICTOR RAT TREND IN CRIMINAL ACTIVITY = (0.3, 7.3], PREDICTOR RAT UUW ARRESTS = 0, PREDICTOR RAT VICTIM SHOOTING INCIDENTS = 0@ with effectiveness &0.00%&
+  Protected Subgroup = `White', !2.87%! covered
+    Make @PREDICTOR RAT NARCOTIC ARRESTS = 0, PREDICTOR RAT TREND IN CRIMINAL ACTIVITY = (-8.200999999999999, -0.3], PREDICTOR RAT UUW ARRESTS = 0, PREDICTOR RAT VICTIM SHOOTING INCIDENTS = 0@ with effectiveness &57.14%&
+    Make @PREDICTOR RAT NARCOTIC ARRESTS = 0, PREDICTOR RAT TREND IN CRIMINAL ACTIVITY = (-0.1, 0.1], PREDICTOR RAT UUW ARRESTS = 0, PREDICTOR RAT VICTIM SHOOTING INCIDENTS = 0@ with effectiveness &0.00%&
+    Make @PREDICTOR RAT NARCOTIC ARRESTS = 0, PREDICTOR RAT TREND IN CRIMINAL ACTIVITY = (0.1, 0.3], PREDICTOR RAT UUW ARRESTS = 0, PREDICTOR RAT VICTIM SHOOTING INCIDENTS = 0@ with effectiveness &0.00%&
+    Make @PREDICTOR RAT NARCOTIC ARRESTS = 1, PREDICTOR RAT TREND IN CRIMINAL ACTIVITY = (-8.200999999999999, -0.3], PREDICTOR RAT UUW ARRESTS = 0, PREDICTOR RAT VICTIM SHOOTING INCIDENTS = 0@ with effectiveness &0.00%&
+    Make @PREDICTOR RAT NARCOTIC ARRESTS = 0, PREDICTOR RAT TREND IN CRIMINAL ACTIVITY = (0.3, 7.3], PREDICTOR RAT UUW ARRESTS = 0, PREDICTOR RAT VICTIM SHOOTING INCIDENTS = 0@ with effectiveness &0.00%&
+    Make @PREDICTOR RAT NARCOTIC ARRESTS = 0, PREDICTOR RAT TREND IN CRIMINAL ACTIVITY = (-0.3, -0.2], PREDICTOR RAT UUW ARRESTS = 0, PREDICTOR RAT VICTIM SHOOTING INCIDENTS = 0@ with effectiveness &0.00%&
+    Make @PREDICTOR RAT NARCOTIC ARRESTS = 1, PREDICTOR RAT TREND IN CRIMINAL ACTIVITY = (-0.1, 0.1], PREDICTOR RAT UUW ARRESTS = 0, PREDICTOR RAT VICTIM SHOOTING INCIDENTS = 0@ with effectiveness &0.00%&
+    Make @PREDICTOR RAT NARCOTIC ARRESTS = 1, PREDICTOR RAT TREND IN CRIMINAL ACTIVITY = (-0.2, -0.1], PREDICTOR RAT UUW ARRESTS = 0, PREDICTOR RAT VICTIM SHOOTING INCIDENTS = 0@ with effectiveness &0.00%&
+    Make @PREDICTOR RAT NARCOTIC ARRESTS = 1, PREDICTOR RAT TREND IN CRIMINAL ACTIVITY = (0.1, 0.3], PREDICTOR RAT UUW ARRESTS = 0, PREDICTOR RAT VICTIM SHOOTING INCIDENTS = 0@ with effectiveness &0.00%&
+    Make @PREDICTOR RAT NARCOTIC ARRESTS = 2, PREDICTOR RAT TREND IN CRIMINAL ACTIVITY = (-8.200999999999999, -0.3], PREDICTOR RAT UUW ARRESTS = 0, PREDICTOR RAT VICTIM SHOOTING INCIDENTS = 0@ with effectiveness &0.00%&
+    Make @PREDICTOR RAT NARCOTIC ARRESTS = 1, PREDICTOR RAT TREND IN CRIMINAL ACTIVITY = (0.3, 7.3], PREDICTOR RAT UUW ARRESTS = 0, PREDICTOR RAT VICTIM SHOOTING INCIDENTS = 0@ with effectiveness &0.00%&
+  _Bias against `Black' due to Equal(Conditional) Mean Recourse. Unfairness score = inf._
+\end{lstlisting}
+\begin{lstlisting}[style = base,escapechar=+]
++\textbf{Subgroup 3}+
+If PREDICTOR RAT GANG AFFILIATION = 1, PREDICTOR RAT NARCOTIC ARRESTS = 2, PREDICTOR RAT TREND IN CRIMINAL ACTIVITY = (-8.200999999999999, -0.3], PREDICTOR RAT VICTIM SHOOTING INCIDENTS = 0:
+  Protected Subgroup = `Black', !1.18%! covered
+    		@No recourses for this subgroup.@
+  Protected Subgroup = `White', !1.00%! covered
+    Make @PREDICTOR RAT GANG AFFILIATION = 0, PREDICTOR RAT NARCOTIC ARRESTS = 0, PREDICTOR RAT TREND IN CRIMINAL ACTIVITY = (-8.200999999999999, -0.3], PREDICTOR RAT VICTIM SHOOTING INCIDENTS = 0@ with effectiveness &31.82%&
+  _Bias against `Black' due to Equal Cost of Effectiveness (threshold = 0.3). Unfairness score = inf._
+\end{lstlisting}
+
+\caption{Example of three Comparative Subgroup Counterfactuals in SSL; ref.\ Table \ref{table:subgroup-results-SSL}}
+\label{fig:comparative-subgroup-counterfactuals-SSL}
+\end{minipage}
+\end{figure}
+
+
+\subsection{Results for Ad Campaign}
+
+In Table \ref{table:subgroup-results-ad-campaign} we present, as we did for the other datasets, the ranking results for 3 interesting subgroups, while in Figure \ref{fig:comparative-subgroup-counterfactuals-ad-campaign}, we show the respective Comparative Subgroup Counterfactuals for these subgroups.
+
+\begin{table}[ht]
+\caption{Example of three unfair subgroups in Ad Campaign}
+  \label{table:subgroup-results-ad-campaign}
+  \centering
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{lccccccccc}
+\toprule
+\multicolumn{1}{r}{} & \multicolumn{3}{c}{\textbf{Subgroup 1}} & \multicolumn{3}{c}{\textbf{Subgroup 2}} & \multicolumn{3}{c}{\textbf{Subgroup 3}}  \\ \cmidrule(r){2-10}
+
+\multicolumn{1}{c}{} & \multicolumn{1}{c}{rank} & \multicolumn{1}{c}{bias against} & \multicolumn{1}{c}{unfairness score} & \multicolumn{1}{c}{rank} & \multicolumn{1}{c}{bias against} & \multicolumn{1}{c}{unfairness score} & \multicolumn{1}{c}{rank} & \multicolumn{1}{c}{bias against} & \multicolumn{1}{c}{unfairness score} \\ \midrule
+Equal Effectiveness & 319.0 & Female & 0.286 & Fair & Fair & 0.0 & 467.0 & Male & 0.099 \\
+Equal Choice for Recourse ($\phi$ = 0.3) & 5.0 & Female & 1.0 & 2.0 & Female & 4.0 & Fair & Fair & 0.0 \\
+Equal Choice for Recourse ($\phi$ = 0.7) & Fair & Fair & 0.0 & \textbf{\textcolor{red}{1}} & Female & 4.0 & Fair & Fair & 0.0 \\
+Equal Effectiveness within Budget (c = 1) & Fair & Fair & 0.0 & Fair & Fair & 0.0 & Fair & Fair & 0.0 \\
+Equal Effectiveness within Budget (c = 5) & Fair & Fair & 0.0 & Fair & Fair & 0.0 & 345.0 & Male & 0.099 \\
+Equal Cost of Effectiveness ($\phi$ = 0.3) & \textbf{\textcolor{red}{1}} & Female & inf & Fair & Fair & 0.0 & Fair & Fair & 0.0 \\
+Equal Cost of Effectiveness ($\phi$ = 0.7) & Fair & Fair & 0.0 & Fair & Fair & 0.0 & Fair & Fair & 0.0 \\
+Fair Effectiveness-Cost Trade-Off & 331.0 & Female & 0.286 & Fair & Male & 0.0 & 547.0 & Male & 0.099 \\
+Equal (Conditional) Mean Recourse & Fair & Fair & 0.0 & Fair & Fair & 0.0 & \textbf{\textcolor{red}{1}} & Male & inf \\
+
+
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+
+\begin{figure}[ht]
+\centering
+\begin{minipage}{1\linewidth}
+\begin{lstlisting}[style = base,escapechar=+]
++\textbf{Subgroup 1}+
+If age = 45-54, area = Unknown, parents = 1:
+    Protected Subgroup = Male', !1.22%! covered
+        Make @age=55-64@, @area=Rural@ with effectiveness &30.77%&.
+    Protected Subgroup = `Female', !1.13%! covered
+	@No recourses for this subgroup.@
+    _Bias against Female due to Equal Cost of Effectiveness (threshold=0.3). Unfairness score = inf._
+\end{lstlisting}
+
+\begin{lstlisting}[style = base,escapechar=+]
++\textbf{Subgroup 2}+
+If age = 55-64, area = Unknown, homeowner = 1, income = Unknown, parents = 0, politics = Unknown, religion = Unknown:
+    Protected Subgroup = `Male', !2.53%! covered
+        Make @homeowner=0@, @parents=1@ with effectiveness &100.00%&.
+	Make @homeowner=0@, @parents=1@, @religion=Christianity@ with effectiveness &100.00%&.
+	Make @homeowner=0@, @parents=1@, @religion=Other@ with effectiveness &100.00%&.
+	Make @area=Urban@, @parents=1@, @religion=Christianity@ with effectiveness &93.91%&.
+	Make @area=Urban@, @parents=1@, @religion=Other@ with effectiveness &93.91%&.
+	Make @homeowner=0@, @income=<100K@, @parents=1@ with effectiveness &100.00%&.
+	Make @area=Rural@, @parents=1@, @religion=Other@ with effectiveness &100.00%&.
+	Make @area=Rural@, @parents=1@, @religion=Christianity@ with effectiveness &100.00%&.
+	Make @homeowner=0@, @income=<100K@, @parents=1@, @religion=Christianity@ with effectiveness &100.00%&.
+	Make @homeowner=0@, @income=<100K@, @parents=1@, @religion=Other@ with effectiveness &100.00%&.
+    Protected Subgroup = `Female', !2.33%! covered
+	Make @homeowner=0@, @parents=1@ with effectiveness &100.00%&.
+	Make @homeowner=0@, @parents=1@, @religion=Christianity@ with effectiveness &100.00%&.
+	Make @homeowner=0@, @parents=1@, @religion=Other@ with effectiveness &100.00%&.
+	Make @homeowner=0@, @income=<100K@, @parents=1@ with effectiveness &100.00%&.
+	Make @homeowner=0@, @income=<100K@, @parents=1@, @religion=Christianity@ with effectiveness &100.00%&.
+	Make @homeowner=0@, @income=<100K@, @parents=1@, @religion=Other@ with effectiveness &100.00%&.
+    _Bias against Female due to Equal Choice for Recourse (threshold=0.7). Unfairness score = 4._
+\end{lstlisting}
+
+\begin{lstlisting}[style = base,escapechar=+]
++\textbf{Subgroup 3}+
+If ages = 55-64, income = <100K, religion = Unknown:
+    Protected Subgroup = `Male', !1.02%! covered
+        Make @religion=Christianity@ with effectiveness &0.00%&.
+	Make @religion=Other@ with effectiveness &0.00%&.
+    Protected Subgroup = `Female', !1.08%! covered
+        Make @religion=Christianity@ with effectiveness &9.86%&.
+	Make @religion=Other@ with effectiveness &9.86%&.
+    _Bias against Male due to Equal Conditional Mean Recourse. Unfairness score = inf._
+\end{lstlisting}
+
+\caption{Example of three Comparative Subgroup Counterfactuals in Ad Campaign; ref. Table~\ref{table:subgroup-results-ad-campaign}}
+\label{fig:comparative-subgroup-counterfactuals-ad-campaign}
+\end{minipage}
+\end{figure}
+
+\clearpage
+
+\section{Comparison of Fairness Metrics}
+\label{sec:comparison}
+
+The goal of this section is to answer the question: ``How different are the fairness of recourse metrics''. To answer it, we consider all subgroups and compare how they rank in terms of unfairness according to 12 distinct metrics. The results justify our claim in the main paper that the fairness metrics capture different aspects of recourse unfairness. 
+For each dataset and protected attribute, we provide: (a) the ranking analysis table, and (b) the aggregated rankings table.
+
+The first column of the \emph{ranking analysis} table shows the number of the most unfair subgroups per metric, i.e., how many ties are in rank 1. Depending on the unit of the unfairness score being compared between the protected subgroups (namely: cost, effectiveness, or number of actions), the number of ties can vary greatly. Therefore, we expect to have virtually no ties when comparing effectiveness percentages and to have many ties when comparing costs.  
+The second and third columns show the number of subgroups where we observe bias in one direction (e.g., against males) and the opposite (e.g., against females) among the top 10\% most unfair subgroups.
+
+% Note that the number of most unfair subgroups per fairness metric varies significantly, since some fairness metrics rank subgroups based on cost, others based on effectiveness and others based on number of rules. 
+% Therefore, it is very natural to have no ties in subgroup rankings for effectiveness based fairness metrics that compute differences between percentages and to have many ties in subgroup rankings for cost (budget) based fairness metrics.  
+
+The \emph{aggregated rankings} table is used as evidence that different fairness metrics capture different types of recourse unfairness. Each row concerns the subgroups that are the most unfair (i.e., tied at rank 1) according to each fairness metric. The values in the row indicate the average percentile ranks of these subgroups (i.e., what percentage of subgroups are more unfair) when ranked according to the other fairness metrics, shown as columns. Concretely, the value $v$ of each cell $i,j$ of this table is computed as follows: 
+\begin{enumerate}
+    \item We collect all subgroups of the fairness metric appearing in row $i$ that are ranked first (the most biased) due to this metric.
+    \item We compute the average ranking $a$ of these subgroups in the fairness metric appearing in column $j$.
+    \item We divide $a$ with the largest ranking tier of the fairness metric of column $j$ to arrive at $v$.
+\end{enumerate}
+Each non-diagonal value of this table represents the relative ranking based on the specific metric of the column for all the  subgroups that are ranked first in the metric of the respective row (all diagonal values of this table are left empty). A relative ranking of $v$ in a specific metric $m$ means that the most unfair subgroups of another metric are ranked lower on average (thus are fairer) for metric $m$.   
+
+% The maximum ranking table provides the maximum ranking of achieved b
+
+% is complementary to the aggregated rankings table, since due to ties (of unfair and fair groups) and due to different numbers of fair subgroups between metrics, the range of ranked subgroups that have unfairness scores greater than zero may differ significantly across fairness metrics. 
+% We can see that the maximum rank achieved by the Equal Cost of Effectiveness metrics is relative low. This means that we have many ties in rankings of subgroups due to same cost actions between their protected subgroups that lead to same unfairness score.  
+
+
+\subsection{Comparison on Adult for protected attribute gender}
+
+
+The number of affected individuals in the test set for the adult dataset is 10,205. We first split the affected individuals on the set of affected males $D_{1}$ and the set of affected females $D_{0}$. The number of subgroups formed by running fp-growth with support threshold $1\%$ on $D_{1}$ and on $D_{0}$ and computing their intersection is 12,880.  
+Our fairness metrics will evaluate and rank these subgroups based on the actions applied.
+
+Tables \ref{table:analysis-rank-adult-gender} and \ref{table:aggregated-adult-gender} present the ranking analysis and the aggregated rankings respectively on the gender attribute, on the Adult dataset. Next, we briefly discuss the findings from these two tables; similar findings stand for the respective tables of the other datasets, thus we omit the respective discussion.
+
+
+It is evident from Table \ref{table:analysis-rank-adult-gender} that the different ways to produce ranking scores by different definitions can lead to considerable differences in ties, i.e., the number of subgroups receiving the same rank (here  only rank 1 is depicted). The ``Top 10$\%$'' columns demonstrate interesting statistics on the protected subgroup for which bias is identified: while it is expected that mostly bias against ``Female'' will be identified, subgroups with reverse bias (bias against ``Male'') are identified, indicating robustness to gerrymandering, as hinted in Section 4 of the main paper.
+
+Table \ref{table:aggregated-adult-gender} is produced to provide stronger evidence on the unique utility of the various presented definitions (see footnote 1 of the main paper: \textit{``Additional examples, as well as statistics measuring this pattern on a significantly larger sample, are included
+in the supplementary material to further support this finding.''}). In particular, in this table,
+for all subgroups that are ranked first in a definition, we calculate their average relative (normalized in $[0,1]$) ranking in the remaining definitions. Given this, a value close to $1$ means very low average rank and a value close to $0$ means very high rank. Consequently, values away from $0$ indicate the uniqueness and non-triviality of the different definitions and this becomes evident from the majority of the values of the table.  
+
+
+%The analysis ranking table shows the number of the most unfair subgroups per fairness metric (first column), and the number of subgroups that are biased against each protected subgroup appearing at the same time at the top 10\% most unfair subgroups (second and third column). Note that the number of most unfair subgroups per fairness metric varies significantly, since we some fairness metrics rank subgroups based on cost, others based on effectiveness and others based on number of rules. Therefore, it is very natural to have no ties in subgroup rankings for effectiveness based fairness metrics that compute differences between percentages and to have many ties in subgroup rankings for cost (budget) based fairness metrics.  
+
+\begin{table}[ht]
+\caption{Ranking Analysis in Adult (protected attribute gender)}
+  \label{table:analysis-rank-adult-gender}
+  \centering
+\resizebox{\columnwidth}{!}{
+\begin{tabular}{lrrr}
+\toprule
+{} &  \multirow{1}{*}{\thead{\# Most Unfair\\ Subgroups}}  &  \multirow{1}{*}{\thead{\# Subgroups w.\ Bias against Males\\(in Top 10\% Unfair Subgroups)}} &  \multirow{1}{*}{\thead{\# Subgroups w.\ Bias against Females\\(in Top 10\% Unfair Subgroups)}} \\ \\
+\midrule
+(Equal Cost of Effectiveness(Macro), 0.3)          &            1673 &                                                     56 &                                206 \\
+(Equal Cost of Effectiveness(Macro), 0.7)          &             301 &                                                     26 &                                 37 \\
+(Equal Choice for Recourse, 0.3)                   &               2 &                                                    54 &                                286 \\
+(Equal Choice for Recourse, 0.7)                   &               6 &                                                     31 &                                 50 \\
+Equal Effectiveness                                &               1 &                                                    39 &                               1040 \\
+(Equal Effectiveness within Budget, 5.0 &               1 &                                                    41 &                                616 \\
+(Equal Effectiveness within Budget, 10.0)          &               1 &                                                     6 &                                904 \\
+(Equal Effectiveness within Budget, 18.0)          &               1 &                                                   22 &                                964 \\
+(Equal Cost of Effectiveness(Micro), 0.3)          &            1523 &                                                    10 &                                226 \\
+(Equal Cost of Effectiveness(Micro), 0.7)          &             290 &                                                    38 &                                 27 \\
+Equal(Conditional Mean Recourse)                   &             764 &                                                  540 &                                565 \\
+(Fair Effectiveness-Cost Trade-Off, value)         &               1 &                                                    61 &                               1156 \\
+
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\begin{table}[ht]
+\caption{Aggregated Rankings in Adult (protected attribute gender)}
+  \label{table:aggregated-adult-gender}
+  \centering
+\resizebox{\columnwidth}{!}{
+\begin{tabular}{lrrrrrrrrrrrr}
+\toprule
+{} &  \multirow{3}{*}{\thead{(Equal Cost\\of Effectiveness\\(Macro), 0.3)}}  &  \multirow{3}{*}{\thead{(Equal Cost\\of Effectiveness\\(Macro), 0.7)}} &  \multirow{2}{*}{\thead{(Equal Choice\\for Recourse, 0.3)}} &  \multirow{2}{*}{\thead{(Equal Choice\\for Recourse, 0.7)}} &  \multirow{2}{*}{\thead{Equal\\Effectiveness}} &  \multirow{4}{*}{\thead{(Equal\\ Effectiveness\\ within\\ Budget, 5.0)}} &  \multirow{4}{*}{\thead{(Equal\\ Effectiveness\\ within\\ Budget, 10.0)}} & \multirow{4}{*}{\thead{(Equal\\ Effectiveness\\ within\\ Budget, 18.0)}} & \multirow{3}{*}{\thead{(Equal Cost\\ of Effectiveness\\(Micro), 0.3)}} &  \multirow{3}{*}{\thead{(Equal Cost\\ of Effectiveness\\(Micro), 0.7)}} &  \multirow{2}{*}{\thead{Equal(Conditional\\ Mean Recourse)}} &  \multirow{3}{*}{\thead{(Fair\\Effectiveness-Cost\\Trade-Off, value)}} \\ \\ \\ \\
+\midrule
+(Equal Cost of Effectiveness(Macro), 0.3)          &                                         - &                                       1.0 &                            0.836 &                              1.0 &               0.214 &                                              0.509 &                                     0.342 &                                     0.285 &                                       0.3 &                                       1.0 &                            0.441 &                                      0.237 \\
+(Equal Cost of Effectiveness(Macro), 0.7)          &                                     0.634 &                                         - &                            0.864 &                            0.686 &               0.358 &                                              0.602 &                                     0.464 &                                     0.407 &                                     0.738 &                                     0.293 &                            0.481 &                                      0.307 \\
+(Equal Choice for Recourse, 0.3)                   &                                     0.018 &                                       1.0 &                                - &                              1.0 &               0.001 &                                              0.006 &                                     0.001 &                                     0.001 &                                     0.017 &                                       1.0 &                            0.105 &                                      0.001 \\
+(Equal Choice for Recourse, 0.7)                   &                                       1.0 &                                     0.364 &                            0.857 &                                - &               0.814 &                                              0.528 &                                     0.813 &                                      0.81 &                                       1.0 &                                     0.882 &                            0.451 &                                       0.34 \\
+Equal Effectiveness                                &                                     0.018 &                                       1.0 &                            0.214 &                              1.0 &                   - &                                              0.003 &                                       0.0 &                                       0.0 &                                     0.017 &                                       1.0 &                            0.058 &                                        0.0 \\
+(Equal Effectiveness within Budget, 5.0 &                                     0.018 &                                       1.0 &                            0.857 &                              1.0 &               0.006 &                                                  - &                                     0.004 &                                     0.006 &                                     0.017 &                                       1.0 &                              1.0 &                                      0.006 \\
+(Equal Effectiveness within Budget, 10.0)          &                                     0.018 &                                       1.0 &                            0.214 &                              1.0 &                 0.0 &                                              0.002 &                                         - &                                       0.0 &                                     0.017 &                                       1.0 &                            0.047 &                                        0.0 \\
+(Equal Effectiveness within Budget, 18.0)          &                                     0.018 &                                       1.0 &                            0.214 &                              1.0 &                 0.0 &                                              0.003 &                                       0.0 &                                         - &                                     0.017 &                                       1.0 &                            0.058 &                                        0.0 \\
+(Equal Cost of Effectiveness(Micro), 0.3)          &                                     0.238 &                                       1.0 &                            0.857 &                              1.0 &               0.136 &                                              0.452 &                                     0.263 &                                     0.215 &                                         - &                                       1.0 &                            0.462 &                                      0.155 \\
+(Equal Cost of Effectiveness(Micro), 0.7)          &                                     0.611 &                                     0.279 &                            0.864 &                            0.771 &               0.336 &                                              0.621 &                                     0.449 &                                     0.402 &                                       0.7 &                                         - &                            0.465 &                                      0.295 \\
+Equal(Conditional) Mean Recourse                   &                                     0.996 &                                       1.0 &                              1.0 &                              1.0 &               0.723 &                                              0.946 &                                     0.875 &                                     0.777 &                                     0.997 &                                       1.0 &                                - &                                       0.83 \\
+(Fair Effectiveness-Cost Trade-Off, value)         &                                     0.018 &                                       1.0 &                            0.214 &                              1.0 &                 0.0 &                                              0.002 &                                       0.0 &                                       0.0 &                                     0.017 &                                       1.0 &                            0.047 &                                          - \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+
+
+
+\subsection{Comparison on Adult for protected attribute race}
+The number of affected individuals in the test set for the adult dataset is 10,205. We first split the affected individuals on the set of affected whites $D_{1}$ and the set of affected non-whites $D_{0}$. The number of subgroups formed by running fp-growth with support threshold $1\%$ on $D_{1}$ and on $D_{0}$ and computing their intersection is 16,621.  
+Our fairness metrics will evaluate and rank these subgroups based on the actions applied.
+
+\begin{table}[ht]
+\caption{Ranking Analysis in Adult (protected attribute race)}
+  \label{table:analysis-adult}
+  \centering
+\resizebox{\columnwidth}{!}{
+\begin{tabular}{lrrr}
+\toprule
+{} &  \multirow{1}{*}{\thead{\# Most Unfair\\ Subgroups}}  &  \multirow{1}{*}{\thead{\# Subgroups w.\ Bias against Whites\\(in Top 10\% Unfair Subgroups)}} &  \multirow{1}{*}{\thead{\# Subgroups w.\ Bias against Non-Whites\\(in Top 10\% Unfair Subgroups)}} \\ \\
+% {} &  \multirow{1}{*}{\thead{(Rank = 1 Count)}}  &  \multirow{1}{*}{\thead{(Top 10\% White bias against Count)}} &  \multirow{1}{*}{\thead{Top 10\% Non-White bias against Count}} \\ \\ 
+\midrule
+(Equal Cost of Effectiveness(Macro), 0.3)          &            1731 &                                                        0 &                                   295 \\
+(Equal Cost of Effectiveness(Macro), 0.7)          &             325 &                                                         7 &                                    51 \\
+(Equal Choice for Recourse, 0.3)                   &               1 &                                                       2 &                                   391 \\
+(Equal Choice for Recourse, 0.7)                   &               2 &                                                        10 &                                    60 \\
+Equal Effectiveness                                &               1 &                                                       6 &                                  1433 \\
+(Equal Effectiveness within Budget, 1.15 &               1 &                        50 &                                    24 \\
+(Equal Effectiveness within Budget, 10.0 &               1 &                                                       3 &                                  1251 \\
+(Equal Effectiveness within Budget, 21.0)          &               1 &                                                       0 &                                  1423 \\
+(Equal Cost of Effectiveness(Micro), 0.3)          &            1720 &                                                        0 &                                   294 \\
+(Equal Cost of Effectiveness(Micro), 0.7)          &             325 &                                                         7 &                                    51 \\
+Equal(Conditional Mean Recourse)                   &            2545 &                                                      53 &                                  1316 \\
+(Fair Effectiveness-Cost Trade-Off, value)         &               2 &                                                       0 &                                     0 \\
+
+\bottomrule
+\end{tabular}}
+\end{table}
+
+
+\begin{table}[ht]
+\caption{Aggregated Rankings in Adult (protected attribute race)}
+  \label{table:aggregated-adult-race}
+  \centering
+\resizebox{\columnwidth}{!}{
+\begin{tabular}{lrrrrrrrrrrrr}
+\toprule
+{} &  \multirow{3}{*}{\thead{(Equal Cost\\of Effectiveness\\(Macro), 0.3)}}  &  \multirow{3}{*}{\thead{(Equal Cost\\of Effectiveness\\(Macro), 0.7)}} &  \multirow{2}{*}{\thead{(Equal Choice\\for Recourse, 0.3)}} &  \multirow{2}{*}{\thead{(Equal Choice\\for Recourse, 0.7)}} &  \multirow{2}{*}{\thead{Equal\\Effectiveness}} &  \multirow{4}{*}{\thead{(Equal\\ Effectiveness\\ within\\ Budget, 1.15)}} &  \multirow{4}{*}{\thead{(Equal\\ Effectiveness\\ within\\ Budget, 10.0)}} & \multirow{4}{*}{\thead{(Equal\\ Effectiveness\\ within\\ Budget, 21.0)}} & \multirow{3}{*}{\thead{(Equal Cost\\ of Effectiveness\\(Micro), 0.3)}} &  \multirow{3}{*}{\thead{(Equal Cost\\ of Effectiveness\\(Micro), 0.7)}} &  \multirow{2}{*}{\thead{Equal(Conditional\\ Mean Recourse)}} &  \multirow{3}{*}{\thead{(Fair\\Effectiveness-Cost\\Trade-Off, value)}} \\ \\ \\ \\
+\midrule
+(Equal Cost of Effectiveness(Macro), 0.3)          &                                         - &                                       1.0 &                            0.845 &                              1.0 &               0.162 &                                              0.996 &                                              0.283 &                                     0.177 &                                     0.026 &                                       1.0 &                            0.448 &                                      0.194 \\
+(Equal Cost of Effectiveness(Macro), 0.7)          &                                       0.7 &                                         - &                              0.9 &                            0.829 &               0.147 &                                              0.973 &                                              0.315 &                                     0.169 &                                     0.698 &                                      0.05 &                            0.421 &                                       0.12 \\
+(Equal Choice for Recourse, 0.3)                   &                                     0.419 &                                       1.0 &                                - &                              1.0 &                 1.0 &                                                1.0 &                                               0.03 &                                       1.0 &                                     0.419 &                                       1.0 &                            0.782 &                                      0.073 \\
+(Equal Choice for Recourse, 0.7)                   &                                       1.0 &                                     0.095 &                            0.909 &                                - &               0.644 &                                                1.0 &                                              0.003 &                                     0.328 &                                       1.0 &                                       0.1 &                            0.041 &                                      0.011 \\
+Equal Effectiveness                                &                                     0.023 &                                       1.0 &                            0.909 &                              1.0 &                   - &                                                1.0 &                                               0.01 &                                       0.0 &                                     0.023 &                                       1.0 &                              0.0 &                                        0.0 \\
+(Equal Effectiveness within Budget, 1.15 &                                       1.0 &                                     0.048 &                              1.0 &                            0.857 &               0.069 &                                                  - &                                              0.047 &                                      0.07 &                                       1.0 &                                      0.05 &                              1.0 &                                      0.102 \\
+(Equal Effectiveness within Budget, 10.0 &                                     0.395 &                                     0.048 &                            0.818 &                            0.571 &               0.001 &                                                1.0 &                                                  - &                                     0.001 &                                     0.395 &                                      0.05 &                            0.611 &                                      0.002 \\
+(Equal Effectiveness within Budget, 21.0)          &                                     0.023 &                                       1.0 &                            0.909 &                              1.0 &                 0.0 &                                                1.0 &                                               0.01 &                                         - &                                     0.023 &                                       1.0 &                              0.0 &                                        0.0 \\
+(Equal Cost of Effectiveness(Micro), 0.3)          &                                     0.023 &                                       1.0 &                            0.845 &                              1.0 &               0.162 &                                              0.996 &                                              0.284 &                                     0.177 &                                         - &                                       1.0 &                            0.449 &                                      0.195 \\
+(Equal Cost of Effectiveness(Micro), 0.7)          &                                       0.7 &                                     0.048 &                              0.9 &                            0.829 &               0.147 &                                              0.973 &                                              0.315 &                                     0.169 &                                     0.698 &                                         - &                            0.421 &                                       0.12 \\
+Equal(Conditional) Mean Recourse                   &                                     0.979 &                                       1.0 &                              1.0 &                              1.0 &               0.628 &                                                1.0 &                                              0.778 &                                     0.633 &                                     0.979 &                                       1.0 &                                - &                                      0.721 \\
+(Fair Effectiveness-Cost Trade-Off, value)         &                                     0.023 &                                       1.0 &                            0.818 &                              1.0 &               0.001 &                                                1.0 &                                              0.012 &                                     0.001 &                                     0.023 &                                       1.0 &                            0.003 &                                          - \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+
+
+
+
+\subsection{Comparison on COMPAS}
+The number of affected individuals in the test set for the COMPAS dataset is 745. We first split the affected individuals on the set of affected caucasians $D_{1}$ and the set of affected african-americans $D_{0}$. The number of subgroups formed by running fp-growth with support threshold $1\%$ on $D_{1}$ and on $D_{0}$ and computing their intersection is 995.  
+Our fairness metrics will evaluate and rank these subgroups based on the actions applied.
+
+
+\begin{table}[ht]
+\caption{Ranking Analysis in COMPAS}
+  \label{table:analysis-compas}
+  \centering
+\resizebox{\columnwidth}{!}{
+\begin{tabular}{lrrr}
+\toprule
+{} &  \multirow{1}{*}{\thead{\# Most Unfair\\ Subgroups}}  &  \multirow{1}{*}{\thead{\# Subgroups w.\ Bias against Caucasians\\(in Top 10\% Unfair Subgroups)}} &  \multirow{1}{*}{\thead{\# Subgroups w.\ Bias against African-Americans\\(in Top 10\% Unfair Subgroups)}} \\ \\
+% {} &  \multirow{1}{*}{\thead{(Rank = 1 Count)}}  &  \multirow{1}{*}{\thead{(Top 10\% Caucasian bias against Count)}} &  \multirow{1}{*}{\thead{Top 10\% African-American bias against Count}} \\ \\ 
+\midrule
+(Equal Cost of Effectiveness(Macro), 0.3)  &              51 &                                                                 0 &                                           11 \\
+(Equal Cost of Effectiveness(Macro), 0.7)  &              46 &                                                                0 &                                            6 \\
+(Equal Choice for Recourse, 0.3)           &              13 &                                                               12 &                                            8 \\
+(Equal Choice for Recourse, 0.7)           &              15 &                                                                8 &                                            6 \\
+Equal Effectiveness                        &               1 &                                                                14 &                                           37 \\
+(Equal Effectiveness within Budget, 1.0)   &               4 &                                                                16 &                                           30 \\
+(Equal Effectiveness within Budget, 10.0)  &               1 &                                                               20 &                                           39 \\
+(Equal Cost of Effectiveness(Micro), 0.3)  &              51 &                                                                 0 &                                           11 \\
+(Equal Cost of Effectiveness(Micro), 0.7)  &              46 &                                                                 0 &                                            6 \\
+Equal(Conditional Mean Recourse)           &              37 &                                                               19 &                                           24 \\
+(Fair Effectiveness-Cost Trade-Off, value) &               5 &                                                               18 &                                           62 \\
+
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\begin{table}[ht]
+\caption{Aggregated Rankings in COMPAS}
+  \label{table:aggregated-compas}
+  \centering
+\resizebox{\columnwidth}{!}{
+\begin{tabular}{lccccccccccc}
+\toprule
+{} &  \multirow{3}{*}{\thead{(Equal Cost\\of Effectiveness\\(Macro), 0.3)}}  &  \multirow{3}{*}{\thead{(Equal Cost\\of Effectiveness\\(Macro), 0.7)}} &  \multirow{2}{*}{\thead{(Equal Choice\\for Recourse, 0.3)}} &  \multirow{2}{*}{\thead{(Equal Choice\\for Recourse, 0.7)}} &  \multirow{2}{*}{\thead{Equal\\Effectiveness}} &  \multirow{4}{*}{\thead{(Equal\\ Effectiveness\\ within\\ Budget, 1.0)}} &  \multirow{4}{*}{\thead{(Equal\\ Effectiveness\\ within\\ Budget, 10.0)}} &  \multirow{3}{*}{\thead{(Equal Cost\\ of Effectiveness\\(Micro), 0.3)}} &  \multirow{3}{*}{\thead{(Equal Cost\\ of Effectiveness\\(Micro), 0.7)}} &  \multirow{2}{*}{\thead{Equal(Conditional\\ Mean Recourse)}} &  \multirow{3}{*}{\thead{(Fair\\Effectiveness-Cost\\Trade-Off, value)}} \\ \\ \\ \\
+\midrule
+(Equal Cost of Effectiveness(Macro), 0.3)  &                                         - &                                       1.0 &                             0.65 &                              1.0 &               0.169 &                                    0.801 &                                     0.398 &                                       0.2 &                                       1.0 &                            0.797 &                                      0.226 \\
+(Equal Cost of Effectiveness(Macro), 0.7)  &                                      0.96 &                                         - &                            0.925 &                            0.625 &               0.127 &                                    0.518 &                                     0.236 &                                      0.96 &                                       0.2 &                             0.52 &                                      0.149 \\
+(Equal Choice for Recourse, 0.3)           &                                      0.32 &                                      0.76 &                                - &                            0.775 &               0.082 &                                      1.0 &                                     0.178 &                                      0.32 &                                      0.76 &                            0.297 &                                      0.116 \\
+(Equal Choice for Recourse, 0.7)           &                                       0.9 &                                      0.46 &                              0.8 &                                - &               0.424 &                                    0.484 &                                     0.057 &                                       0.9 &                                      0.46 &                            0.259 &                                      0.045 \\
+Equal Effectiveness                        &                                       0.2 &                                       1.0 &                             0.75 &                              1.0 &                   - &                                      1.0 &                                     0.003 &                                       0.2 &                                       1.0 &                            0.003 &                                      0.002 \\
+(Equal Effectiveness within Budget, 1.0)   &                                       0.8 &                                       1.0 &                             0.75 &                             0.75 &                 1.0 &                                        - &                                       1.0 &                                       0.8 &                                       1.0 &                            0.413 &                                      0.002 \\
+(Equal Effectiveness within Budget, 10.0)  &                                       0.2 &                                       1.0 &                             0.75 &                              1.0 &               0.003 &                                      1.0 &                                         - &                                       0.2 &                                       1.0 &                            0.003 &                                      0.002 \\
+(Equal Cost of Effectiveness(Micro), 0.3)  &                                       0.2 &                                       1.0 &                             0.65 &                              1.0 &               0.169 &                                    0.801 &                                     0.398 &                                         - &                                       1.0 &                            0.797 &                                      0.226 \\
+(Equal Cost of Effectiveness(Micro), 0.7)  &                                      0.96 &                                       0.2 &                            0.925 &                            0.625 &               0.127 &                                    0.518 &                                     0.236 &                                      0.96 &                                         - &                             0.52 &                                      0.149 \\
+Equal(Conditional) Mean Recourse           &                                      0.98 &                                       1.0 &                              1.0 &                              1.0 &               0.507 &                                    0.772 &                                     0.512 &                                      0.98 &                                       1.0 &                                - &                                      0.627 \\
+(Fair Effectiveness-Cost Trade-Off, value) &                                      0.68 &                                       1.0 &                             0.75 &                              0.8 &               0.801 &                                    0.202 &                                     0.801 &                                      0.68 &                                       1.0 &                            0.331 &                                          - \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+
+\subsection{Comparison on SSL}
+The number of affected individuals in the test set for the SSL dataset is 11,343. We first split the affected individuals on the set of affected blacks $D_{1}$ and the set of affected whites $D_{0}$ based on the race attribute (appears with the name RACE CODE CD in the dataset). The number of subgroups formed by running fp-growth with support threshold $1\%$ on $D_{1}$ and on $D_{0}$ and computing their intersection is 6,551.  
+Our fairness metrics will evaluate and rank these subgroups based on the actions applied.
+
+
+
+
+
+\begin{table}[ht]
+\caption{Ranking Analysis in SSL}
+  \label{table:analysis-SSL}
+  \centering
+\resizebox{\columnwidth}{!}{
+\begin{tabular}{lrrr}
+\toprule
+{} &  \multirow{1}{*}{\thead{\# Most Unfair\\ Subgroups}}  &  \multirow{1}{*}{\thead{\# Subgroups w.\ Bias against Whites\\(in Top 10\% Unfair Subgroups)}} &  \multirow{1}{*}{\thead{\# Subgroups w.\ Bias against Blacks\\(in Top 10\% Unfair Subgroups)}} \\ \\
+% {} &  \multirow{1}{*}{\thead{(Rank = 1 Count)}}   &  \multirow{1}{*}{\thead{(Top 10\% White bias against Count)}} &  \multirow{1}{*}{\thead{Top 10\% Black bias against Count}} \\ \\ 
+\midrule
+(Equal Cost of Effectiveness(Macro), 0.3)  &             371 &                                                   10 &                             107 \\
+(Equal Cost of Effectiveness(Macro), 0.7)  &             627 &                                                   26 &                             124 \\
+(Equal Choice for Recourse, 0.3)           &               1 &                                                  108 &                             184 \\
+(Equal Choice for Recourse, 0.7)           &              16 &                                                   78 &                             229 \\
+Equal Effectiveness                        &               1 &                                                   15 &                             389 \\
+(Equal Effectiveness within Budget, 1.0)   &              18 &                                                   18 &                             436 \\
+(Equal Effectiveness within Budget, 2.0)   &               2 &                                                   19 &                             532 \\
+(Equal Effectiveness within Budget, 10.0)  &               1 &                                                   15 &                             548 \\
+(Equal Cost of Effectiveness(Micro), 0.3)  &             458 &                                                    5 &                             135 \\
+(Equal Cost of Effectiveness(Micro), 0.7)  &             671 &                                                    23 &                             130 \\
+Equal(Conditional Mean Recourse)           &             100 &                                                  41 &                             434 \\
+(Fair Effectiveness-Cost Trade-Off, value) &              80 &                                                  76 &                             544 \\
+
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\begin{table}[ht]
+\caption{Aggregated Rankings in SSL}
+  \label{table:aggrageted-SSL}
+  \centering
+\resizebox{\columnwidth}{!}{
+\begin{tabular}{lrrrrrrrrrrrrr}
+\toprule
+{} &  \multirow{3}{*}{\thead{(Equal Cost\\of Effectiveness\\(Macro), 0.3)}}  &  \multirow{3}{*}{\thead{(Equal Cost\\of Effectiveness\\(Macro), 0.7)}} &  \multirow{2}{*}{\thead{(Equal Choice\\for Recourse, 0.3)}} &  \multirow{2}{*}{\thead{(Equal Choice\\for Recourse, 0.7)}} &  \multirow{2}{*}{\thead{Equal\\Effectiveness}} &  \multirow{4}{*}{\thead{(Equal\\ Effectiveness\\ within\\ Budget, 1.0)}} &  \multirow{4}{*}{\thead{(Equal\\ Effectiveness\\ within\\ Budget, 2.0)}} &  \multirow{4}{*}{\thead{(Equal\\ Effectiveness\\ within\\ Budget, 10.0)}} &  \multirow{3}{*}{\thead{(Equal Cost\\ of Effectiveness\\(Micro), 0.3)}} &  \multirow{3}{*}{\thead{(Equal Cost\\ of Effectiveness\\(Micro), 0.7)}} &  \multirow{2}{*}{\thead{Equal(Conditional\\ Mean Recourse)}} &  \multirow{3}{*}{\thead{(Fair\\Effectiveness-Cost\\Trade-Off, value)}} \\ \\ \\ \\
+\midrule
+(Equal Cost of Effectiveness(Macro), 0.3)  &                                         - &                                     0.883 &                            0.854 &                            0.988 &               0.216 &                                    0.401 &                                    0.285 &                                     0.238 &                                       0.3 &                                     0.843 &                            0.678 &                                      0.338 \\
+(Equal Cost of Effectiveness(Macro), 0.7)  &                                     0.929 &                                         - &                            0.877 &                            0.725 &               0.239 &                                    0.421 &                                    0.332 &                                     0.264 &                                     0.871 &                                     0.314 &                            0.829 &                                      0.342 \\
+(Equal Choice for Recourse, 0.3)           &                                     0.143 &                                       1.0 &                                - &                              1.0 &               0.328 &                                    0.704 &                                    0.464 &                                     0.368 &                                     0.143 &                                       1.0 &                            0.727 &                                      0.601 \\
+(Equal Choice for Recourse, 0.7)           &                                       1.0 &                                     0.167 &                            0.769 &                                - &               0.083 &                                    0.177 &                                    0.127 &                                     0.086 &                                       1.0 &                                     0.143 &                            0.926 &                                      0.135 \\
+Equal Effectiveness                        &                                     0.143 &                                     0.167 &                            0.923 &                            0.938 &                   - &                                    0.002 &                                      0.0 &                                       0.0 &                                     0.143 &                                     0.143 &                              0.0 &                                      0.003 \\
+(Equal Effectiveness within Budget, 1.0)   &                                     0.857 &                                     0.833 &                            0.854 &                            0.881 &                0.89 &                                        - &                                    0.923 &                                     0.876 &                                     0.857 &                                     0.857 &                            0.327 &                                        0.0 \\
+(Equal Effectiveness within Budget, 2.0)   &                                     0.286 &                                     0.333 &                            0.923 &                            0.938 &                 0.5 &                                    0.002 &                                        - &                                       0.5 &                                     0.286 &                                     0.286 &                              0.0 &                                      0.003 \\
+(Equal Effectiveness within Budget, 10.0)  &                                     0.143 &                                     0.167 &                            0.923 &                            0.938 &                 0.0 &                                    0.002 &                                      0.0 &                                         - &                                     0.143 &                                     0.143 &                              0.0 &                                      0.003 \\
+(Equal Cost of Effectiveness(Micro), 0.3)  &                                     0.443 &                                     0.833 &                            0.877 &                            0.969 &               0.143 &                                    0.312 &                                    0.198 &                                     0.154 &                                         - &                                     0.843 &                            0.729 &                                      0.268 \\
+(Equal Cost of Effectiveness(Micro), 0.7)  &                                       0.9 &                                     0.383 &                            0.892 &                            0.788 &               0.203 &                                    0.406 &                                    0.299 &                                     0.225 &                                     0.886 &                                         - &                            0.816 &                                      0.327 \\
+Equal(Conditional) Mean Recourse           &                                       0.6 &                                     0.733 &                            0.946 &                            0.969 &               0.244 &                                    0.464 &                                    0.395 &                                     0.378 &                                     0.514 &                                     0.729 &                                - &                                      0.396 \\
+(Fair Effectiveness-Cost Trade-Off, value) &                                     0.971 &                                     0.967 &                            0.838 &                            0.869 &               0.967 &                                    0.774 &                                    0.977 &                                      0.96 &                                     0.971 &                                     0.971 &                            0.837 &                                          - \\
+\bottomrule
+\end{tabular}
+
+}
+\end{table}
+
+\subsection{Comparison on Ad Campaign}
+The number of affected individuals in the test set for the Ad campaign dataset is 273,773. We first split the affected individuals on the set of affected males $D_{1}$ and the set of affected females $D_{0}$ based on the gender attribute. The number of subgroups formed by running fp-growth with support threshold $1\%$ on $D_{1}$ and on $D_{0}$ and computing their intersection is 1,432.  
+Our fairness metrics will evaluate and rank these subgroups based on the actions applied.
+
+\begin{table}[ht]
+\caption{Ranking Analysis in Ad Campaign}
+  \label{table:analysis-Adcampaing}
+  \centering
+\resizebox{\columnwidth}{!}{
+\begin{tabular}{lrrr}
+\toprule
+{} &  \multirow{1}{*}{\thead{\# Most Unfair\\ Subgroups}}  &  \multirow{1}{*}{\thead{\# Subgroups w.\ Bias against Males\\(in Top 10\% Unfair Subgroups)}} &  \multirow{1}{*}{\thead{\# Subgroups w.\ Bias against Females\\(in Top 10\% Unfair Subgroups)}} \\ \\
+% {} &  \multirow{1}{*}{\thead{(Rank = 1 Count)}}  & \multirow{1}{*}{\thead{(Top 10\% Male bias against Count)}} &  \multirow{1}{*}{\thead{Top 10\% Female bias against Count}} \\ \\ 
+\midrule
+(Equal Cost of Effectiveness(Macro), 0.3)  &             427 &                                                     0 &                                 44 \\
+(Equal Cost of Effectiveness(Macro), 0.7)  &             264 &                                                        0 &                                 26 \\
+(Equal Choice for Recourse, 0.3)           &               2 &                       1                               0 &                                 66 \\
+(Equal Choice for Recourse, 0.7)           &             384 &                                                        0 &                                 39 \\
+Equal Effectiveness                        &              15 &                                                      0 &                                123 \\
+(Equal Effectiveness within Budget, 1.0)   &               1 &                                                      0 &                                 42 \\
+(Equal Effectiveness within Budget, 5.0)   &              10 &                                                      0 &                                114 \\
+(Equal Cost of Effectiveness(Micro), 0.3)  &             427 &                                                       0 &                                 44 \\
+(Equal Cost of Effectiveness(Micro), 0.7)  &             264 &                                                        0 &                                 26 \\
+Equal(Conditional Mean Recourse)           &             108 &                                                      9 &                                 74 \\
+(Fair Effectiveness-Cost Trade-Off, value) &              15 &                                                      0 &                                128 \\
+
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\begin{table}[ht]
+\caption{Aggregated Rankings in Ad Campaign}
+  \label{table:aggregated-Adcampaing}
+  \centering
+\resizebox{\columnwidth}{!}{
+\begin{tabular}{lrrrrrrrrrrr}
+\toprule
+{} &  \multirow{3}{*}{\thead{(Equal Cost\\of Effectiveness\\(Macro), 0.3)}}  &  \multirow{3}{*}{\thead{(Equal Cost\\of Effectiveness\\(Macro), 0.7)}} &  \multirow{2}{*}{\thead{(Equal Choice\\for Recourse, 0.3)}} &  \multirow{2}{*}{\thead{(Equal Choice\\for Recourse, 0.7)}} &  \multirow{2}{*}{\thead{Equal\\Effectiveness}} &  \multirow{4}{*}{\thead{(Equal\\ Effectiveness\\ within\\ Budget, 1.0)}} &  \multirow{4}{*}{\thead{(Equal\\ Effectiveness\\ within\\ Budget, 5.0)}} &  \multirow{3}{*}{\thead{(Equal Cost\\ of Effectiveness\\(Micro), 0.3)}} &  \multirow{3}{*}{\thead{(Equal Cost\\ of Effectiveness\\(Micro), 0.7)}} &  \multirow{2}{*}{\thead{Equal(Conditional\\ Mean Recourse)}} &  \multirow{3}{*}{\thead{(Fair\\Effectiveness-Cost\\Trade-Off, value)}} \\ \\ \\ \\
+\midrule
+(Equal Cost of Effectiveness(Macro), 0.3)  &                                         - &                                       0.7 &                            0.483 &                              0.6 &               0.167 &                                      1.0 &                                    0.276 &                                      0.25 &                                       0.7 &                            0.487 &                                      0.154 \\
+(Equal Cost of Effectiveness(Macro), 0.7)  &                                      0.25 &                                         - &                             0.35 &                            0.333 &               0.082 &                                      1.0 &                                     0.21 &                                      0.25 &                                       0.5 &                            0.506 &                                      0.079 \\
+(Equal Choice for Recourse, 0.3)           &                                      0.25 &                                       1.0 &                                - &                              1.0 &                0.73 &                                      1.0 &                                      1.0 &                                      0.25 &                                       1.0 &                            0.037 &                                      0.338 \\
+(Equal Choice for Recourse, 0.7)           &                                       0.5 &                                      0.65 &                            0.333 &                                - &               0.296 &                                    0.851 &                                    0.385 &                                       0.5 &                                      0.65 &                            0.566 &                                      0.273 \\
+Equal Effectiveness                        &                                      0.25 &                                       0.5 &                            0.333 &                            0.333 &                   - &                                      1.0 &                                    0.205 &                                      0.25 &                                       0.5 &                            0.002 &                                      0.001 \\
+(Equal Effectiveness within Budget, 1.0)   &                                       1.0 &                                       1.0 &                              1.0 &                              1.0 &               0.714 &                                        - &                                    0.671 &                                       1.0 &                                       1.0 &                            0.305 &                                      0.395 \\
+(Equal Effectiveness within Budget, 5.0)   &                                      0.25 &                                       0.5 &                            0.333 &                            0.333 &               0.001 &                                      1.0 &                                        - &                                      0.25 &                                       0.5 &                            0.002 &                                      0.001 \\
+(Equal Cost of Effectiveness(Micro), 0.3)  &                                      0.25 &                                       0.7 &                            0.483 &                              0.6 &               0.167 &                                      1.0 &                                    0.276 &                                         - &                                       0.7 &                            0.487 &                                      0.154 \\
+(Equal Cost of Effectiveness(Micro), 0.7)  &                                      0.25 &                                       0.5 &                             0.35 &                            0.333 &               0.082 &                                      1.0 &                                     0.21 &                                      0.25 &                                         - &                            0.506 &                                      0.079 \\
+Equal(Conditional) Mean Recourse           &                                     0.525 &                                      0.75 &                             0.65 &                              0.7 &                0.25 &                                      1.0 &                                    0.408 &                                     0.525 &                                      0.75 &                                - &                                      0.267 \\
+(Fair Effectiveness-Cost Trade-Off, value) &                                      0.25 &                                       0.5 &                            0.333 &                            0.333 &               0.001 &                                      1.0 &                                    0.205 &                                      0.25 &                                       0.5 &                            0.002 &                                          - \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+
+
+
+\begin{comment}
+\section{Submission of papers to NeurIPS 2022}
+
+
+Please read the instructions below carefully and follow them faithfully.
+
+
+\subsection{Style}
+
+
+Papers to be submitted to NeurIPS 2022 must be prepared according to the
+instructions presented here. Papers may only be up to {\bf nine} pages long,
+including figures. Additional pages \emph{containing only acknowledgments and
+references} are allowed. Papers that exceed the page limit will not be
+reviewed, or in any other way considered for presentation at the conference.
+
+
+The margins in 2022 are the same as those in 2007, which allow for $\sim$$15\%$
+more words in the paper compared to earlier years.
+
+
+Authors are required to use the NeurIPS \LaTeX{} style files obtainable at the
+NeurIPS website as indicated below. Please make sure you use the current files
+and not previous versions. Tweaking the style files may be grounds for
+rejection.
+
+
+\subsection{Retrieval of style files}
+
+
+The style files for NeurIPS and other conference information are available on
+the World Wide Web at
+\begin{center}
+  \url{http://www.neurips.cc/}
+\end{center}
+The file \verb+neurips_2022.pdf+ contains these instructions and illustrates the
+various formatting requirements your NeurIPS paper must satisfy.
+
+
+The only supported style file for NeurIPS 2022 is \verb+neurips_2022.sty+,
+rewritten for \LaTeXe{}.  \textbf{Previous style files for \LaTeX{} 2.09,
+  Microsoft Word, and RTF are no longer supported!}
+
+
+The \LaTeX{} style file contains three optional arguments: \verb+final+, which
+creates a camera-ready copy, \verb+preprint+, which creates a preprint for
+submission to, e.g., arXiv, and \verb+nonatbib+, which will not load the
+\verb+natbib+ package for you in case of package clash.
+
+
+\paragraph{Preprint option}
+If you wish to post a preprint of your work online, e.g., on arXiv, using the
+NeurIPS style, please use the \verb+preprint+ option. This will create a
+nonanonymized version of your work with the text ``Preprint. Work in progress.''
+in the footer. This version may be distributed as you see fit. Please \textbf{do
+  not} use the \verb+final+ option, which should \textbf{only} be used for
+papers accepted to NeurIPS.
+
+
+At submission time, please omit the \verb+final+ and \verb+preprint+
+options. This will anonymize your submission and add line numbers to aid
+review. Please do \emph{not} refer to these line numbers in your paper as they
+will be removed during generation of camera-ready copies.
+
+
+The file \verb+neurips_2022.tex+ may be used as a ``shell'' for writing your
+paper. All you have to do is replace the author, title, abstract, and text of
+the paper with your own.
+
+
+The formatting instructions contained in these style files are summarized in
+Sections \ref{gen_inst}, \ref{headings}, and \ref{others} below.
+
+
+\section{General formatting instructions}
+\label{gen_inst}
+
+
+The text must be confined within a rectangle 5.5~inches (33~picas) wide and
+9~inches (54~picas) long. The left margin is 1.5~inch (9~picas).  Use 10~point
+type with a vertical spacing (leading) of 11~points.  Times New Roman is the
+preferred typeface throughout, and will be selected for you by default.
+Paragraphs are separated by \nicefrac{1}{2}~line space (5.5 points), with no
+indentation.
+
+
+The paper title should be 17~point, initial caps/lower case, bold, centered
+between two horizontal rules. The top rule should be 4~points thick and the
+bottom rule should be 1~point thick. Allow \nicefrac{1}{4}~inch space above and
+below the title to rules. All pages should start at 1~inch (6~picas) from the
+top of the page.
+
+
+For the final version, authors' names are set in boldface, and each name is
+centered above the corresponding address. The lead author's name is to be listed
+first (left-most), and the co-authors' names (if different address) are set to
+follow. If there is only one co-author, list both author and co-author side by
+side.
+
+
+Please pay special attention to the instructions in Section \ref{others}
+regarding figures, tables, acknowledgments, and references.
+
+
+\section{Headings: first level}
+\label{headings}
+
+
+All headings should be lower case (except for first word and proper nouns),
+flush left, and bold.
+
+
+First-level headings should be in 12-point type.
+
+
+\subsection{Headings: second level}
+
+
+Second-level headings should be in 10-point type.
+
+
+\subsubsection{Headings: third level}
+
+
+Third-level headings should be in 10-point type.
+
+
+\paragraph{Paragraphs}
+
+
+There is also a \verb+\paragraph+ command available, which sets the heading in
+bold, flush left, and inline with the text, with the heading followed by 1\,em
+of space.
+
+
+\section{Citations, figures, tables, references}
+\label{others}
+
+
+These instructions apply to everyone.
+
+
+\subsection{Citations within the text}
+
+
+The \verb+natbib+ package will be loaded for you by default.  Citations may be
+author/year or numeric, as long as you maintain internal consistency.  As to the
+format of the references themselves, any style is acceptable as long as it is
+used consistently.
+
+
+The documentation for \verb+natbib+ may be found at
+\begin{center}
+  \url{http://mirrors.ctan.org/macros/latex/contrib/natbib/natnotes.pdf}
+\end{center}
+Of note is the command \verb+\citet+, which produces citations appropriate for
+use in inline text.  For example,
+\begin{verbatim}
+   \citet{hasselmo} investigated\dots
+\end{verbatim}
+produces
+\begin{quote}
+  Hasselmo, et al.\ (1995) investigated\dots
+\end{quote}
+
+
+If you wish to load the \verb+natbib+ package with options, you may add the
+following before loading the \verb+neurips_2022+ package:
+\begin{verbatim}
+   \PassOptionsToPackage{options}{natbib}
+\end{verbatim}
+
+
+If \verb+natbib+ clashes with another package you load, you can add the optional
+argument \verb+nonatbib+ when loading the style file:
+\begin{verbatim}
+   \usepackage[nonatbib]{neurips_2022}
+\end{verbatim}
+
+
+As submission is double blind, refer to your own published work in the third
+person. That is, use ``In the previous work of Jones et al.\ [4],'' not ``In our
+previous work [4].'' If you cite your other papers that are not widely available
+(e.g., a journal paper under review), use anonymous author names in the
+citation, e.g., an author of the form ``A.\ Anonymous.''
+
+
+\subsection{Footnotes}
+
+
+Footnotes should be used sparingly.  If you do require a footnote, indicate
+footnotes with a number\footnote{Sample of the first footnote.} in the
+text. Place the footnotes at the bottom of the page on which they appear.
+Precede the footnote with a horizontal rule of 2~inches (12~picas).
+
+
+Note that footnotes are properly typeset \emph{after} punctuation
+marks.\footnote{As in this example.}
+
+
+\subsection{Figures}
+
+
+\begin{figure}
+  \centering
+  \fbox{\rule[-.5cm]{0cm}{4cm} \rule[-.5cm]{4cm}{0cm}}
+  \caption{Sample figure caption.}
+\end{figure}
+
+
+All artwork must be neat, clean, and legible. Lines should be dark enough for
+purposes of reproduction. The figure number and caption always appear after the
+figure. Place one line space before the figure caption and one line space after
+the figure. The figure caption should be lower case (except for first word and
+proper nouns); figures are numbered consecutively.
+
+
+You may use color figures.  However, it is best for the figure captions and the
+paper body to be legible if the paper is printed in either black/white or in
+color.
+
+
+\subsection{Tables}
+
+
+All tables must be centered, neat, clean and legible.  The table number and
+title always appear before the table.  See Table~\ref{sample-table}.
+
+
+Place one line space before the table title, one line space after the
+table title, and one line space after the table. The table title must
+be lower case (except for first word and proper nouns); tables are
+numbered consecutively.
+
+
+Note that publication-quality tables \emph{do not contain vertical rules.} We
+strongly suggest the use of the \verb+booktabs+ package, which allows for
+typesetting high-quality, professional tables:
+\begin{center}
+  \url{https://www.ctan.org/pkg/booktabs}
+\end{center}
+This package was used to typeset Table~\ref{sample-table}.
+
+
+\begin{table}
+  \caption{Sample table title}
+  \label{sample-table}
+  \centering
+  \begin{tabular}{lll}
+    \toprule
+    \multicolumn{2}{c}{Part}                   \\
+    \cmidrule(r){1-2}
+    Name     & Description     & Size ($\mu$m) \\
+    \midrule
+    Dendrite & Input terminal  & $\sim$100     \\
+    Axon     & Output terminal & $\sim$10      \\
+    Soma     & Cell body       & up to $10^6$  \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+
+\section{Final instructions}
+
+
+Do not change any aspects of the formatting parameters in the style files.  In
+particular, do not modify the width or length of the rectangle the text should
+fit into, and do not change font sizes (except perhaps in the
+\textbf{References} section; see below). Please note that pages should be
+numbered.
+
+
+\section{Preparing PDF files}
+
+
+Please prepare submission files with paper size ``US Letter,'' and not, for
+example, ``A4.''
+
+
+Fonts were the main cause of problems in the past years. Your PDF file must only
+contain Type 1 or Embedded TrueType fonts. Here are a few instructions to
+achieve this.
+
+
+\begin{itemize}
+
+
+\item You should directly generate PDF files using \verb+pdflatex+.
+
+
+\item You can check which fonts a PDF files uses.  In Acrobat Reader, select the
+  menu Files$>$Document Properties$>$Fonts and select Show All Fonts. You can
+  also use the program \verb+pdffonts+ which comes with \verb+xpdf+ and is
+  available out-of-the-box on most Linux machines.
+
+
+\item The IEEE has recommendations for generating PDF files whose fonts are also
+  acceptable for NeurIPS. Please see
+  \url{http://www.emfield.org/icuwb2010/downloads/IEEE-PDF-SpecV32.pdf}
+
+
+\item \verb+xfig+ "patterned" shapes are implemented with bitmap fonts.  Use
+  "solid" shapes instead.
+
+
+\item The \verb+\bbold+ package almost always uses bitmap fonts.  You should use
+  the equivalent AMS Fonts:
+\begin{verbatim}
+   \usepackage{amsfonts}
+\end{verbatim}
+followed by, e.g., \verb+\mathbb{R}+, \verb+\mathbb{N}+, or \verb+\mathbb{C}+
+for $\mathbb{R}$, $\mathbb{N}$ or $\mathbb{C}$.  You can also use the following
+workaround for reals, natural and complex:
+\begin{verbatim}
+   \newcommand{\RR}{I\!\!R} %real numbers
+   \newcommand{\Nat}{I\!\!N} %natural numbers
+   \newcommand{\CC}{I\!\!\!\!C} %complex numbers
+\end{verbatim}
+Note that \verb+amsfonts+ is automatically loaded by the \verb+amssymb+ package.
+
+
+\end{itemize}
+
+
+If your file contains type 3 fonts or non embedded TrueType fonts, we will ask
+you to fix it.
+
+
+\subsection{Margins in \LaTeX{}}
+
+
+Most of the margin problems come from figures positioned by hand using
+\verb+\special+ or other commands. We suggest using the command
+\verb+\includegraphics+ from the \verb+graphicx+ package. Always specify the
+figure width as a multiple of the line width as in the example below:
+\begin{verbatim}
+   \usepackage[pdftex]{graphicx} ...
+   \includegraphics[width=0.8\linewidth]{myfile.pdf}
+\end{verbatim}
+See Section 4.4 in the graphics bundle documentation
+(\url{http://mirrors.ctan.org/macros/latex/required/graphics/grfguide.pdf})
+
+
+A number of width problems arise when \LaTeX{} cannot properly hyphenate a
+line. Please give LaTeX hyphenation hints using the \verb+\-+ command when
+necessary.
+
+
+\begin{ack}
+Use unnumbered first level headings for the acknowledgments. All acknowledgments
+go at the end of the paper before the list of references. Moreover, you are required to declare
+funding (financial activities supporting the submitted work) and competing interests (related financial activities outside the submitted work).
+More information about this disclosure can be found at: \url{https://neurips.cc/Conferences/2022/PaperInformation/FundingDisclosure}.
+
+
+Do {\bf not} include this section in the anonymized submission, only in the final paper. You can use the \texttt{ack} environment provided in the style file to autmoatically hide this section in the anonymized submission.
+\end{ack}
+
+
+\section*{References}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\end{comment}
+
+\end{document}

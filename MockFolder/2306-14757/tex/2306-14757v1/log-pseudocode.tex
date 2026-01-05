@@ -1,0 +1,174 @@
+\begin{algorithm}
+  \caption{\system implementation with validity predicates $\mathcal{P}, \mathcal{Q}$.}
+  \label{alg:bbca-log}
+  \scriptsize
+
+  \label{alg:sb-impl-pt1}
+  \begin{algorithmic}[1]
+    \Implements
+      \State \primitivelog \textsc{\logsmall}, executed by process $p$.
+    \EndImplements
+    \Uses
+      \State \primitive
+      \State Validated Byzantine Total Order Broadcast, \textsc{vbtob}
+    \EndUses
+    
+    \Parameters
+    	\State $\numprocesses$
+      	\Comment{Number of nodes}
+      	\State $\numfaults$
+      	\Comment{Maximum number of faulty nodes}
+     	\State $N$
+     	\Comment{Set of all $\numprocesses$ nodes}
+      	\State $\Delta$ 
+      	\Comment{Progress timeout period}
+		\State $pid\gets 0$
+		\Comment{\primitive identifier for node $p$}
+		\State \textit{log}
+		\Comment{Map of blocks per sot number}
+		\State \textit{toFinalize}$\gets\{\}$
+      	\Comment{Map of boolean values per slot number}
+      	\State \textit{unreferrenced}$\gets\emptyset$
+      	\Comment{Set of blocks previously not referenced by some block} 
+      	\State \textit{firstUncommitted}$\gets 0$
+		\Comment{First uncommitted log slot number}
+		\State \textit{finalized}$\gets\emptyset$
+		\Comment{Set of finalized blocks}	
+		\State \textit{toFinalize}$\gets\emptyset$
+		\Comment{Set of (seq no, blocks) tuples pending finalization}	
+    \EndParameters
+    
+    \Struct{Block}
+      \State sender\Comment{Validator who proposes the block}
+      \State command \Comment{Block metadata}
+      \State predecessors \Comment{Block references}
+      \State payload \Comment{Transaction references}
+    \EndStruct
+
+	\UponEvent{\init()}
+		\State $T_f.\operatorname{reset}(\Delta)$
+		\Comment{timer with duration $\Delta$ for the first not uncommitted slot}
+	\EndUponEvent
+	
+	\UponEvent{\propose(b)}
+		\State $\operatorname{propose}(b,\bot)$
+	\EndUponEvent
+	
+	\UponEvent{\bbcadeliver(\_, sn, b)}
+		\State $\operatorname{finalize}(sn, b)$
+		\If{$b\notin$\textit{unreferrenced}}
+			\State\textit{unreferrenced}$\gets \{b\}\cup$\textit{unreferrenced}
+		\EndIf
+	\EndUponEvent
+	
+    \UponEvent{log[\operatorname{\textit{firstUncommitted}}] \neq None}
+        \State $b\gets\log[\operatorname{\textit{firstUncommitted}}]$
+        \If{$b\neq\bot$}
+        	\ForAll{b'}{\operatorname{traverse}(b)}
+				\State \textbf{trigger} \commit($b'$)
+			\EndForAll
+		\EndIf
+        \State $T_f.\operatorname{reset}(\Delta)$
+        \State \textit{firstUncommitted} $\gets$\textit{firstUncommitted}$+1$
+   	\EndUponEvent
+	
+	\UponEvent{T_f.\operatorname{timeout}}
+		\State\textbf{trigger} \bbcaabort(\textit{firstUncommitted})
+		\State $T_f.\operatorname{reset}(\Delta)$
+		\State \textit{firstUncommitted}$\gets$\textit{firstUncommitted}$+1$
+		\While{log[\operatorname{\textit{firstNotTimedOut}}] \neq None}
+			\State \textit{firstUncommitted}$\gets$\textit{firstUncommitted}$+1$
+		\EndWhile
+	\EndUponEvent
+	
+  \algstore{log}
+  \end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}
+    \scriptsize
+    \ContinuedFloat
+    \begin{algorithmic}[1]
+    \algrestore{log}
+    
+	\UponEvent{\bbcaannounce(sn, b, C_R, \mathcal{Q})}
+		\State $b'.\operatorname{payload}\gets$ payload()
+		\State $\operatorname{propose}(b', [\finalize,sn, b, C_R])$
+	\EndUponEvent
+	
+	\State\textbf{upon event} $\bbcadeliver(\_, \_, b)$ \textbf{such that} $b$.{command}$=[\finalize,sn', b', C_R]$	\textbf{do}
+		\State\hskip\algorithmicindent\textbf{if} \textit{toFinalize} $[sn'][q]=\bot$ \textbf{then}
+		\State\hskip\algorithmicindent\hskip\algorithmicindent\textit{toFinalize}$[sn'][q]\gets sn', b', C_R $
+		\State\hskip \algorithmicindent\textbf{end if}
+	\\
+	
+	\UponExists{(id,sn,b)}{|\{p\in N | \operatorname{\textit{toFinalize}}[sn][p]=(sn,b,C_R)\}|>2f}
+		\State $\mathcal{C}\gets$ \textit{toFinalize}$[sn]$
+		\State \textbf{if exists} $(sn,m,C_R)\in$ \textit{toFinalize}$[sn]$ \textbf{such that} $C_R\neq\emptyset$ \textbf{then}
+		\State \hskip \algorithmicindent \textbf{trigger} $\bcpropose([sn, m,\mathcal{C}], \mathcal{Q})$
+		\State{\textbf{else}}
+		\State \hskip \algorithmicindent \textbf{trigger} $\bcpropose([sn,\bot,\mathcal{C}], \mathcal{Q})$
+		\State{\textbf{end if}}
+	\EndUponExists
+	
+	\UponEvent{\bcdecide(sn, b)}
+		\If{$b=\bot$}
+			\State \textit{log}$[sn]\gets b$	
+			\State \textbf{return}
+		\EndIf
+		\State $\textit{toFinalize}\gets\{b\}\cup(b.\operatorname{predecessors}\setminus\textit{finalized})\cup\textit{toFinalize}$
+	\EndUponEvent
+	
+	\UponExists{b\in\textit{toFinalize}}{b.\operatorname{predecessors}\in\textit{finalized}}
+		\State \textbf{trigger} $\bbcadeliver(\_, sn, b)$
+	\EndUponExists
+	
+		
+	\UponEvent{\bbcacast(\_, sn, b)}
+		\ForAll{b'}{b.\operatorname{predecessors}}
+			\If{$b'\notin\textit{finalized}$}
+				\State\textbf{trigger} $\operatorname{timeout}(sn,b)$ \textbf{ after } $\Delta$ 
+			\EndIf
+		\EndForAll
+	\EndUponEvent
+	
+	\UponEvent{\operatorname{timeout}(sn,b)}
+			\If{$b\notin\textit{finalized}$}
+				\State\textbf{trigger} $\bbcaabort(sn)$ 
+			\EndIf
+	\EndUponEvent
+	
+	\Function{propose}{b, c}
+		\State $id\gets p||pid$
+		\State $pid\gets pid+1$
+		\State $sn\gets$ next()
+		\State $R\gets$ unreferrenced
+		\State unreferrenced$\gets\emptyset$
+		\State $b.\operatorname{sender}, b.\operatorname{command}, b.\operatorname{predecessors}
+				\gets p, c, R$
+		\State \textbf{trigger} \bbcacast($id, sn, b, \mathcal{P}$)
+	\EndFunction
+	
+	\FunctionNoArgs{payload}{}
+		\State returns the next batch of transaction references, possibly empty
+	\EndFunctionNoArgs
+	
+	\FunctionNoArgs{next}{}
+		\State returns the next $sn$ which $p$ is assigned
+	\EndFunctionNoArgs
+	 
+	\Function{traverse}{p}
+		\State traverses a graph with root $p$ and returns a list of its nodes in a deterministic order
+	\EndFunction
+	
+	\Function{finalize}{sn, b}
+		\State $\textit{finalized}\gets\{b\}\cup\textit{finalized}$
+		\If{$sn\neq\emptyslot$}
+			\State \textit{log}$[sn]\gets b$	
+			\State \textbf{trigger} \eagercommit($b'$)
+		\EndIf
+	\EndFunction
+	\caption{\system implementation (continues).}	
+	\label{alg:sb-impl-pt2}
+  \end{algorithmic}
+\end{algorithm}

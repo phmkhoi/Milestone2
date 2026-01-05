@@ -1,0 +1,48 @@
+\section{Introduction}
+\vspace{-1ex}
+
+Molecular conformer generation (MCG) is a fundamental task in computational chemistry. The objective is to predict stable low-energy 3D molecular structures, known as conformers. 
+Accurate molecular conformations are crucial for a wide range of applications that depend on precise spatial and geometric qualities, including drug discovery and protein docking.
+In traditional physics-based methods, there is a trade-off between speed and accuracy. Quantum mechanical methods, such as CREST \citep{CREST}, are accurate but computationally slow, while stochastic cheminformatics-based methods like RDKit EKTDG~\citep{rdkit} provide more efficient but less accurate results.
+As the difficulty of computing low-energy structures increases with the number of atoms and rotatable bonds in a molecule, there has been interest in developing machine learning (ML) methods to generate efficient and accurate conformer predictions.
+
+\begin{figure}[t]
+\centering
+    \includegraphics[width=\textwidth]{figures/figure2.png}
+    \vspace{-10pt}
+    \caption{\textbf{Coarse-grained prediction task.} \textbf{(I)} Fine-grain molecules are split along rotatable bonds that define torsion angles. They are then coarse-grained to reduce the dimensionality and learn a subgraph-level latent distribution. \textbf{(II)} Illustration of the autoregressive decoder message passing parameterization and learning objective. We autoregressively learn the optimal distortion, \ie\ distance from the reference molecule. 
+    Due to equivariance, the reference is not aligned during generation.
+     }
+    \label{fig:novelty}
+    \vspace{-5pt}
+\end{figure}
+Prior generative models have shown success in the current benchmarks used to evaluate the accuracy of conformer predictions~\citep{mit_background}. 
+However, current benchmarks~\citep{CVGAE} are problematic as for a molecule with $L$ known conformers, they measure the minimum error of the best conformer out of a model-generated set of size $2L$. 
+We contend that this is an inherently flawed metric, as by failing to penalize a success rate or validity of $\frac{1}{2L}$, prior benchmarks do not accomplish their goal of assessing a model's accuracy and ability to generalize. Poor model performance is essentially masked out as long as one good conformer exists.
+Furthermore, molecules could have \emph{many} conformers. Only measuring the best error to a single conformer is not comprehensive, as not all conformers are likely to appear in the real world.
+Additionally, despite knowing the error associated with the optimal conformer, even determining the optimal conformer among the available $2L$ options without prior knowledge of the ideal structure remains a considerable challenge. 
+Thus, these metrics are not fully informative as to whether current models will be useful for downstream tasks such as protein docking, which depends on highly accurate 3D structures.
+In this work, we further discuss the implications of these flaws and provide new comprehensive metrics as a step towards better-measuring model performance.
+We also show that by applying a built-in relatively inexpensive force field optimization, RDKit, an open-source cheminformatics software, predominantly outperforms prior state-of-the-art methods, especially on our new metrics.
+
+Our improved metrics also serve as motivation for improving conformer generative modeling at an architectural level.
+To this end, we introduce \modelns, an SE(3)-equivariant hierarchical VAE that pools information from fine-grain atomic coordinates to a coarse-grain subgraph level representation for efficient autoregressive conformer generation. 
+Coarse-graining reduces the dimensionality of the problem allowing conditional autoregressive generation rather than generating all coordinates independently, as done in prior work.
+By directly conditioning on the 3D coordinates of prior generated subgraphs, our model better generalizes across chemically and spatially similar subgraphs. 
+This mimics the underlying molecular synthesis process, in which small functional units bond together to form large drug-like molecules. Unlike prior methods, \model generates low-energy conformers with the ability to model atomic coordinates, distances, and torsion angles directly. 
+
+Our main contributions are as follows:
+
+\begin{itemize}
+ 
+\item We present \modelns, a novel conditional hierarchical VAE. \model learns a coarse-grained subgraph-level latent distribution for efficient SE(3)-equivariant autoregressive conformer generation.
+Our coarse-graining strategy allows \model to learn optimal torsional angles implicitly.
+To our knowledge, this is the first method to use coarse-graining in the context of MCG and the first to explore 3D autoregressive techniques for MCG.
+
+\item \model is the first model capable of handling variable-length coarse-to-fine generation using an aggregated attention strategy. Prior coarse-to-fine methods~\citep{CGVAE} require the number of coarse-grain beads to be fixed for all input molecules and focused on the task of coarse-to-fine backmapping.
+
+\item We predominantly outperform prior methods on GEOM-QM9 and GEOM-DRUGS evaluation benchmarks \citep{GEOM}. We do so while requiring less training time, 2\% the total training iterations, and 59\% and 92.7\% less data compared to prior state-of-the-art for QM9 and DRUGS, respectively.
+
+\item We enhance the existing benchmarks for conformer generation by incorporating direct measurements of average and maximum root mean square deviation (RMSD) across the set of generated conformers for each molecule. These new metrics provide a more comprehensive assessment of a model's ability to generate robust conformations, as they evaluate the quality of all generated samples, not just the best ones.
+Here, robust refers to the consistent generation of high-quality conformers.
+\end{itemize}

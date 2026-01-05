@@ -1,0 +1,87 @@
+
+\section{Experiments}
+We evaluate \dslr{} on 3 diverse datasets including an industrial and an urban dataset using 5 baselines that show strong modeling performance on LiDAR for static reconstruction. We show quantitative results depicting the accuracy of the reconstruction in Table \ref{tab:carlaresults} and qualitative results for movable and moving object segmentation in Figure \ref{fig:movable-first}, \ref{fig:ati-moving-movable} and \ref{fig:movable-second}.
+We also show the benefit of predicted static structures on navigation in Table \ref{tab:slamresults}.
+
+\subsection{Datasets}
+\textbf{ARD-16}: ARD-16 is a real-world industrial  LiDAR dataset collected using a 16-beam VLP-Puck LiDAR sensor. It has paired correspondence information available. This dataset is challenging because it is 4$\times$ sparse compared to the other datasets. It has very few points falling on static structures as well as on dynamic objects. This makes it challenging to learn the features of dynamic and static objects. For training and testing \dslr{} on ARD-16, we follow the protocol mentioned at (\citet{dslr-git}).\\
+\textbf{KITTI}: We use KITTI (\citet{geiger2012we}) dataset to demonstrate that our model works well in the absence of correspondence information. For KITTI, less than 7\% of the available scans are static scans without any correspondence information available. Therefore, we are not able to use standard metrics like Chamfer's Distance for static translation evaluation. We resort to LiDAR Quality Index (LQI) which positively correlates with Chamfer's Distance and has been used in such scenarios (\citet{kumar2021dynamic}). More details in Section \ref{metrics}. \\
+ \textbf{CARLA-64} : CARLA-64 is extensive dataset collected using CARLA simulator (\citet{Dosovitskiy17}). It is collected using the settings of VLP-64 Velodyne LiDAR on a virtual city map. One of the motivation behind using CARLA is the availability of paired correspondence between static and dynamic scans. Such paired dataset collection has been shown to be viable and easy in urban as well as industrial settings at a fraction of the cost, time and man power required for the annotation of segmentation information (\citet{kumar2021dynamic}). We perform our experiments on the latest version of the dataset and follow the train/test protocol mentioned at (\citet{dslr-git}). 
+ 
+ All the three datasets have significant pattern variation in among their sequences. This variation is introduced by dynamic objects - pedestrians, cars, bicycles, trucks, vans. Due to the presence of multiple dynamic objects, correspondence pairs for CARLA-64 and ARD-16 also have significant variation.
+
+
+\subsection{Experimental Setup}
+
+We give the details of the experimental setup for static reconstruction using \dslr{}. All models are trained on an NVIDIA RTX-3090Ti GPU. \dslr{} is trained for 1500 epochs, using a batch size of 64 with RMS optimizer. We use a DCGAN-based generator and a MLP-based discriminator. The learning rate is initialized to 1e-4 for the network. \dslruda{} is initialized with CARLA-64 pre-trained weights and is trained for 600 epochs using similar model parameters as above. 
+
+
+\dslr{} acts as a preprocessing step on LiDAR scans before they used for downstream tasks. We use Google Cartographer (\citet{hess2016real}), a well known LiDAR-based SLAM algorithm to test the LiDAR sequences. The experiments are run on Intel(R) Core(TM) i5-271
+4590 CPU @ 3.30GHz processor with 16 GB of RAM using ROS Noetic Distro.  The inference time for a single LiDAR scan for our model is 5ms which allows it to work in real time. 
+
+
+\subsection{Baselines}
+
+\subsubsection{Baselines for Static LiDAR Reconstruction }
+\label{baseline-recon}
+
+We choose models that have shown impressive performance on the problem of static scene reconstruction for LiDAR, images without using segmentation labels and on the problem of shape completion for point clouds. It is accepted in literature (\citet{bescos2019empty}) that learning based methods outperform non-learning based methods. We do not use LiDARGen, NeRF-LiDAR, Ultra-LiDAR as baselines due to reasons explained in Section \ref{related}.
+The following methods show reasonable to strong performance on LiDAR for our task. Thus, we use them as our baselines: 
+1). \CacciaAE{} (C-AE) 2). \CacciaGAN{} (C-GAN) \cite {caccia2018deep} 3). \Coarse{}  (C-NET) \cite{wang2022coarse} 4). \siv{} (S-INV) \cite{zhang2021unsupervised} 5). \ds{} \cite{kumar2021dynamic}. For details on these baselines, please refer to Appendix - Section 1.
+
+
+\subsubsection{Baselines for Navigation Evaluation}
+\label{baseline-slam-eval}
+
+We compare the performance of \dslr{} on navigation against segmentation-free as well as segmentation-based baselines.
+
+
+For segmentation-free settings, we choose the model from Section \ref{baseline-recon} which generates the best static reconstruction, as our baseline. We use the generated static reconstructions that replace the dynamic objects in LiDAR.
+ 
+\dslr{} operate in segmentation information free settings. For the purpose of having a better insight, we also attempt a comparison of \dslr{}'s with settings where segmentation information is available. We compare \dslr{} against a strong segmentation-based method - KITTI-Seg in Table \ref{tab:kitti-seg-all}.  KITTI-Seg utilizes groundtruth semantic segmentation information to remove the dynamic objects from the KITTI sequences. We show these results on KITTI dataset because of the availability of KITTI semantic segmentation information.
+
+
+\subsection{Evaluation Metrics}
+\label{metrics}
+\subsubsection{Static Reconstruction Evaluation}
+\label{metrics}
+We use Chamfer Distance (\citet{fan2017point}) and Earth Mover's Distance (\citet{emd-cd}) to evaluate the closeness of the reconstructed static scans to the corresponding original static LiDAR scans for CARLA-64 and ARD-16. For KITTI, we adopt the LQI metric. We provide the details of these baselines below -
+
+\textbf{Earth Mover's Distance}: The Earth Mover's Distance between two given point clouds $PC_1$ and $PC_2$ calculates the least amount of work requires to transform one to the another.
+    Formally, it can be written as
+    \begin{equation}
+    \begin{split}
+        =\min _{\phi: PC_{1} \longrightarrow PC_{2}} \sum_{x \in PC_{1}}\|x-\phi(x)\|_{2}
+            \end{split}
+        \end{equation}
+        Here, $\phi$ represents a bijective mapping between $PC_{1}$ and $PC_{2}$. 
+    To calculate EMD between the two point clouds  we require a mapping that minimizes the above term. Calculating EMD is computationally expensive as it requires both point clouds to have an equal number of points.
+
+
+\textbf{Chamfer's Distance}: Given 2 set of points clouds $PC_1$ and $PC_2$, Chamfer's Distance can be expressed as 
+        \begin{equation}
+            \begin{split}
+          =\sum_{x1 \in PC_{1}} \min _{x2 \in PC_{2}}\|x1-x2\|_{2}^{2}+\sum_{x2 \in PC_{2}} \min _{x1 \in PC_{1}}\|x1-x2\|_{2}^{2}
+          \end{split}
+        \end{equation}
+    The approach involves identifying the closest point in $PC_2$ for each point in $PC_1$ and vice versa, and adding the obtained distances. Unlike EMD,  it allows a single point in $PC_1$ to map to multiple points in $PC_1$, and vice versa. As a result, the two point clouds may have different numbers of points.
+
+
+
+\textbf{LiDAR Quality Index}:
+LiDAR Quality Index (LQI) is a metric that measures the level of noise in a LiDAR scan. It is based on  work done on No-Reference Image Quality Assessment where the visual quality of an image is evaluated without any reference image or knowledge of the distortions present in the image (\citet{kang2014convolutional}).  It is based on the assumption that LiDAR data follows a certain distribution and dynamic objects are patterns of external noise in that distribution. A lower LQI score indicates that the scan is closer to a static scan and has no noise. This metric is particularly useful in measuring the quality of reconstructed static KITTI scans when groundtruth static KITTI scans are not available. LQI has a positive correlation with Chamfer's distance.
+ (\citet{kumar2021dynamic}) state that scans taken in a static environment have lower values for both Chamfer's Distance and LQI compared to scans taken in dynamic environments. It suggests that scans with lower LQI scores have less dynamic movement and are closer to scans taken in a static environment. For more details on LQI, please refer to Appendix - Section 2.
+
+
+\subsubsection{Navigation Evaluation Metrics}
+We compare the pose-estimates/trajectories generated by Google Cartographer using the reconstructed static LiDAR structures, with the ground truth pose estimates using 2 widely used metrics - Absolute Trajectory Error (ATE)  and Relative Pose Error (RPE).
+
+
+\textbf{Absolute Trajectory Error}: 
+ATE is used for measuring the overall global consistency between two trajectories. It focuses on measuring the difference between the translation components of the two trajectories. This is accomplished in two steps - \textbf{(1)} Aligning the coordinate frames for both trajectories \cite{horn1987closed} and \textbf{(2)} Comparing the absolute distances between the translational components of the individual pose estimates of both the trajectories. 
+
+
+\textbf{Relative Pose Error}: 
+RPE is used to determine the amount of drift present in a trajectory \textit{w.r.t.} a ground truth trajectory, locally. It is robust against the globally accumulated error. It measure the discrepancy between the estimated and ground truth trajectories over a specified time interval ($\delta$).  By using $n$ poses, we compute $m$ individual RPE values (\textit{m = n }- $\delta$), which are aggregated to calculate the overall error for the trajectory. RPE takes into account both the translational and rotational components of the trajectory.
+
+For further information on the metrics, please refer to the Sturm et. al.\cite{sturm2012benchmark}.

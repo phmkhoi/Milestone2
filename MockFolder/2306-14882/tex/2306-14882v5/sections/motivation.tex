@@ -1,0 +1,60 @@
+
+\section{Motivation}
+
+\subsection{Utility of Shared Memory}
+\label{sec:motivsharedmem}
+
+In all commercial enclave platforms, shared memory serves as the primary communication primitive for crucial mechanisms including input/output/message passing, networking \cite{costan2016intel, kaplan2016amd}, or access to large public data structures that exceed private memory capacity (e.g., public neural network for private inference as in Section \ref{sec:evalprivateinference}).
+Other isolation primitives like containers and trusted VMs also dependent on shared memory to efficiently chain micro-services\cite{sabbioni2021shared, qi2022spright} or to implement mechanisms like VirtIO \cite{IntelVirtIO}.
+Alternative approaches such as message passing or DMA copy mechanisms are limited to passing small inputs or to sequential memory accesses, making it overly complex to do tasks such as accessing a linked list of inputs or doing random memory accesses, for example, accessing a database using ORAM \cite{signalcontact}.
+For instance, MI6 briefly mentions a mailbox mechanism which demands application rewrites, limits message sizes to a few bytes, and incurs substantial overheads due to two data copies and two full microarchitectural context switches for each message.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\columnwidth]{figures/AttackSpecter.pdf}
+    \caption{Universal Read Gadget Through Shared Memory}
+    \label{fig:specter_attack}
+\end{figure}
+
+\subsection{Universal Read Gadget Through Shared Memory}
+\label{sec:attackandexisting}
+Shared memory enables LLC side channels and Spectre-like attacks. 
+We demonstrate a proof-of-concept variant Spectre-PHT or v1 \cite{kocher2018spectre} attack on our insecure FPGA baseline, exfiltrating \emph{arbitrary} private enclave memory via the shared LLC side channel (see Figure \ref{fig:specter_attack}).
+Note that this insecure baseline is also vulnerable to other Spectre variants like BTB, RSB or STL \cite{canella2019systematic, wiebing2024inspectre, barberis2022branch, koruyeh2018spectre, maisuradze2018ret2spec, horn2018speculative}.
+The victim enclave exposes an API allowing access to a public array, with out-of-bounds accesses protected by a branch.
+The value fetched from the first array is used to access a second array located in shared memory, effectively leaking the first value through the cache side channel.
+This creates a ``universal read gadget,'' commonly found in code \cite{wiebing2024inspectre, johannesmeyer2022kasper, qi2021spectaint, canella2019systematic}.
+By training the branch predictor, a malicious OS can perform speculative out-of-bounds accesses, leaking arbitrary enclave secrets.
+In particular, shared-memory content (encrypted or not) is irrelevant, as information is leaked through which address is accessed.
+The code for our attack is available in our repository.
+We were unable to successfully mount the attack on our final secure design.
+
+\subsection{Going Beyond the Sandboxing and Constant-Time Scenario}
+\label{sec:beyondsandboxing}
+\noindent\textbf{Sandboxing Scenario}
+Many existing defense mechanisms against TES attacks such as STT~\cite{yu2019speculative, jauch2023secure} or SpecShield~\cite{barber2019specshield} try to enforce ``speculative memory safety'' or ``speculative isolation'', that is, to enforce the \emph{sandbox isolation model}~\cite{cheang2019formal, narayan2021swivel, qi2021spectaint, shen2018restricting, jenkins2020ghostbusting, oleksenko2020specfuzz, kirzner2021analysis, yu2020speculative, narayan2023going, behrens2020efficiently}.
+Sandboxing is an isolation primitive that aims to protect the rest of a system from a malicious program.
+This is a \emph{much weaker} threat model than enclaves that aim to \emph{also protect the isolated program}.
+Specifically, the mechanisms in this scenario often assume that the architectural state of the isolated program is \emph{public} and is \emph{not} protected against TES attacks.
+As a result, these mechanisms are not the best candidate building blocks for isolating \emph{sensitive} programs that \emph{touch secrets}, therefore to address \prob{}.
+\\
+
+\noindent\textbf{Constant Time Scenario}
+Other proposals, such as Prospect \cite{daniel2023prospect} or SPT \cite{choudhary2021speculative} and others~\cite{barthe2021high, cauligi2020constant, daniel2021hunting, guanciale2020inspectre, guarnieri2020spectector, patrignani2021exorcising, vassena2021automatically} only target \emph{constant-time programs}.
+This is a very important problem to solve but only concerns a subset of programs, namely cryptographic algorithms written in a very specific constant time fashion~\cite{almeida2016verifying}.
+This also makes these mechanisms overkill to specifically address \prob{}.
+No programmer will rewrite operating systems (in the case of trusted VM), Python libraries, data analysis pipelines, or business logic using constant-time programming.
+Citadel focuses on defining a speculative security property and building defense mechanisms for the majority of \emph{security-sensitive} programs, which are \emph{not} implemented using constant time and do \emph{not} aim for leakage-free execution times (see Section \ref{sec:execution_time_SC}).
+\\
+
+\noindent\textbf{Speculative Non-Interference is Too Restrictive}
+\label{sec:limitationsspecsec}
+Existing hardware defenses studied under the hardware-contract framework only target the two above scenarios.
+They use one of two \emph{strong} leakage models, each defining a lot of architectural state as public.
+The \emph{constant-time} model (\sw{ct} for short) makes public the trace of the \texttt{pc} (i.e. the control flow) and the trace of all memory accesses (but not their values).
+The \emph{architectural} or \emph{sandboxing} model (\sw{arch}) extends the \sw{ct} model to include the \emph{values} of elements loaded from memory. 
+Figure~\ref{figure:guarantees} shows how the resulting contracts relate to each other.
+Working with these strong leakage models strongly restricts the class of programs that can be run without exposing secrets (i.e., programs that satisfy those contracts), and only works in the above-mentioned scenarios.
+This makes these leakage models, along with any associated speculative security properties, too strong to address \prob{} efficiently.
+This includes properties such as speculative constant time, (weak) speculative non-interference, and others.
+A summary of all these properties can be found in the SoK by Cauligi et. al.~\cite{cauligi2022sok}.

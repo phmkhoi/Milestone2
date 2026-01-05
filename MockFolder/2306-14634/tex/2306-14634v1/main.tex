@@ -1,0 +1,575 @@
+\documentclass[10pt,journal]{IEEEtran}
+\usepackage{graphicx}
+% \usepackage[backend=biber,style=ieee,]{biblatex}
+% \addbibresource{mybib.bib}
+\usepackage{algorithmic}
+\usepackage{algorithm}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+% \usepackage{caption}
+% \usepackage{mathtools}
+% \usepackage{scalerel}
+% \usepackage{enumitem}
+\theoremstyle{plain}
+\newtheorem{dfn}{Definition}
+\newtheorem{theo}{Theorem}
+\usepackage{color}
+% \usepackage[hang,small,bf]{caption}
+% \usepackage[subrefformat=parens]{subcaption}
+% \captionsetup{compatibility=false}
+
+\usepackage{booktabs}
+\usepackage{multirow}
+
+% \makeatletter
+% \renewcommand{\thealgorithm}{%
+% \thesection.\arabic{algorithm}}
+% \@addtoreset{algorithm}{section}
+
+% \usepackage{jabbrv}
+% \DefineJournalAbbreviation{IEEE Transactions on Signal Processing}{IEEE Trans Signal Process}  
+% % IEEE Transactions on Signal Processing
+% % \DefineJournalAbbreviation{on}{} 
+% \DefineSpuriousJournalWord{on}
+
+% \renewcommand{\bibfont}{\tiny}
+
+\DeclareMathAlphabet\mathbfcal{OMS}{cmsy}{b}{n}
+\newcommand{\argmin}{\mathop{\rm argmin}\limits}
+\newcommand{\varx}{\mathbf{x}}
+\newcommand{\vary}{\mathbf{c}}
+\newcommand{\gft}{\mathbf{u}}
+\newcommand{\Tau}{\scalerel*{\tau}{X}}
+% \captionsetup[figure]{labelsep=period,font=normalsize,labelfont=bf}
+\global\long\def\ParamFRSet{\epsilon}
+\global\long\def\FRSet{E_{\ParamFRSet}}
+\global\long\def\SampM{\mathbf{S}}
+\global\long\def\DualZ{\mathbf{Z}}
+\global\long\def\DCw{\mathbf{Z}}
+\global\long\def\hpf{\mathbf{F}}
+\global\long\def\hpb{\mathbf{A}}
+\global\long\def\W{\mathbf{W}}
+\global\long\def\svdhpb{\mathbf{Z}}
+\global\long\def\numV{|\mathcal{V}|}
+\global\long\def\numS{K}
+\global\long\def\Step{t}
+\global\long\def\ParamLBall{\varepsilon}
+\global\long\def\LBall{B_{F,\ParamLBall}}
+\global\long\def\ourmethod{\textit{Great Method}}
+\global\long\def\ourmethods{\textit{Great Method} }
+\global\long\def\ouralgo{\textit{Great Algorithm}}
+\global\long\def\ouralgos{\textit{Great Algorithm} }
+\global\long\def\ParamDCA{\gamma}
+\global\long\def\proj#1{\mathcal{P}_{#1}}
+\global\long\def\rankAS{r}
+
+\global\long\def\VarDC{\mathbf{X}}
+
+\makeatletter
+\def\bstctlcite{\@ifnextchar[{\@bstctlcite}{\@bstctlcite[@auxout]}}
+\def\@bstctlcite[#1]#2{\@bsphack
+	\@for\@citeb:=#2\do{%
+		\edef\@citeb{\expandafter\@firstofone\@citeb}%
+		\if@filesw\immediate\write\csname #1\endcsname{\string\citation{\@citeb}}\fi}%
+	\@esphack}
+\makeatother
+
+%\setlength{\voffset}{-2.0cm}
+%\setlength{\hoffset}{-1cm}
+
+% %\let\keptmaketitle\maketitle %<------------ADDED THIS LINE
+% \usepackage[%
+%  % dvipdfmx,% active only for Japanese
+%  setpagesize=false,%
+%  bookmarks=true,%
+%  bookmarksdepth=tocdepth,%
+%  bookmarksnumbered=true,%
+%  colorlinks=false,%
+%  pdftitle={},%
+%  pdfsubject={},%
+%  pdfauthor={},%
+%  pdfkeywords={}%
+% ]{hyperref}
+% %\let\maketitle\keptmaketitle %<------------ADDED THIS LINE
+% \hypersetup{pdfauthor={Name}}
+\usepackage{cite}
+
+\begin{document}
+\bstctlcite{IEEEexample:BSTcontrol}
+	
+	\title{Graph Signal Sampling Under Smoothness Priors: A Difference-of-Convex Approach}
+	
+	\author{Shunsuke~Ono,~\IEEEmembership{Member,~IEEE,}
+        Kazuki~Naganuma,~\IEEEmembership{Student Member,~IEEE,}
+        and~Keitaro~Yamashita,~\IEEEmembership{Student Member,~IEEE}
+		\thanks{Manuscript received xx xxx. 20xx; revised xx xxx. 20xx; accepted xx xxx. 20xx. Date of publication xx xxx. 20xx; date of current version xx xxx. 20xx. This work was supported in part by JST PRESTO under Grant JPMJPR21C4 and JST AdCORP under Grant JPMJKB2307, and in part by JSPS KAKENHI under Grant 22H03610, 22H00512, and 23H01415.
+
+		Shunsuke Ono is with Department of Computer Science, School of Computing, Tokyo Institute of Technology, Yokohama, Kanagawa 226-8503, Japan (E-mail: ono@c.titech.ac.jp).
+		
+		Digital Object Identifier xx.xxxx/SPL.20xx.xxxxxxx}}
+	
+	
+	% The paper headers
+	\markboth{IEEE Signal Processing Letters, VOL. xx, NO. x, xxxxxxxxx 20xx}%
+	{Shell \MakeLowercase{\textit{et al.}}: Bare Demo of IEEEtran.cls for Journals}
+	
+	\IEEEtitleabstractindextext{%
+		\begin{abstract}
+This paper proposes a method for properly sampling graph signals under smoothness priors. Unlike many existing approaches that assume bandlimited graph signals, our method designs a sampling operator for graph signals that are not necessarily bandlimited based on the generalized sampling theory. First, we formulate the sampling operator design under smoothness priors as a feasibility problem. Then, we transform this problem into a Difference-of-Convex (DC) problem by relaxing a certain invertibility constraint in the original problem using the nuclear norm. Furthermore, we develop an efficient algorithm to solve this DC problem based on the proximal linearized difference-of-convex algorithm and guarantee its convergence to a critical point of the problem. Finally, we demonstrate the effectiveness of our method for several graph signal models through sampling-and-reconstruction experiments.
+	\end{abstract}
+		
+		% Note that keywords are not normally used for peerreview papers.
+		\begin{IEEEkeywords}
+		graph signal processing, generalized sampling theory, smoothness priors, difference-of-convex algorithm.
+	\end{IEEEkeywords}}
+	
+	
+	% make the title area
+	\maketitle
+	
+	\IEEEdisplaynontitleabstractindextext
+	\IEEEpeerreviewmaketitle
+
+\section{Introduction} 
+\IEEEPARstart{G}{raph} Signal Processing (GSP) is the umbrella term for a new framework for analyzing data modeled as signals on graph vertices. Currently, GSP is an active research topic in the field of signal processing, and a wide range of research has been conducted, from theoretical methods to applications; for an overview of the GSP field, see e.g.,~\cite{Shuman2013Emerging,sandryhaila2013discrete,Ortega2018Graph}.
+
+One of the fundamental technologies in the GSP field is \textit{graph signal sampling}~\cite{Chen2015Discrete,Tanaka2020Sampling}.
+The major difference between conventional and graph signal sampling is the lack of regular sampling patterns in the latter. For this reason, research extending Shannon-Nyquist sampling theory to graph signals has dominated, with most existing methods focusing on bandlimitedness with respect to graph frequencies, e.g., \cite{Chen2015Discrete,marques2015sampling,Anis2016Efficient,tsitsvero2016signals,valsesia2018sampling,tanaka2018spectral,puy2018random,Sakiyama2019Eigendecomposition,bai2020fast,Jayawant2022Practical}. In the real world, however, there is a wide variety of data that can be viewed as graph signals, but they are often \textit{not} bandlimited. This means that these methods may not perform as desired when applied to real-world problems.
+
+To properly sample and reconstruct graph signals beyond bandlimitedness, the authors of \cite{Chepuri2018GraphSamp} provided a direction for expanding the \textit{generalized sampling} theory~\cite{Elder2009Beyond,Eldar2015sampling}, which samples signals under subspace, smoothness, or stochastic priors, to graph signals.
+This pioneering work paved the way for generalized sampling methods for graph signals in the \textit{graph frequency domain}, leading to one under smoothness and subspace priors~\cite{Tanaka2020GenSamp}, and the other under stochastic priors~\cite{Hara2023Graph}.
+
+ While generalized sampling in the graph frequency domain is elegant, it also has inherent limitations, so \textit{vertex-domain} generalized sampling methods have also been studied. In~\cite{Hara2022GSSS}, the authors proposed such a sampling method under arbitrary signal priors (subspace, smoothness, and stochastic). This method is based on a greedy algorithm and can only generate \textit{vertex-wise} samples (after applying a local graph filter). Although this is a natural sampling strategy in the vertex domain, it can lead to a decrease in reconstruction accuracy due to bias in the graph region where the selected samples are located. In~\cite{Hara2021Design}, the authors proposed a more \textit{flexible} vertex-domain generalized sampling method for the case of subspace priors, in the sense that it allows mixing nonlocal signal values to generate samples.
+
+As reviewed above, flexible generalized sampling in the vertex domain has only been considered under subspace priors. Meanwhile, as will be shown in more detail in the next section, smoothness priors are characterized by linear operators that measure the variation of graph signals, and are thus easier to apply to real data than other types of priors that require the exact knowledge of subspaces or stochastic models, as also noted in~\cite{Eldar2015sampling,Tanaka2020GenSamp}. In fact, smooth graph signals appear in a variety of applications, such as earth observation, social networks, mesh processing, and imaging technologies~\cite{ono2015total,onuki2016graph,dong2016learning,zare2020fusing,Saboksayr2021learning,takemoto2022graph,Yamagata2021recovery,Yamagata2022Robust,einizade2023joint}. Therefore, the establishment of a \textit{flexible vertex-domain generalized sampling method under smoothness priors} has great potential to expand the range of applications of graph signal sampling.
+
+In this paper, we propose a method for properly sampling graph signals under smoothness priors based on the generalized sampling theory. Our contributions are listed as follows:
+\begin{itemize}
+\item Formulate the sampling operator design under smoothness priors as a feasibility problem with a invertibility constraint derived from the generalized sampling theory.
+\item Transform the original feasibility problem into a tractable difference-of-convex (DC) problem by relaxing the invertibility constraint using the nuclear norm.
+\item Develop an efficient algorithm based on the \textit{Proximal Linearized Difference-of-Convex algorithm} (PLDC)~\cite{Souza2016PLDC} to solve the DC problem with guaranteed convergence.
+\end{itemize}
+Finally, we demonstrate the effectiveness of our method through sampling-and-reconstruction experiments on several types of graph signals.
+
+
+\section{Preliminaries}
+\subsection{Notation and Definitions}
+Bold lowercase and uppercase letters represent vectors and matrices, respectively. The $\ell_2$ norm of a vector is denoted by $\| \cdot \|$. We use $A_{ij}$ to represent the element in the $i$th row and $j$th column of a matrix $\mathbf{A}$. The transpose and adjoint of $\mathbf{A}$ are denoted as $\mathbf{A}^\top$ and $\mathbf{A}^*$, respectively. 
+The inner product of two matrices $\mathbf{A}$ and $\mathbf{B}$ is denoted by $\langle \mathbf{A}, \mathbf{B} \rangle := \sum_{i}\sum_{j}A_{i,j}B_{i,j}$,
+and the Frobenius norm of $\mathbf{A}$ by $\|\mathbf{A}\|_{F} := \sqrt{\langle \mathbf{A}, \mathbf{A} \rangle}$.
+The indicator function of a set $C$, denoted by $\iota_C (\mathbf{x})$, is defined such that $\iota_C (\mathbf{x}) = 0$ when $\mathbf{x} \in C$, and $\iota_C (\mathbf{x}) = \infty$ otherwise.
+
+In this paper, we consider a weighted undirected graph $\mathcal{G} = (\mathcal{V, E})$, where $\mathcal{V}$ and $\mathcal{E}$ represent the sets of vertices and edges, respectively. The number of vertices is denoted by $|\mathcal{V}|$, and a graph signal on $\mathcal{G}$ by $\varx \in\mathbb{R}^{\numV}$.
+
+\subsection{Generalized Sampling of Graph Signals}\label{sec:gs}
+In this section, we briefly outline the generalized sampling theory~\cite{Eldar2015sampling,Tanaka2020GenSamp,Tanaka2020Sampling} on which our method is based. Note that this theory basically assumes a situation where the sampling method is predetermined.
+
+First, a graph signal $\varx$ is sampled by a given sampling operator $\SampM^{\top} \in \mathbb{R}^{\numS \times \numV} (\numS<\numV)$, and the resulting sample vector is denoted by $\vary = \SampM^{\top}\varx\in\mathbb{R}^{\numS}$. Then, it is filtered by the correction operator $H(\mathbf{Q}): \mathbb{R}^{\numS \times \numS} \mapsto \mathbb{R}^{\numS \times \numS}$. We refer to $\mathbf{Q}$, derived from some signal prior, as the prior operator. Finally, the reconstructed signal $\tilde\varx$ from the filtered samples is obtained via the reconstruction operator $\mathbf{W} \in \mathbb{R}^{\numV \times \numS}$, i.e.,
+\begin{equation}
+\label{reconstruction}
+\tilde{\varx} = \mathbf{W}H(\mathbf{Q})\vary = \mathbf{W}H(\mathbf{Q})\mathbf{S}^{\top}\varx .
+\end{equation}
+Thus, the reconstruction problem boils down to the problem of finding the optimal $H(\mathbf{Q})$ (and $\mathbf{W}$ if not predefined) under the assumed prior. This framework encompasses a variety of sampling-and-reconstruction scenarios, including the bandlimited case (see \cite{Tanaka2020Sampling} for details). 
+
+\subsubsection{Smoothness Priors in Generalized Sampling}
+We will look in detail at how Eq.~\eqref{reconstruction} is realized in the case of smoothness priors. Specifically, we assume that the signal $\varx$ is smooth in the following sense:
+$\|\hpf\varx\|\leq\sigma$,
+where $\hpf\in\mathbb{R}^{\numV\times\numV}$ is an invertible operator that quantifies the variation of $\varx$. Since exact subspaces or stochastic models are often not available for real-world applications, smoothness priors are less restrictive than the other types of priors.
+In the following, we consider the situation where $\mathbf{W}$ is not predefined, which is referred to as the \textit{unconstrained case}~\cite{Eldar2015sampling} and thus $\mathbf{W}$ is also determined together with $H(\mathbf{Q})$.
+
+Suppose that $\mathbf{S}^{\top}$ is given, the design of $H(\mathbf{Q})$ and $\mathbf{W}$ is typically based on the least squares (LS) or the minimax (MX) criteria, and we only show the former one as follows because the MX solution coincides with the LS one in the unconstrained case.
+\begin{dfn}[Least squares (LS) criterion~\cite{Eldar2015sampling}]
+The LS criterion aims to minimize the error-in-sample, which can be expressed as follows:
+\begin{equation}\label{LS}
+\tilde{\varx} = \argmin_{\varx \in \{\varx\;|\SampM^\top\varx = \mathbf{c}\}} \|\hpf\varx\|^2,
+\end{equation}
+\end{dfn}
+Then, through the general form in \eqref{reconstruction}, the solution to \eqref{LS} is given with the following $\mathbf{W}$, $\mathbf{Q}$, and $H(\mathbf{Q})$~\cite{Eldar2015sampling,Hara2022GSSS}:
+\begin{align}
+\mathbf{W} &= \mathbf{Q} = (\hpf^*\hpf)^{-1}\SampM,\label{Q}\\
+H(\mathbf{Q}) &= (\mathbf{S^{\top}Q})^{-1}.\label{HQ}
+\end{align}
+%Clearly, the DS condition, i.e., the invertibility of $\SampM^\top\mathbf{Q}$ appears. 
+Note that $\mathbf{S^{\top}Q}$ is not always invertible, and for such cases the inversion in \eqref{HQ} is replaced by the Moore–Penrose pseudo inverse. Also, if $\varx$ lies in the columun space of $\mathbf{W}$, the perfect reconstruction is possible~\cite{Eldar2015sampling}.
+
+\subsection{Proximal Linearized Difference-of-Convex Algorithm}
+We consider \textit{difference-of-convex} minimization (DC) problems of the form:
+\begin{equation}
+    \label{prob:DC_general}
+    \min_{\VarDC} f(\VarDC) := g(\VarDC) - h(\VarDC),
+\end{equation}
+where $g:\mathbb{R}^{m\times n}\rightarrow (-\infty, \infty]$ and $h:\mathbb{R}^{m\times n}\rightarrow \mathbb{R}$ are proper lower-semicontinuous convex functions. We note that the domain of $h$ is assumed to be $\mathbb{R}^{m\times n}$ so as to avoid the objection function taking $-\infty$ or $\infty-\infty$~\cite{zhang2023inexact}.
+
+First, we introduce the \textit{proximity operator} of $g$ with a parameter $\gamma > 0$ as follows: 
+\begin{align}
+    &\mathrm{prox}_{\gamma g}:\mathbb{R}^{m\times n}\rightarrow\mathbb{R}^{m\times n}:\mathbf{Y}\mapsto\nonumber\\
+    &\argmin_{\mathbf{X}} g(\mathbf{X}) + \frac{1}{2\gamma} \| \mathbf{Y} - \mathbf{X} \|_{F}^{2}.    \label{eq:prox_g}
+\end{align}
+We also define the \textit{subdifferential}
+% \footnote{The subdifferential is a generalization of the gradient of a smooth function, i.e., $\partial h=\{\nabla h\}$ if $h$ is smooth.}
+of $h$ by
+\begin{align}
+    & \partial h:\mathbb{R}^{m\times n}\rightarrow 2^{\mathbb{R}^{m\times n}}:\mathbf{X}\mapsto  \nonumber \\
+    & \{ \mathbf{U} \in \mathbb{R}^{m\times n} \: | \: \forall \mathbf{Y} \in \mathbb{R}^{m\times n}, \langle \mathbf{Y} - \mathbf{X}, \mathbf{U} \rangle + h(\mathbf{X}) \leq h(\mathbf{Y}) \}.
+    \label{eq:subdiff}
+\end{align}
+
+Then, the proximal linearized difference-of-convex algorithm (PLDC)~\cite{Souza2016PLDC} solves Prob.~\eqref{prob:DC_general} by the following procedures: for a given $\gamma>0$, iterate
+\begin{equation}
+    \label{eq:DCA}
+    \left\lfloor
+    \begin{array}{l}
+        \mbox{Find } \DCw^{(\Step)} \in \partial h(\VarDC^{(\Step)}); \\
+        \VarDC^{(\Step + 1)} \leftarrow \mathrm{prox}_{\gamma g}(\VarDC^{(\Step)} + \ParamDCA\DCw^{(\Step)});\\
+        \Step \leftarrow \Step + 1;
+    \end{array}
+    \right..
+\end{equation}
+We summarize the theoretical results for the convergence of PLDC as follows:
+\begin{theo}[Convergence of the sequence generated by PLDC~\cite{Souza2016PLDC}]
+\label{theo:convergence_PLDC}
+Let $\{\mathbf{X}^{(t)}\}_{t\in\mathbb{N}}$ and $\{\mathbf{Z}^{(t)}\}_{t\in\mathbb{N}}$ be generated by Algorithm~\eqref{eq:DCA}. Then, $\lim_{t\rightarrow+\infty}\|\mathbf{X}^{(t+1)}-\mathbf{X}^{(t)}\|=0$. Furthermore, suppose that $\{\mathbf{X}^{(t)}\}_{t\in\mathbb{N}}$ is bounded, and let $\mathbf{X}^*$ and $\mathbf{Z}^*$ be cluster-points of $\{\mathbf{X}^{(t)}\}_{t\in\mathbb{N}}$ and $\{\mathbf{Z}^{(t)}\}_{t\in\mathbb{N}}$, respectively. Then every cluster-point of $\{\mathbf{X}^{(t)}\}_{t\in\mathbb{N}}$ is a critical point of the function $f$ in Prob.~\eqref{prob:DC_general}, i.e., $\mathbf{Z}^*\in \partial g(\mathbf{X}^*)\cap\partial h(\mathbf{X}^*)$.
+\end{theo}
+
+\section{Proposed Method}
+As explained in Sec.~\ref{sec:gs}, the generalized sampling theory assumes a situation where the sampling operator $\SampM^\top$ is given in advance (e.g., it is determined by hardware), and thus it provides no guidance on how to design $\SampM$ specifically. On the other hand, in the case of graph signal sampling, the key issue is to properly design $\SampM$. To this end, we formulate the design problem under smoothness priors as a feasibility problem, and reformulate and relax it into a DC problem. Then, we develop an efficient algorithm based on PLDC to solve it.
+
+\subsection{Problem Formulation}
+Suppose that the $\mathbf{W}$ and $H(\mathbf{Q})$ are given as~\eqref{Q} and \eqref{HQ}, respectively, and consider the problem to design an appropriate $\SampM$ that fits the reconstruction procedure in~\eqref{reconstruction}. Then, a promising strategy would be to \textit{find $\SampM$ for which $\SampM^\top\mathbf{Q}=\mathbf{S}^\top\left(\hpf^*\hpf\right)^{-1}\mathbf{S}$ is invertible}. This is because the best possible reconstruction can be achieved by an invertible $\SampM^\top\mathbf{Q}$, as also addressed in \cite{Hara2022GSSS}.
+
+Now, the question is how to design such $\SampM$. To answer this, we first formulate the sampling operator design problem as the following feasibility problem:
+\begin{align}\label{prob:org}
+    \mbox{find }\SampM\mbox{ s.t. }
+    \begin{cases}
+    \|\SampM\|_F\leq\varepsilon,\\
+    \mathbf{S}^\top\left(\hpf^*\hpf\right)^{-1}\mathbf{S} \mbox{ is invertible},
+    \end{cases}
+\end{align}
+where the first constraint is introduced to prevent the absolute values of the elements of the sampling operator from becoming too large, allowing stable sampling within the $\varepsilon>0$ radius of the Frobenius norm. However, the second constraint is very difficult to handle, so we need some relaxation to this original problem.
+
+To begin with, we give another expression of this constraint.
+Let us define the singular value decomposition (SVD) of $\hpf$ as $\hpf = \mathbf{U}_{\hpf} \mathbf{\Sigma}_{\hpf} \mathbf{V}_{\hpf}^{*}$,
+% \begin{equation}
+% \hpf = \mathbf{U}_{\hpf} \mathbf{\Sigma}_{\hpf} \mathbf{V}_{\hpf}^{*},
+% \end{equation}
+where $\mathbf{U_\hpf}$ and $ \mathbf{\Sigma_\hpf}$ are the unitary matrices composed of the left and right singular vectors, respectively, and $\mathbf{\Sigma}_{\hpf}$ is a diagonal matrix with its diagonal entries containing the singular values.
+By noting $\hpf$ is invertible, an easy calculation yields
+\begin{align}
+    \mathbf{S}^\top\left(\hpf^*\hpf\right)^{-1}\mathbf{S}
+    &= \mathbf{S}^\top\mathbf{V}_{\hpf}\mathbf{\Sigma}_{\hpf}^{-2}\mathbf{V}_{\hpf}^{*}\mathbf{S} = (\hpb\mathbf{S})^\top\hpb\mathbf{S},
+\end{align}
+where
+\begin{equation}
+\hpb := {\mathbf{\Sigma}}_{\hpf}^{-1}\mathbf{V}_{\hpf}^{*}\in\mathbb{R}^{\numV \times \numV}.
+\end{equation}
+Then, one can see that $\mathbf{S}^\top\left(\hpf^*\hpf\right)^{-1}\mathbf{S}$ is invertible if and only if $\hpb\SampM\in\mathbb{R}^{\numV\times\numS}$ has full-column rank, i.e., $\mathrm{rank}(\hpb\SampM) = K$.
+Using this expression, Prob.~\eqref{prob:org} is rewritten as follows:
+\begin{align}\label{prob:org2}
+    \mbox{find }\SampM\mbox{ s.t. }
+    \begin{cases}
+    \SampM\in B_{F,\varepsilon}:=\{\mathbf{X}\;|\|\mathbf{X}\|_F\leq\varepsilon\},\\
+    \mathrm{rank}(\hpb\SampM) = K.
+    \end{cases}
+\end{align}
+% where
+% \begin{equation}
+% B_{F,\varepsilon}:=\{\mathbf{X}\;|\|\mathbf{X}\|_F\leq\varepsilon\}.
+% \end{equation}
+
+Prob.~\eqref{prob:org2} is still intractable due to the equal rank constraint, and so we relax the problem into the following constrained convex \textit{maximization} problem:
+\begin{align}\label{prob:org3}
+    \max_{\SampM} \|\hpb\SampM\|_* \mbox{ s.t. }
+    \SampM\in B_{F,\varepsilon},
+\end{align}
+where $\|\cdot\|_*$ is the nuclear norm of a matrix, which is defined by the sum of all the singular values and is known as a tightest convex envelope of the rank function~\cite{fazel2002matrix}.
+Then, by introducing the indicator function of $B_{F,\varepsilon}$, i.e., $\iota_{B_{F,\varepsilon}}$, and reversing maximization to mininimization, we can finally reformulate Prob.~\eqref{prob:org3} into the following form:
+\begin{align}\label{prob:prop}
+    \min_{\SampM} \iota_{B_{F,\varepsilon}}(\SampM) - \|\hpb\SampM\|_*.
+\end{align}
+Since the indicator function of a nonempty closed convex set and the nuclear norm are proper lower-semicontiunous convex functions, this problem can be seen as \textit{minimizing of the difference of two convex functions}.
+
+\begin{algorithm}[H]
+    \caption{Proposed sampling operator Design Algorithm}
+    \label{algo:PLDC}
+    \begin{algorithmic}[1]
+    \renewcommand{\algorithmicrequire}{\textbf{Input:}}
+    \renewcommand{\algorithmicensure}{\textbf{Output:}}
+    \REQUIRE $ \SampM^{(0)}, \varepsilon>0, \gamma>0, \mathbf{T} \mbox{ such that }\sigma_{1}(\mathbf{T}) \leq 1$
+    \WHILE{ until a stopping criterion is satisfied}
+    \STATE $[\mathbf{U}_{r}\:|\:\mathbf{U}_{o}], \mathbf{\Sigma}, [\mathbf{V}_{r}\:|\:\mathbf{V}_{o}] \leftarrow \mathrm{SVD}(\hpb\SampM^{(\Step)})$;
+    \STATE $ \DCw^{(\Step)} \leftarrow \hpb^{\top} (\mathbf{U}_{r}\mathbf{V}_{r}^{\top} + \mathbf{U}_{o}\mathbf{T}\mathbf{V}_{o}^{\top}$);
+    \STATE $ \SampM^{(\Step+1)} \leftarrow \proj{B_{F,\varepsilon}}\left( \SampM^{(\Step)} + \gamma \DCw^{(\Step)}\right)$ by ~\eqref{eq:proj_Fball};
+    \STATE $ \Step \leftarrow \Step+1 $;
+    \ENDWHILE
+    \ENSURE $\SampM^{(\Step)}$
+    \end{algorithmic}
+\end{algorithm}
+\vspace{-0.5cm}
+
+
+\begin{figure*}[!t]
+    \begin{center}
+    % \begin{tabular}{cc}
+      % \multicolumn{2}{|c|}
+      \begin{minipage}[t]{0.135\hsize}
+        \centering
+        \includegraphics[width=\hsize]{01GMRF/01original.pdf}
+      \end{minipage} 
+      \begin{minipage}[t]{0.135\hsize}
+        \centering
+        \includegraphics[width=\hsize]{01GMRF/07NLDP.pdf}
+      \end{minipage}
+      \begin{minipage}[t]{0.135\hsize}
+        \centering
+        \includegraphics[width=\hsize]{01GMRF/06SP.pdf}
+      \end{minipage} 
+   \begin{minipage}[t]{0.135\hsize}
+        \centering
+        \includegraphics[width=\hsize]{01GMRF/05FSSS.pdf}
+      \end{minipage} 
+      \begin{minipage}[t]{0.135\hsize}
+        \centering
+        \includegraphics[width=\hsize]{01GMRF/04AVM.pdf}
+      \end{minipage} 
+      \begin{minipage}[t]{0.135\hsize}
+        \centering
+        \includegraphics[width=\hsize]{01GMRF/03GSSS.pdf}
+      \end{minipage} 
+      \begin{minipage}[t]{0.135\hsize}
+        \centering
+        \includegraphics[width=\hsize]{01GMRF/02proposed.pdf}
+      \end{minipage} 
+   \vspace{0.1cm}
+   
+      \begin{minipage}[t]{0.135\hsize}
+        \centering \vspace*{-0.4cm} 
+        \small{(a1) Original \\ MSE} \vspace*{0.1cm}
+      \end{minipage} 
+      \begin{minipage}[t]{0.135\hsize}
+        \centering \vspace*{-0.4cm}
+        \small{(b1) NLPD~\cite{Chen2015Discrete}} \\ 0.1494 \vspace*{0.1cm}
+      \end{minipage} 
+      \begin{minipage}[t]{0.135\hsize}
+        \centering \vspace*{-0.4cm}
+        \small{(c1) SP~\cite{Anis2016Efficient}} \\ 0.1078
+      \end{minipage} 
+      \begin{minipage}[t]{0.135\hsize}
+        \centering \vspace*{-0.4cm}
+        \small{(d1) FSSS~\cite{Sakiyama2019Eigendecomposition}} \\ 0.1043 \vspace*{0.1cm}
+      \end{minipage} 
+      \begin{minipage}[t]{0.135\hsize}
+        \centering \vspace*{-0.4cm}
+        \small{(e1) AVM~\cite{Jayawant2022Practical}} \\ 0.1170 \vspace*{0.1cm}
+      \end{minipage} 
+      \begin{minipage}[t]{0.135\hsize}
+        \centering \vspace*{-0.4cm}
+        \small{(f1) GSSS~\cite{Hara2022GSSS}} \\ 0.1012 \vspace*{0.1cm}
+      \end{minipage} 
+      \begin{minipage}[t]{0.135\hsize}
+        \centering \vspace*{-0.4cm}
+        \small{(g1) \textbf{Proposed\\0.0604}} \vspace*{0.1cm}
+      \end{minipage} 
+      \vspace{0.1cm}
+   % GMRF: mse_p: 0.060439 mse_h: 0.10124 mse_avm: 0.11698 mse_s: 0.10431 mse_opt: 0.10777 mse_chen: 0.14943
+   
+      \begin{minipage}[t]{0.135\hsize}
+        \centering
+        \includegraphics[width=\hsize]{02PWL/01original.pdf}
+      \end{minipage} 
+      \begin{minipage}[t]{0.135\hsize}
+        \centering
+        \includegraphics[width=\hsize]{02PWL/07NLDP.pdf}
+      \end{minipage}
+      \begin{minipage}[t]{0.135\hsize}
+        \centering
+        \includegraphics[width=\hsize]{02PWL/06SP.pdf}
+      \end{minipage} 
+      \begin{minipage}[t]{0.135\hsize}
+        \centering
+        \includegraphics[width=\hsize]{02PWL/05FSSS.pdf}
+      \end{minipage} 
+      \begin{minipage}[t]{0.135\hsize}
+        \centering
+        \includegraphics[width=\hsize]{02PWL/04AVM.pdf}
+      \end{minipage} 
+      \begin{minipage}[t]{0.135\hsize}
+        \centering
+        \includegraphics[width=\hsize]{02PWL/03GSSS.pdf}
+      \end{minipage} 
+      \begin{minipage}[t]{0.135\hsize}
+        \centering
+        \includegraphics[width=\hsize]{02PWL/02proposed.pdf}
+      \end{minipage} 
+
+      \vspace{0.1cm}
+      \begin{minipage}[t]{0.135\hsize}
+        \centering \vspace*{-0.4cm} 
+        \small{(a2) Original \\ MSE} \vspace*{0.1cm}
+      \end{minipage} 
+      \begin{minipage}[t]{0.135\hsize}
+        \centering \vspace*{-0.4cm}
+        \small{(b2) NLPD~\cite{Chen2015Discrete} \\ $1.700 \times 10^{-2}$} \vspace*{0.1cm}
+      \end{minipage} 
+      \begin{minipage}[t]{0.135\hsize}
+        \centering \vspace*{-0.4cm}
+        \small{(c2) SP~\cite{Anis2016Efficient} \\ $4.334 \times 10^{-3}$}
+      \end{minipage} 
+      \begin{minipage}[t]{0.135\hsize}
+        \centering \vspace*{-0.4cm}
+        \small{(d2) FSSS~\cite{Sakiyama2019Eigendecomposition} \\ $1.167 \times 10^{-3}$} \vspace*{0.1cm}
+      \end{minipage} 
+      \begin{minipage}[t]{0.135\hsize}
+        \centering \vspace*{-0.4cm}
+        \small{(e2) AVM~\cite{Jayawant2022Practical} \\ $3.697\times 10^{-3}$} \vspace*{0.1cm}
+      \end{minipage} 
+      \begin{minipage}[t]{0.135\hsize}
+        \centering \vspace*{-0.4cm}
+        \small{(f2) GSSS~\cite{Hara2022GSSS} \\ $8.565\times 10^{-4}$} \vspace*{0.1cm}
+      \end{minipage} 
+      \begin{minipage}[t]{0.135\hsize}
+        \centering \vspace*{-0.4cm}
+        \small{(g2) \textbf{Proposed\\$\mathbf{5.215\times 10^{-5}}$}} \vspace*{0.1cm}
+      \end{minipage} 
+      
+    % \end{tabular}
+    \vspace*{-0.4cm}
+    \end{center}
+    \caption{Examples of original graph signals defined on sensor graphs and reconstructed signals using each method ($\numV=256, K=32$). The top and bottom results are for GMRF and PWL graph signals, respectively, and the color of the vertex indicates the magnitude of the signal value.}
+    \label{AMSEofPWL}
+    \vspace{-4mm}
+  \end{figure*}
+
+\subsection{Optimization}
+Since the domain of $\|\hpb\cdot\|_*$ is $\mathbb{R}^{\numV \times \numS}$, we can apply PLDC to Prob.~\eqref{prob:prop}, which yields the abstract form of our algorithm: for a given $\gamma>0$, iterate
+\begin{equation}
+    \label{eq:propDCA}
+    \left\lfloor
+    \begin{array}{l}
+        \mbox{find } \W^{(\Step)} \in \partial \|\hpb\cdot\|_{*}(\SampM^{(\Step)}); \\
+        \SampM^{(\Step + 1)} \leftarrow \mathrm{prox}_{\gamma \iota_{B_{F,\varepsilon}}}(\SampM^{(\Step)} + \ParamDCA\W^{(\Step)});\\
+        \Step \leftarrow \Step + 1;
+    \end{array}
+    \right..
+\end{equation}
+
+In what follows, we derive specific computations of each step of the algorithm.
+\subsubsection{Computation of The First Step of \eqref{eq:propDCA}}
+Thanks to the property given in~\cite[Proposition~16.5 (ii)]{Bauschke2011Convex}, the subdifferential of $\|\hpb\cdot\|_*$ satisfies
+\begin{equation}
+\label{eq:subdiff_comp}
+    \hpb^{\top} \partial \|\cdot\|_{*} (\hpb\SampM^{(\Step)}) \subset \partial \|\hpb\cdot\|_{*}(\SampM^{(\Step)}).
+\end{equation}
+Let the rank of $\hpb\SampM^{(\Step)}$ be $r$ and $\hpb\SampM^{(\Step)} = \mathbf{U}\mathbf{\Sigma}\mathbf{V}^{\top}$ ($\mathbf{U} \in \mathbb{R}^{\numS\times \numS}$, $\mathbf{\Sigma} \in \mathbb{R}^{\numS \times \numS}$, and $\mathbf{U} \in \mathbb{R}^{\numS\times \numS}$) be its SVD with the singular vector matrices partitioned so that 
+\begin{equation}
+    \mathbf{U} = [\overbrace{\mathbf{U}_{\rankAS}}^{\rankAS} \: | \: \overbrace{\mathbf{U}_{o}}^{\numS - \rankAS}], \: \mathbf{V} = [\overbrace{\mathbf{V}_{\rankAS}}^{\rankAS} \: | \: \overbrace{\mathbf{V}_{o}}^{\numS - \rankAS}].
+\end{equation}
+Then, $\partial \|\cdot\|_{*} (\hpb\SampM^{(\Step)})$ is given, in~\cite[Example~2]{Watson1992Characterization}, by 
+\begin{equation}
+    \label{eq:subdiff_nuc}
+    \partial \|\cdot\|_{*} (\hpb\SampM^{(\Step)}) = \{ \mathbf{U}_{r}\mathbf{V}_{r}^{\top} + \mathbf{U}_{o}\mathbf{T}\mathbf{V}_{o}^{\top} \: | \: \sigma_{1}(\mathbf{T}) \leq 1 \}.
+\end{equation}
+Therefore, we can compute the first step of~\eqref{eq:propDCA} by
+\begin{equation}
+    \label{eq:first_step}
+    \DCw^{(\Step)} \leftarrow \hpb^{\top}(\mathbf{U}_{r}\mathbf{V}_{r}^{\top} + \mathbf{U}_{o}\mathbf{T}\mathbf{V}_{o}^{\top}).
+\end{equation}
+The following two simple settings of $\mathbf{T}$ are recommended: set $\mathbf{T} = \mathbf{I}$ and Eq.~\eqref{eq:first_step} becomes $\DCw^{(\Step)} \leftarrow \hpb^{\top}\mathbf{U}\mathbf{V}^{\top}$; set $\mathbf{T} = \mathbf{O}$ and Eq.~\eqref{eq:first_step} becomes $\DCw^{(\Step)} \leftarrow \hpb^{\top}\mathbf{U}_{r}\mathbf{V}_{r}^{\top}$.
+
+\subsubsection{Computation of The Second Step of~\eqref{eq:propDCA}}
+Since $B_{F,\varepsilon}$ is a nonempty closed convex set, the proximity operator of its indicator function equals to the metric projection\footnote{
+The proximity operator of the indicator function of a nonempty closed convex set $C$ is identical to the metric projection onto $C$, denoted by $\proj{C}$~\cite{Bauschke2011Convex}.
+} onto $\LBall$, i.e.,
+\begin{equation}
+    \label{eq:proj_Fball}
+    \mathrm{prox}_{\iota_{\LBall}}=\proj{\LBall}(\mathbf{X}) 
+    = \begin{cases}
+        \mathbf{X}, & \mathrm{if} \: \mathbf{X} \in \LBall; \\
+        \frac{\ParamLBall\mathbf{X}}{\| \mathbf{X} \|_{F}}, & \mathrm{otherwise}.
+    \end{cases}
+\end{equation}
+
+
+Finally, we summarize the detailed algorithmic procedures for solving Prob.~\eqref{prob:prop} in Algorithm~\ref{algo:PLDC}.
+Notice that $\proj{\LBall}$ always returns a variable whose Frobenius norm is less than $\ParamLBall$.
+This indicates the sequence $\{\mathbf{S}^{\Step}\}_{\Step \in \mathbb{N}}$ generated by Algorithm~\ref{algo:PLDC} is bounded.
+Therefore, from Theorem~\ref{theo:convergence_PLDC}, $\{\mathbf{S}^{\Step}\}_{\Step \in \mathbb{N}}$ is guaranteed to converge to a critical point of Prob.~\eqref{prob:prop}.
+
+\section{Experiments}
+We demonstrate the effectiveness of our method through sampling-and-reconstruction experiments using two graph signal models.
+All experiments were conducted using MATLAB (R2022b) on a Windows 11 computer with Intel Core i9-12900 3.19-GHz processor, 32 GB of RAM, and NVIDIA GeForce RTX 3090.
+Our method was compared with the following state-of-the-art graph signal sampling methods: NLPD~\cite{Chen2015Discrete}, SP~\cite{Anis2016Efficient}, FSSS~\cite{Sakiyama2019Eigendecomposition}, AVM~\cite{Jayawant2022Practical}, and GSSS~\cite{Hara2022GSSS}.
+
+  \begin{table}[t]
+  \centering
+  \caption{Average Reconstruction MSEs and The Standard Deviations for 100 Independent Runs.}
+  \label{msetable}
+  \begin{tabular}{ccc}
+    \toprule
+    Method & \multicolumn{2}{c}{Signal Model} \\
+    \cmidrule(lr){2-3}
+    & GMRF & PWL  \\
+    \midrule
+    \vspace{1mm}
+    NLPD~\cite{Chen2015Discrete}  
+    & $0.1615\pm0.0547$ & $3.088\pm1.569 \: [\times 10^{-2}]$ \\  \vspace{1mm}
+    SP~\cite{Anis2016Efficient}  
+    & $0.1080\pm0.0164$ & $1.848\pm0.945 \: [\times 10^{-2}]$ \\ \vspace{1mm}
+    FSSS~\cite{Sakiyama2019Eigendecomposition}  
+    & $0.1440\pm0.01720$ & $2.747\pm1.254 \: [\times 10^{-3}]$ \\   \vspace{1mm}
+    AVM~\cite{Jayawant2022Practical}  
+    & $0.0986\pm0.0179$ & $1.641\pm1.048 \: [\times 10^{-2}]$ \\ 
+    \vspace{1mm}
+    GSSS~\cite{Hara2022GSSS}  
+    & $0.1153\pm0.0232$ & $4.384\pm2.918 \: [\times 10^{-3}]$ \\  
+    \textbf{Proposed}  
+    & $\mathbf{0.0588\pm0.0079}$ & $\mathbf{1.049\pm1.194 \: [\times10^{-4}]}$ \\    
+    \bottomrule
+  \end{tabular}
+      \vspace{-3mm}
+\end{table}
+
+      \vspace{-4mm}
+\subsection{Setup}
+We constructed random sensor graphs $\mathcal{G}$ consisting of $\numV = 256$ vertices by using GSPBox~\cite{perraudin2014gspbox}.
+Following~\cite{Tanaka2020GenSamp}, the operator $\hpf$ was defined by setting its spectral response to 
+$\hpf(\lambda_{i}) := \lambda_{i} + 0.1$,
+where $\lambda_{i}$ is an $i$th graph frequency.
+The number of samples in the existing and our methods was set to $\numS = 32$, which indicates that the sampling ratio is $1/8$.
+We generated graph signals based on the following two models: 
+\begin{itemize}
+% \setlength{\leftskip}{-3.2mm}
+\item Gaussian Markov random field (GMRF) signals with the power spectrum $\Gamma_x(\lambda) \propto 1/(\lambda + \eta)$~\cite{Gadde2015Probabilistic} with $\eta = 0.1$,
+\item Piecewise linear (PWL) signals~\cite{Gadde2014Active} with the density $p = \numS/\numV$. 
+% (\textbf{Journal Mei Ga Nazonanode Naoshitekudasai})
+\end{itemize}
+
+The parameter $\ParamLBall$ in Prob~\eqref{prob:prop} was set to $\sqrt{\numV\numS}$.
+For our algorithm, $\ParamDCA$ and $\mathbf{T}$ were set to $1$ and $\mathbf{O}$, respectively. We defined $\SampM^{(0)}$ as a matrix with random Gaussian entries, and the stopping criterion as $\|\SampM^{(\Step + 1)} - \SampM^{(\Step)}\|_{F}/\|\SampM^{(\Step)}\|_{F} \leq 10^{-5}$.
+The parameter settings for the existing methods followed the descriptions in the respective papers.
+
+We used the mean squared error (MSE) for the quantitative evaluations: $\mathrm{MSE} = \|\tilde{\varx} - \varx\|^{2}/\numV$, where $\tilde{\varx}$ and $\varx$ are the reconstructed and original graph signals, respectively.
+
+      \vspace{-3mm}
+\subsection{Results and Discussion}
+Table~\ref{msetable} shows averaged MSEs and the standard deviations for 100 independent runs.
+The best results are shown in bold. The average MSEs for AVM, FSSS, SP, and NLPD, which assume bandlimitedness, are inferior to those of our method. This is because the graph signals used in the experiments are not strictly bandlimited.
+Although GSSS is capable of sampling under smooth priors, its reconstruction accuracy is lower than our method. This would be due to the fact that GSSS restricts its strategy to local sampling, while our method allows mixing nonlocal signal values to generate samples. In other words, samples obtained by our method are likely to retain the full range of information of the original graph signal. In addition, our method shows smaller standard deviations in terms of the reconstruction MSEs than the other methods, illustrating that our method provides stable performance.
+
+Figure~\ref{AMSEofPWL} visualizes examples of original and reconstructed signals by each method on the two graph signal models.
+The distribution of colors on the graphs shown in the figure visually confirms that our method can reconstruct the graph signal closer to the original signal than the other methods.
+
+\section{Conclusion}
+This paper addresses the problem of sampling graph signals under smoothness priors beyond bandlimitedness, which is often encountered in practical applications of graph signal processing. Specifically, we formulated a feasibility problem to determine the appropriate sampling operator under smooth priors based on the generalized sampling theory. To deal with the invertibility constraint in the original problem, we reformulated and relaxed it into a DC form and developed a PLDC-based algorithm that is guaranteed to converge to a critical point of this problem. Unlike existing methods that sample by selecting individual vertices, our method allows for a mixture of nonlocal signal values to generate samples, resulting in flexible and efficient sampling. We performed sampling-and-reconstruction experiments on several graph signal models and confirmed that our method achieves better performance in terms of reconstruction accuracy than existing methods.
+
+Finally, we note that although we have focused on the case of smoothness priors, the core idea of our method on the invertibility of $\SampM^\top\mathbf{Q}$ can be extended to the cases of the other types of priors as well.
+% \printbibliography
+
+
+\bibliographystyle{IEEEtran}
+
+% \bibliography{./mybib}
+\input{./output.bbl}
+
+\end{document}

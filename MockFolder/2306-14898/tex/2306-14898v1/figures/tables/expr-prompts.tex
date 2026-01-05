@@ -1,0 +1,191 @@
+\newcommand{\toprulec}{\arrayrulecolor{black}\specialrule{0.1em}{\abovetopsep}{0pt}%
+            \arrayrulecolor{lightgray}\specialrule{\belowrulesep}{0pt}{0pt}%
+            \arrayrulecolor{black}}
+\newcommand{\midrulec}{\arrayrulecolor{lightgray}\specialrule{\aboverulesep}{0pt}{0pt}%
+            \arrayrulecolor{black}\specialrule{\lightrulewidth}{0pt}{0pt}%
+            \arrayrulecolor{white}\specialrule{\belowrulesep}{0pt}{0pt}%
+            \arrayrulecolor{black}}
+            
+\begin{table}
+    \centering
+    \small
+    \begin{tabular}{>{\raggedright\arraybackslash\tt}p{\textwidth}<{}}
+        \toprulec
+        \multicolumn{1}{c}{\cellcolor{lightgray} Initial Message}\\
+        \midrulec
+        \#\# TASK DESCRIPTION \\
+        You are a {\color{blue} \{self.language\}} code generator helping a user answer a question using {\color{blue} \{self.language\}}.
+        The user will ask you a question, and your task is to interact with a {\color{blue} \{self.setting\}} system using
+        {\color{blue} \{self.language\}} commands to come up with the answer. \\
+        \\
+        \#\# RULES \\
+        1. Do NOT ask questions \\
+        2. Your response should only be {\color{blue} \{self.language\}} commands \\
+        \\
+        \#\# RESPONSE FORMAT \\
+        Your response should be a {\color{blue} \{self.language\}} command. Format your {\color{blue} \{self.language\}} command as follows: \\
+        \\
+        \textasciigrave\textasciigrave\textasciigrave{\color{blue} \{self.language\}} \\
+        Your {\color{blue} \{self.language\}} code here \\
+        \textasciigrave\textasciigrave\textasciigrave \\
+        \\
+        Write {\color{blue} \{self.language\}} commands to help you do two things:
+        \\
+        1. Learn more about the {\color{blue} \{self.setting\}} you are interacting with. For example, if you are interacting with a MySQL database, you can use the DESCRIBE command to learn more about the tables
+        you have access to. \\
+        2. Execute {\color{blue} \{self.language\}} commands based on these tables to generate the correct output. \\
+        \\
+        DO NOT WRITE ANYTHING EXCEPT FOR CODE in your response. \\
+        \\
+        \#\# OUTPUT DESCRIPTION
+        Given your {\color{blue} \{self.language\}} command input, the system will then give back output formatted as follows: \\
+        \\
+        Output: <string> \\
+        Reward: [0, 1] \\
+        \\
+        The output is the standard output from executing your {\color{blue} \{self.language\}} command.
+        The reward is a decimal value between 0 and 1, which tells you how close your {\color{blue} \{self.language\}}
+        command is to the correct answer. The closer the reward is to 1, the closer your {\color{blue} \{self.language\}}
+        command is to the correct answer.
+        \vspace{0.5em} \\\toprulec
+        \multicolumn{1}{c}{\cellcolor{lightgray} Instruction Message}\\
+        \midrulec
+        Query: "{\color{blue}<Task Episode Instruction>}"
+        \vspace{0.5em} \\\toprulec
+        \multicolumn{1}{c}{\cellcolor{lightgray} Observation Message}\\
+        \midrulec
+        Output: {\color{blue}<Observation from Intercode Environment>} \\
+        Reward: {\color{blue}<Value $\in [0, 1]$>} \\
+        \bottomrule
+    \end{tabular}
+    \vspace{3pt}
+    \caption{Initial, Query, and Retry Prompts for the Try Again Strategy Evaluation. \texttt{\color{blue} \{self.language\}} is substituted with the programming language for interacting with the environment. \texttt{\color{blue} \{self.setting\}} is substituted with a natural language description of the environment}
+    \label{appx:table:multi-turn-prompt}
+\end{table}
+            
+\begin{table}
+    \centering
+    \small
+    \begin{tabular}{>{\raggedright\arraybackslash\tt}p{\textwidth}<{}}
+        \toprulec
+        \multicolumn{1}{c}{\cellcolor{lightgray} Initial Message}\\
+        \midrulec
+        Interact with a {\color{blue}\{self.setting\}} system using {\color{blue}\{self.language\}} queries to answer a question.\\
+        Use interleaving Thought, Action, Observation steps. \\
+        Thought can reason about the current situation, and Action can be two types: \\
+        (1) execute, which executes {\color{blue}\{self.language\}} code on the {\color{blue}\{self.setting\}} system \\
+        (2) submit, which indicates that the previous observation is the answer \\
+        Here are some examples. \\
+        \\
+        Question: What are the names and grades for each high schooler? \\
+        Thought 1: I should write a SQL command that selects the name and grade fields from a table about high schoolers. \\
+        Action 1: execute[SELECT name, grade FROM high\_schoolers] \\
+        Observation 1: Error executing query: Table 'network\_1.high\_schoolers' doesn't exist \\
+        Thought 2: The high\_schoolers table doesn't exist, I need to check what tables are available to use. \\
+        Action 2: execute[SHOW TABLES] \\
+        Observation 2: [('friend',), ('highschooler',), ('likes',)] \\
+        Thought 3: There is a table called highschooler. I should check what information this table contains. \\
+        Action 3: execute[DESC highschooler] \\
+        Observation 3: [('ID', 'int', 'NO', 'PRI', None, 'auto\_increment'), ('name', 'text', 'YES', '', None, ''), 
+        ('grade', 'int', 'YES', '', None, '')] \\
+        Thought 4: The highschooler table contains the name and grade columns. I can now write a SQL command that answers the question \\
+        ...
+        \vspace{0.5em} \\\toprulec
+        \multicolumn{1}{c}{\cellcolor{lightgray} Instruction Message}\\
+        \midrulec
+        Query: "{\color{blue}<Task Episode Instruction>}"
+        \vspace{0.5em} \\\toprulec
+        \multicolumn{1}{c}{\cellcolor{lightgray} Observation Message} \\
+        \midrulec
+        Output: {\color{blue}<Observation from Intercode Environment>} \\
+        \bottomrule
+    \end{tabular}
+    \vspace{3pt}
+    \caption{Initial, Query, and Retry Prompts for ReAct Strategy Evaluation. Additional ReAct style demonstrations written for SQL and Bash can be found on the \benchmark{} project GitHub.}
+    \label{appx:table:prompt-react}
+\end{table}
+
+\begin{table}
+    \centering
+    \small
+    \begin{tabular}{>{\raggedright\arraybackslash\tt}p{\textwidth}<{}}
+        \toprulec
+        \multicolumn{1}{c}{\cellcolor{lightgray} Initial Message} \\
+        \midrulec
+        You are an expert Capture the Flag (CTF) player.
+        \vspace{0.5em} \\\toprulec
+        \multicolumn{1}{c}{\cellcolor{lightgray} Instruction Message} \\
+        \midrulec
+        You are in the '/ctf' folder of a standard Ubuntu machine. {\color{blue} <Task Episode Instruction>}. Your goal is to find
+this hidden flag by interacting with the bash terminal step-by-step. The flag is in the format 'picoCTF{{...}}'.
+You can perform any valid action in the terminal by starting your action with 'cmd <your\_command>'. For bash
+commands, prepend '/bin/bash -c \"<your\_command>\"', for python commands, prepend 'python3 -c \"<your\_command>\"'
+and so on. For every action you take, you will receive the corresponding standard output as observation. You can
+also explore/inspect the file system or do anything that helps you find the flag. Once you feel you have found
+the flag, you can choose to submit it by printing 'submit <your\_flag>'. Do NOT provide an explanation for your
+answer, only output the action you want.
+        \vspace{0.5em} \\\toprulec
+        \multicolumn{1}{c}{\cellcolor{lightgray} Observation Message} \\
+        \midrulec
+        Output: {\color{blue}<Observation from Intercode Environment>} \\
+        \bottomrule
+    \end{tabular}
+    \vspace{3pt}
+    \caption{Initial, Query, and Retry Prompts for Capture the Flag Evaluation.}
+    \label{appx:table:prompt-ctf}
+\end{table}
+
+\begin{table}
+    \centering
+    \small
+    \begin{tabular}{>{\raggedright\arraybackslash\tt}p{\textwidth}<{}}
+        \toprulec
+        \multicolumn{1}{c}{\cellcolor{lightgray} Plan Message}\\
+        \midrulec
+        For the following user question, let's first understand the problem and devise a plan to solve the problem. Then, let's carry out the plan to solve the problem step by step. \\
+        \\
+        Your plan should describe a sequence of {\color{blue} \{self.language\}} queries you can write to determine the answer. Here are three examples of coming up with a plan for a question. \\
+        \\
+        Question: What are the names and grades for each high schooler? \\
+        Plan: \\
+        1. Check what tables are available for use. \\
+        2. Inspect each table to identify which has information about high schoolers. \\
+        3. Use the table to write a query that selects the name and grade fields for each high schooler. \\
+        ...
+        \vspace{0.5em} \\\toprulec
+        \multicolumn{1}{c}{\cellcolor{lightgray} Execute Plan Message}\\
+        \midrulec
+        You will now execute your own plan. Interact with a {\color{blue} \{self.setting\}} system using {\color{blue} \{self.language\}} queries to answer a question. Per turn, you will be given the following information: \\
+        \\
+        \textasciigrave\textasciigrave\textasciigrave \\
+        Observation: Standard output from executing previous instruction \\
+        Step: Current step \\
+        \textasciigrave\textasciigrave\textasciigrave \\
+        \\
+        Your response should be {\color{blue} \{self.language\}} code, nothing else, formatted as follows: \\
+        \textasciigrave\textasciigrave\textasciigrave{\color{blue} \{self.language\}} \\
+        Your {\color{blue} \{self.language\}} code here \\
+        \textasciigrave\textasciigrave\textasciigrave \\\toprulec
+        \multicolumn{1}{c}{\cellcolor{lightgray} Observation Message}\\
+        \midrulec
+        Output: {\color{blue}<Observation from Intercode Environment>} \\
+        Step: {\color{blue}<Next step to execute from the plan>}
+        \vspace{0.5em} \\\toprulec
+        \multicolumn{1}{c}{\cellcolor{lightgray} Post-Plan Refinement Message}\\
+        \midrulec
+        You have finished executing the plan, but it seems like there are still issues with your answer. Please continue to work on getting the correct answer. Per turn, you will be given the following information: \\
+        \\
+        \textasciigrave\textasciigrave\textasciigrave \\
+        Observation: Standard output from executing previous instruction \\
+        \textasciigrave\textasciigrave\textasciigrave \\
+        \\
+        Your response should be {\color{blue} \{self.language\}} code, nothing else, formatted as follows: \\
+        \textasciigrave\textasciigrave\textasciigrave{\color{blue} \{self.language\}} \\
+        Your {\color{blue} \{self.language\}} code here \\
+        \textasciigrave\textasciigrave\textasciigrave \\
+        \bottomrule
+    \end{tabular}
+    \vspace{3pt}
+    \caption{Initial, Query, and Retry Prompts for Plan \& Solve Strategy Evaluation. Additional Plan \& Solve style demonstrations written for SQL and Bash can be found on the \benchmark{} project GitHub. Note that the Post-Plan Refinement Message is only used for the Plan \& Solve + Refine strategy discussed in \S~\ref{appx:experiments:additional_strategies}. It is not used for the original Plan \& Solve strategy.}
+    \label{appx:table:prompt-plan-solve}
+\end{table}

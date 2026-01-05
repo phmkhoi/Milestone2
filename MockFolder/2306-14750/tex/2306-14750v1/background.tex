@@ -1,0 +1,43 @@
+\section{Background}\label{sec:background}
+
+\subsection{Cloud Containers}
+A container is an abstraction of executable software that includes whatever is necessary to run an application, such as source code, tools, data, dependencies, etc. Any specific application, workload, or task can be executed in a self-contained container, isolated from the rest of the hosting system. The lightweight nature of containers enables system efficiency and scalability since multiple containers can be easily configured, executed, customized, and monitored for different applications and purposes on the same hosting machine.
+
+The market in this domain is pretty prosperous and multiple vendors are competing to provide the best solutions in term of cloud container infrastructures: Kubernetes engine by Google, Elastic Container Service by Amazon, Microsoft Azure, and Docker are the main container management tools available in the market \cite{bernstein2014containers}.
+
+Docker is top player in this sector \cite{merkel2014docker}; in fact, more than 7 million developers use its tools for developing their applications. Some of main features that contribute to the widespread use of Docker are: (i) Docker is an open source containerization platform that offers integrated and automated security policy, (ii) it enables Continuous Integration/Continuous Deployment (CI/CD), (iii) it offers a public library including plenty of Docker images, (iv) it is simple to use, etc. For all these reasons, we chose Docker as the container infrastructure used in our experiments.
+
+\subsection{System calls}
+A system call is the procedure in which a program running on the operating system requests a service from the kernel. System calls are classified by type and an ID number is assigned to each type (from 0 to 322). Read, write, open, close are some of popular system calls in Unix, Unix-like and other POSIX-compliant operating systems. The mapping function between system call types and their ID numbers can be found on the searchable Linux syscall table \cite{syscall-table}.
+
+\subsection{Graphs, Random and Anonymous Walks}\label{subsec:anonwalks}
+We use the syntax $G=(V,E,X)$ to represent a weighted directed graph, where $V=\{v_1,v_2,\dots,v_N\}$ denotes a set of $N$ nodes, $E\subseteq V\times V$ denotes the set of edges, and $X\in\mathbb{R}_{N\times N}$ denotes the matrix of edge weights.
+
+
+Given a graph $G$, we can generate a random walk graph $R=(V,E,P)$ with the following weight assignment: for every edge $e=(v,w)\in E$, the weight $p_e$ is equal to $x_e/\sum_{\epsilon\in E_{v,out}}{x_\epsilon}$, where $x_e$ is the weight of edge $e$ in graph $G$ and $E_{v,out}$ is the set of edges outgoing from node $v$.
+
+A random walk of length $l$ is an ordered sequence of nodes $u_1, u_2,\dots, u_l$, in which the step $e_i=(u_i,u_{i+1})$ in the walk is randomly selected with a probability $p_{e_i}$ computed as the ratio between the weight of the edge $e_i=(u_i,u_{i+1})$ in the graph $R$ and the sum of the weights of the outgoing edges from $u_i$. The selection of the next node in the sequence is independent from the set of neighbors of the last node in the sequence.
+
+Anonymous walks (AWs) were defined by Ivanov and Burnaev \cite{ivanov2018anonymous} to provide an instrument for learning data-driven graph embeddings.
+
+Given a random walk $w=(u_1, u_2,\dots, u_k)$ of length $k$, the positional function $\phi(w, u_i)=(p_1,p_2,\dots,p_l)$ is defined as the list of all positions $p_j\in \mathbb{N}$ of $u_i$ occurrences in the random walk $w$.
+
+For the random walk $w$, a corresponding anonymous walk is defined as the sequence of integers $a = (\alpha(u_1),\alpha(u_2),\dots,\alpha(u_l))$ where $\alpha(\cdot)$ is the function $\alpha(u_i) = \min{\{p_j\}}_{p_j\phi(w, u_i)}$.
+
+Given the set $A_l$ of all possible anonymous walks of length $l$, and let $p(a_i)$ be the probability that  the $i$-th anonymous walk in $A_l$ exists in $G$, the Anonymous walk embedding is defined as the vector of the list of probabilities of $A_l$.
+
+We refer the readers to the manuscript by Ivanov and Burnaev  \cite{ivanov2018anonymous} for further details about the anonymous walks embedding.
+
+
+\subsection{Random Forest Classifier}
+The Random Forest (RF) Classifier is a classification algorithm based on the ensemble learning \cite{ho1998random}. The algorithm aims at creating a multitude of decision trees, where each of them is generated from a randomly selected subsets of the training data. A node in a tree represents an hyperplane that divides the hyperspace where the training data samples fall into; on the other side the end nodes correspond to a specific region of the hyperspace. The output from the decision trees in the forest are combined by means of a bagging meta-learning algorithm. We refer the readers to the manuscript by Ho \cite{ho1998random}  for further details.
+
+
+\subsection{Isolation Forest}
+The Isolation Forest (IF) algorithm was proposed by Liu \etal{} as an unsupervised model-based method for isolating anomaly instances in a dataset rather than profiling the regular behaviors of the normal data \cite{liu2008isolation}. The idea behind the model assumes that the anomalies in a dataset are usually rare and isolated from the rest of data. Starting from this intuition, Authors built an algorithm in which the set of instances in the dataset are recursively and randomly partitioned until instances are isolated. Usually, more outliers in a dataset require a smaller number of iteration in order to be isolated. The recursive partitioning process can be translated into a binary tree (iTree) in which random partitioning iterations are mapped into tree nodes, and the leaves of the tree correspond to the dataset instances. The leaves with the shortest path in the tree will probably correspond to the outliers.
+
+In the IF algorithm, an ensemble of iTrees is built during the training phase by random and recursive partitioning. In the testing phase, an anomaly score is given to the tested instances defined as:
+\begin{equation}\label{eq:itscore}
+    s(x,n) = 2^{\frac{-E(h(x))}{c(n)}}
+\end{equation}
+where $x$ is the tested instance, $n$ is the number of instances in the dataset, $E(h(x))$ is the average path length in the tree computed over the ensemble of iTrees for $x$, and c(n) is the average path length in an iTree with $n$ instances. We refer the readers to the manuscript by Liu \etal{} \cite{liu2008isolation}  for further details about IF algorithm. 

@@ -1,0 +1,270 @@
+\section{Algorithmic Results}\label{section:upper_bounds}
+
+In this section, we present our main algorithmic results. Section~\ref{sec:ub_overview} outlines our approach to effective resistance sketches and estimation. Section~\ref{subsection:technical} gives an overview of a few prior technical results which we directly use in our algorithms. Section~\ref{subsection:upper_bound_new}, presents our original results on effective resistance sketching and estimation and generalizations to SDD matrices. Section~\ref{section:ub_extensions} extends our techniques to yield an interesting data structure for estimating quadratic forms of PSD matrices. 
+
+\subsection{Our Approach}\label{sec:ub_overview}
+
+\paragraph{Approach in prior work: Johnson Lindenstrauss sketches.} { Our starting inspiration is a classic result of \cite{spielman2009graph}, which obtains an ($\Otilde{m\epsilon^{-2}}, \Otilde{n\epsilon^{-2}}$, $\Otilde{\epsilon^{-2}}$) effective resistance sketch by using the Johnson Lindenstrauss Lemma (JL) \cite{JL} and its algorithmic instantiations \cite{achlioptas}. 
+
+\begin{lemma}[Johnson-Lindenstrauss Lemma \cite{achlioptas}]\label{lemma:JL} Given fixed vectors $v_1, ..., v_n \in \R^d$ and $\epsilon \in (0, 1)$, let $\Q$ be an independently sampled random matrix in $\{\pm 1/\sqrt{k}\}^{k \times d}$. For $k = \Otilde{\log(n) \epsilon^{-2}}$, whp.\ $\Norm{\Q v_i}_2 \approx_\epsilon \Norm{v_i}_2$ for all $i \in [n]$. 
+\end{lemma}
+
+\cite{spielman2009graph} observe that $r_G(i, j) = (\W_G^{1/2}\B_G\laplacian{G}^\dagger)^\top (\W_G^{1/2}\B_G\laplacian{G}^\dagger)$, where $\W_G \in \R^{E\times E}$ is the diagonal matrix of weights in $G$, and $\B_G$ is the $E \times V$ edge-incidence matrix of $G$. Consequently, whp.\ $\Vert \J \W_G^{1/2}\B_G\laplacian{G}^\dagger\deltaij \Vert_2 \approx_\epsilon r_G(i, j)$. With SDD linear system solvers, $\J\W_G^{1/2}\B_G\laplacian{G}^\dagger$ can be approximated in $\Otilde{m\epsilon^{-1}}$ time, from which $\Vert \J\W_G^{1/2}\B_G\laplacian{G}^\dagger \deltaij \Vert_2$ can be queried in $\Otilde{\epsilon^{-2}}$ time. }
+
+\paragraph{Our approach: asymmetric CountSketch in $\ell_1$.} {Towards improving upon JL sketches for effective resistance estimation, our key tool is to use that there are other sketching algorithms that achieve better than $\widetilde{O}(\epsilon^{-2})$ bit compressions of vectors vectors with small $\ell_1$ norm with comparable guarantees. CountSketch is a classic memory-efficient algorithm for estimating the number of occurences of various datapoints in a data stream \cite{CHARIKAR20043} and efficiently computing inner products \cite{LPT2012}. Given $v \in \R^n$ and integer parameters $s, t > 0$, CountSketch transforms $v$ to a vector $\Smat \widetilde{v} \in \R^{3ts \times n}$, where $\Smat \in \R^{3ts \times n}$ is a $3t$-column-sparse 0/1 matrix. Lemma~\ref{lemma:lemmaCountSketch} is a special case of Theorem 4 from \cite{LPT2012}, which provides accuracy guarantees for inner product estimation using CountSketch. }
+
+\begin{restatable}[Special Case of \cite{LPT2012}, Theorem 4]{lemma}{lemmaCountSketch}\label{lemma:lemmaCountSketch} \label{lemma:8} Let vectors $v, w \in \mathbbm{R}^n$. Let $\Smat$ be a random CountSketch matrix. Let $x_i = \langle (\Smat v)[(i-1)s+1:i\cdot s], (\Smat w)[(i-1)s+1:i\cdot s]\rangle$ for $i \in [3t]$, and let $X$ denote the median of $\{x_i\}$. For $s = O\left( \min\left( \frac{\Vert v \Vert_1 \Vert w \Vert_1}{\epsilon \abs{\langle v, w \rangle}}, \frac{\Vert v \Vert_2^2 \Vert w \Vert_2^2}{\epsilon^2 \abs{\langle v, w \rangle^2}} \right)\right)$, and $t = \log(n^{c})$, $\abs{X - \langle v, w \rangle} \leq \epsilon \abs{\langle v, w \rangle}$ with probability at least $\Omega(1-n^{-c})$.
+\end{restatable}
+\begin{proof}[Proof of Lemma~\ref{lemma:lemmaCountSketch}] Applying Theorem 4 from \cite{LPT2012} with $t = 2$,
+\begin{align*}
+    \mathbbm{E}\left[\left\lvert X-\left\langle v, w \right\rangle \right\rvert\right] = 0, \quad 
+    \mathbbm{V}\left[\left\lvert X-\left\langle v, w \right\rangle \right\rvert\right] \leq \min\left(3 \frac{\Vert v \Vert_1^2 \Vert w \Vert_1^2}{s^2}, 2\frac{\Vert v \Vert_2^2 \Vert w \Vert_2^2}{s}\right)
+\end{align*}
+Applying Chebyschev's inequality, 
+\begin{align*}
+    \mathbbm{P}\left[\left\lvert X-\langle v, w \rangle \right\rvert > 2\sqrt{3} \min\left(\frac{\Vert v \Vert_1 \Vert w \Vert_1}{s}, \frac{\Vert v \Vert_2 \Vert w \Vert_2}{\sqrt{s}}\right)\right] \leq \frac{1}{4}. 
+\end{align*}
+Consequetly, setting $s = O\left( \min\left(\frac{\Vert v \Vert_1 \Vert w \Vert_1}{\epsilon \langle v, w \rangle}, \frac{\Vert v \Vert_2^2 \Vert w \Vert_2^2}{\epsilon^2 \langle v, w \rangle^2}\right)\right)$ suffices for \\ $\mathbbm{P}\left[\abs{X -\langle v, w\rangle} \leq \epsilon \langle v, w \rangle \right] \geq 3/4$. To improve the failure probability to $O(n^{-c})$, it suffices to use the median trick, i.e., repeat the sketch $O\pars{\log(n^c)}$ times and output the median. 
+\end{proof}
+
+To improve the guarantee in Lemma~\ref{lemma:lemmaCountSketch} to hold whp.\ \emph{for all} $v, w \in S$ rather than for each fixed pair, one can simply choose $t = \log(n^{c}|S|)$ and apply a union bound. Consequently, if we knew that $\Vert \J\W_G^{1/2}\B_G\laplacian{G}^\dagger \deltaij\Vert_1^2/ r_G(i,j) = \Otilde{1}$, then building a CountSketch with $s = \Otilde{1}$ would yield a $\Otilde{n\epsilon^{-1}}$-size sketch, improving over the $\Otilde{n\epsilon^{-2}}$ sketch obtained using the $\ell_2$ JL sketch in \cite{spielman2009graph}. Unfortunately, it is unclear if and when such a bound holds, and so, it is unclear how the $\ell_1$ CountSketches could be useful in this setting. This leads to the main insight that fuels our algorithms. Rather than seeking a symmetric factorization of $r_G(i, j)$ as a quadratic form $v^\top v$ and applying a sketching procedure to $v$, we instead work with the following \emph{asymmetric factorization}:
+\begin{align}\label{eq:asym}
+    r_G(i,j) = \frac{1}{2}\langle \diagonal{\laplacian{G}}^{-1} \deltaij, \diagonal{\mlap}^{1/2} \left(\frac{\normalized{\mlap}} {2}\right)^\dagger \diagonal{\laplacian{G}}^{-1/2} \deltaij \rangle.
+\end{align}
+
+At first glance, it may seem unclear why \eqref{eq:asym} is helpful. However, we show that indeed, for expanders 
+\begin{align}\label{eq:res}
+    \normFull{ \diagonal{\mlap}^{-1} \deltaij}_1 \normFull{\diagonal{\mlap}^{1/2} \left(\frac{\normalized{\mlap}} {2}\right)^\dagger \diagonal{\mlap}^{-1/2} \deltaij }_1 /r_G(i,j) = \Otilde{1}. 
+\end{align}
+Our main result essentially follows from \eqref{eq:res}. Using SDD linear system solvers, we can efficiently approximate $\Smat \diagonal{\mlap}^{1/2} \left(\frac{\normalized{\mlap}} {2}\right)^\dagger \diagonal{\mlap}^{-1/2} \deltaij  \in \R^{\Otilde{\epsilon^{-1}} \times n}$ in $\Otilde{m\epsilon^{-1}}$ time, yielding our $\timeQuery$ of $\Otilde{m\epsilon^{-1}}$ and $s$ of $\Otilde{n\epsilon^{-1}}$. Moreover, $\Smat \diagonal{\mlap}^{-1}$ is $\Otilde{1}$-sparse. Consequently, using our (approximate) access to $\Smat \diagonal{\mlap}^{1/2} \left(\frac{\normalized{\mlap}} {2}\right)^\dagger \diagonal{\mlap}^{-1/2}$, for any query $i, j \in V$, we can efficiently approximate \eqref{eq:asym} using the recovery procedure of Lemma~\ref{lemma:lemmaCountSketch} in $\Otilde{1}$ time. 
+
+\subsection{Technical Prerequisites}\label{subsection:technical}
+
+In this section we will formally restate two fundamental results from prior literature which enable our upper bounds.
+
+\paragraph{SDD Linear System Solvers.}{
+In order to compute our effective resistance sketches efficiently, we apply a CountSketch matrix $\Smat$ to $\M^\dagger$, where $\M$ is an SDD matrix. To do this efficiently, we leverage the following theorem.
+
+\begin{theorem}[SDD Linear System Solver]\label{theorem:solver}  Let $\M \in \R^{n \times n}$ be SDD and consider any $\beta > 0$. There exists a randomized algorithm which, whp. processes a graph in time $\widetilde{O}(\nnzFull{\M})$ to create access to a linear operator $\Q_{\beta} \in \mathbbm{R}^{n \times n}$ such that $\Q_{\beta}$ can be applied to any $b \in \mathbbm{R}^n$ with $b \perp \nullspace{\M}$ in time $\widetilde{O}(m)$ and $\left\Vert \Q_\beta b - \M^\dagger b \right\Vert_\M \leq \beta \left\Vert \M^\dagger b \right\Vert_\M$. 
+\end{theorem}
+
+Many SDD linear system solvers can be viewed as the type of an operator $\Q_\beta$ required in Theorem~\ref{theorem:solver}. For a particular example in which this is apparent, consider the operator corresponding to the iterative solver proposed in \cite{RS16} or the solver from \cite{KOSZ13}. There is a long line of research on nearly linear time SDD and Laplacian system solvers, beginning with the work of \cite{spielman2008local} and leading to current state-of-the-art randomized algorithm of \cite{jambulapati2023ultrasparse}. 
+}
+
+\paragraph{Cheeger's Inequality}{
+To connect our results on well-conditioned SDD matrices to expander graphs, we use the well-known Cheeger's inequality \cite{Cheeger}. 
+\begin{theorem}[Cheeger's Inequality]\label{thm:cheeger} Let $G = (V, E, w)$ be an undirected graph. Then, $\frac{1}{2} \lambda_2(\normalized{L}) \leq \phi(G) \leq \sqrt{2 \lambda_2(\normalized{L})}$. 
+\end{theorem}}
+
+\subsection{Effective Resistance Estimation in Expanders and Extensions to SDD matrices }\label{subsection:upper_bound_new}
+
+We use our approach from Section~\ref{sec:ub_overview} to develop algorithms to compute spectral sketches for pseudoinverses of SDD matrices $\M$ with $\Otilde{1}$ normalized condition number, as defined in Definitions \ref{def:pseudo-condition-number} and \ref{def:spectral_sketch}.
+
+\begin{definition}[Normalized (pseudo-)condition number]\label{def:pseudo-condition-number} We define the \emph{normalized (pseudo-)condition number} of an SDD matrix $\M \in \R^n$ as
+$
+    \pcondOf{\M} \defeq \lambda_n(\normalized{M})/\lambdamin(\normalized{M})
+$.
+\end{definition}
+
+By Cheeger's inequality \cite{Cheeger}, if $G$ has $\alpha = \widetilde{\Omega}(1)$ expansion, then 
+\begin{align*}
+    \pcondOf{\laplacian{G}} = \lambda_n(\normalized{L_G})/\lambda_2(\normalized{L_G}) \leq4/\alpha^2 = \Otilde{1}
+\end{align*}
+So our spectral sketch algorithms will apply to Laplacians of expanders. 
+
+\begin{definition}[Spectral Sketch Data Structure]\label{def:spectral_sketch} We say an algorithm produces a $(\timeSketch, \timeQuery, s)$-spectral sketch for a PSD matrix $\A \in \R^{n \times n}$ if given $\A \in \R^{n \times n}$ and $\epsilon \in (0, 1)$, the algorithm creates a binary string of length $O(s(A, \epsilon))$ in time $O(\timeSketch(A, \epsilon)$, from which, for a query $b \in \R^n$, whp.\ it outputs $q_A(b) \approx_\epsilon b^\top \A b$ in time $O(\timeQuery(A, \epsilon) \nnz(b))$. 
+\end{definition}
+
+Our spectral sketches of SDD matrices $\M$ will \emph{only} support $\diagonal{M}$-numerically sparse query vectors, defined as follows.
+\begin{definition}[$\D$-numerically sparse]\label{def:D_numerically_sparse} For a diagonal matrix $\D$, the $\D$-numerical sparsity of $x \in \R^n$ is $\nsD{\D}{x} := \Norm{ \D^{-1} x}_1 \Norm{x}_1/\Norm{\D^{-1/2} x}_2^2$. We say $x$ is $(c, \D)$-numerically sparse if $\nsD{\D}{x} \leq c$. 
+\end{definition}
+
+Definition~\ref{def:D_numerically_sparse} may appear restrictive; however, several natural classes of vectors satisfy the requirements, including the following examples: 
+\begin{itemize}[leftmargin=*]
+    \item $\deltaij$ is (2, $\D$)-numerically sparse for any invertible $\D \in \R^{n \times n}$. As we are interested primarily in effective resistance estimation in this paper, this provides the primary motivation for studying this class of vectors. 
+    \item Standard basis vectors are (1, $\D$)-numerically sparse for any invertible $\D \in \R^{n \times n}$. Note that this implies our algorithms can be used to efficiently compute the diagonals of pseudoinverses of well-conditioned SDD matrices. 
+    \item When $\D$ is the identity matrix, Definition~\ref{def:D_numerically_sparse} reduces to the standard definition of numerical sparsity \cite{GS2018}. 
+    \item More generally, if $x \in \R^n$ is $\gamma$-numerically sparse, then it is $\left(\gamma {\frac{\max_{i} d_{i,i}}{\min_{i} d_{i,i}}}, \D\right)$-numerically sparse for any diagonal $\D \in \R^{n \times n}$. Note that if $\D$ is approximately a multiple of the identity, then the $\diagonal{\M}$-numerical sparsity is approximately equal to the numerical sparsity, up to constants. 
+\end{itemize}
+
+The following asymmetric rearrangement of quadratic forms is crucial to our analysis. 
+
+\begin{restatable}{lemma}{lemmaEquivalentQForms}\label{lemma:lemmaEquivalentQForms} Let $\M \in \R^{n \times n}$ be SDD and $x \in \R^n$ be peridicular to $\nullspace{\M}$. Then, 
+\begin{align*}
+    x^\top \M^\dagger x &= \frac{1}{2}\left\langle \diagonal{M}^{-1}x, \diagonal{M}^{1/2} (\normalized{M}/2)^{\dagger} \diagonal{M}^{-1/2} x\right\rangle = \left\langle \diagonal{M}^{-1/2}x, \normalized{M}^{\dagger} \diagonal{M}^{-1/2} x\right\rangle 
+    \geq \frac{1}{2} \normFull{\diagonal{M}^{-1}x}. 
+\end{align*}
+\end{restatable}
+\begin{proof} For notational convenience, let $\normalizedlazy{M} = \normalized{M}/2$. Let $v = \M^\dagger x = (\diagonal{M}-\adjacency{M})^\dagger x$. Note that $\diagonal{M}^{-1/2}x \perp \nullspace{\normalized{M}}$, and $2 \diagonal{M}^{1/2} \normalizedlazy{M} \diagonal{M}^{1/2} = \M$. Consequently, $v = \frac{1}{2} \diagonal{M}^{-1/2}\normalizedlazy{M}^\dagger \diagonal{M}^{-1/2} x$, and hence 
+\begin{align*}
+    x^\top \M^\dagger x = \frac{1}{2} \langle {\diagonal{M}}^{-1}x, {\diagonal{M}}^{1/2} \normalizedlazy{M}^{\dagger} {\diagonal{M}}^{-1/2} x\rangle.
+\end{align*}
+The second equality now follows immediately by rearranging terms. To obtain the inequality, note that, because $\M$ is SDD and $\D$ is invertible, $\normalized{M}$ is PSD. Furthermore, $2\I - \normalized{M} = \I - \diagonal{M}^{-1/2} \adjacency{M} \diagonal{M}^{-1/2}$, which is also PSD, as $\Spectrum{\adjacency{M}} \subset [-\dmax, \dmax]$. So, $\Spectrum{\normalized{M}} \leq 2$. So, $\lambdamin(\normalized{M}) \geq 1/2$ and the lemma follows.  
+\end{proof}
+
+Now, we wish to bound $\Norm{\diagonal{M}^{1/2} (\normalized{M}/2)^{\dagger} \diagonal{M}^{-1/2} x}_1$. To do this, we leverage the power series expansion of $(\normalized{M}/2)^{\dagger}$ as follows. In the following Theorem, for notational convenience we let $\adjacencylazy{M}:= \I - (\normalized{M}/2)$. 
+
+\begin{lemma}\label{lemma:powerseries} Let $\M \in \R^{n \times n}$ be SDD. For any $x \perp \nullspace{M}$, 
+\begin{align*}
+    \left(\normalized{M}/2\right)^\dagger \diagonal{M}^{-1/2} x &= \sum_{k=0}^\infty \left(\adjacencylazy{M} \right)^k \diagonal{M}^{-1/2} x,
+\end{align*}
+and for $m \geq 1$, 
+\begin{align*}
+        \left\Vert \left(\normalized{M}/2\right)^\dagger \diagonal{M}^{-1/2}x - \sum_{k=0}^{m} \left( \adjacencylazy{M} \right)^k  \diagonal{M}^{-1/2}x \right\Vert_1 &\leq \frac{\sqrt{n} 2\pcondOf{M}}{\sqrt{\dmin}} \exp\left(- \frac{m+1}{2\pcondOf{M}}\right) \norm{x}_2.
+\end{align*}
+
+
+\end{lemma}
+\begin{proof} Let $r$ denote the rank of $M$. Let $q_1, ..., q_{n}$ denote orthonormal eigenvectors of $\adjacencylazy{M}$ associated with $\lambda_1(\adjacencylazy{M}), ..., \lambda_{n}(\adjacencylazy{M})$ respectively, $\Q$ denote the orthogonal matrix whose $i$-th column is $q_i$, and $\widetilde{\Lambda}$ denote the diagonal matrix of the $\lambda_i(\adjacencylazy{M})$'s. 
+
+An orthogonal eigendecomposition of ${(\normalized{M}}/2)^\dagger$ is given by  $(\normalized{M}/2)^\dagger = \Q \Lambda \Q^\top$, where $\Lambda$ is the diagonal matrix whose entries are given by 
+\begin{align*}
+    \Lambda_{i,i} = \begin{cases}
+        0, & i = r+1, ..., n \\
+        \frac{1}{1-\lambda_i(\adjacencylazy{M})}, & i = 1, ..., r
+    \end{cases}. 
+\end{align*}
+So, for any $t \in [r]$, ${(\normalized{M}/2})^\dagger q_t = \frac{1}{1-\lambda_t(\adjacencylazy{M})} q_t$, where $\lambda_t(\adjacencylazy{M}) \in (0, 1)$; and consequently, $0 \leq \lambda_t(\adjacencylazy{M}) < 1$ is in the radius of convergence for the power series of $\frac{1}{1-x}$, and hence 
+\begin{align*}
+    \sum_{k=0}^\infty \left(\adjacencylazy{M}\right)^k = \sum_{k=0}^\infty \Q \widetilde{\Lambda}^k \Q^\top q_t = q_t \sum_{k=0}^\infty \lambda_{t}(\adjacencylazy{M})^k = \frac{1}{1-\lambda_t(\adjacencylazy{M})} q_t. 
+\end{align*}
+Now, $x \perp \nullspace{M}$ implies $\diagonal{M}^{-1/2}x \perp \nullspace{\normalized{M}}$; and consequently, $\diagonal{M}^{-1/2}x$ can be expressed as a linear combination of $q_1, ..., q_r$. The first statement in the lemma now follows by linearity. 
+
+For the second statement, note that $\lambdamin(\normalizedlazy{M}) = \lambda_n(\normalizedlazy{M})/\pcondOf{M} \geq {1}/{(2\pcondOf{M})}$, so $\lambda_{r}\left( \adjacencylazy{M} \right) \leq 1 - {1}/{(2 \pcondOf{M})}$. Since $\diagonal{M}^{-1/2}x \perp q_{r+1}, ..., q_{n}$,
+\begin{align*}
+    \left\Vert (\adjacencylazy{M})^k \diagonal{M}^{-1/2}x \right\Vert_2 \leq \left(1 - \frac{1}{2\pcondOf{M}} \right)^k \frac{\normFull{x}_2}{\sqrt{\dmin}}. 
+\end{align*}
+Using the fact that $\norm{x}_1 \leq \sqrt{n}\norm{x}_2$ for all $x$, for $m \geq 1$, we have
+\begin{align*}
+    \left\Vert \left(\normalized{M}/2\right)^\dagger \diagonal{M}^{-1/2}x - \sum_{k=0}^{m} \left( \adjacencylazy{M} \right)^k  \diagonal{M}^{-1/2}x \right\Vert_1
+    &\leq \sqrt{n} \sum_{k=m+1}^{\infty} \left\Vert \left( \adjacencylazy{M} \right)^k  \diagonal{M}^{-1/2}x \right\Vert_2 \\
+    &\leq \frac{\sqrt{n} 2\pcondOf{M}}{\sqrt{\dmin}} \left(1 - \frac{1}{2\pcondOf{M}} \right)^{m+1} \norm{x}_2 \\
+    &\leq \frac{\sqrt{n} 2\pcondOf{M}}{\sqrt{\dmin}} \exp\left(- \frac{m+1}{2\pcondOf{M}}\right) \norm{x}_2.
+\end{align*}
+\end{proof}
+
+Using Lemma~\ref{lemma:powerseries}, the following bound follows almost immediately.
+
+\begin{restatable}{lemma}{lemmaloneNormBound}\label{lemma:lemmal1NormBound} Let $\M \in \R^{n \times n}$ be SDD matrix and $x \in \R^n$ be a unit vector orthogonal to $\nullspace{\M}$. Let $m = \max\left(1, 2\pcondOf{\M}\log\left({\sqrt{n\dmax} 2\pcondOf{\M}}/{\sqrt{\dmin}}\right)\right)$. Then 
+\begin{align*}
+    \normFull{\diagonal{M}^{1/2} (\normalized{M}/2)^{\dagger}  {\diagonal{M}}^{-1/2} x}_1 \leq m \norm{x}_1 + 1.
+\end{align*}
+\end{restatable}
+
+\begin{proof} Let $m \geq \max\left(1, 2\pcondOf{M}\log\left(\frac{\sqrt{n\dmax} 2\pcondOf{M}}{\sqrt{\dmin}}\right)\right)$. By Lemma~\ref{lemma:powerseries}, 
+\begin{align*}
+    \left\Vert \diagonal{M}^{1/2} \normalizedlazy{M}^\dagger \diagonal{M}^{-1/2}x - \sum_{k=0}^{m} D^{1/2 }{\adjacencylazy{M}}^k \diagonal{M}^{-1/2} x \right\Vert_1 
+    &= \left\Vert \diagonal{M}^{1/2}\left(\normalizedlazy{M}^\dagger \diagonal{M}^{-1/2}x - \sum_{k=0}^{m}  {\adjacencylazy{M}} ^k  \diagonal{M}^{-1/2}x \right) \right\Vert_1 \\
+    &\leq \frac{\sqrt{n\dmax} 2\pcondOf{M}}{\sqrt{\dmin}} \exp\left(- \frac{m+1}{2\pcondOf{M}}\right) \norm{x}_2 
+    \leq 1. 
+\end{align*}
+Using triangle inequality plus the observation that $\diagonal{M}^{1/2}{\adjacencylazy{M}} \diagonal{M}^{-1/2} =  1/2 \I + 1/2{\adjacency{M}} \diagonal{M}^{-1}$ has each column normalized to have absolute column sum at most 1,
+\begin{align*}
+    \left\Vert \diagonal{M}^{1/2} \normalizedlazy{M}^\dagger \diagonal{M}^{-1/2}x \right\Vert_1 \leq \left\Vert \sum_{k=0}^{m} \diagonal{M}^{1/2}{\adjacencylazy{M}}^k \diagonal{M}^{-1/2} x \right\Vert_1 + 1 \leq m \Vert x \Vert_1 + 1.
+\end{align*}
+\end{proof}
+
+Combining our Lemmas~\ref{lemma:lemmaEquivalentQForms} and \ref{lemma:lemmal1NormBound} with the guarantees of Lemma~\ref{lemma:lemmaCountSketch} and prior work on SDD linear system solvers, we obtain the following theorem.
+
+\begin{restatable}{theorem}{theoremSDDMain}\label{theorem:theoremSDDMain} For any matrix $\M \in \R^{n \times n}$ with $\pcondOf{\M} = \Otilde{1}$, there is an algorithm which is an $(\Otilde{\nnz(\M)\epsilon^{-1}}, \Otilde{1}, \Otilde{n\epsilon^{-1}})$ spectral of $\M^\dagger$ supported over queries $S$, where $S$ is any set of $(\Otilde{1}, \diagonal{M})$-numerically sparse vectors orthogonal to $\nullspace{\M}$. 
+\end{restatable}
+
+\begin{proof} It suffices to assume, without loss of generality, that $S$ is a set of unit vectors, as at query time, for any vector $b$ we can compute $\norm{b}_2$ in $O(\nnz(b))$ time and rescale. Set $\beta = \frac{ 2\min(1, \dmin^{3}) \lambdamin(\M) \epsilon}{\max(1, \dmax^2) \sqrt{n\max(1, \dmax)}}$. By Theorem~\ref{theorem:solver}, in $\Otilde{\nnzFull{\M}}$, whp.\ we can obtain access to a linear operator $\Q_\beta$ such that $\Q_\beta$ can be applied to any $b \in S$ in time $\Otilde{\nnz(\M)}$ and $\norm{\Q_\beta b - \M^\dagger b}_M \leq \beta \norm{\M^\dagger b}_M = \beta \norm{b}_{\M^\dagger}$. Then, 
+\begin{align*}
+    \lambdamin(\M) \norm{(\Q_\beta b - \M^\dagger)b}_2^2 \leq \norm{(\Q_\beta b - \M^\dagger)b}_M^2 \leq \beta^2 \norm{b}_{M^\dagger}^2 \leq \frac{\beta^2}{\lambdamin(\M)} \norm{b}_2^2. 
+\end{align*}
+So, $ \norm{(\Q_\beta b - \M^\dagger)b}_2 \leq \frac{\beta}{\lambdamin(\M)} \leq \epsilon$. Consequently, by triangle inequality, we have that 
+\begin{align*}
+    \norm{2\diagonal{M} \Q_\beta b}_1  &\leq \norm{2\diagonal{M}\M^\dagger b}_1 + \norm{2\diagonal{M}\Q_\beta b -  2\diagonal{M}\M^\dagger b}_1
+\end{align*}
+where $2\diagonal{M}\M^\dagger b = \diagonal{M}^{1/2}(\normalized{M}/2)^\dagger \diagonal{M}^{1/2} b$ and $\norm{2\diagonal{M}\Q_\beta b -  2\diagonal{M}\M^\dagger b}_1 \leq 2\sqrt{n \dmax} \norm{\Q_\beta b -  \M^\dagger b}_2 \leq \epsilon$. Consequently, 
+\begin{align*}
+    \norm{2\diagonal{M} \Q_\beta b}_1  &\leq \norm{\diagonal{M}^{1/2}(\normalized{M}/2)^\dagger \diagonal{M}^{1/2} b}_1 + \epsilon.  
+\end{align*}
+Now, Lemma~\ref{lemma:lemmal1NormBound} guarantees that $\norm{2\diagonal{M} \Q_\beta b}_1 \leq \Otilde{\pcondOf{\M} + \epsilon} \norm{b}_1 = \Otilde{\pcondOf{\M}}\norm{b}_1$. Similarly, 
+\begin{align*}
+    \abs{\langle \diagonal{M}^{-1} b, \diagonal{M}^{1/2}(\normalized{M}/2)^\dagger \diagonal{M}^{-1/2} b \rangle - \langle \diagonal{M}^{-1}b, 2\diagonal{M} \Q_\beta b\rangle } &= \abs{\langle \diagonal{M}^{-1} b, 2\diagonal{M}\M^\dagger b \rangle - \langle \diagonal{M}^{-1}b, 2\diagonal{M} \Q_\beta b\rangle } \\
+    &\leq \dmax \normFull{\diagonal{M}^{-1} b}_2  \norm{(\Q_\beta b - \M^\dagger)b}_2 \\
+    &\leq \frac{\dmax}{\dmin} \frac{\beta}{\lambdamin(\M)} 
+    \leq \epsilon \left( \frac{1}{2\dmin^2} \right).
+\end{align*}
+Lemma~\ref{lemma:lemmaEquivalentQForms} guarantees that $\langle \diagonal{M}^{-1}b, 2\diagonal{M} \Q_\beta b\rangle \geq O(1) \norm{\diagonal{\M}^{-1}b}_2^2$. Consequently, 
+\begin{align*}
+    \frac{\norm{\diagonal{M}^{-1}b}_1 \norm{2\diagonal{M} \Q_\beta b}_1}{\langle \diagonal{M}^{-1/2}b, 2\diagonal{M} \Q_\beta b\rangle} = \Otilde{\pcondOf{\M}} \frac{\norm{\diagonal{M}^{-1}b}_1 \norm{b}_1}{\norm{\diagonal{\M}^{-1}b}_2^2} =\Otilde{\pcondOf{\M}} \nsD{\diagonal{M}}{b} = \Otilde{\pcondOf{\M}}.
+\end{align*}
+
+So, given a CountSketch matrix $\Smat \in \R^{\Otilde{\pcondOf{\M}\epsilon^{-1}} \times n}$, Lemma~\ref{lemma:lemmaCountSketch} guarantees that we can compute an $X$ such that whp.\, 
+\begin{align*}
+    \abs{X - \langle \diagonal{M}^{-1} b, 2\diagonal{M} \Q_\beta b\rangle} \leq \epsilon \langle \diagonal{M}^{-1} b, 2\diagonal{M} \Q_\beta b\rangle.
+\end{align*}
+Moreover, we showed above that
+\begin{align*}
+     \abs{\langle \diagonal{M}^{-1} b, 2\diagonal{M} \Q_\beta b\rangle - \langle \diagonal{M}^{-1} b, \diagonal{M}^{1/2}\left(\normalized{M}/2\right)^\dagger \diagonal{M}^{-1/2} b \rangle} &\leq \epsilon \left( \frac{1}{2 \dmin ^2} \right) \\
+     &\leq \epsilon \langle \diagonal{M}^{-1} b, \diagonal{M}^{1/2}\left(\normalized{M}/2\right)^\dagger \diagonal{M}^{-1/2} b \rangle,  
+\end{align*}
+
+where the last line uses the observation from Lemma~\ref{lemma:lemmaEquivalentQForms}, that $\langle \diagonal{M}^{-1} b, \diagonal{M}^{1/2}(\normalized{M}/2)^\dagger \diagonal{M}^{-1/2} b \rangle \geq \frac{1}{2} \norm{\diagonal{\M}^{-1}b}_2^2$. It now follows that
+\begin{align*}
+    \abs{X - \langle \diagonal{M}^{-1} b, \diagonal{M}^{1/2}(\normalized{M}/2)^\dagger \diagonal{M}^{-1/2} b \rangle } &\leq \epsilon \langle \diagonal{M}^{-1} b, 2\diagonal{M} \Q_\beta b\rangle + \epsilon \langle \diagonal{M}^{-1} b, \diagonal{M}^{1/2}\left(\normalized{M}/2\right)^\dagger \diagonal{M}^{-1/2} b \rangle \\
+    &\leq 2\epsilon(1+\epsilon) \langle \diagonal{M}^{-1} b, \diagonal{M}^{1/2}\left(\normalized{M}/2\right)^\dagger \diagonal{M}^{-1/2} b \rangle \\
+    &\leq 4\epsilon \langle \diagonal{M}^{-1} b, \diagonal{M}^{1/2}\left(\normalized{M}/2\right)^\dagger \diagonal{M}^{-1/2} b \rangle.
+\end{align*}
+
+Thus, by Lemma~\ref{lemma:lemmaEquivalentQForms}, $\frac{1}{2} X \approx_{4\epsilon} \langle \frac{1}{2} \diagonal{M}^{-1} b, \diagonal{M}^{1/2}\left(\normalized{M}/2\right)^\dagger \diagonal{M}^{-1/2} b \rangle = \langle b, M^\dagger b \rangle$; hence, rescaling $\epsilon$ by a constant factor of 4 yields the approximation guarantee (without changing the size of $\Smat$ by more than constant factors). 
+
+Consequently, we see that by storing $\Smat$ and $\Q_\beta$, we can support queries $b \in S$. To justify the runtime guarantee, note that Theorem~\ref{theorem:solver} shows we can compute $\Smat \Q_\beta$ in $\Otilde{\nnz(\M)\pcondOf{\M}\epsilon^{-1}}$ time, by applying an approximate SDD system solver to each row in $\Smat$. To support queries, we need only store $\Smat \Q_\beta$ and $\Smat$, which requires only $\Otilde{n \pcondOf{\M} \epsilon^{-1}}$ bits. 
+
+Finally, we justify the query complexity. The key observation is that $\Smat$ is $\Otilde{1}$-column sparse. Computing $X$ requires taking the median of $\Otilde{1}$ quantities, each of which requires computing an inner product involving an $\Otilde{\nnz(b)}$-sparse vector $\Smat \diagonal{M}^{-1} b$. Using this fact, $X$ can be computed in $\Otilde{\nnz(b)} $. Setting $\pcondOf{\M} = \Otilde{1}$ completes the proof.
+\end{proof}
+
+\begin{remark} Note that the proof of Theorem~\ref{theorem:theoremSDDMain} shows that, more broadly, for any SDD matrix $\M$, we can obtain an $(\Otilde{\pcondOf{\M} \nnz(\M) \epsilon^{-1}}, \Otilde{1}, \Otilde{\pcondOf{\M} n \epsilon^{-1}})$ spectral sketch data structure. 
+\end{remark}
+
+The corresponding algorithm pseudocode for constructing the spectral sketch data structure is given in Algorithm~\ref{alg:sketchSDD}. The algorithm pseudocode for querying the spectral sketch data structure is given in Algorithm~\ref{alg:querySDD}. The proof of Theorem~\ref{theorem:theoremSDDMain} guarantees that it suffices to set $t = \Otilde{1}$ and $s = \Otilde{\pcondOf{\M}\epsilon^{-1}}$ in Algorithm~\ref{alg:sketchSDD} and Algorithm~\ref{alg:querySDD}.
+
+\begin{algorithm}[ht]
+    \SetAlgoLined
+    \KwIn{Matrix $\M \in \R^{n \times n}$, error tolerance $\epsilon \in (0, 1)$, and integers $s, t > 0$.}
+    \KwOut{CountSketch matrix $\Smat \in \R^{(3t)s \times n}$ and an approximation of $2\Smat \diagonal{\M} \M^\dagger$, $\widetilde{\Smat} \in \R^{(3t)s \times n}$}
+    Set $\beta$ as in the proof of Theorem~\ref{theorem:theoremSDDMain}\; 
+    Generate a random CountSketch matrix $\Smat \in \R^{(3t)s \times n}$ (see Theorem 4 of \cite{LPT2012})  
+    \; 
+    Generate access to a linear operator $\Q_\beta$ such that for all $b \perp \nullspace{\M}$,  $\Vert \Q_\beta \b - \M^\dagger \b \Vert_M \leq \beta \norm{M^\dagger b}_\M$ (See Theorem~\ref{theorem:solver})\; 
+    Compute $\widetilde{\Smat} = 2\Smat \diagonal{\M}\Q_\beta$\; 
+    \Return{$(\Smat, \widetilde{\Smat})$}
+    \caption{SpectralSketchSDDInverse}
+    \label{alg:sketchSDD}
+\end{algorithm}
+
+\begin{algorithm}[ht]
+    \SetAlgoLined
+    \KwIn{$\diagonal{\M}$, output of Algorithm~\ref{alg:sketchSDD}, query vector $b$, and integers $s, t > 0$ as inputted to Algorithm~\ref{alg:sketchSDD}. }
+    \KwOut{Approximation to $\langle b, \M^{\dagger} b\rangle$. }
+    Set $\widetilde{b} = b/\norm{b}_2$\;
+    \For{$i \in [3t]$}{
+        $x_i = \frac{1}{2} \langle (\Smat \diagonal{M}^{-1}\widetilde{b})[(i-1)s+1 : (i)s]i, (\widetilde{\Smat} \widetilde{b})[(i-1)s+1 : (i)s] \rangle$ \; 
+    }
+    \Return{$\norm{b}_2^2 \mathrm{median}\{x_i\}$.}
+    \caption{QuerySketchSDDInverse}
+    \label{alg:querySDD}
+\end{algorithm}
+
+Because the $\deltaij$ queries appearing in effective resistance computations are 2-sparse and $(2, \diagonal{M})$ numerically sparse for all SDD matrices $\M$, taking $\M = \laplacian{G}$ in Theorem~\ref{theorem:theoremSDDMain} immediately implies Theorem~\ref{thm:ub_main_informal} and Theorem~\ref{thm:ub_main_informal2}.
+
+\begin{proof}[Proof of Theorem~\ref{thm:ub_main_informal} and Theorem~\ref{thm:ub_main_informal2} ] Let $G = (V, E, w)$ be a graph with $\widetilde{\Omega}(1)$-expansion. As argued previously (see Section~\ref{subsection:upper_bound_new}, $\laplacian{G}$ is SDD with $\Otilde{1}$ normalized condition number, $\deltaij \perp \ker{\laplacian{G}}$, and $\deltaij$ is $(2, \diagonal{\laplacian{G}})$- numerically sparse. To see why Theorem~\ref{thm:ub_main_informal} holds, simply observe that we can boost the whp.\ guarante guarantee in Theorem~\ref{theorem:theoremSDDMain}, which holds for each fixed query, to hold whp.\ for all $\deltaij$ for $i, j \in V$ by maintaining $O(\log(n))$ copies of the spectral sketch data structure guaranteed in Theorem~\ref{theorem:theoremSDDMain} as our sketch, and then, at query time, taking the median of the results of the outputs from querying each of the $O(\log(n))$ copies of the sketch. Theorem~\ref{thm:ub_main_informal2} is a direct corollary of Theorem~\ref{thm:ub_main_informal}. 
+\end{proof}
+
+\subsection{Extensions to PSD Matrices}\label{section:ub_extensions}
+
+Our approach of approximating quadratic forms via asymmetric inner products also yields a query-efficient sketching procedure for approximating quadratic forms of well-conditioned PSD matrices.
+
+\begin{restatable}{theorem}{theoremPSDMain}\label{theorem:theoremPSDMain} There is an algorithm which is an $(\Otilde{\kappa(\A) \nnz(\A)\epsilon^{-2}}$, $\Otilde{1}, \Otilde{\kappa(\A)n\epsilon^{-2}})$ spectral sketch data of $\A$ supported on $\X$, where $\A$ is PSD and $\X$ is orthogonal to $\nullspace{\A}$.  
+\end{restatable}
+
+\begin{proof}[Proof of Theorem~\ref{theorem:theoremPSDMain}] 
+
+Let $x \perp \nullspace{\A}$. Note that for any $\Norm{x}_2 \Norm{\A x}_2 = \kappa(\A^{1/2})x^\top \A x$. So, by the $\ell_2$ norm guarantees from Lemma~\ref{lemma:lemmaCountSketch}, it suffices to build a CountSketch matrix $S$ with $s = \widetilde{O}\left(\kappa({\A})\epsilon^{-2}\right)$ and $t = \Otilde{1}$ to guarantee that for any $x \perp \nullspace{\A}$, $\langle \Smat x, \Smat \A x \rangle \approx_\epsilon \langle x, \A x \rangle$ whp.\ The time to compute the sketch $\Smat \A$ is at most $\Otilde{\kappa(\A)\nnz(\A)\epsilon^{-2}}$. Due to the $\Otilde{1}$ column-sparsity of $\Smat$, $\Smat x$ is $\Otilde{\nnz(x)}$ sparse, and consequently, $\langle \Smat x, \Smat \A x \rangle$ can be computed in $\Otilde{\nnz(x)}$ time. 
+\end{proof}
+
+In comparison, JL gives an $(\Otilde{n^\omega}, \Otilde{n\epsilon^{-2}}, \Otilde{\epsilon^{-2}})$-spectral sketch data structure using efficient square root algorithms \cite{jain2017global}. JL achieves better compression than Theorem~\ref{theorem:theoremPSDMain}. For well-conditioned matrices, however, our query time and potentially construction times may be faster in some regimes.  
+

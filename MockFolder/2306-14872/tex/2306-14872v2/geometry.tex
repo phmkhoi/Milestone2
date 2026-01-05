@@ -1,0 +1,336 @@
+\section{A Data-Driven Approach to Calibrating POFUL}
+
+
+
+
+
+
+In this section, we present the main contribution of this work which provides a data-driven approach to calibrating POFUL. Note that $\iota_t$ and $\tau_t$ are parameters of POFUL that can be controlled by a decision-maker, the essential point is to find a computable, non-trivial upper bound $\hat{\alpha}_t$ for the uncertainty ratio $\alpha_t$, which turns into an upper bound $\hat{\mu}_t$ for the regret proxy $\mu_t$ that's deeply related to the frequentist regret of POFUL. 
+
+
+
+
+Typically, we can check $\hat{\alpha}_t$ is no less than one because we might have $ \tilde{x}_t = x_t^\star$. As a result, it holds that $\hat{\mu}_t  = (1+\hat{\alpha}_t)(1+\iota_t) +  (1-\hat{\alpha}_t) \tau_t \geq  (1+\hat{\alpha}_t)(1+\iota_t) $. Given this observation, we'll focus on scenarios where $\tau_t \equiv 0$.  This avoids the large regret proxies and computational inefficiencies seen in OFUL when determining the action $\tilde{x}_t$. Such scenarios include LinTS and its variants like TS-Freq as well as Greedy - all of which are standard algorithms that lack theoretical regret guarantee results.
+
+
+
+In the following, we construct such upper bounds $\{\hat{\alpha}_t\}_{t\in[T]}$ for both discrete and continuous action scenarios. 
+ 
+ 
+ 
+ 
+
+
+
+
+
+
+
+
+
+
+
+\subsection{Discrete Action Space}
+\label{sec:discrete_actions}
+
+
+
+
+We start with the discrete action space scenario to illustrate our method. It turns out that upper bounding $\alpha_t$ is done by simply comparing the confidence interval lengths of all potentially optimal actions. 
+
+
+
+
+
+To see this, recall for an arbitrary action $x\in\cX_t$,  by Proposition~\ref{prop:beta}, with high probability its expected reward is bounded as 
+\$
+L_t(x) \coloneqq \dotp{x}{ \hat{\theta}_t}  - \iota_t \|x\|_{V_t^{-1}}   \beta^{RLS}_t  (\delta^\prime)       
+\leq  \dotp{x}{{\theta}^\star}   \leq \dotp{x}{ \hat{\theta}_t}  +  \iota_t \|x\|_{V_t^{-1}}   \beta^{RLS}_t (\delta^\prime) \eqqcolon  U_t(x).
+\$ 
+The confidence interval length is proportional to $\|x\|_{V_t^{-1}} $. Therefore, to characterize the range of $\|x_t^\star\|_{V_t^{-1}}$, we only need to identify the set of potentially optimal actions and calculate the minimal $V_t^{-1}$-norm among all actions in that set. 
+
+
+For an action $x \in \cX_t$  to remain potentially optimal, it cannot be dominated by another action. I.e.,    we require  $U_t(x) \geq \max_{y\in\cX_t}  L_t(y)$. Therefore, define \$\cC_t (\beta)\coloneqq \{x\in\cX_t: \dotp{x}{ \hat{\theta}_t}  +  \|x\|_{V_t^{-1}}  \beta \geq \max_{y\in\cX_t} \  \dotp{y}{ \hat{\theta}_t}  - \|y\|_{V_t^{-1}}    \beta \},\$
+the set of potentially optimal actions is given by $C_t(\beta_t^{RLS} (\delta^\prime))$. Similarly,  the set of actions that might be chosen by POFUL is given by $\cC_t(\beta_t^{\PVT} (\delta^\prime) )$, where we let $\beta^{\PVT}_t \coloneqq \iota_t \beta^{RLS}_t$. The inflation parameter $\iota_t$ turns out to control the conservativeness when eliminating actions. 
+
+
+
+By comparing the range of $V_t^{-1}$-norm for both sets, an upper bound $\hat{\alpha}_t$ for the  uncertainty ratio $\alpha_t$ is given by
+  \# \label{eq:alpha_hat_2}
+  \hat{\alpha}_t\coloneqq \frac{\sup _{x\in \cC_t(\beta_t^{RLS} (\delta^\prime) )}\|x\|_{V_t^{-1}}}{ \inf _{x \in \cC_t(\beta_t^{\PVT} (\delta^\prime) )}\|x\|_{V_t^{-1}}}.
+ \#
+
+
+
+
+
+\subsection{Continuous action space.}
+\label{sec:bound_sst_ratio}  
+
+When it comes to the generic settings where the number of actions is large or when the set of actions is a continuous set in $\RR^d$, the upper bound above is inefficient or even infeasible to compute. In this section, we tackle this issue. Our strategy capitalizes on geometric insights related to the properties of the confidence ellipsoids, providing upper bounds that can be computed efficiently. 
+
+
+
+
+
+
+
+
+For the sake of a better illustration, we consider 
+ $\cX_t \equiv \cS_{d-1}$ for this scenario, which is a standard example of continuous action space, and is the same as the setting considered in \cite{abeille2017linear}. We remark that for this specific setting, the problem is still hard. This is because we don't have a closed-form solution for the set of potentially optimal actions.
+ 
+ In this setting, the optimal action $x_t^\star(\theta )  \coloneqq \argmax_{x\in \cX_t} \dotp{x}{\theta}$ takes a closed form $ x^\star_t(\theta ) = \theta/\|\theta\|$. To upper bound $\alpha_t$, a direct idea is to consider respectively the smallest and largest value of $\|x^\star_t(\theta)\|_{V_t^{-1}}$ for $\theta$ in the confidence ellipsoids of $\theta$, namely, $\cE^{\RLS}_t$ and $\cE^{\PVT}_t$. Specifically, we have 
+  \# \label{eq:alpha_hat_raw}
+ \alpha_t \leq \frac{\sup _{\theta \in \cE_t^{\RLS}}\|x^\star_t(\theta)\|_{V_t^{-1}}}{ \inf _{\theta \in \cE_t^{\PVT}}\|x^\star_t(\theta)\|_{V_t^{-1}}}.
+ \#
+ 
+
+ 
+As is illustrated in Figure~\ref{fig:ellipsoid1}. The set of potentially optimal actions $\cC_t$ is the projection of the confidence ellipsoid $\cE_t$  onto $\cS_{d-1}$. It's hard to get a closed-form expression for $\cC_t$, so we cannot directly calculate the range of $V_t^{-1}$-norm of actions in $\cC_t$. Nevertheless, we can approximate the range by investigating the geometric properties of the ellipsoids.  
+ 
+ 
+The intuition here is that, when POFUL has implemented sufficient exploration so that $\cE_t$ is small enough, $\cC_t$ concentrates accordingly to a small cap on $\cS_{d-1}$. All actions within $\cC_t$  point to similar directions and thus have similar $V_t$-norm. (Note that for a unit vector $x$, we have that $\|x\|_{V_t}$ can be written as a weighted summation of the eigenvalues of $V_t$, where the weights are determined by the direction of $x$.) Hence we can bound the range of $V_t$-norm by investigating the concentration of  $\cC_t$, which is pure geometry, and we'll use the range of $V_t$-norm to determine the range of $V_t^{-1}$-norm.
+ 
+ 
+  
+ 
+ 
+ The following main theorem of this paper derives an upper bound of $\alpha_t$ based on this idea. We sketch the proof in Section \ref{sec:proof_sketch_alpha} .
+ \begin{figure}[htp]
+	\centering
+%	\subfigure{
+		\includegraphics[width=.4\textwidth]{figures/ellipsoid_4} 
+	%}
+	\caption{Illustration of the set $\cC_t$ of potentially optimal actions in $\RR^2$. Different color corresponds to different levels of exploration. As the decision-maker collects more and more data, the confidence ellipsoid $\cE_t$ shrinks accordingly. The potentially optimal actions point to similar directions, which essentially determine their $V_t$-norm.  Hence it's plausible one could get a proper range of their $V_t$-norm using geometry. }
+	\label{fig:ellipsoid1}
+\end{figure}
+
+
+
+
+
+\begin{theorem}\label{thm:alpha}
+
+Suppose $\cX_t = \cS_{d-1}$ for all $t \in [T]$. Define $\beta^{\PVT}_t \coloneqq \iota_t \beta^{RLS}_t$ and
+					\$
+	\Phi_t &=   \begin{cases}
+				( \lambda_{1}^{-1} + \lambda_{d}^{-1}   - m_t\lambda_{1}^{-1}\lambda_{d}^{-1} )^{\frac{1}{2}}, &\ \ \ \ \textit{if}\  \|\hat{\theta}_t\|_{V_t} \geq \beta^{RLS}_t	\\
+				\lambda_d^{-\frac{1}{2}}(V_t), & \ \ \ \ \textit{if}\  \|\hat{\theta}_t\|_{V_t} <  \beta^{RLS}_t \end{cases},\\
+	\Psi_t &=   \begin{cases}
+				(\lambda_{k}^{-1} +  \lambda_{k+1}^{-1}   - M_t\lambda_{k}^{-1}\lambda_{k+1}^{-1} )^{\frac{1}{2}}, &\textit{if}\  \|\hat{\theta}_t\|_{V_t} \geq \beta^{\PVT}_t	\\
+				\lambda_1^{-\frac{1}{2}}(V_t), & \textit{if}\  \|\hat{\theta}_t\|_{V_t} <  \beta^{\PVT}_t\end{cases},
+				\$ 
+				
+				
+
+				
+				
+				
+ where we let
+	\$
+	 \quad m_t = (\|\hat{\theta}_t\|_{V_t}^2  - (\beta^{RLS}_t)^2)/(\|\hat{\theta}_t\| +  \beta^{RLS}_t/\lambda_d(V_t) )^2, \quad M_t =  \|\hparam_t\|_{V_t^2}^2/(\|\hat{\theta}_t\|_{V_t}^2  - (\beta^{\PVT}_t)^2)\$ and $k\in[d]$ is such that $\lambda_{k}(V) \leq M_t \leq \lambda_{k+1}(V) $.
+	Then for all $t \in [T]$, conditioned on event $\hat{\cA}_t \cap \tilde{\cA}_t$ , it holds for all $s \leq t$ that 	\$
+	\inf _{\theta \in \cE_t^{\PVT}}\|x^\star_s(\theta)\|_{V_s^{-1}} \geq \Psi_s,  \quad   \sup _{\theta \in \cE_s^{RLS}}\|x^\star_s(\theta)\|_{V_s^{-1}} \leq \Phi_s , \quad \alpha_s\leq \halpha_s\coloneqq \Phi_s/\Psi_s.\$
+
+\end{theorem}
+
+
+
+To better understand what Theorem \ref{thm:alpha} implies, we discuss some special cases. 
+
+\paragraph{Case 1: a pure exploration regime.} \label{eg:pure} When the decision-maker doesn't care about the regret and adopts a pure exploration algorithm that plays actions in all directions sequentially, we expect $\lambda_i(V_t) = \cO(t)$ for all $i = 1,\dots, d$. Then $\hat{\alpha}_t \leq C$ for some constant $C>0$. Specifically, if $V_t = D \II_d$ for some constant $D>0$, we have $\|x\|_{V_t^{-1}} =D^{-1} \|x\| = D^{-1}$ for all $x \in \cS_{d-1}$ and hence $ \hat{\alpha}_t = 1$  .
+
+\paragraph{Case 2:  linear structures.} 
+\label{eg:principle_eigen}
+
+When the reward takes a linear form in the action, for example, the stochastic linear bandits we study,  it's observed in practice that the estimate $\hat{\theta}_t$ tends to align in the first eigenspace of the uncertainty structure $V_t$. To see this, note that in order to maximize the reward in an online manner, bandit algorithms tend to select actions towards the confidence ellipsoid centered at  $\hat{\theta}_t$, hence forcing more exploration along the direction of $\hat{\theta}_t$, especially at the late stage of the algorithm when the ellipsoid is small. The following proposition states that, as long as the center $\hparam_t$ of the confidence ellipsoid $\cE_t$  tends to be aligned with the first eigenspace of $V_t$, the corresponding uncertainty ratio tends to 1, indicating a regret bound matching the minimax $\tilde{\cO}(d\sqrt{T})$ rate by Theorem~\ref{thm:oracle_regret}. This provides a plausible explanation for the empirical success of LinTS and Greedy.
+\begin{proposition}\label{prop:align}
+	 Suppose $\lim_{t\to \infty}\frac{\|\hparam_t\|_{V_{t}}^2}{\|\hparam_t\|^2} =\lambda_{\max}(V_{t}) $, it holds that $\lim_{t\to \infty} \hat{\alpha}_t = 1$.	
+\end{proposition}
+
+
+\begin{remark}
+
+Clearly, one can further improve the bound in Equation \eqref{eq:alpha_hat_raw} by plugging in the selected action $\tilde{x}_t$. This is true for standard algorithms such as OFUL, LinTS, and Greedy. Explicitly, the uncertainty ratio can be bounded using $\tilde{x}_t$ and Theorem~\ref{thm:alpha} as 
+\#
+\alpha_t \leq \frac{\sup _{\theta \in \cE_t^{\RLS}}\|x^\star_t(\theta)\|_{V_t^{-1}}}{\|\tilde{x}_t\|_{V_t^{-1}}}\leq \frac{\Phi_t}{\|\tilde{x}_t\|_{V_t^{-1}}}.
+\#
+
+
+However, for the variants of POFUL that we are going to propose in the Section~\ref{sec:meta}, it is necessary to calculate the bound \emph{before} selecting the action $\tilde{x}_t$. Therefore, the bound shouldn't depend on $\tilde{x}_t$. 
+
+
+
+\end{remark}
+
+
+
+\section{Sketch of the Proof}
+\label{sec:proof_sketch_alpha}
+In this section, we present the proof of Theorem~\ref{thm:alpha}.  In the remaining part of this section, we use a general confidence ellipsoid  $\cE_t  (\delta)\coloneqq \left \{\theta \in \RR^d: \|\theta - \hparam_t\|_{V_t}\leq \beta_t(\delta)\right \}$ to represent $\cE^{\RLS}_t$ and $\cE^{\PVT}_t$, since the proof works for both of them. 
+
+
+First note that, when $\|\hparam_t\|_{V_t}  < \beta_t$, the bound in Theorem~\ref{thm:alpha} becomes 
+\$\alpha_t\leq \lambda_d^{-\frac{1}{2}}(V_t) /\lambda_1^{-\frac{1}{2}}(V_t) = \sqrt{\lambda_1(V_t)/\lambda_d(V_t)}.\$
+This bound holds trivially using the fact that $\lambda_1(V_t) \leq \|x\|^2_{V_t} \leq \lambda_d(V_t) $. This is the case when the data is insufficient and the confidence interval is too large to get a non-trivial upper bound for $\alpha_t$.
+
+In the following, without loss of generality we assume $\|\hparam_t\|_{V_t}^2  \geq \beta_t^2$. The proof decomposes into three steps. In the first two steps, as is illustrated in $\RR^2$ in Figure~\ref{fig:ellipsoid}, we cut out a special hypersurface  $\cH_t$ within  $\cE_t$ and show that for all $\theta \in \cH_t$, the corresponding optimal action $x^\star(\theta)$ has $V_t$-norm bounded from above and below. Note that the set of optimal actions for  $\theta \in \cH_t$ coincides with that for  $\theta \in \cE_t$, we get upper and lower bounds for  $V_t$-norm of all potential actions in the ellipsoid. Next, we show that upper and lower bounds for the $V_t$-norm can be converted into upper and lower bounds for the $V_t^{-1}$-norm. Hence, we get an upper bound for $\alpha_t$ by calculating the ratio of the upper bound to the lower bound. We sketch the proof below and postpone the detailed proof for all lemmas in this section to Appendix~\ref{sec:proof_alpha}.
+
+
+\begin{figure}[htp!]
+	\centering
+%	\subfigure{
+		\includegraphics[width=.4\textwidth]{figures/ellipsoid_7}
+	%}
+	\caption{Illustration of Step 1 and 2 in $\RR^2$. Orange dashed rays: rays starting from the origin might have different numbers of intersections with $\cE_t$, indicating whether the corresponding action lies in the projection of $\cE_t$ onto $\cS_{d-1}$. Blue dashed curve:  the ellipsoid with fixed $V_t$-norm  $\left\{\theta:\|\theta\|_{V_t}=\phi_t\right\}$. The intersection of this ellipsoid and $\cE_t$ has the same projection as $\cE_t$ onto $\cS_{d-1}$. }
+	\label{fig:ellipsoid}
+\end{figure}
+
+
+In the following, we let
+$
+\phi_t	 \coloneqq \sqrt{ \|\hparam_t\|_{V_t}^2 - \beta_t^2 }
+$, which is well-defined since we assume $\|\hparam_t\|_{V_t}  \geq \beta_t$. In geometry,  one can show that for a ray starting from the origin and intersecting $\cE_t$ only at one point, $\phi_t$ serves as the ${V_t}$-norm of the intersection point. 
+
+\paragraph{Step 1. Upper Bounding the $V_t$-norm of actions.}
+Our first lemma investigates such intersection and provides an upper bound for the  $V_t$-norm for the optimal actions corresponding to any $\theta\in \cE_t$. The proof is based on investigating the condition for a ray paralleling an action $x \in \cS_{d-1}$ to intersect with $\cE_t$, which means $x$ is in the projection of $\cE_t$ onto $\cS_{d-1}$ and might become the optimal action $x^\star(\theta)$. 
+
+
+\begin{lemma}\label{lem:Vt_norm_upper}
+For any $\theta\in \cE_t$, we have
+	$
+	\|x^\star(\theta )\|_{V_t} \leq  \|\hparam_t\|_{V_t^2}/\phi_t$.
+\end{lemma}
+
+
+   
+
+
+
+\paragraph{Step 2. Lower Bounding the $V_t$-norm of actions.}
+
+In order to lower bound the $V_t$-norm, we define the hypersurface  
+$
+\cH_t \coloneqq \mathcal{E}_t\cap\left\{\theta:\|\theta\|_{V_t}=\phi_t\right\}
+$, 
+i.e., the intersection of the interior of the confidence ellipsoid  $\cE_t$ and the ellipsoid $\left\{\theta:\|\theta\|_{V_t}=\phi_t\right\}$.
+$\cH_t$  consists of $\theta \in \cE_t$ whose $V_t$-norm is $\phi_t$. One can check $\cH_t$ is non-empty since $ \phi_t  \hparam_t  /\|\hparam_t\|_{V_t}  \in \cE_t$, and  the projection of $\cH_t$  onto $\cS_{d-1}$ is the same as that of $\cE_t$ by convexity. Hence,  it suffices to only consider  $\theta \in \cH_t$ as the corresponding set of optimal actions coincides. A lower bound for the $V_t$-norm is given by the following lemma.
+
+
+
+\begin{lemma}
+\label{lem:Vt_norm_lower}
+	For any $\theta\in \cH_t$, we have
+	\$
+	  \|x^\star(\theta )\|_{V_t} \geq \frac{\phi_t}{\|\hat{\theta}_t\| +  \beta_t/\lambda_d(V_t) }.\$
+\end{lemma}
+The proof is directly using the fact that for any $ \theta \in \cH_t$, we have $\|\theta\| \leq \|\hparam_t\| +  \beta_t/\lambda_d(V_t)  $ and $\|\theta\|_{V_t}  =  \phi_t$. Also recall  $x^\star(\theta ) = \theta /\|\theta\|$ and hence $\|x^\star(\theta )\|_{V_t} =  \|\theta\|_{V_t} / \|\theta\|$. 
+
+
+
+
+
+
+
+
+
+
+\paragraph{Step 3. Bounding the $V_t^{-1}$-norm of actions}
+
+
+The following lemma determines the range of action $x$'s $V_t^{-1}$-norm based on its $V_t$-norm range. It turns out that the two ranges can be related using the spectral information of the sample covariance matrix $V_t$, which determines the shape of the confidence ellipsoid.
+
+
+\begin{lemma}
+\label{lem:Vinv_norm}
+	Suppose  $V$ has distinct eigenvalues $\lambda_1( V)> \lambda_2( V) \dots > \lambda_d( V)$
+	and $x\in \cB_d$ satisfies
+	$
+	m \leq \|x\|_{V}^2 \leq M
+	$,
+	where $M\geq 0$ is such that
+	$
+		\lambda_{k}(V) \leq M < \lambda_{k+1}(V)
+	$. We have
+	\#
+	\frac{1}{ \lambda_{k}} + \frac{1}{ \lambda_{k+1}}   - \frac{M}{\lambda_{k}\lambda_{k+1} } \leq \|x\|_{V^{-1}}^2  \leq  \frac{1}{ \lambda_{1}} + \frac{1}{ \lambda_{d}}   - \frac{m}{\lambda_{1}\lambda_{d} }.
+	\#
+\end{lemma}
+
+The proof involves expressing the $V$- and $V^{-1}$-norms as weighted sums of $V$'s eigenvalues, then solving a linear programming (LP) problem constrained by the norm ranges.
+
+
+
+
+By inserting the upper and lower bounds of the $V_t$-norm from Lemmas~\ref{lem:Vt_norm_upper} and \ref{lem:Vt_norm_lower} into Lemma~\ref{lem:Vinv_norm}, we finalize the proof of Theorem~\ref{thm:alpha}.
+
+
+
+
+
+
+\section{A Meta-Algorithm for Course-Correction}
+\label{sec:meta}
+
+
+In this section, we show how the data-driven regret bound can be utilized to improve common bandit algorithms. Specifically, we propose a meta-algorithm that constructs course-corrected variants of the base algorithms. This ensures they achieve a minimax-optimal frequentist regret guarantee (up to constant factors) while retaining the majority of the original characteristics of the base algorithms, such as computational efficiency and low regret in most cases.
+
+
+We take LinTS as an example and propose the algorithm Linear Thompson Sampling with Maximum Regret (Proxy) (TS-MR). The idea is to measure the performance of LinTS using $\hat{\mu}_t$ and avoid bad LinTS actions by switching to OFUL actions when necessary. 
+
+
+
+
+
+Specifically, at each time $t$, TS-MR calculates the upper bound $\hat{\mu}_t$ and compares it with a preset threshold $\mu$. If  $\hat{\mu}_t > \mu$, LinTS might be problematic and  TS-MR takes an OFUL action to ensure a low instantaneous regret; if $\hat{\mu}_t\leq \mu$, TS-MR  takes the LinTS action. We remark that setting $\iota_t \equiv 0$ yields the corresponding Greedy-MR algorithm. The pseudocode is presented in Algorithm~\ref{alg:TS-MR}.
+
+
+
+
+
+\begin{algorithm}[!htp]
+	\caption{TS-MR (Greedy-MR)}\label{alg:TS-MR}
+	\begin{algorithmic}
+		\REQUIRE $T$, $\delta$,  $\{\iota_t\}_{t\in [T]}$, $\mu$	
+		\STATE Initialize $ V_{0} \leftarrow \lambda \mathbb{I}$,  $\hat{\theta}_{1} \leftarrow 0$, $\delta^\prime \leftarrow \delta/2T$
+		\FOR{t = 1, 2 , \dots, T }
+		\STATE Calculate $\halpha_t$ using Theorem~\ref{thm:alpha}
+		\STATE $\hat{\mu_t} \leftarrow  \hat{\alpha}_t(1+\iota_t )+1+\iota_t$ 
+		\IF{$\hat{\mu}_t \leq \mu$}
+		\STATE Sample $\eta_t\sim \cD^{SA}(\delta^\prime)$ (defined in Section~\ref{sec:POFUL})
+		\STATE $\tilde{\theta}_{t}  \leftarrow \hat{\theta}_t +\iota_t \beta_t^{RLS} (\delta^\prime) V_t^{-\frac{1}{2}} \eta_t$
+		\STATE ${x}_{t} \leftarrow \arg \max _{x \in \mathcal{X}_t}\dotp{ x}{ \tilde{\theta}_{t}}$
+		\ELSE
+		\STATE   ${x}_{t} \leftarrow \arg \max _{x \in \mathcal{X}_t} \arg \max _{\theta \in \cE_t^{RLS}(\delta^\prime) }\dotp{ x}{ \tilde{\theta}_{t}}$
+		\ENDIF
+		\STATE Observe reward $r_{t}$
+		\STATE $V_{t+1} \leftarrow V_{t}+{x}_{t}  {x}_{t}^{\top}$
+		\STATE $\hat{\theta}_{t+1} \leftarrow V_{t+1}^{-1}\sum_{s=1}^{t} x_s r_{s}$.
+		\ENDFOR
+	\end{algorithmic}
+\end{algorithm}
+
+
+
+
+
+
+By construction, the course-corrected algorithms have $\mu_t \leq  \max\{\mu,2\}$ for all $t\in[T]$. Using Theorem~\ref{thm:oracle_regret}, we get the following frequentist regret for them, which is optimal up to a constant factor.
+\begin{corollary} TS-MR and Greedy-MR achieve a frequentist regret of
+$
+	\cR(T) = \tilde{\cO}\left( \max\{\mu,2\} d \sqrt{T}\right)
+$.
+\end{corollary}
+
+
+\begin{remark}
+In practice, the choice of the threshold $\mu$ depends on the problem settings. In a high-risk setting where LinTS and Greedy fail with high probability, one can set a small $\mu$ so that  TS-MR and Greedy-MR select more OFUL actions to guarantee the necessary amount of exploration. In a low-risk setting where original LinTS and Greedy algorithms work well, one can set a large $\mu$ and hence  TS-MR and Greedy-MR select TS and greedy actions respectively to avoid unnecessary exploration and save the computational cost. 
+\end{remark}
+
+
+
+
+
+
+
+

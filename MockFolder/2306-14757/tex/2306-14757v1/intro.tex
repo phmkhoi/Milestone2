@@ -1,0 +1,49 @@
+\section{Introduction}
+\label{sec:introduction}
+
+The popularity of blockchains has undeniably changed the landscape of Byzantine fault tolerant (BFT) consensus.
+Scalable protocols with multiple leaders, enabling transaction proposals to occur in parallel, are being pursued both in theory and in practice
+~\cite{miller2016honey,crain2021red,yang2022dispersedledger, RCC, Mir, ISS, lev2019fairledger, 
+ baird2016swirlds, danezis2018blockmania, gkagol2019aleph, danezis2022narwhal, spiegelman2022bullshark, keidar2022cordial, fino}. 
+While these protocols demonstrate terrific throughput, they all have a similar ``recipe'': 
+They allow parallel broadcasts to proceed for a while, and then wait for a leader to drive a commit decision on an entire ``wave'' of accumulated broadcasts. 
+This introduces a rather large delay, as these protocols first wait for reliable broadcasts to be finalized and then start ordering them.
+
+Traditional, non-BFT consensus protocols have benefited greatly from decoupling finalization and sequencing. 
+Distributed shared logs~\cite{balakrishnan2012corfu, balakrishnan2013tango, wei2017vcorfu, balakrishnan2020virtual, 10.1145/3477132.3483544}
+have shown that finalization and sequencing can be performed independently, and can greatly improve parallelism, throughput and latency. 
+Instead of waiting for a consensus protocol to both finalize transactions and order them into a sequenced log, 
+they assign slots in the log for transactions by a ``sequencer'' immediately upon request.
+Sequenced transactions are then finalized into their assigned slots independently and in parallel, enabling the protocol to proceed as
+quickly as the sequencer can assign slots.
+
+In this work, \system, we apply the benefits of decoupling finalization from sequencing to the Byzantine setting. 
+How do we build a sequencer in the Byzantine setting, though? Our first insight is remarkably simple:
+consistent broadcast itself prevents sender equivocation, 
+hence broadcasts can be finalized into pre-assigned slots so long as the uniqueness of slot numbers is enforced by the protocol.
+Therefore, as in non-BFT settings, broadcasts carrying unique slot numbers can be finalized independently and in parallel, 
+successfully growing a sequenced log.
+Based on this insight, \system is built on a core broadcast primitive called \primitive, 
+a novel variant of consistent broadcast guaranteeing unique slot numbering.
+When there is no contention over slots numbers, \primitive broadcasts can be finalized in three network delays.
+
+However, gaps in the log may occur in \system due to faulty nodes or network partitions. 
+We use a fallback consensus decision to finalize gap slots. 
+Harnessing recent advances in Byzantine fault tolerance on DAGs~\cite{spiegelman2022bullshark,fino},
+we allow broadcasts to keep being finalized and drive consensus decisions with zero message overhead.
+In this manner, while a gap in slot numbers may delay growing the committed log, 
+all broadcasts have utility in contributing to throughput and system resources continue being fully utilized.
+
+Combining these two components enables \system to decouple finalization and sequencing, providing a optimistically fast, high-throughput happy path with a high-thoughput fallback.
+More specifically, \primitive allows blocks of transactions to be finalized into a sequenced log extremely fast in the common case. 
+At the same time, using a DAG to drive consensus allows \system to maintain the high-throughput scalability of state-of-art DAG protocols (e.g.,~\cite{gkagol2019aleph, danezis2022narwhal, spiegelman2022bullshark}) under contention.
+Note that this line of research work emphasizes separating transaction dissemination from block finalization to improve throughput. 
+This is orthogonal yet compatible with the core design of \system.
+
+As an added benefit, \system supports ``eager'' notifications which allow nodes to observe finalized slots in the log out of order.
+Many use-cases can benefit from the eager finalization notifications, so that \system can support diverse applications on the same platform.
+
+This paper presents a complete \system protocol, which is part of a larger ongoing system project. The goal of this paper is to
+present the background on the key insights of \system, to formally describe the protocol and the key primitive \primitive,
+and to argue correctness. We are in the process of building a complete system around \system~which
+leverages its full performance and sequencing capabilities.

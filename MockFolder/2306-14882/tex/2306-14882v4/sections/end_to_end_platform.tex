@@ -1,0 +1,50 @@
+\section{A few technical details}
+We now elaborate on a few technical issues we faced while prototyping our machine.
+We also give a brief overview of the software infrastructure we have implemented in order to boot Linux and run enclaves from user programs.
+
+\noindent\textbf{Speculative Transmitters in the L1 D Cache}
+\label{sec:l1bypass}
+When enabling shared memory, the core-private part of the memory system, including the L1 D cache, is now shared between trusted memory accesses and untrusted or shared memory accesses.
+While shared memory cannot be accessed speculatively, trusted memory can.
+It means that shared memory can be \emph{speculatively evicted} by a speculative trusted memory access.
+Furthermore, this eviction will be observable to an attacker.
+The cache coherency protocol is such that writing to a memory location that is cached by another core will take more time than writing to a memory location that is not cached by another core.
+As a result, a shared L1 D can be leveraged by an attacker to create a speculative transmitter and mount a Spectre-style attack.
+Partitioning the L1-D cache would have a significant performance impact.
+Simply placing an arbiter in front of the L1-D arrays (which is very latency-sensitive) would have a much harsher overall impact on performance than for the LLC.
+At the same time, accesses to shared memory are typically not expected to be temporally reused (see Section \ref{sec:evalsharedmemory}), limiting the utility of the L1-D for shared memory anyway.
+For all these reasons, we decide to simply bypass the L1 D cache for enclave accesses to shared memory.
+Because the L1 is the only core-private microarchitectural state entangled with the adversary state through a coherence protocol, we do not need to worry about other core-private microarchitectural structures.
+
+\noindent\textbf{Miscellaneous Security Specifics}
+\label{sec:miscellaneous}
+We statically partition MSHRs between the two cores, implement a fair round-robin arbiter at the entry of the LLC (not implemented in \cite{bourgeat2019mi6}), and arbiter the TLB requests (ignored and omitted in \cite{bourgeat2019mi6}).
+Because these mechanisms only marginally affect the latency of the LLC for a 2-core design, we observe negligible ($\approx$ 0.1\%) performance impact in Citadel for insecure applications.
+
+\noindent\textbf{Reconfigurable LLC Partitioning}
+\label{sec:dynamiccache}
+An obvious bottleneck in our design is the static cache partitioning inherited from MI6.
+Dividing our 1MB LLC in 64 equal-size 16KB partitions (see Section \ref{sec:hardwareisolation}) is a terrible idea as these are
+smaller than the 64KB L1 D+I caches.
+Because our caches are inclusive, an enclave or a program that resides in one memory region cannot even fully use the L1 caches.
+MI6 circumvented that issue by assuming and simulating (but not fitting on FPGA) a 16-core design with a larger 16MB LLC.
+We build a mechanism to reconfigure the LLC partitions, improving enclave and other programs' performance, regardless of the number of cores or the size of the LLC.
+This costly operation is only required before launching a new application or enclave with a different memory requirement.
+
+At the hardware level, we use a fine-grain set-partitioning scheme similar to \cite{townley2022composable,saileshwar2021bespoke} to support our 64 partitions.
+Because for a given memory access, the memory region IDs are directly accessible through physical memory address, our scheme requires minimal changes in the LLC, no changes to the rest of the memory hierachy and supports shared memory between security domains.
+We also implement a fine-grain flushing mechanism
+by adding a simple piece of logic connected to the cache hierarchy at the same level as the DRAM, but which always sends back zeroes.
+This means that flushing a small LLC partition is much faster than flushing a big one.
+At the software level, the OS can request a reconfiguration through a SM call, which will ensure the LLC is not put in an incoherent state.
+The main challenge is to ensure that no core will emit requests to the modified regions during the operation.
+For the operation to proceed, the second core will have to perform a SM call to enter a loop located in a region unaffected by the reconfiguration.
+This means that an LLC reconfiguration is not possible if an enclave is running, some SM regions cannot be affected by the reconfiguration (checked by the SM).
+The SM will also check that the mapping is correct and fits within the LLC.
+
+\noindent\textbf{Building the Software Infrastructure}
+The overall software architecture and privilege hierarchy can be seen in Figure \ref{fig:computing_stack}.
+We implement the SM at the highest privilege level of RISC-V using a mix of assembler and C.
+We also implement what we call a \emph{Mini-SM}, which is a downsized copy of the global SM private to each enclave.
+Second, we develop a Linux Kernel module that allows user programs to request SM calls and set up enclaves, keeping Linux responsible for the resource management.
+Finally, we implement a Secure Bootloader and an end-to-end attestation mechanism that makes it possible to uniquely identify an enclave, establish a shared secret with it and exchange encrypted private data.

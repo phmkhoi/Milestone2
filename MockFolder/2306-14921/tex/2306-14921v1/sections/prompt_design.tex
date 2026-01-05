@@ -1,0 +1,119 @@
+\begin{figure*}[ht]
+\includegraphics[width=\textwidth]{figures/prompt_designs_zero_shot_all_V3.pdf}
+\caption{Zero-shot prompt designs: Prompts (a), (b) and (c) are examples of closed extraction corresponding to Simple, Explicit and Generated Knowledge prompt designs. Prompt (d) is an example of open information extraction.}
+\label{fig:extraction_prompt_new}
+\end{figure*}
+\section{Zero-shot Prompt Design}
+\label{sec:prompt_design}
+
+LLMs like ChatGPT expect text as input and return text as output.
+The input text is also known as a prompt. In our case, the prompt contains a task description and a task input.
+Recent work has shown that careful prompt design is crucial to achieving good performance~\cite{narayan_can_2022, zhao_calibrate_2021}.
+In this section, we experiment with different prompt designs to explore the zero-shot performance of ChatGPT. The prompt designs for product information extraction can be categorized into closed and open.
+We first introduce the closed and open prompt designs and afterwards present results.
+
+%\subsection{Closed Information Extraction}
+%\label{sub-sec:closed_information_extraction}
+\vspace{.2cm}\noindent\textbf{Closed Product Information Extraction.}
+The goal of our closed prompts is to extract the value of a specific attribute from a product title. % Changed from product title to desctiption as we are talking about the general case here.
+The task descriptions of closed product information prompts are categorized as follows:
+
+\begin{itemize}
+    \item \textbf{Simple}: Task description asks for an attribute using simple language. 
+    \item \textbf{Request}: Task description requests a specific attribute. %\rs{Explicit or Request?} \rs{Explicit is a comb.}
+    \item \textbf{Short answer (sh.)}: Task description asks the model to respond only with the attribute value.
+    \item \textbf{Unknown (unk.)}: Task description tells the model how to answer if the attribute value cannot be derived.
+    \item \textbf{Generated Knowledge}: Task description asks the model to first implicitly extract all attribute-value pairs before extracting an explicit attribute~\cite{liu_generated_2022}. 
+\end{itemize}
+
+We refer to a prompt that combines request, short and unknown as \textbf{Explicit}. The prompts (a), (b) and (c) in Figure \ref{fig:extraction_prompt_new} are example prompts for closed extraction: (a) is a simple prompt, (b) is an explicit prompt, %that combines the ideas of request, simple and unknown in its task description, 
+and (c) is a prompt that uses generated knowledge.
+
+%Todo Alex (Done): This formulation in the prompt looks strange. Why is it used? attribute:  attribute-value pairs. 
+%Todo Alex (Done): "All parts of the product title must be assigned to an attribute" Did you also test "should"? Or removing this sentense, because it sounds like to force the model to output stuff even if it is very unsure.
+
+% \begin{figure}[ht]
+% \includegraphics[width=.45\textwidth]{figures/closed_information_extraction.PNG}
+% \caption{Two zero-shot prompt designs for closed product information extraction using ChatGPT. The example prompts consist of a task description and a task input.}
+% \label{fig:closed_extraction_prompt}
+% \end{figure}
+
+% \begin{figure}[ht]
+% \includegraphics[width=.45\textwidth]{figures/generated_knowledge.PNG}
+% \caption{Task description and task input of an example prompt that first generates knowledge about the product and afterwards extracts an explicit attribute value. \rs{Should this figure contain the output as well?}}
+% \label{fig:generated_prompt}
+% \end{figure}
+
+\vspace{.2cm}\noindent\textbf{Open Product Information Extraction.}
+The goal of our open prompts is to extract all attribute-value pairs from a product title. 
+%These advantes are vage and their utility depends on the use case. Better remove. It has two main advantages over closed extraction. First, it is open to any available product attribute and does ask for a specific attribute. Second, only one extraction is necessary to extract multiple attribute/value pairs. 
+%This approach does not ask for specific attribute/value pairs and lets the model identify the relevant attribute/value pairs. 
+%Remove this sentense as too vague for scientific paper. What means works fine? WHich use case has these requirements? If 
+Prompt (d) in Figure \ref{fig:extraction_prompt_new} shows an example prompt of open extraction. We explicitly describe the output format so that  attribute/value pairs can be parsed from the response and compared to the ground truth in the test set.
+
+% \begin{figure}[ht]
+% \includegraphics[width=.45\textwidth]{figures/open_information_extraction.PNG}
+% \caption{Task description, task input and task output of an example prompt that uses open information to extract all attribute-value pairs from the product title.}
+% \label{fig:open_extraction_prompt}
+% \end{figure}
+
+\vspace{.2cm}\noindent\textbf{Results.}
+Table \ref{tab:zero_shot_results} shows the results of all zero-shot prompts and baselines.
+Overall, our results show that ChatGPT achieves %results 
+comparable performance to that of NER.
+AVEQA shows an exceptional performance with almost perfect Precision, Recall and F1 %being close to 1 
+and clearly outperforms the zero-shot results with ChatGPT.
+% Todo Alex (Done): Be presice, you talk about Zero-shot case, right? So the term "additoinal training data" is misleading. Please do not use it.
+However, both baselines (AVEQA and NER) are finetuned on 71,266 attribute/value pairs and require additional computing for fine-tuning whereas ChatGPT needs only an explicit prompt.
+Requiring no training data for task-specific finetuning to achieve these results is an advantage of ChatGPT over AVEQA and NER.
+
+The explicit prompt (Explicit) with a request for an attribute, a short answer and telling the model how to respond (recall prompt example in Figure~\ref{fig:extraction_prompt_new}(b)) achieves an F1 score of 87.86\%.
+Specifically, telling the model how to respond if the attribute is unknown to the model, highly impacts the model's precision. Without 'unk.' the model's precision drops by 24.79\%.
+%This zero-shot performance of ChatGPT is possible if the prompt explicitly requests a specific attribute and tells the model what to do if the target attribute value is not contained in the product title. \rs{Maybe we can be further explicit and talk about the addition, e.g., "First the addition of an explicit request (Req.) boosts the performance significantly (+41.61 F1)..."} Without the `N/A' addition to the prompts, ChatGPT responds with different outputs that are semantically similar to `I do not know.' but the outputs cannot be simply parsed. This explains why the precision drops significantly if the `N/A' addition is not provided.
+Generating knowledge about the product improves the results only marginally in our experiments and since the task descriptions are longer, costs more per Title.
+
+The open extraction is comparable to the best closed extraction results with respect to precision but the recall is more than 40\% lower. ChatGPT has no guidance on how the attributes are named and, thus, proposes its own attribute names. Since we check for an exact match on the attribute names during the evaluation, the unknown attribute names generated by ChatGPT are not found. Prompt (d) in Figure \ref{fig:extraction_prompt_new} illustrates this behaviour for the attribute \emph{"Resolution"}, which is extracted as \emph{"Megapixels"} by ChatGPT. A possible solution to this issue is to use demonstrations with an example schema, which ChatGPT can use to build a schema for the extraction. We explore this idea in Section \ref{sec:in_context_learning}.
+
+We noticed that ChatGPT normalizes attribute values for both open and closed extraction. Table \ref{tab:value_normalization} shows examples of how ChatGPT normalizes attribute values.
+%During the result inspection, we observe that ChatGPT interprets and normalizes the extracted attribute values. An example of this behaviour is the attribute \emph{"Number of Processor Cores"} of the category \emph{"Laptops"}. In the MAVE dataset, the target attribute value is usually "dual-core" or "quad-core". ChatGPT seems to extract and interpret these values because it returns "2" for "dual-core" and "4" for "quad-core". Since the attribute "Number of Processor Cores" explicitly asks for a number, we added "2" and "4" as accepted attribute values to the ground truth.
+
+\begin{table}[]
+\setlength{\tabcolsep}{4pt}
+\caption{Precision (P), Recall (R), F1, $\Delta$ F1 and Cost (\textcent) per Title of the Zero-Shot prompts and fully trained baselines.}
+\label{tab:zero_shot_results}
+\scalebox{0.95}{\begin{tabular}{@{}l|ccccc@{}}
+\toprule
+Configuration         & P & R & F1 & $\Delta F1$ over & Cost (\textcent) \\ 
+         & & & & Simple & per Title \\ \midrule
+Simple             & 30.60                  & 39.72                 & 34.57                  & -        & 0.0175                                     \\
+Explicit    & \textbf{87.96}                 & 87.76                 & 87.86                  & +53.29                        & 0.0196                                     \\
+Explicit w/o sh.,unk.              & 67.44                 & 87.53                 & 76.18                  & +41.61                        & \textbf{0.0161}                                    \\
+Explicit w/o unk.        & 63.17                 & 81.99                 & 71.36                  & +36.79                        & 0.0176                                     \\
+
+Gen. Knowledge & 87.79                 & \textbf{87.99}                & \textbf{87.89}                  & +53.32                        & 0.0242                                     \\
+Open                  & 70.27                 & 36.45                 & 48.00                     & +13.43                        & 0.0336                                     \\\midrule
+NER (fully trained)           & 90.80                  & 84.3                 & 87.43                  &        \multicolumn{1}{c}{-}  & \multicolumn{1}{c}{-}   \\
+AVEQA (fully trained) & \textbf{99.52} & \textbf{99.28} & \textbf{99.41} &\multicolumn{1}{c}{-} &\multicolumn{1}{c}{-} 
+\\ \bottomrule
+\end{tabular}}
+\end{table}
+
+% \begin{table}[]
+% \caption{Precision (P), Recall (R), F1, $\Delta$ F1 and Cost (\textcent) per Title of the Zero-Shot prompts. \rs{the delta is over simple right? I think we need to say that explicitly since usually it is over a baseline, right? Also, lets make it consistent, either with or without the "+"...}\rs{with} \rs{Should we also mark bold the lowest cost?}\rs{yes}}
+% \label{tab:zero_shot_results}
+% \begin{tabular}{@{}l|ccccc@{}}
+% \toprule
+% Configuration         & P & R & F1 & $\Delta F1$ & Cost (\textcent) \\ 
+%          & & & & over Simple& per Title \\ \midrule
+% Baseline            & \textbf{90.99}                  & 72.29                 & 80.57                  &         &   \\
+% AVEQA  & 99.52 & 99.28 & 99.41 &
+% \\ \midrule
+% Simple             & 30.60                  & 39.72                 & 34.57                  & \multicolumn{1}{l}{-}        & 0.0175                                     \\
+% Explicit    & 87.96                 & 87.76                 & 87.86                  & 53.29                        & 0.0196                                     \\
+% Explicit w/o sh.,unk.              & 67.44                 & 87.53                 & 76.18                  & 41.61                        & 0.0161                                     \\
+% Explicit w/o unk.        & 63.17                 & 81.99                 & 71.36                  & 36.79                        & 0.0176                                     \\
+
+% Gen. Knowledge & 87.79                 & \textbf{87.99}                & \textbf{87.89}                  & 53.32                        & 0.0242                                     \\
+% Open                  & 70.27                 & 36.45                 & 48.00                     & +13.43                        & 0.0336                                     \\ \bottomrule
+% \end{tabular}
+% \end{table}

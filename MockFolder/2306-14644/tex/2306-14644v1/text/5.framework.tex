@@ -1,0 +1,86 @@
+\section{A Strong Baseline of PTVD Benchmark}
+
+\subsection{Framework}
+\label{sec:framework}
+
+As discussed in \cref{sec:rw}, previous multimodal methods that process the cinema/TV domain are all task-dependent. Moreover, none of them have publicly shared model weights, let alone trained networks for Chinese text (NB: all past multimodal movie/TV-drama corpora are in English). Therefore, there does not exist a direct baseline that we can utilise for customisation or benchmark purposes.
+To tackle this challenge, based on METER~\citep{meter2022cvpr}, a state-of-the-art architecture for multimodal learning, we developed a unified framework that can attack various cinema/TV processing tasks.
+
+\begin{wrapfigure}{r}{0.6\textwidth}
+\centering
+    \includegraphics[width=0.45\textwidth]{figure/fig_framework.pdf}
+    \caption{
+    Architecture of the pre-training framework.
+    }
+    \label{fig:framework}
+\end{wrapfigure}
+
+\noindent\textbf{Network structure.} Shown in Fig.~\ref{fig:framework}, aiming to serve as a future baseline, our algorithm first adopts the most popular text encoder, BERT~\citep{bert2018arxiv}, for text input, and a very promising vision encoder, ViT~\citep{vit2020arxiv}, for image and video.  
+The vanilla METER does not support video input, so we employ the approach of \citep{4f2021cvpr} and add a signal converter which uniformly samples four frames from each clip. In the Image-Text setting, the encoded features are fed into co-attention fusion modules to acquire a multimodal representation. In the Video-Text setting, the encoded video features, which include images and subtitles, are directed toward two independent attention fusion modules. A bitwise addition operation is then implemented before concatenating with the plot text to learn the multimodal representation.
+
+
+% \begin{table*}[ht]
+% \begin{subtable}{.35\linewidth}
+% \centering
+% \resizebox{!}{1.28cm}{
+% \begin{tabular}{llcc}
+% \toprule
+% \textbf{Modality} & \textbf{Source} & \textbf{\#samples} & \textbf{avg. length} \\
+% \midrule
+% \multirow{2}{*}{Text} & BSC & 24,875 & 157.2 \\
+%  & Plot & 24,875 & 122.7 \\
+% \midrule
+% Image & Frame & 24,875 & - \\
+% \midrule
+% Video & Clip & 24,875 & 63s \\
+% \bottomrule
+% \end{tabular}
+% }
+% \caption{Data statistics.}
+% \end{subtable}%
+% \begin{subtable}{.65\linewidth}
+% \centering
+% \resizebox{!}{1.28cm}{
+% \begin{tabular}{lllllll}
+% \toprule
+% \multirow{2}{*}{\textbf{Modality}} & \multicolumn{3}{c}{\textbf{Micro}} & \multicolumn{3}{c}{\textbf{Macro}} \\
+%  & \multicolumn{1}{c}{P} & \multicolumn{1}{c}{R} & \multicolumn{1}{c}{F1} & \multicolumn{1}{c}{P} & \multicolumn{1}{c}{R} & \multicolumn{1}{c}{F1} \\
+% \midrule
+% All  & \multicolumn{1}{c}{93.7} & \multicolumn{1}{c}{94.5} & \multicolumn{1}{c}{94.2} & \multicolumn{1}{c}{81.8} & \multicolumn{1}{c}{83.5} & \multicolumn{1}{c}{82.6} \\
+% \textit{w/o plot} & 77.2 & 17.0 & 75.2 & 7.4 \\
+% & 82.4 (11.3) & 73.8 (20.7) & 77.2 (17.0) & 78.3 (3.5) & 62.5 (21.0) & 75.2 (7.4) \\
+% \textit{w/o BSC} & 89.7 (4.0) & 89.3 (5.2) & 89.5 (4.7) & 79.6 (2.2) & 80.5 (3.0) & 80.1 (2.5) \\
+% \textit{w/o video} & 90.6 (3.1) & 90.9 (3.6) & 90.8 (3.4) & 79.9 (2.9) & 81.1 (2.4) & 80.0 (2.6) \\
+% \textit{w/o images} & 91.3 (2.4) & 92.1 (2.4) & 91.7 (2.5) & 80.3 (1.5) & 81.7 (1.8) & 81.0 (1.6) \\
+% \bottomrule
+% \end{tabular}
+% }
+% \caption{Ablation results of genre classification.}
+% \end{subtable} 
+% \caption{The dataset statistics and genre classification results.} 
+% \label{tab:merge_tab}
+% \end{table*}
+
+
+
+\noindent\textbf{Pre-training with BSCs.} It is known that the perception and expression abilities of young children can see a development boost if they verbally interact with their parents while watching TV programmes~\citep{bullet-screen-pyschology}. Motivating by how BSCs are applied for interactions between video viewers (see \cref{sec:rw}), we proposed to conduct large-scale pre-training using the BSC collection of \TVD, which is the biggest text corpus in the cinema/TV domain.
+To be specific, we first perform Masked Language Modelling (MLM)~\citep{bert2018arxiv} with BSCs. Next, given the timestamp of each BSC, we captured one screenshot frame. We also clipped a 60-second video piece that surrounds the timestamp. In this way, we obtained more than 26 million BSC-image and BSC-video pairs, respectively. We made use of these two groups for Image-Text Matching (ITM) and Video-Text Matching (VTM)~\citep{itm2019nips}. Note that Image-Text and Video-Text sides are independent, and only parameters of the co-attention fusion modules are updated. 
+% See \cref{sec:app_pretrain_setting} for comprehensive hyper-parameters.
+See the appendix for comprehensive hyper-parameters.
+
+\noindent\textbf{Fine-tuning Scheme.} For Genre Classification, we input all possible pairings of the involved modalities. Specially, as a BSC may only correspond to the content of a short video span, for each clip we fed the concatenation of the top 10 most upvoted BSCs to the model.
+All output embeddings are then concatenated and passed to a Multi-Layer Perceptron (MLP), which is optimised against the cross-entropy loss. Due to the multi-label nature of the task, for each tag we independently trained one binary classifier. 
+
+
+As for Plot Retrieval, on the Image-Text side of our framework, we performed Img2Txt and Txt2Img retrievals. The Video-Text side, correspondingly, is trained on Vid2Txt and Txt2Vid retrievals.
+We trained a MLP head to predict if the inputs from two modalities make a correct match.
+The prediction score is utilised directly to obtain Hit@$n$. Its binarised version (we set the threshold at 0.5) is used to calculate Matching Accuracy. 
+
+% finding the nearest neighbour in the embedding space. Similar to the pre-training stage, we only update the parameters of the co-attention fusion modules. 
+
+While the original METER does not support text generation, we ``made it speak'' through the workaround of \citep{captioning2020eccv}. Specially, we introduced causal masking to the attention units within the co-attention fusion module of the video-text side, which turned on the auto-regressive inference mode of our framework. We argue that this strategy can be applied to other text generation tasks as well. 
+% See more implementation details in \cref{sec:app_finetune_setting}.
+See more implementation details in the appendix.
+
+
+

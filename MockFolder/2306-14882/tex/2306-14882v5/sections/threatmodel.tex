@@ -1,0 +1,64 @@
+\section{Threat Model and Security Property}
+\label{sec:threatmodel}
+
+\subsection{Attacker Capabilities}
+We follow the usual attacker model for TEEs.
+We assume a privileged software attacker co-located on the same machine as the victim enclave.
+The attacker has compromised the majority of the software stack, including other enclaves and the OS, except for a limited trusted code base (TCB) including the secure bootloader, the SM (together 15K lines of code (LOC)) and the victim program running inside the enclave (see Figure \ref{fig:computing_stack}).
+Note that the TCB may contain Spectre gadgets.
+The attacker also has control over the contents of shared memory and may control some of the enclave's inputs.
+For the rest of this paper, we refer to any code outside the TCB as the OS.
+Attackers can exploit the timing of shared microarchitectural events to mount TES attacks.
+
+\subsection{Attacks Considered Out-of-Scope}
+\noindent\textbf{Execution-Time Side Channel}
+\label{sec:execution_time_SC}
+The time an enclave takes to execute might depend on a secret which can be exploited by an attacker.
+This includes the timing between any observable (micro)architectural events like syscalls or accesses to shared memory.
+We refer to these attacks as exploiting "execution time".
+These attacks can only be addressed for constant-time programs \cite{daniel2023prospect, daniel2021hunting, schwarz2020context, choudhary2021speculative, yu2019speculative}. 
+To defend against execution-time attacks for this restricted class of programs, Citadel offers the option to disable speculation as we do in the SM (we evaluate a +882\% overhead on a crypto library -- see Section \ref{sec:evalcrypto}).
+However, because we mostly want to protect programs that are \textit{not} constant time,
+we follow previous work \cite{bourgeat2019mi6, khasawneh2019safespec, kiriansky2018dawg, sakalis2019efficient, li2019conditional, ainsworth2020muontrap, saileshwar2019cleanupspec, wang2019oo7} and consider execution-time attacks out of scope.
+These attacks are generally considered lower risk due to lower bandwidth, higher susceptibility to noise, and increased difficulty compared to other side channels. 
+For example, NetSpectre \cite{schwarz2019netspectre} can only extract 15 bits per hour using methods applicable to Citadel compared to rates more than 1MB/s for LLC-based side channels \cite{liu2015last}.
+
+\noindent\textbf{Others}
+We do not consider physical attacks (e.g., noise, electromagnetic field) or side channels that exploit the physical layer (e.g. power side channels). 
+We do not consider Rowhammer attacks.
+We are concerned about the privacy of the enclave and do not consider denial-of-service.
+As expressed by our contract, we also do not protect enclave programs that explicitly leak their own secrets, including through shared memory.
+
+\subsection{New Building Blocks for Contracts}
+
+\noindent\textbf{Leakage Models}
+We define \sw{shm}, a new \emph{weak} leakage model that only represents the trace of accesses to \emph{shared} memory.
+
+\noindent\textbf{Execution Models}
+The weakest execution model is \sw{seq}, which represents non-speculative, or sequential execution (one instruction at a time and in-order).
+We also have the strongest execution model \sw{spec} which models speculative execution with the following predictors: the pattern history table (PHT), the branch target buffer (BTB) and the return stack buffer (RSB).
+We also define \sw{stl} that models straight-line speculation~\cite{straightlinespecARM} where branches are always speculated as non-taken (static branch predictor).
+\\
+
+\subsection{Relaxed Microarchitectural Isolation (RMI)}
+
+Given our threat model, we propose a new security property that allow programs to safely share memory.
+
+ \noindent\fbox{%
+    \parbox{\dimexpr\columnwidth-2\fboxsep-2\fboxrule\relax}{%
+        For a given program, \emph{relaxed microarchitectural isolation} is achieved if information leakage through the microarchitecture is equivalent to the trace of shared memory accesses when running the program non-speculatively (one-instruction-at-a-time and in-order).
+    }%
+}
+That means, for a defense mechanism $\uarch[]{\cdot}{}$, enforcing RMI is exactly equivalent to satisfying $\contract[shm]{\cdot}{seq}$.
+Figure \ref{figure:guarantees}, represents how RMI relates to contracts referenced in previous work.
+\\
+
+\noindent\textbf{Our goal} is to design microarchitecture that enforces RMI for a large class of programs.
+Our design strategy is two-fold.
+
+\begin{enumerate}[leftmargin=*, align=left, itemsep=0ex, topsep=0ex]
+    \item Restricting Attacker Observations (HW): we use microarchitectural isolation to restrict the attacker observations to the trace of (speculative) accesses to shared memory.
+    \item Restricting Speculative Leakage (HW+SW): we use a combination of mechanisms for controlled speculation and program analysis to ensure these observation traces do not leak more information than if the program was run non-speculatively.
+\end{enumerate}
+
+\input{figures/security-guarantees-figure}

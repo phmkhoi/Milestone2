@@ -1,0 +1,121 @@
+\section{U-TOE Toolkit Design \& Implementation}
+
+\subsection{Toolkit Architectural Design}
+U-TOE integrates uTVM and RIOT to perform model compilation, flashing, and evaluation of arbitrary models from mainstream ML frameworks onto various low-power boards. The toolkit is composed of the following key components:
+\begin{itemize}
+    \item Model Compiler. U-TOE leverages the uTVM compiler to convert arbitrary neural network models into efficient C code. This compiler enhances the efficiency of the models and enables them to be run on low-power devices.
+
+    \item RPC Mechanism. To evaluate the resource consumption at operator level, U-TOE utilizes the Remote Procedure Call (RPC) mechanism of uTVM. The RPC mechanism enables to upload and launch functions on to IoT boards over serial. This is useful for remote testing and profiling, enabling U-TOE to wrap the model operators for measuring the computational latency and memory usage. It is composed of a client on the host and a server on the target device, receiving commands and executable instructions from the host.
+
+    \item OS Environment. RIOT was chosen to provide a lightweight runtime environment for model execution and evaluation on microcontrollers, with its advantages in extensibility and wide-spectrum support for low-power boards.
+
+    \item Evaluation Module. It contains two units: measurement worker and analyser. As shown in Fig.~\ref{fig:utoe-sw-setup}, the measurement worker is deployed on the MCU for acquiring performance metrics at model or operator level. Besides carrying out the measurement of resource footprint, It is in charge of the randomization of model input, and responsible to report metrics data to host device. The analyser runs on the host, statisticizes the uploaded metrics from device and provides human-readable frontend for users. 
+\end{itemize}
+
+Additionally, U-TOE provides a \emph{connector} for cloud-based IoT testbed which enables seamless interaction with remote boards using serial over TCP. As depicted in Fig.~\ref{fig:utoe-hw-setup}, users can evaluate and benchmark their models on local device, or on a remote, scalable testbed with wide-range of MCUs via U-TOE connector.
+
+\iffalse
+\begin{figure*}[ht]
+    \centering
+    \includegraphics[inkscapelatex=false, width=0.8\textwidth]{figures/utoe_structure.excalidraw.svg}
+    \caption{Structure and workflow of U-TOE.}
+    \label{fig:utoe-structure}
+\end{figure*}
+\fi
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.8\columnwidth]{figures/HW_Setup.excalidraw.pdf}
+    \caption{Hardware setup of U-TOE. Users can connect local boards with host PC via serial, or use remote board service on IoT-Testbed.}
+    \label{fig:utoe-hw-setup}
+\end{figure}
+
+\begin{figure*}[ht]
+    \centering
+    \includegraphics[width=0.65\textwidth]{figures/Compilation_and_Deployment.excalidraw.pdf}
+    \caption{Compilation and deployment workflow of U-TOE. uTVM optimizes and translates model from mainstream ML framework into model library, which is co-compiled and flashed with RIOT and U-TOE components onto target boards.}
+    \label{fig:utoe-compile-and-deploy}
+\end{figure*}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.8\columnwidth]{figures/Software_Arch.excalidraw.pdf}
+    \caption{Software architecture and components of U-TOE.}
+    \label{fig:utoe-sw-setup}
+\end{figure}
+
+{\bf Compilation and Deployment --} U-TOE first gathers the specification of target device to decide the compilation options for uTVM and RIOT. Then, as presented in Fig. \ref{fig:utoe-compile-and-deploy}, uTVM generates sub-optimal model library of the input model without scheduling\footnote{A schedule specifies low-level optimization for loop execution, enhancing cache hit and memory access. The optimal one is co-determined by model and device specification, and identified by heuristic search algorithms based on measurements on device. \cite{chen2018tvm} }. Some static optimization strategies are applied in this stage according to target device type. This uTVM-generated library is jointly compiled with RIOT, RPC server and measurement worker into executable firmware, which is then automatically flashed on the device.
+
+{\bf Evaluation --} After deploying the program on the target device, a bidirectional channel -- in Per-Operator evaluation --, or a unidirectional channel -- in Per-Model evaluation -- is set up between host and device, as depicted in Fig.~\ref{fig:utoe-sw-setup}. The measurement worker starts collecting performance metrics at user-specified level and uploads metrics data to analyser. Eventually, users can obtain the overall statistics of model metrics, or catch the performance bottleneck with execution details of each operator. All the raw metrics data are saved in log file for further, user-customized analysis.
+
+\subsection{Measurement Procedure}
+We designed two measurement procedures to support evaluation at different granularity. The procedures run across multiple components of the toolkit and the most workloads are primary on the target board. Following steps describes the measurement routine after compilation of executable program. The steps marked with \textbf{bold number} are executed on the target board.
+
+\newcommand{\itembf}{\item[\stepcounter{enumi}\textbf{\arabic{enumi})}]}
+{\bf Per-Model Evaluation --}
+This mode focuses on the model performance in actual production environment. Here is the corresponding measurement routine:
+\begin{enumerate}[]
+    \item Calculate model memory and storage consumption based on ELF file. We disable dynamic memory allocation to enable static analysis of memory footprint.
+    \item Deploy executable program to local or remote IoT board.
+    \itembf Repeat model inference based on the user-specific number of trials with randomized input on uniform distribution.
+    \itembf Record computational latency of each trial.
+    \itembf Upload records to host device for further analysis and archive.
+\end{enumerate}
+
+At the end of evaluation, results with statistics (e.g. 95\% confidence interval, median, maximum and minimum) are presented on the host device, including computational latency and consumption of memory and storage.
+%The description of evaluation output is shown in Table~\ref{tab:output-fmt-per-model}
+
+\iffalse
+\begin{table}[ht]
+    \centering
+    \caption{Field Description of Per-Model Evaluation}
+    \begin{tabular}{cc}
+    \hline
+Field Name   & Remark                                \\\hline
+% \# Trials    & Number of trials \\
+% Avg. Time (ms) & Average time consumption     \\
+95\%-CI Time (ms)  & 95\% confidence interval of time consumption\\
+\makecell[t]{Mdn. / Max. / Min. \\ Time (ms)}  & \makecell[t]{Median / Maximum / Minimum \\ time consumption} \\ \hline
+% Max. Time (ms)  & Maximum time consumption\\
+% Min. Time (ms)  & Minimum time consumption     \\
+Memory / Storage (KB)  & Memory / Storage Consumption       \\
+% Storage (KB) & Storage Consumption      \\
+\hline
+    \end{tabular}
+    \label{tab:output-fmt-per-model}
+\end{table}
+\fi
+
+{\bf Per-Operator Evaluation --}
+In contrast to per-model evaluation, this mode focuses on the efficiency and resource footprint of each operator, enabling to discover the performance bottleneck inside models. Thanks to the time evaluator inside the uTVM's RPC mechanism, we can measure computational latency at operator level. The high abstraction of timer and serial in RIOT allows us to unified the implementation of time measurement and RPC communication on arbitrary IoT boards. Here is the corresponding measurement routine:
+
+\begin{enumerate}
+    \item Analysis memory footprint at operator level utilizing internal API of TVM.
+    \item Deploy executable program to local or remote IoT board.
+    \itembf Start RPC Server on IoT board.
+    \itembf Launch RPC client to benchmark and record execution performance of each operator.
+\end{enumerate}
+
+It is noted that the operator structure constructed by uTVM are usually inconsistent with the hand-crafted version in ML framework. That's because uTVM as model compiler applies model optimization (i.e., operator fusion) and inserts execution details (i.e., quantization arithmetic) during convert and compilation, which potentially merge multiple operator into single one or insert additional operators. Nevertheless, 
+%as shown in Table~\ref{tab:output-fmt-per-ops}, 
+we annotate the operators from uTVM with model parameters (weights, biases etc.), so that users can associate a specific operator to the corresponding layer.
+
+\iffalse
+\begin{table}[ht]
+    \centering
+    \caption{Field Description of Per-Operator Evaluation}
+    \begin{tabular}{cc}
+    \hline
+Field Name   & Remark                                \\\hline
+Ops          & Auto-generated annotation of operator \\
+Time (us)     & Computational latency of operator     \\
+Time (\%)     & Contribution of computational latency \\
+Asso. Params & Associated Parameters of operator     \\
+Memory / Storage (KB)  & Memory / Storage Consumption                    \\
+% Storage (KB) & Storage Consumption      \\
+\hline
+    \end{tabular}
+    \label{tab:output-fmt-per-ops}
+\end{table}
+\fi
+

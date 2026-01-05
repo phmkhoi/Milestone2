@@ -1,0 +1,154 @@
+\section{Vulnerability Type Identification as Multi-label Classification}
+\label{sec:approaches}
+%
+%
+%
+In general, multi-label classification could be addressed by two main approaches: \textit{problem transformation methods} and \textit{adapted methods}. \textit{Problem transformation methods} transform a multi-label problem into multiple binary classification problems. In this fashion, the binary classifier of each label $l \in L$ can be employed to make the classifications, and these are then transformed back into multi-label representations.
+%
+Meanwhile, \textit{adapted methods} adapt existing binary classification approaches to tag items with multiple labels without requiring problem transformations.
+
+
+\subsection{Classical Baseline Approach}
+The baseline approach, which is called the binary relevance (BR) method~\citep{brm}, transforms a multi-label problem into one binary classifier for each label. Hence BR independently trains $\|L\|$ binary classifiers $C_1,... , C_{\|L\|}$. Each classifier $C_i$ is responsible for predicting the 0/1 association for each corresponding label $l_i \in L$.
+This approach is popular because of its conceptual simplicity, but this method ignores label correlations. Due to this information loss, BR's predicted label sets are likely to contain either too many or too few labels or labels that would never co-occur in practice~\cite{brm}.
+
+For the baseline approach, we use simple TF-IDF (short for Term Frequency – Inverse Document Frequency) features to represent the instances. Basically, every word in the vocabulary set is considered as a feature. Each function is represented as a bag-of-word vector. In this vector, the value of a feature (word) increases proportionally to its count in the function, but it is inversely proportional to the frequency of the word in the corpus. 
+% TF-IDF is easy to compute, yet its disadvantage is that it does not capture the position in the text, semantics, co-occurrences in different documents, etc.
+The reason for the selection of TF-IDF for the baseline approach is that TF-IDF has been applied as the baseline representation and shown its potential in various software engineering tasks~\citep{embedding_emse22,embedding_icse19} such as code authorship identification~\citep{authorship} or defect prediction~\citep{defect_prediction_paper}. 
+% In fact, for the vulnerability detection task, bag-of-words and classification algorithms lead to inferior accuracy. 
+Indeed, the existing studies have empirically shown that the use of TF-IDF could outperform the methods using more sophisticated approaches for certain tasks~\cite{embedding_emse22,embedding_icse19}, such as the task of Code Authorship Identification.
+
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.65\columnwidth]{imgs/tf-idf.png}
+    \caption{Traditional Baseline Approach (\base) for vulnerability type identification}
+    \label{fig:tf-idf}
+\end{figure}
+
+
+In this work, we construct the feature set covering unigrams and bigrams. In order to drop some irrelevant features and reduce the dimensionality problem, we apply the Chi-Square test for feature selection to select the most statistically relevant TF-IDF features, i.e., keep only the features exceeding a certain $p$-value. The reduced vectors are fed to a Binary Relevance Multi-label Classifier with a Gaussian Naive Bayes-based Classifier (Fig.~\ref{fig:tf-idf}).
+
+
+
+
+% \subsection{Deep Learning Approaches}
+\subsection{Deep Learning Approaches}
+Neural networks (NN) can be directly adapted to support multi-label classification by simply specifying the number of target labels as the number of nodes in the output layer. For example, a task that has three output labels (classes) will require a NN output layer with three nodes in the output layer.
+%
+Additionally, till now, the community of SE researchers has paid tremendous efforts to develop powerful code representations for SE classification tasks, such as code authorship identification, code clone detection, source code classification, and software defect prediction. In this work, we investigate the performance of multi-label classification models for VTI adapted from NN approaches using advanced code representations. 
+
+
+With the rapid development of deep learning in SE applications, various code representation techniques have been proposed, which can be categorized into two broad categories: \textit{Non-contextual Embeddings} and \textit{Contextual Embeddings}. Non-contextual embeddings such as Word2vec~\citep{word2vec_1}, GloVe~\citep{glove}, fastText~\citep{fasttext}, Code2vec~\citep{code2vec}, produce \textit{fixed} representations for words in the vocabulary without considering the meanings of words/code tokens in different contexts. Meanwhile, by contextual embeddings such as CodeBERT~\citep{codebert} and CuBERT~\citep{cubert}, the representations of tokens are \textit{adjusted} based on different contexts.
+%
+
+For \textit{Non-contextual Embeddings}, Word2vec has become one of the most popular code embedding techniques for software engineering tasks~\citep{zhang2019novel,embedding_emse22} due to its high efficiency. Word2vec produces a low-dimensional semantic space by using two different model architectures: Skip-gram (i.e., starting from a single word to predict its context) or Continuous Bag-of-Words (i.e., starting from the context to predict a word).
+In this work, we use Word2vec with Skip-gram as a representative non-contextual embedding technique.
+
+For \textit{Contextual Embeddings}, we select CodeBERT~\citep{codebert} as this model has achieved strong improvements on many SE tasks, showing their great generalizability~\citep{assessing_codebert, embedding_emse22}. 
+%
+CodeBERT shares the same architecture of BERT (Bidirectional Encoder Representation from Transformer)~\citep{bert}, which uses the bidirectional transformer encoder to effectively exploit both the left and right contexts of a target token. Two objectives are designed for BERT-liked models: masked language model and next sentence prediction. In the masked language model, some of the tokens are randomly masked, and the goal is to predict these masked tokens based on their surrounding unmasked context tokens. For next-sentence prediction, the goal is to predict whether a sentence is the next sentence of the current one to capture the relationships between sentences.
+
+To the best of our knowledge, no vulnerability type identification study has been published. 
+%
+Note that $\mu$VulDeePecker~\cite{mu_vuldeeppeker} could output vulnerable functions with vulnerability type. However, that approach's goal is to determine if a function is clean or of exactly one vulnerability, this is fundamentally different from the task of vulnerability type identification. The detailed differences between VTI approaches and $\mu$VulDeePecker are discussed in Section~\ref{sec:related_work}.
+%
+
+In this work, for both deep learning models, we follow the typical architectures of classifiers for the general multi-label text classification task instead of designing a complex model.
+%
+We evaluate the performance of the multi-label classification model using Word2vec proposed by~\cite{text_multi_label}. They use Word2vec to construct a word embedding layer followed by two Bi-LSTM layers, an attention layer, a fully connected, and the sigmoid activation function (Fig.~\ref{fig:w2v}).
+%
+Fig.~\ref{fig:codebert} shows the classification model with CodeBERT proposed by~\cite{assessing_codebert}. In this model, CodeBERT is used as an embedding layer encoding every vulnerable function to a vector. The model also feeds the embedding to a fully connected layer and either the sigmoid function to compute the classification.
+%
+For both models, we use binary cross entropy~\cite{text_multi_label} to compute the loss between the classification and the ground truth.
+
+
+
+
+
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.65\columnwidth]{imgs/w2v.png}
+    \caption{Vulnerability type identification with Word2vec}
+    \label{fig:w2v}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.65\columnwidth]{imgs/codebert.png}
+    \caption{Vulnerability type identification with CodeBERT}
+    \label{fig:codebert}
+\end{figure}
+
+
+
+
+% \begin{figure}
+%      \centering
+%      \begin{subfigure}[b]{0.48\textwidth}
+%         \centering
+%         \includegraphics[width=0.48\columnwidth]{imgs/w2v.png}
+%         \caption{Vulnerability type identification with Word2vec}
+%         \label{fig:w2v}
+%      \end{subfigure}
+%      \hfill
+%      \begin{subfigure}[b]{0.45\textwidth}
+%          \centering
+%          \includegraphics[width=0.48\columnwidth]{imgs/codebert.png}
+%         \caption{Vulnerability type identification with CodeBERT}
+%         \label{fig:codebert}
+%      \end{subfigure}
+     
+%         % \caption{Three simple graphs}
+%         % \label{fig:three graphs}
+% \end{figure}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+%
+% Words are encoded into encoded into a low-dimensional vector space. These vectors are calculated from the probability distribution for each word appearing before or after another. Words of the same context usually appear together in the corpus, so they will be close in the vector space as well.
+% %
+% Several non-contextual embedding techniques including Word2vec~\citep{word2vec_1}, GloVe~\citep{glove}, fastText~\citep{fasttext}, code2vec~\citep{code2vec} have been proven to be useful in assisting in software
+% engineering tasks, such as automatic program repair, vulnerability/defect detection, method name prediction, and code clone detection. 
+
+
+% In this work, we applied Word2vec which is popular in software engineering tasks~\citep{zhang2019novel} due to its high efficiency. 
+% %
+% Word2vec produces a low-dimensional semantic space by using two different model architectures: Skip-gram (i.e., starting from a single word to predict its context) or Continuous Bag-of-Words (i.e., starting from the context to predict a word).
+
+% We set the target size of the word vectors by 256. The window size (i.e., the maximum distance between the current and predicted word within a sentence) is assigned by the mean length of tokenized code in the corpus. The classification model includes:
+
+% - An Embedding layer that takes the sequences as input and the word vectors as weights, just as described before.
+
+% - Two layers of Bidirectional LSTM to model the order of words in a sequence in both directions.
+
+% - Two final dense layers that will predict the probability of each news category.
+
+
+
+
+
+% the old-fashioned Bag-of-Words with Tf-Idf , the famous Word Embedding with Word2Vec, and the cutting edge Language Models for code with CodeBERT.
+
+% \subsection{Representation Learning Techniques}
+% In this study, 
+
+% \subsection{Bag-of-Words with TF-IDF}
+
+
+
+
+% \subsubsection{CodeT5}
+

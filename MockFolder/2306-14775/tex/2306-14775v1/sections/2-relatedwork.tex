@@ -1,0 +1,41 @@
+\section{Related Work} \label{sec:related_work}
+Approaches in continual learning can be grouped into three main categories. We review them below.
+
+
+\textbf{Regularization-based}:
+This approach computes importance values of either parameters or their gradients on previous tasks, and adds a regularization in the loss to restrict changes to those important parameters to mitigate CF. 
+EWC~\citep{ewc} uses the Fisher information matrix to represent the importance of parameters and a regularization to penalize the sum of changes to all parameters. 
+SI~\citep{si} extends EWC to reduce the complexity in computing the penalty.
+Many other approaches~\citep{lwf,dmc,ucl} in this category have also been proposed, but they still have difficulty to prevent CF.  
+As discussed in the introduction section, the proposed approach SPG has some resemblance to a  regularization based method EWC. But the coarse-grained approach of using regularization is significant poorer than the fine-grained soft-masking in SPG for overcoming CF as we will see in \cref{sec:results}.
+
+
+
+\textbf{Memory-based}: 
+This approach introduces a small memory buffer to store data of previous tasks and replay them in learning a new task to prevent CF~\citep{gem,a-gem}. Some methods~\citep{gr,binplay} prepare data generators for previous tasks, and the generated pseudo-samples are used instead of real samples. 
+Although several other approaches~\citep{icarl,mer,mir} have been proposed, they still suffer from CF. SPG does not save replay data or generate pseudo-replay data.
+
+
+
+\textbf{Parameter isolation-based}:
+This approach is most similar to ours SPG.
+It tries to learn a sub-network for each task (tasks may share parameters and neurons), which limits knowledge transfer. We have discussed HAT, SupSup, and CAT in \cref{sec:introduction}.
+Many others also take similar approaches, e.g., 
+Progressive Networks (PGN)~\citep{pgn}, APD~\citep{apd}, PathNet~\citep{pathnet}, PackNet~\citep{packnet}, SpaceNet~\citep{spacenet}, and WSN~\citep{wsn}. 
+In particular, PGN allocates a sub-network for each task in advance, and progressively concatenates previous sub-networks while freezing parameters allocated to previous tasks.
+APD selectively reuses and dynamically expands the dense network.
+Those methods, however, depend on the expansion of network for their performance, which is often not acceptable in cases where many tasks need to be learned.
+PathNet splits each layer into multiple sub-modules and finds the best \textit{pathway} designated to each task. 
+PackNet freezes important weights for each task by finding them based on pruning.
+Although PathNet and PackNet do not expand 
+the network along with continual learning, they suffer from  over-consumption of the fixed capacity.
+To address this, SpaceNet adopts the sparse training to preserve parameters for future tasks but the performance for each task is sacrificed.
+WSN also allocates a subnetwork within a dense network
+and selectively reuses subnetworks for previous tasks without expanding the whole network.
+Nevertheless, those methods are still limited by the pre-allocated network size as each task monopolizes and consumes some amount of capacity, which results in poorer KT when learning many tasks.
+
+
+In summary, parameter isolation-based methods suffer from over-consumption of network capacity and have limited KT, which the proposed method tries to address at the same time.
+
+
+

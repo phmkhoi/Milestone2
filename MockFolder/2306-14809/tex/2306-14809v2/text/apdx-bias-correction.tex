@@ -1,0 +1,61 @@
+\section{Methods to correct the bias of Tanimoto dot product random features}
+\label{apdx:bias-correction}
+
+Here, we describe the bias correction strategies mentioned in Section \ref{sec:tdp-rf} and tested experimentally in section~\ref{sec:experiments}.
+We begin by noting that when $x,x'\in\R_{\ge 0}^d$, $x\cdot x'\ge 0$, and therefore, the power series
+\eq{
+T_{DP}(x,x')=\sum_{r=1}^\infty (x\cdot x')^r(\|x\|^2+\|x'\|^2)^{-r}
+}
+is monotone. Therefore, if we use an unbiased sketch for the truncated series 
+\eq{
+\sum_{r=1}^R (x\cdot x')^r(\|x\|^2+\|x'\|^2)^{-r}
+}
+as the one constructed in Section \ref{sec:tdp-rf}, the final sketch will be biased \emph{downward}:
+\eq{
+\E(\Phi(x)\cdot\Phi(x'))< T_{DP}(x,x')
+}
+for all $x,x'\in\R_{\ge 0}^d$. Below we introduce two strategies to remedy this issue.
+
+\subsection{Bias correction strategy 1: normalize the features}
+
+Empirically, we observe that the highest bias occurs in the diagonal elements of the kernel matrix. As the kernel satisfies $T_{DP}(x,x)=1$ for all $x\in\R^d$, one possible correction is to \emph{normalize} the sketch to obtain
+\eq{
+\tilde \Phi(x) = \frac{\Phi(x)}{\|\Phi(x)\|}.
+}
+This remains an oblivious sketch, and ensures that the diagonal of the kernel matrix is estimated exactly, at the expense of possibly introducing some bias in off-diagonal elements of $K$.
+
+\subsection{Bias correction strategy 2: sketch the residual}
+
+To simplify the algebra,
+let $t_{x,y}=\frac{x\cdot y}{\|x\|^2 + \|y\|^2}$.
+The power series for $T_{DP}$ can then be re-written as:
+\begin{align}
+    T_{DP}(x,y) &= \sum_{r=1}^\infty \left(t_{x,y}\right)^r \nonumber\\
+    &= \sum_{r=1}^{R} \left(t_{x,y}\right)^r + \left(t_{x,y}\right)^{R+1} + \sum_{r=R+2}^{\infty} \left(t_{x,y}\right)^r \nonumber\\
+    &= \sum_{r=1}^{R} \left(t_{x,y}\right)^r + \left(t_{x,y}\right)^{R+1} + \left(t_{x,y}\right)^{R+1}\sum_{r=1}^{\infty} \left(t_{x,y}\right)^r \nonumber\\
+    &= \underbrace{\sum_{r=1}^{R} \left(t_{x,y}\right)^r}_{k^{R}} + \underbrace{\left(t_{x,y}\right)^{R+1} \left(1 + T_{DP}(x,y)\right)}_{\text{truncation error}}
+\end{align}
+Critically, the truncation error can be written in terms of the kernel value itself, without any infinite sums.
+This enables a simple procedure to generate random features for \emph{both} the truncated
+power series and the remainder:
+\begin{enumerate}
+    \item Compute and store $\Phi(x)$ 
+        as random features for the truncated kernel $k^{R}$.
+    \item  Concatenate a single 1 onto $\Phi(x)$
+        to produce features $\Phi_{+1}(x) = (1,\Phi(x))$ which approximate the kernel $1+k^{R}$
+        using only a single extra dimension.
+        Treat this as approximate random features for the kernel $1+k$.
+    \item Compute random features $\Phi_{r+1}(x)$ for $t_{x,y}^{R+1}$.
+    \item Apply \textsc{Sketch} to the tensor product $\Phi_{r+1}(x)\otimes \Phi_{+1}(x)$ to obtain $\Delta(x)$,
+        which approximates random features of the truncation error 
+        $t_{x,y}^{R+1}(1+T_{DP}(x,y))$.
+    \item Concatenate the random features $\Phi(x)$ and $\Delta(x)$, to obtain bias corrected random features $\Phi_\text{bc}(x)=\Phi\oplus \Delta(x)$.
+\end{enumerate}
+
+Overall, these random features are essentially a concatenation of
+the random features for the truncated power series
+with an additional random feature estimate of the truncation error,
+which is formed using both the random features for the first $R$ terms
+and the random features for the $(R+1)$th term.
+A nice property of the procedure above is that it \emph{re-uses}
+the random features $\Phi(x)$ to estimate the error.

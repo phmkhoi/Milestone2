@@ -1,0 +1,57 @@
+\section{Experiments}
+\label{sec:experiments}
+
+\input{figures/tables/expr-single-vs-multi}
+
+\subsection{Base models comparison}
+\label{sec:experiments:base_compare}
+\textbf{Task performances.} We first compare the success rate of models in the Single Turn and Try Again settings for both the \benchmark{}-Bash and SQL datasets.
+From Table~\ref{table:single-vs-multi-sql} and Table~\ref{table:single-vs-multi-bash}, we observe that performance across different levels of task difficulty (SQL) and different file systems (Bash) is superior in the interactive setting for all models, with a notable multi-fold increase for GPT-4 ($9.1\% \rightarrow 73.7\%$) on the \benchmark{}-SQL task.
+
+\textbf{Analysis of interactions.} Manual inspection of trajectory logs indicates that models actively exercise later turns for discovering relevant context, correcting errors via execution feedback as observations, and solving problems via iteratively constructing and editing actions as affirmed by Figure~\ref{fig:turn_stats}.
+In addition, models also demonstrate a level of planning and modular problem solving; for instructions with \texttt{gold} commands that chain multiple commands together (i.e. with \text{\textbar}, $>$, or \texttt{;} in \texttt{bash}) or consist of multiple sub-problems (i.e. subqueries in \texttt{SQL}), models will use observations from solving smaller sub-problems in earlier turns to compose the higher-order action. Trajectories that exhibit these phenomena are in \S~\ref{appx:experiments:trajectory_analyses}
+
+\textbf{Failure cases.} With that said, both Figure~\ref{fig:turn_stats} exhibits a plateauing in Success Rate and and Error \%.
+This suggests that as the amount of context and feedback builds up, models are less capable of discerning relevant past history toward future actions.
+In late-turn scenarios, task episode trajectories often reveal repetition of earlier actions, a failure to effectively use recent observations towards deciding an appropriate next action, or an inability to recognize that a current problem-solving chain of thought is inconclusive or futile.
+This is particularly evident for \texttt{hard} and \texttt{extra} level \benchmark{}-SQL task instructions that require context spanning across several tables and actions that incorporate multiple clauses.
+A larger context window size, retrieval of useful memory, and more adaptive reasoning paradigms are just a handful of potential solutions to overcoming such challenges.
+
+\subsection{Prompting strategy comparison}
+\label{sec:experiments:strategy_compare}
+Initiating language agents with prompting strategies that encourage different forms of reasoning toward problem-solving improves performance on the interactive coding task to varying degrees. Table~\ref{table:strategy-comparison} presents side-by-side comparisons of the success rate, number of turns, and error rate per strategy. 
+Compared to Try Again, which lacks specific guidance on leveraging multiple turns, more explicit reasoning frameworks such as ReAct and Plan \& Solve policies generally achieve higher success rates (SQL: $47.3\% \rightarrow 58.7\%$) with fewer turns and a higher rate of admissible commands.
+
+\input{figures/images/turn_stats}
+\input{figures/tables/expr-compare-strategies}
+
+\textbf{Different tasks present different learning challenges.}
+An important skill to solving the \benchmark{}-SQL task is the ability to discover context and construct actions conditionally based on information revealed in prior observations.
+Given that \benchmark{}-SQL task instructions are phrased most commonly as questions, adapting to the task setting and new information discovered along the way puts more emphasis on error correction and context discovery.
+On the other hand, the more declarative and multi-step nature of the \benchmark{}-Bash task instructions is more aptly solved by planning and modular task completion.
+These distinctions manifest in the Plan \& Solve strategy's performance gap between the \benchmark{}-SQL and \benchmark{}-Bash tasks; while Plan \& Solve encourages a model to decompose problems into more manageable steps, the strategy is less favorable towards adjusting on the fly in response to execution feedback.
+Example trajectories supporting these claims are in \S~\ref{appx:experiments:trajectory_analyses}.
+
+\textbf{More adaptive reasoning is favorable.}
+Compared to "imperative" reasoning paradigms such as Plan \& Solve which prescribe a relatively rigid procedure, more flexible frameworks like ReAct, which do not enforce any particular logical formula or roadmap, are more conducive to eliciting a broader set of reasoning capabilities.
+However, while ReAct's performance is generally superior to Plan \& Solve, tasks solved by \textit{both} strategies with \texttt{gpt-3.5-turbo} make up $57\%$ ($407/708$) and $27.6\%$ ($21/76$) of the union of all successfully solved \benchmark{}-SQL and \benchmark{}-Bash tasks respectively.
+This discrepancy highlights a trade-off between the guidance and structural constraints that are inherent to prompting strategies; schemes that draw out specific reasoning patterns often overlook other equally useful capabilities.
+\benchmark{}'s interactive coding task can serve as a strong litmus test toward more adaptable, variegated model reasoning.
+
+\subsection{New tasks \& datasets opportunities}
+\benchmark{}'s task formulation, modular design, flexible task construction, and use of virtual containers enable task designers to manifest new, complex, code-driven tasks, where completion is much more attainable through interaction.
+We draw inspiration from Capture the Flag (CTF)~\cite{cowan2003ctf}, a competitive cybersecurity game that requires expertise in coding, cryptography (i.e. binary exploitation, forensics), reverse engineering, and recognizing security vulnerabilities to accomplish the primary objective of discovering encrypted "flags" concealed within code snippets or file systems.
+Compared to \benchmark{}-Bash \& -SQL, CTF is much more complicated, requiring an agent to exercise knowledge of multiple coding languages, modularize a higher-order objective into sub-problems, construct multi-step plans towards solving each problem, and adjust strategy when a plan fails to yield any useful insights.
+
+We curate a toy dataset of easy CTF objectives from picoCTF \cite{picoctf}, where each task instance is a \texttt{<challenge description, hidden flag>} pair.
+Following Section~\ref{sec:benchmark:ic_envs}, we construct a Ubuntu OS file system with a Bourne Shell bash interpreter as the task environment. \benchmark{}'s use of virtual containers is crucial, as necessary actions can be irreversibly damaging on real systems (i.e. \texttt{rm -rf}, \texttt{sudo} access). Figure~\ref{fig:traj_ctf} spotlights the diverse skills needed for a simple CTF task. 
+
+
+\input{figures/images/trajectory_ctf}
+
+
+
+
+
+
+

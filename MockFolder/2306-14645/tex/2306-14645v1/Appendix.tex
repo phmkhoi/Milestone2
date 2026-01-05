@@ -1,0 +1,142 @@
+%\newpage
+\section{Appendices} \label{sec:appendix}
+\subsection{Fourth order version -- CAT4}
+\label{sec:CAT4}
+For a complete presentation of the general procedure to compute the $k-$th time derivative of flux, we detail hereafter the CAT4 scheme, that is with $P=2$.
+Unlike CAT2 description, CAT4 scheme's description presents the high-order CAT automatism by introducing in detail the development of the iterative procedure used to compute the time derivatives of the flux.
+%In order to help the readability of the general iterative algorithm used to compute the $k-$th time derivative of flux, we will be shown also the practical way to apply CAT4 method. Unlike the CAT2 method CAT4 scheme will give a clearer view of the high-order CAT automatism by introducing in detail the development of the iterative procedure behind the computing of the time derivatives of the flux. 
+With this in mind, see Figure \ref{1D_grid} to have a graphic idea of the necessary stencil. 
+
+
+% --- FIG ---
+\begin{figure}[!ht]
+    	\centering\includegraphics[scale=0.7]{FIG/CAT_Chap_Theo_fig/Grid_space_time_1D.eps}
+    	\vspace{-1.6 cm}
+    	\caption{Local space-time  grid where approximations of $U$ are computed to calculate $F^P_{i+1/2}$ with $P = 2$. For simplicity a pair $j,r$ represents the point $(x_{i+j}, t_{n+r})$. Taylor expansions in time are used to obtain these approximations following the blue lines. These Taylor expansions are centered in the points lying on the black line.}
+    	\label{1D_grid}
+\end{figure}
+% --- FIG ---
+The iterative CAT4 algorithm proceeds with the following steps to compute the flux $F_{i+\ha}^P$:
+\begin{itemize}
+    \item[Step 1:] Compute $f^{(0)}_{i+\ha}$ adopting the interpolation formula on stencil $\mathcal{S}^2_{i+\ha}=\left\{ u_{i-1}^n, u_i^n, u_{i+1}^n, u_{i+2}^n \right\}$, so that $-P+1=-1\leq p \leq 2=P$, as:
+    $$ f^{(0)}_{i+\ha} = \sum_{p=-1}^{P=2}\gamma_{2,p}^{0,\ha} \, f_{i+p}^n, $$
+    where $\gamma_{2,p}^{0,\ha}$ is the interpolation coefficient for $P=2$ and label $p$.
+    \item[Step 2:] Compute the first time derivative of $u$ at time $t^n$ at position $x_{i+p}$ with $p = -1,\ldots,2$ through the numerical compact Cauchy-Kovaleskaia identity
+    \begin{equation}
+        \label{CK}
+        \partial^k_tu = -\partial^k_xf^{(k-1)}(u), \quad k = 1,2,\ldots  
+    \end{equation} 
+    For $k=1$ we have:
+    $$ u_{i,j}^{(1)} = -\frac{1}{\Delta x}\sum_{j = -1}^2\gamma_{2,j}^{1,0}f_{i+j}^n . $$
+    \item[Step 3:] Compute the Taylor expansion of $u$ in time truncated at first term at time $t^{n+r}$ with $r=-1,\ldots,2$ for each position $x_{i+j}$ with $j=-1,\ldots,2$ as:
+    $$ u_{i,j}^{1,n+r} = u_{i+j}^n + r\Delta t \,u_{i,j}^{(1)} . $$
+    \item[Step 4:] Compute the first time derivative of $f$ at time $t^n$ at position $x_{i+j}$ with $j = -1,\ldots,2$ using the four fluxes $f_{i,j}^{1,n+r}=f\left( u_{i,j}^{1,n+r} \right)$ as:
+    $$ f_{i,j}^{(1)} = \frac{1}{\Delta t}\sum_{r=-1}^2 \gamma_{2,r}^{1,0} \, f_{i,j}^{1,n+r} .$$
+    \item[Step 5:] Compute $f^{(1)}_{i+\ha}$ adopting the interpolation formula on stencil $\mathcal{S}^2_{i+\ha}$ as:
+    $$ f^{(1)}_{i+\ha} = \sum_{j=-1}^2\gamma_{2,j}^{0,\ha}f_{i,j}^{(1)}; $$
+    \item[Step 6:] Compute the second time derivative of $u$ at time $t^n$ and position $x_{i+j}$ with $j=\nobreak -1,\ldots,2$ from the first time derivatives of $f$ using the \eqref{CK} as:
+    $$ u_{i,j}^{(2)} = -\frac{1}{\Delta x}\sum_{s = -1}^2\gamma_{2,s}^{1,j}f_{i,s}^{(1)}; $$
+    \item[Step 7:] Compute the Taylor expansion in time truncated at second term at time $t^{n+r}$ with $r=-1,\ldots,2$ for each position $x_{i+j}$ with $j=-1,\ldots,2$ as:
+    $$ u_{i,j}^{2,n+r} = u_{i+j}^n + r\Delta t u_{i,j}^{(1)} + \frac{(r\Delta t)^2}{2}u^{(2)}_{i,j}; $$
+    \item[Step 8:] Compute the second time derivative of $f$ at time $t^n$ at position $x_{i+j}$ with $j = -1,\ldots,2$ using the four fluxes $f_{i,j}^{2,n+r}$ as:
+    $$ f_{i,j}^{(2)} = \frac{1}{\Delta t^2}\sum_{r=-1}^2\gamma_{2,r}^{2,0}f_{i,j}^{2,n+r} . $$
+    \item[Step 9:] Compute $f^{(2)}_{i+\ha}$ adopting the interpolation formula on stencil $\mathcal{S}^2_{i+\ha}$ as:
+    $$ f^{(2)}_{i+\ha} = \sum_{j=-1}^2\gamma_{2,j}^{0,\ha}f_{i,j}^{(2)} .$$
+    \item[Step 10:] Compute the third time derivative of $U$ at time $t_n$ and position $x_{i+j}$ with $j=-1,\ldots,2$ from the second time derivatives of $f$ using the \eqref{CK} as:
+    $$ u_{i,j}^{(3)} = -\frac{1}{\Delta x}\sum_{s = -1}^2\gamma_{2,s}^{1,j}f_{i,s}^{(2)}; $$
+    \item[Step 11:] Compute the Taylor expansion in time truncated at third term at time $t^{n+r}$ with $r=-1,\ldots,2$ for each position $x_{i+j}$ with $j=-1,\ldots,2$ as:
+    $$ u_{i,j}^{3,n+r} = u_{i+j}^n + r\Delta t u_{i,j}^{(1)} + \frac{(r\Delta t)^2}{2}u^{(2)}_{i,j} + \frac{(r\Delta t)^3}{6}u^{(3)}_{i,j} . $$
+    \item[Step 12:] Compute the third and last time derivative of $f$ at time $t^n$ at position $x_{i+j}$ with $j = -1,\ldots,2$ using the four fluxes $f_{i,j}^{3,n+r}$ as:
+    $$ f_{i,j}^{(3)} = \frac{1}{\Delta t^3}\sum_{r=-1}^2\gamma_{2,r}^{3,0}f_{i,j}^{3,n+r} . $$
+    \item[Step 13:] Compute $f^{(3)}_{i+\ha}$ adopting the interpolation formula on stencil $\mathcal{S}^2_{i+\ha}$ as:
+    $$ f^{(3)}_{i+\ha} = \sum_{j=-1}^2\gamma_{2,j}^{0,\ha}f_{i,j}^{(3)}; $$
+    \item[Step 14:] Deduce $F^2_{i+\ha}$ from \eqref{FP} as:
+    $$ F^2_{i+\ha} = f_{i+\ha}^{(0)} + \Delta t \, f_{i+\ha}^{(1)} + \frac{\Delta t^2}{2} \, f_{i+\ha}^{(2)} + \frac{\Delta t^3}{6} \, f_{i+\ha}^{(3)}   $$
+\end{itemize}
+
+
+\subsection{Computational complexity}
+\label{sec:comp_compl}
+In this section we focus on the local computational complexity for the CAT$2P$ scheme applied to scalar case. With this in mind, observing that the size of the stencil $S_{i+\ha}^P$ is $2P,$ we can divide the CAT algorithm into four parts and notice that:
+\begin{enumerate}
+    \item $f_{i,j}^n = f(u_{i+j}^n)$ for all $j=-P+1,\ldots,P.$
+    
+    \item For $k=1,\ldots,2P-1,$ the procedure to compute $u_{i,j}^{(k)},$ $u_{i,j}^{k,n+r},$ $f(u_{i,j}^{k,n+r})$ and $f_{i,j}^{(k)}$ does not depend explicitly on $k$ (see expressions (\ref{c2.a}-\ref{c2.d}) below). 
+    
+    \item For $k=0,\ldots,2P-1,$ the computational formula for the approximation of the $(k-1)$-th time derivative of the flux at position $x = x_{i+1/2},$   $f_{i+1/2}^{(k-1)} =  \mathcal{A}^{0,1/2}_{P}\left(f_{i,*}^{(k-1)},\Delta x\right) = \sum_{j=-P+1}^P \gamma^{0,\ha}_{P,j}f_{i,j}^{(k-1)},$ does not depend explicitly on $k,$ since the interpolatory formula is invariant for each $k.$ 
+    
+    \item Compute  $F^P_{i+\ha},$ $u_i^{n+1}$ and precomputed constants such as $\Delta t^k$ or $\Delta t^k/k!$, etc.
+\end{enumerate} 
+For this reason, the computational complexity is so structured:
+\begin{enumerate}
+    \item \label{aa} $f_{i,j}^n = f(u_{i+j}^n)$ for all $j=-P+1,\ldots,P$. $1$ evaluation multiplied by the size of $u$\footnote{$M\times N$ for a discrete system with $M-$variables and $N$ cells.}.
+    
+    \item \label{c2} For $k=1,\ldots,2P-1$
+    \begin{enumerate}
+        \item \label{c2.a} $u_{i,j}^{(k)} = -\frac{1}{\Delta x}\sum_{s = -P+1}^{P}\gamma_{P,s}^{1,j}f_{i,s}^{(k-1)}.$ \;
+        $2P(2P+1)$ flop for each $k$, $2P$ related to $j$ and $2P+1$ related to the summation.
+        
+        \item \label{c2.b} $ u_{i,j}^{k,n+r} = u^n_{i+j} +\sum_{m=1}^k\frac{(r\Delta t)^m}{m!} u^{(m)}_{i,j} $ under the assumption $ u_{i,j}^{k,n+r} = u^{k-1,n+r}_{i,j} +\frac{c_r^k}{k!} u^{(k)}_{i,j}$ where  $c_r=r\Delta t$ and $u^{0,n+r}_{i,j} = u^{n}_{i+j}.$ \; $(2P)(2P-1)$ flop for each $k$ under the assumption that $c_r^k/k!$ are precomputed and, when $r=0,$ $u_{i,j}^{k,n} \equiv u_{i+j}^n$.
+        
+        \item \label{c2.c} $f_{i,j}^{k,n+r}=f(u_{i,j}^{k,n+r})$. \; $(2P)(2P - 1)$ evaluations for each $k$\footnote{The evaluations of $f(u_{i,j}^{k,n+r})$ are much expensive than $f(u_{i+j}^n).$ Indeed, for each $k$ the size of $f(u_{i,j}^{k,n+r})$ is $M\times N,$ the size of $f(u_{i,j}^{k,n+r})$ is $M\times N \times 2P \times 2P-1,$ respectively for $j$ and $r$. For the scalar case $M=1.$}, $(2P)$ related to $j$ and $(2P-1)$ related to $r.$ When $r = 0,$ $f(u_{i,j}^{k,n+r}) = f(u_{i+j}^{n})$ and the computational complexity relapses to expression \eqref{aa}. 
+        
+        \item \label{c2.d} $f^{(k)}_{i,j} = \mathcal{A}^{k,j}_{P}\left(f_{i,j}^{k,*},\Delta t\right) = \frac{1}{\Delta t^k}\sum_{r=-P+1}^P\gamma_{P,r}^{k,0}f_{i,j}^{k,n+r} .$ \;
+        $2P(2P+1)$ flop for each $k$ under the assumption that $\Delta t^k$ are precomputed.
+    \end{enumerate}
+    
+    \item For $k=1,\ldots,2P,$ $f_{i+\ha}^{(k-1)}.$ \; $2P$ flop.
+    
+    \item The computational complexity of $F^P_{i+\ha},$  $u_i^{n+1}$ and precomputed terms 
+    \begin{enumerate}
+        \item $ F^P_{i+1/2} = \sum_{k=1}^{2P}\frac{\Delta t^{k-1}}{k!}f_{i+1/2}^{(k-1)} $ under the assumption that $\Delta t^{k-1}/k!$ are precomputed. \; $(2P-1)$ flop since for $k=1$ there are no products.
+        
+        \item $ u_i^{n+1} = u_i^n - \frac{\Delta t}{\Delta x}\Bigl(F^P_{i+1/2} - F^P_{i-1/2}\Bigr).$ \; $2$ flop.
+        
+        \item for $k=1,\ldots,2P-1$ $\Delta t^k.$ \; $k-1$ flop.
+        
+        \item for $k=1,\ldots,2P-1$ and for $r = -P+1,\ldots,P,$ with $r\neq0,$ $c_r^k/k!$ where $c_r =r\Delta t.$ \; $(k+1)(2P-1)$ flop.
+        
+        \item for $k=1,\ldots,2P-1$ $\Delta t^{k-1}/k!.$ \; $1$ flop.        
+    \end{enumerate} 
+\end{enumerate}
+\begin{enumerate}
+    \item $n_{\rm func}\leftarrow1$ evaluation.
+    \item\begin{enumerate}
+        \item $n_{\rm flop}\leftarrow (2P)^3 - (2P)$ flop;
+        \item $n_{\rm flop}\leftarrow n_{\rm flop} + (2P)^3 - 2(2P)^2 + (2P)$ flop;
+        \item $n_{\rm func} \leftarrow n_{\rm func} +(2P)^3 - 2(2P)^2 + (2P)$ evaluations;
+        \item $n_{\rm flop}\leftarrow n_{\rm flop} + (2P)^3 - (2P)$ flop.
+    \end{enumerate}
+    \item $n_{\rm flop}\leftarrow n_{\rm flop} + (2P)^2$ flop.
+    \item\begin{enumerate}
+        \item $n_{\rm flop}\leftarrow n_{\rm flop} + (2P)-1$ flop;
+        \item $n_{\rm flop}\leftarrow n_{\rm flop} + 2$ flop;
+        \item $n_{\rm flop}\leftarrow n_{\rm flop} + 0.5(2P)^2 - 1.5(2P)$ flop;
+        \item $n_{\rm flop}\leftarrow n_{\rm flop} + 0.5(2P^3) - 0.5(2P)$ flop;
+        \item $n_{\rm flop}\leftarrow n_{\rm flop} + (2P) - 1$ flop.
+    \end{enumerate}
+\end{enumerate}
+Finally, the operation count per cell per time step for CAT$2P,$ $P>1,$ applied to the scalar case is $3.5(2P)^3 - 1.5(2P)^2 + (2P)$ flop plus $(2P)^3 - 2(2P)^2 + (2P) + 1$ function evaluations. For CAT2 this gives $24$ flop and $3$ function evaluations, while for CAT4 we get $204$ flop and $37$ function evaluations.
+
+ 
+\begin{table}[!ht]
+    \centering
+    \numerikNine
+    \begin{tabular}{|cc||c|c|c|}
+    \hline
+    Scheme & $P$ & Cost per flux & Ratio & Ratio \\
+    & & {\footnotesize $C(P)=3.5(2P)^3 - 1.5(2P)^2 + (2P)$} & {\footnotesize$C(P+1)/C(P)$} & {\footnotesize CAT2P/CAT2} \\
+    \hline
+    %1st order & $0$ & 1 & \\
+    CAT2 & $1$ & 29   & 1 & 1 \\
+    CAT4 & $2$ & 299  & 10.31 & 10.31\\
+    CAT6 & $3$ & 1097 &  3.67 & 37.83 \\
+    CAT8 & $4$ & 2711 &  2.47 & 93.48 \\
+    CAT10 &$5$ & 5429 &  2.00 &187.2 \\
+    $\vdots$ & $\vdots$ & $\vdots$ & $\vdots$ & $\vdots$ \\
+    CAT2P & $P$ & $C(P)$ & 1.00 & $\infty$ \\ 
+    \hline
+    \end{tabular}
+    \caption{Cost of the CAT schemes in term of number of operations to update one interface flux as a function of $P$. }
+    \label{tab:Cost}
+\end{table}

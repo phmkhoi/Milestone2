@@ -1,0 +1,83 @@
+\section{Experimental Setup}
+\label{sec:experimental_setup}
+
+In this section, we introduce our experimental setup. For this setup, we discuss the MAVE dataset and how we prepared it for our experiments, the API calls against the OpenAI API, the evaluation and the baselines.
+
+% Todo Alex (Done): Please improve description of MAVE dataset. The current version is not very clear and mixes review and product description related terminology. Please also mention size (attributes and examples) of the dataset to lay the foundation for next section.
+\vspace{.2cm}\noindent\textbf{Mave Dataset.}
+We experimented with a subset of product titles from the MAVE dataset~\cite{yang_mave_2022}. MAVE is a product dataset for multi-source attribute value extraction. MAVE is derived from a public collection of product offers from the e-commerce platform Amazon~\cite{ni_justifying_2019}. The authors of MAVE add annotations of attribute/value pairs for attribute values that can be found in the product titles and descriptions. To obtain these annotations, human experts define a set of categories and a list of attributes that are relevant for each category. Afterwards, each product offer is assigned to a product category and category-specific attribute value spans are annotated in the titles and descriptions of the product offers. An ensemble of five differently fine-tuned versions of the AVEQA~\cite{wang_learning_2020} model is used for this annotation. Each final record contains a single product offer with a product title, a product description, an attribute and annotation information about attribute values in the title or the description. Each record is attribute-dependent because a product offer can appear multiple times with different product attributes. The MAVE dataset contains in total 3.5 million unique products, 4.8 million unique attribute/value pairs, 2.4 thousand unique categories and 1.4 thousand unique attributes.
+
+\vspace{.2cm}\noindent\textbf{Preparing the Dataset for ChatGPT.}
+In order to keep the costs of experimenting with the OpenAI API manageable, we restrict our experiments to a subset of product offers.
+The product offers are drawn from three selected product categories and have at least one annotation for one of 15 selected attributes. The selected categories and attributes are listed in Table \ref{tab:categories_attributes}.%.
+% Table \ref{tab:categories_attributes} lists the selected product categories and product attributes.
+
+% Please add the following required packages to your document preamble:
+% \usepackage{booktabs}
+\begin{table}[h]
+\caption{Categories and attributes per category from the MAVE dataset selected for our experiments.}
+\label{tab:categories_attributes}
+\begin{tabular}{@{}ll@{}}
+\toprule
+\textbf{Category}           & \textbf{Attribute}     \\ \midrule
+Digital Camera     & Camera Weight, Optical Zoom,        \\ 
+                   &  Resolution, Sensor Size, Sensor Type   \\ \midrule
+Memory Cards &  Capacity , SD Format                          \\ \midrule
+Laptops            & Battery Life, No. Cores, Processor Brand,      \\
+                   &  Processor Speed, Refresh Rate, Resolution,  \\
+                   & Screen Size, Weight \\ \bottomrule
+\end{tabular}
+\end{table}
+
+%Todo Alex (Done):  Add a complete list of the attributes to the paper, so that the reader better understands the task and can judge the difficulty. Similar to Table 2 in Ket's paper: https://arxiv.org/pdf/2306.00745.pdf
+
+We split the dataset into train:eval:test=8:1:1 using MAVE's shared code. To prevent data leakage we made sure that each product is contained either in train, validation and test. After splitting the training set contains 71,266 records and the validation set contains 8,789 records.
+For the final test set, we selected up to 40 product titles for each category and attribute combinations  
+%Todo (DOne) Alex: Remove term "requested value" from the paper. You do this for all attribtues in your set of 15 attributes, right?
+for which the attribute value is contained in the product title and up to 10 product titles for which the attribute value is not contained in the product title. In total, the test set contains 562 test records.
+
+During our experiments, we realized that ChatGPT normalizes attribute values. Table \ref{tab:value_normalization} shows different values annotated in the MAVE dataset and how ChatGPT normalizes these values.
+%For example the attribute value \emph{``8 hour``} of the attribute \emph{``Battery Life``} is normalized to \emph{``8 hours``} and the attribute value \emph{``13.3-inch``} of the attribute \emph{``Screen Size``} is normalized to \emph{``13.3 inches``}. 
+The normalizations improve the quality of the attribute/value pairs. Therefore, we manually verified the existing attribute value annotations and added normalized attribute values to the ground truth if applicable. We added normalized annotations to 88.65\% of the MAVE annotations in the test set. We share the test set in our GitHub repository.
+%During our experiments, we realized that the target attribute values provided by MAVE are not normalized.The reason is that MAVE annotates the longest detected sequence of the initially used ensemble model. Therefore, all target attribute values in the test set are manually verified and updated by a human annotator. For example, for the original target attribute values "Intel Core i3" and "Intel Core" a unified value "Intel" is added if the goal is to extract the processor brand of a laptop. 
+
+
+\begin{table}[h]
+\caption{Annotated values in MAVE and how ChatGPT normalizes these values for different categories and attributes.}
+\label{tab:value_normalization}
+\begin{tabular}{@{}llll@{}}
+\toprule
+Category & Attribute         & Annotated & Normalized  \\
+ &          & MAVE Value  & ChatGPT Value \\ \midrule
+Digital Camera & Resolution   & 2 Megapixel              & 2MP                         \\
+Laptops & No. Cores     & Dual-Core                & 2                           \\
+Laptops & Battery Life        & 8 Hour                   & 8 Hours                     \\
+Laptops & Screen Size         & 13.3-Inch                & 13.3 inches                 \\
+Memory Cards & Capacity & 8 Gigabytes              & 8GB                         \\ \bottomrule
+\end{tabular}
+\end{table}
+
+
+%Todo: You need to be more precise here. What do you do? What do you mean with extension?
+
+\vspace{.1cm}\noindent\textbf{API Calls.}
+The down-sampled version of the MAVE dataset contains 562 test records, which corresponds to the number of API calls per experiment. We use the ChatGPT version \emph{(gpt3.5-turbo-0301)} for all experiments and set the temperature parameter to 0 to make experiments reproducible. We use the langchain\footnote{https://python.langchain.com/en/latest/index.html} python package to call the API and track the number of tokens used by the model because the number of used tokens dictates the cost of the model usage\footnote{\$0.002 per 1,000 tokens. See https://openai.com/pricing}.
+
+\vspace{.2cm}\noindent\textbf{Evaluation.}
+The model responds with natural language texts. To decide if the target attribute value corresponds to the model's answer, we strip off whitespaces before and after the answer and check if the processed text exactly matches the target attribute value of the ground truth.
+Following previous works~\cite{yang_mave_2022, yan_adatag_2021, xu_scaling_2019, zhang_oa-mine_2022}, we use Precision, Recall and F1 score as evaluation measures. Additionally, we track the average cost per request.
+
+
+\vspace{.2cm}\noindent\textbf{Baselines.}
+%Todo Alex: Be more precise here: What does "inspired" mean? Clearly state how the approach that you use related to OpenTag and ADOpenTag.
+We train two closed extraction models as baselines for our experiments. Both baseline models rely on a PLM.
+The first baseline is a fully-trained AVEQA~\cite{wang_learning_2020} model, using 71,266 training records. AVEQA formulates the attribute/value pair extraction as a question-answering task. The model encodes both attribute and product title with a BERT encoder and predicts the attribute value. The model is fine-tuned for 20 epochs on the reduced MAVE training set with a learning rate of 3e-5 and a batch size of 32.
+The second baseline is a named entity recognition model (NER) for product attribute extraction~\cite{putthividhya_bootstrapped_2011}. For this NER model, we group the training set by product offer resulting in 18,083 records for training. DeBERTa is used to tokenize and encode the product titles~\cite {he_deberta_2021}. The tokens are annotated such that the model learns to classify tokens that describe an attribute value as mentioned in the training set. The model is fine-tuned for 10 epochs on the reduced MAVE training set with a learning rate of 2e-5 and a batch size of 8. Note that both baselines are fully trained over thousands of samples and their training took hours ($\sim$10 hrs. for AVEQA and $\sim$1.5 hrs. for NER).
+
+%and annotate all tokens in the product title that mention an attribute value. The source for the annotations is the evidence list provided by MAVE. The model learns to classify the tokens according to the annotation.
+
+%Our baseline is inspired by OpenTag~\cite{zheng_opentag_2018} and ADOpenTag~\cite{yang_mave_2022}. OpenTag uses a BiLSTM-Attention-CRF architecture for named entity recognition. We replace the BiLSTM-Attention-CRF architecture with a state-of-the-art DeBERTa model because this model has been successful on the . OpenTag learns one model per attribute. 
+%Todo Alex: Unclear what you do here and why and why the result still related to OpenTag. You basicially use a different approach, right? Then you need to present this differently. e.g. say that you use a simple PML-based method as baseline and do not relate your baseline to OpenTag which does something different.
+%In order to learn one model for multiple attributes, we concatenate product title, category and attribute name to make the input to the model attribute dependent. We refer to this baseline as ADOpenTag-DeBERTa. ADOpenTag is finetuned for 5 epochs with a learning rate of 2e-5 on the training split of our downsampled dataset.
+
+%We trained two baselines on our reduced training set of the MAVE dataset.

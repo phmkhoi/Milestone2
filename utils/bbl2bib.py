@@ -157,28 +157,7 @@ def read_bibs_in_dir(dir_path: str):
     return references
 
 
-def deduplicate_reference(results: list[str]) -> str:
-    # title_map = {}
-    # ID_map = {}
-    # keys = ['ID', 'author', 'title', 'year']
-    
-    # for obj in results[0]:
-    #     valid = True
-    #     for key in keys:
-    #         if key not in obj.keys():
-    #             valid = False
-    #             break
-            
-    #     if valid:
-    #         title_map.update({obj['title']: obj})
-    #         ID_map.update({obj['ID']: obj})
-    # for i in range(1, len(results)):
-    #     for j in range(len(results[i])):
-    #         keys = ['ID', 'author', 'title', 'year']
-    #         for k in keys:
-    #             if k not in results[i][j].keys():
-    #                 results[i].remove(results[i][j])
-    #                 break
+def deduplicate_reference(results: list[str], folder_path:str) -> list[dict]:
     title_map = {obj['title']: obj for obj in results[0]}
     ID_map = {obj['ID']: obj for obj in results[0]}
         
@@ -223,12 +202,12 @@ def deduplicate_reference(results: list[str]) -> str:
             'cite-key': fields['ID'].lower(),
             'authors': fields['author'].lower().strip(),
             'title': fields['title'].lower().strip(),
-            'year': int(year)
+            'year': int(year),
+            'path': folder_path
         }
         
         bib_entries.append(temp_dict)
     return bib_entries
-
 
 def extract_references(folder_path: str) -> None:
     '''
@@ -264,7 +243,7 @@ def extract_references(folder_path: str) -> None:
         references.append(ref_dicts_valid)
     if references:
         # print(references)
-        result = deduplicate_reference(references)
+        result = deduplicate_reference(references, folder_path)
             
     return result
 
@@ -289,15 +268,14 @@ def get_reference_objects(folder_path: str):
     extracted_refs = extract_references(folder_path)
     converted_refs = convert_references_to_objects(folder_path)
     
-    # if extracted_refs and converted_refs:
-    #     extracted_path = os.path.join(folder_path, 'extracted.json')
-    #     converted_path = os.path.join(folder_path, 'converted.json')
+    extracted_path = os.path.join(folder_path, 'extracted.json')
+    converted_path = os.path.join(folder_path, 'converted.json')
+    
+    with open(extracted_path, "w", encoding="utf-8") as f:
+        json.dump(extracted_refs, f, indent=4, ensure_ascii=False)
         
-        # with open(extracted_path, "w", encoding="utf-8") as f:
-        #     json.dump(extracted_refs, f, indent=4, ensure_ascii=False)
-            
-        # with open(converted_path, "w", encoding="utf-8") as f:
-        #     json.dump(converted_refs, f, indent=4, ensure_ascii=False)
+    with open(converted_path, "w", encoding="utf-8") as f:
+        json.dump(converted_refs, f, indent=4, ensure_ascii=False)
         
     return converted_refs, extracted_refs
 
@@ -331,7 +309,7 @@ def get_dataset(folder_path, threshold=0.9, nums=1500):
     cnt = 0
     cnt_dict = 0
 
-    for dir in (dirs):
+    for dir in dirs:
         path = os.path.join(folder_path, dir)
     
         if not os.path.isfile(os.path.join(path, 'references.json')):

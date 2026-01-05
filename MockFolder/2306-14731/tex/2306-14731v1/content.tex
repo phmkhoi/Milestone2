@@ -1,0 +1,309 @@
+%auto-ignore
+\begin{abstract}
+The accurate predictions and principled uncertainty measures provided by GP regression incur $\bigO{n^3}$ cost which is prohibitive for modern-day large-scale applications. This has motivated extensive work on computationally efficient approximations. We introduce a new perspective by exploring robustness properties and limiting behaviour of GP nearest-neighbour (GPnn) prediction. We demonstrate through theory and simulation that as the data-size $n$ increases, accuracy of estimated parameters and GP model assumptions become increasingly irrelevant to GPnn predictive accuracy. Consequently, it is sufficient to spend small amounts of work on parameter estimation in order to achieve high MSE accuracy, even in the presence of gross misspecification. In contrast, as $n \rightarrow \infty$, uncertainty calibration and NLL are shown to remain sensitive to just one parameter, the additive noise-variance; but we show that this source of inaccuracy can be corrected for, thereby achieving both well-calibrated uncertainty measures and accurate predictions at remarkably low computational cost. We exhibit a very simple GPnn regression algorithm with stand-out performance compared to other state-of-the-art GP approximations as measured on large UCI datasets. It operates at a small fraction of those other methods' training costs, for example on a basic laptop taking about 30 seconds to train on a dataset of size $n = 1.6 \times 10^6$.
+\end{abstract}
+
+\section{Introduction}
+\label{intro}
+We first briefly review the computational cost of exact GP regression and the motivation for this paper:
+Given $n$ training samples $X,\bm{y}$, where $X \in \mathbb{R}^{n\times d}$ has feature vector $\bm{x}_i\in \mathbb{R}^d$ in its $i$'th row and $\bm{y} \in \mathbb{R}^n$, exact GP regression \cite{GP_book} makes use of an $n \times n$ gram matrix $K = K_{X,\bm{\theta}}$ constructed from a pre-specified positive definite covariance function $c(\cdot,\cdot):\mathbb{R}^d \times \mathbb{R}^d \rightarrow \mathbb{R}_{+}$ together with length-scale, additive-noise variance and kernel-scale ``hyperparameters'' $\bm{\theta} = (l,\sigma_\xi^2,\sigma_f^2)$. In the training phase estimates of the hyperparameters, $\hat{\bm{\theta}} = (\hat{l},\hat{\sigma}_\xi^2,\hat{\sigma}_f^2)$, are obtained by minimising the loss function
+
+\begin{equation}
+  \mbox{loss}(\bm{\theta}) = -\log p(\bm{y}|X,\bm{\theta}) = \frac{1}{2}\{ \bm{y}^T K_{\bm{\theta}}^{-1} \bm{y} + \log|K_{\bm{\theta}}| + n \log(2 \pi) \}.\label{eq:gp_los_func}
+\end{equation}
+Then for subsequent predictions the predictive distribution at a point $\bm{x}^* \in \mathbb{R}^d$ is defined by 
+\begin{align}
+  y^*\given X,\bm{y} &\sim \mathcal{N}(\mu^*,\predvar) \label{eq:gp_pred}\\
+  \mu^* &= {\kstar}^T K ^{-1}\bm{y} \label{eq:gp_mean_pred}\\
+  \predvar &= \hat{\sigma}_f^2 - {\kstar}^T K^{-1}\kstar + \hat{\sigma}_\xi^2 \label{eq:gp_var_pred}
+\end{align}
+where $K = K_{\hat{\bm{\theta}}}$ with components \([K]_{ij}=k_{\hat{\bm{\theta}}}(\bm{x}_i,\bm{x}_j)\); the vector $\kstar$ has components $k^*_i= k_{\hat{\bm{\theta}}}(\bm{x}_i,\bm{x}^*)$, and \(k_{\bm{\theta}}(\bm{x},\bm{x}') = \sigma_f^2c(\bm{x}/l,\bm{x}'/l) + \delta_{\bm{x},\bm{x}'}\sigma_\xi^2\) with a ``normalised'' covariance function \(c(\cdot,\cdot)\) such that \(c(\bm{x},\bm{x})=1\). The derivation of these steps is based on the assumption that the underlying random field is Gaussian, as is the additive noise with variance $\sigma_\xi^2$.
+
+The single cost-$\bigO{n^3}$ step of inverting $K$ is needed repeatedly to compute the loss. Sophisticated implementations reduce this toward $\bigO{n^2}$ (\cite{exact_big_GP}), but even that cost is generally impractical for $n > 10^6$. For a survey of numerous GP approximations and their reduced costs see \cite{GP_approx_review}. 
+
+Machine learning methods must tackle massive data problems to handle many modern day applications. Revolutionary developments in neural network methodologies achieve this, but Bayesian predictive methodologies, in particular GP regression with its major advantages of robustness and uncertainty measures, are somewhat behind the curve. This motivates development of fast implementations retaining the accuracy and well-principled uncertainty of exact GPs.
+
+ 
+\section{Background and Paper Outline}
+
+A feature common to all mainstream GP approximations is that training and prediction processes make joint use of the same underlying mathematical constructions. In the ``subset-of-data'' method the {\it same} subset of data is used both for parameter estimation and prediction. Similarly, in the various Bayesian committee methods (\cite{amalg_SOD}) hyperparameters are estimated using a collection of subsets of data and then the {\it same} subsets are used in combination to make predictions. In the variational (\cite{Hensman,Titsias}) and other inducing point methods parameters are estimated using a low rank approximation to the kernel gram matrix and then the {\it same} low-rank matrix approximation is used to make predictions. Despite being almost universally adopted there is no obvious reason why constraining algorithms to use the same constructions for estimation and prediction will help rather than hinder the end goal of high performance at low cost. Whilst there are some passing mentions of decoupling prediction and estimation in the literature - e.g. \cite{Stein2004,Bachoc2022,eval_framework} - it has not been adopted as a mainstream approach. 
+
+
+Our first observation is that allowing parameter-estimation and prediction processes to become decoupled may provide the flexibility to greatly improve cost-accuracy trade-off. As shown in \autoref{fig:flowchart}, GP approximations first obtain a point estimate of the kernel hyperparameters $\hat{\bm{\theta}}$ from training data and then feed $\hat{\bm{\theta}}$ into a predictive process. Our end-goal is only to obtain accurate and well-calibrated {\it predictive distributions} of $y^*$ at each target point $\bm{x}^*$; obtaining accurate parameter estimates is {\it not} a goal in itself. It follows that the computational budget devoted to parameter estimation need only be sufficient to provide parameters capable of delivering accurate and well-calibrated predictions. 
+
+\input{tikz.tex}
+
+This need not mean that $\hat{\bm{\theta}}$ is an accurate estimate of the parameters which leads us to the second observation and main theoretical component of this paper: In \autoref{robustness}, theory and simulations reveal that under widely applicable circumstances, as $n$ increases the mean squared error (MSE) predictive accuracy obtained from GP nearest neighbour prediction becomes increasingly insensitive to model misspecification, i.e. insensitive to the wrong choice of covariance function, to the choice of $\hat{l}$, $\hat{\sigma}_f^2$ and $\hat{\sigma}_\xi^2$ and even insensitive to departures from Gaussian model assumptions made for the underlying stochastic process and additive noise. Similarly the negative log likelihood (NLL) predictive-accuracy becomes insensitive to all of those factors {\it apart from} the variance of the additive noise $\hat{\sigma}_\xi^2$. In \ref{parameter_estimation} we describe a simple calibration step that corrects for the latter inaccuracy thereby achieving near optimal limiting NLL values in addition to well-calibrated uncertainty measures whilst leaving the well-behaved MSE values completely unaltered. We apply these overall observations to construct a highly efficient, accurate and well calibrated regression algorithm in \autoref{simple_implementation}.
+
+
+
+\textbf{Our key contributions:} Demonstration of GPnn robustness against model and parameter misspecification through theory and simulation (\ref{robustness}); derivation of explicit formulae for the limiting MSE, NLL and calibration performance of GPnn as $n \rightarrow \infty$ (\ref{theory}); translation of this theory into a new GP approximation framework with stand-out performance relative to other state-of-the-art GP approximations (\ref{simple_implementation},\ref{real_world_data}); a simple generic method for re-calibrating uncertainty measures in GP regression with immediate applications to improving calibration of other GP approximations such as SVGP (\ref{parameter_estimation}); achievement of massive scalability for GPs, for example a $100 \times$ speed-up over state-of-the-art methods on a $1.6 \times 10^6$  training set whilst also improving upon their performance (\ref{real_world_data}); demonstrating that provably best possible MSE, NLL and calibration performance can be closely approached on data that is grossly misspecified relative to GP model assumptions (\ref{massive_datasets}).
+
+
+
+\section{Performance Measures, Weak and Strong Calibration}
+\label{predictive_measures}
+Along with many other GP publications we use mean squared error MSE (or its square root RMSE) and negative log likelihood (NLL), both computed from held-aside test data, to assess predictive performance. These are simply the mean values of $e^*_i=(y^*_i - {\mu_i^*})^2$ and $l^*_i= 0.5 \cdot (\log \predvar_i + (y_i^*-\mu_i^*)^2/\predvar_i + \log2\pi)$ respectively. However, we find those measures alone inadequate for determining how {\it well calibrated} a predictive distribution is. We define ``weakly calibrated'' prediction to mean that $\E_{y^* \given X,\bm{y} } \{(y^*-\mu^*)^2/\predvar \} = 1$ and accordingly use ``calibration'' to be a measure of how well the average value of $z^*_i= (y_i^*-\mu_i^*)^2 / \predvar_{i}$ over test-data agrees with 1. A better measure (``strong-calibration'') would have been to see how well percentiles of the predictive distributions agree with those observed in test data, e.g. see \cite{Song2019}, but we defer such a refinement to future work.
+
+
+\section{Prediction Method and Sources of Misspecification}
+
+
+
+\subsection{GP Nearest Neighbour Prediction}
+\label{exact_NN_prediction}
+We now describe what we mean by ``GP nearest-neighbour (GPnn) prediction''. Assume that we are given parameters $\hat{\bm{\theta}} = (\hat{l},\hat{\sigma}_\xi^2,\hat{\sigma}_f^2)$ obtained from the parameter estimation phase of \autoref{fig:flowchart}. Then to compute the estimated distribution of $y^*$ at $\bm{x}^*$ indicated in \autoref{fig:flowchart} we find the $m$ nearest training-set neighbours $N = N(\bm{x}^*)$ to $\bm{x}^*$ and apply exactly the same GP prediction formulae as in \eqref{eq:gp_pred}, \eqref{eq:gp_mean_pred} and \eqref{eq:gp_var_pred} but with $X \in \mathbb{R}^{n \times d}$ replaced by $N \in \mathbb{R}^{m \times d}$ and $\bm{y} \in \mathbb{R}^n $ replaced by $\bm{y}_N \in \mathbb{R}^m$ to obtain:
+
+
+\begin{align}
+  % y^* &\sim \mc{N}(\mu_N^*,\predvar_N)\label{eq:gpnn_pred} \\
+  y^*\given X,\bm{y}_N &\sim \mc{N}(\mu_N^*,\predvar_N)\label{eq:gpnn_pred} \\
+  \mu_N^* &= \kstar[\hat]_N^T \hat{K}_N^{-1}\bm{y}_N \label{eq:gpnn_mean_pred}\\
+  \predvar_N &= \hat{\sigma}_f^2 - \kstar[\hat]_N^T \hat{K}_N^{-1}\kstar[\hat]_N + \hat{\sigma}_\xi^2 \label{eq:gpnn_var_pred}
+\end{align}
+
+where we have used hatted notation in a generic manner to cover all the potential sources of misspecification (\ref{misspec}) that might arise when we carry out these predictions. The $\mu_N^*,\predvar_N$ parameters are substituted for $\mu^*,\predvar$ when computing the performance measures described in \autoref{predictive_measures}.
+
+\textbf{Note:} In this paper we use Euclidean distance for nearest neighbour assignment but more generally could employ a metric defined by the covariance function - see \ref{appx:nngp}. For the covariance functions  used in this paper these metrics are ``equivalent'' because one is a monotonic function of the other.
+
+
+In our algorithmic implementations we replace an exact $m$ nearest neighbour algorithm with a much more efficient {\it approximate} nearest neighbour algorithm as discussed in \autoref{simple_implementation}. However for the purpose of the theoretical analysis of robustness in \autoref{robustness} this distinction can be ignored. 
+
+\subsection{Sources of Misspecification}
+\label{misspec}
+For the remainder of the paper we extend our theory and notation to encompass several (possibly simultaneous) sources of misspecification: standard GP theory assumes that data comes from a latent Gaussian random field $\mc{GRF}[\sigma_f^2 c(./l,./l)]$ specified by covariance function $c(\cdot,\cdot)$ and parameters $l,\sigma_f^2$. The construction of the matrix $K_{\bm{\theta}}$ in \autoref{intro} assumes data to have arisen from this $\mc{GRF}$ with i.i.d $\mc{N}(0,\sigma_\xi^2)$ additive noise. Henceforth, we limit covariance functions $c(\bm{x},\bm{x}')$ to be stationary, i.e. to vary only with $(\bm{x}-\bm{x}')$. The forms of (possibly simultaneous) misspecifications to be accounted for in the theoretical treatment of \ref{theory} are: (a) parameter $\sigma_\xi^2$ wrongly specified as $\hat{\sigma}_\xi^2$, (b) (normalised) covariance function $c(\cdot,\cdot)$ wrongly specified as $\hat{c}(\cdot,\cdot)$, (c) parameters $l,\sigma_f^2$ misspecified as $\hat{l},\hat{\sigma}_f^2$ (relevant only if $c(\cdot,\cdot)$ {\it not} misspecified), (d) true additive noise is {\it not} Gaussian and (e) the data is generated by a non-Gaussian weakly stationary random field $\mc{WSRF}$ rather than a $\mc{GRF}$.
+
+\section{GP Nearest-Neighbour Limits and Robustness}
+\label{robustness}
+In this section we investigate the behaviour of MSE, NLL and calibration for GPnn prediction as $n \rightarrow \infty$, showing how all of these performance measures become increasingly less sensitive to hyperparameter accuracy, kernel choice and the above departures from the GP model assumptions. 
+
+\subsection{Theory}
+\label{theory}
+\textbf{Assumptions:} The true generative model from which the data arises is \(y_i=f(\bm{x}_i) + \xi_i\) with \(\xi_i\overset{\textrm{iid}}{\sim}P_\xi\), \(f(\bm{x})\sim \mc{WSRF}[\sigma_f^2 c(./l,./l))]\) and \(y_i\given f(\bm{x}_i) \sim P_\xi\) where the variance of the distribution $P_\xi$ is $\sigma_\xi^2$. Neither the $\mc{WSRF}$ nor the additive noise distribution $P_\xi$ need be Gaussian. The training $\bm{x}$ values are i.i.d. The MSE, NLL and calibration statistics on the test set are derived according to the nearest neighbour GP prediction process (\ref{exact_NN_prediction}) and subject to any/all forms of misspecification in \ref{misspec}. Additionally, we assume that if and only if the \(m^{th}\) nearest-neighbour converges to the test point under \(c\), then it also converges under \(\hat{c}\) (\ref{detailed_proofs}:\autoref{def:weakly_faithful}).
+
+
+
+\textbf{Result:} Given a size-$n$ training set $X$ and test point $\bm{x}^*$ in the support (\ref{detailed_proofs}:\autoref{def:support}) of the measure of $\bm{x}$, let $f^{\MSE}_n(\hat{\bm{\theta}})= \Ey {e_N^*}$, $f^{\NLL}_n(\hat{\bm{\theta}})= \Ey {l_N^*}$, $f^{\CAL}(\hat{\bm{\theta}}) = \Ey{z_N^*}$; where expectations are w.r.t. the true generative process for $\bm{y}$ and $y^*$ and the performance measures $e_N^*,l_N^*,z_N^*$ (\autoref{predictive_measures}) are for the nearest neighbour prediction process.
+Note that these are the expected (rather than mean) values of the performance measures described in \autoref{predictive_measures} and the dependence on \(n\) is implicit in the construction of the nearest-neighbour sets $N = N_m(\bm{x}^*)$ used for prediction. Then we have:
+
+\begin{theorem}[GPnn limits]
+  \label{thm:nngp_limit} 
+  As \(n\rightarrow\infty\), \(f_n^{\MSE},f_n^{\CAL},f_n^{\NLL} \rightarrow f_\infty^{\MSE},f_\infty^{\CAL},f_\infty^{\NLL}\) a.e w.r.t. the (i.i.d.) measure on $\mathbf{x} \in X$ and $\mathbf{x^*}$, and pointwise as functions of $\hat{\bm{\theta}}$ where:
+  \begin{enumerate}[label=(\roman*)]
+    \item  \( f_\infty^{\MSE}(\hat{\bm{\theta}}) = \sigma_\xi^2(1+m^{-1}) \pm \bigO{m^{-2}}\) \label{eq:mse_lim}
+    \item  \( f_\infty^{\CAL}(\hat{\bm{\theta}}) = \frac{\sigma_\xi^2}{\hat{\sigma}_\xi^2} \pm \bigO{m^{-2}}\) \label{eq:cal_lim}
+    \item \(  f_\infty^{\NLL}(\hat{\bm{\theta}}) =\half \{ \log\left(\hat{\sigma}_\xi^2(1 + m^{-1})\right) + \frac{\sigma_\xi^2}{\hat{\sigma}_\xi^2} +\log2\pi \} \pm \bigO{m^{-2}} \). \label{eq:nll_lim}
+  \end{enumerate}
+  Note that we can set \(\hat{\bm{\theta}}=\bm{\theta}\) in the above results to obtain the matched-parameter limiting results.
+\end{theorem}
+\begin{proof}[Proof sketch]
+It is quite straightfoward to derive expressions for each of the expectations \(f_n^{\MSE},f_n^{\CAL},f_n^{\NLL}\) since these only depend on the known marginal covariance matrices of the (misspecified) $\mc{WSRF}$. We then use results concerning asymptotic convergence of Euclidean nearest-neighbours, in combination with some standard linear algebra results and continuity properties, to obtain all of the above results. Note that in the expression for \( f_\infty^{\MSE}(\hat{\bm{\theta}})\) above the right hand side must always exceed $\sigma_\xi^2$ since this is an absolute lower bound on MSE performance; likewise \( f_\infty^{\CAL}(\hat{\bm{\theta}})\) is constrained to be non-negative. See \prooflink[full proof (\ref{appx:nngp}).]{proof:nngp_limit}.
+\end{proof}
+
+\textbf{Interpretation:} The MSE results of \autoref{thm:nngp_limit} show that to within a small factor (e.g. $m^{-1} = 0.0025$ when $m=400$ as for all reported runs of our algorithm) the {\it best possible} MSE will be achieved in the limit. The NLL results also tell us (by setting $\sigma_\xi^2 = \hat{\sigma}_\xi^2$) what the best possible limiting NLL value is, but only according to the {\it possibly misspecified} Gaussian model. The corrupting influence of an incorrect value of $\hat{\sigma}_\xi^2$ on the limiting NLL value is clearly evident from the expression for \(f_\infty^{\NLL}\)  and the picture is similar for calibration.
+\begin{remark} 
+\label{rem: indep_l}
+\autoref{thm:nngp_limit}  shows that isotropic (e.g. RBF and Matérn) kernels converge to the best possible MSE as $n \rightarrow \infty$ even on data generated with independent lengthscales on each $\bm{x}$ coordinate.
+\end{remark}
+% \vspace{-11pt}
+
+Note that \autoref{thm:nngp_limit} refers to pointwise convergence whereas we believe uniform convergence results should also be obtainable, e.g. perhaps of the form (or similar):
+\begin{conjecture} $\Ex{f_n^{\MSE}(\hat{\bm{\theta}})} \rightarrow f_\infty^{\MSE} = \sigma_\xi^2(1+m^{-1}) \pm \bigO{m^{-2}} $ {\it uniformly} as a function of $\hat{\bm{\theta}}$ as $n \rightarrow \infty$.
+\end{conjecture}
+% \vspace{-11pt}
+This particular conjecture would hold, for example, if the l.h.s. were shown to be a continuous function of $\hat{\bm{\theta}}$ reducing monotonically and pointwise to the limit with $n$ (by Dini's theorem). We also have initial results on rate of convergence in \autoref{thm:nngp_limit} which we defer to a later publication once more fully extended.
+
+
+\subsection{Simulation of Limits and Robustness at Scale}
+
+\noindent\begin{figure}
+  \centering
+  \includegraphics[scale=0.4]{\detokenize{figures/sim_metric_param_mix_ls_d=20.pdf}}
+  \caption{Behaviour of performance metrics as functions of kernel hyperparameters for increasing training set sizes \(n\). The black dashed line denotes the true parameter value; the red dashed line shows the limiting behaviour as \(n\rightarrow\infty\) and the green dashed line shows the limiting behaviour when the hyperparameters are correct. True \(l\) is shown in the title; additionally \(\sigma_\xi^2=0.1\), \(\sigma_f^2=0.9\), \(d=20\). When not varied, the assumed parameters are \(\hat{\sigma}_\xi^2=0.2\), \(\hat{\sigma}_f^2=0.8\), \(\hat{l}=l\). Finally we generate the input data from the measure \(P_\mathbf{x}=\mc{N}\left(0,\frac{1}{d} I_d\right)\).}
+  \label{fig:sim_limits}
+\end{figure}
+At first sight it seems infeasible to demonstrate the above robustness and limit properties empirically on GP data-sets of size $10^6$ or above. One major obstacle being the generation of GP synthetic datasets at this size which is computationally prohibitive even allowing for the speedups described in \cite{synth_data2022}. Fortunately we can avoid the need for large-scale data-generation, in addition to achieving other major efficiencies, by adopting the approach described in \autoref{alg:NNGP_robust_sim}.
+
+  \begin{algorithm}[ht]
+     \,\,\,\textbf{Input:} $n$ (training size), $n^*$ (test size), $m$ (number of nearest neighbours), $d$ ($\bm{x}$-dimension), $c(\cdot,\cdot)$ (generative covariance function), $\bm{\theta}$ (generative kernel parameters), $P(.)$ ($\bm{x}$-distribution) 
+     \newline
+     \textbf{Set-up phase A:}
+     \begin{enumerate}
+       \item Produce the $n$ training $\bm{x}$-values and $n^*$ test $\bm{x}^*$-values by sampling independently from $P(.)$.
+       \item Find the $n^*$ size- $m$ nearest neighbour sets $N(\bm{x}_i^*)$ for test points $\bm{x}_i^*$ ($i = 1,\dots,n^*$).
+       \item Generate $n^*$ GP samples $\bm{y}_i \in \mathbb{R}^{m+1}$ from $\mathcal{N}(0,K_{U,\bm{\theta}})$ where
+       $U = N(\bm{x}_i^*) \cup \{\bm{x}_i^*\}$.
+       \item Store $(N(\bm{x}_i^*),\{y_{i,j}\}_{j=1}^m)$ which will be used for predictions in Phase B together with $y_i^* = y_{i,(m+1)} \in \mathbb{R}$, the true $y$ value at $\bm{x}_i^*$.
+     \end{enumerate}
+     \,\,\,\textbf{Robustness Evaluation phase: B}
+     \newline
+     For several choices of assumed covariance function $\hat{c}(\cdot,\cdot)$ and parameters $\hat{\bm{\theta}}$: perform for $i=1,\dots,n^*$:
+     \begin{enumerate}
+       \item Compute predictive distribution $\mathcal{N}(\mu_i^*,\predvar_i)$ at $\bm{x}_i^*$ based on $\hat{c}$, $\hat{\bm{\theta}}$ and $(N(\bm{x}_i^*),\{y_{i,j}\}_{j=1}^m)$.
+      \item Update NLL, MSE and calibration statistics using $\mu_i^*,\predvar_i$ and $y_i^*$.
+     \end{enumerate}
+     \,\,\,\textbf{Output:} NLL, MSE and calibration stats for range of covariance and parameter assumptions. 
+     \caption{Simulation of GPnn Robustness and Limiting Behaviour}
+     \label{alg:NNGP_robust_sim}
+   \end{algorithm}
+The simulation algorithm gains its efficiency by exploiting the locality of the GPnn prediction process at $\bm{x}^*$ whereby the predictive distribution only makes use of a size-$(m+1)$ marginal distribution of the full distribution of $(\bm{y},y^*)$ over $\mathbb{R}^{n+1}$. (By the definition of a Gaussian process this marginal is a (low dimensional) multivariate Gaussian distribution from which samples can cheaply be generated). \autoref{fig:sim_limits} shows how the observed performance metrics approach the limiting behaviour as \(n\) increases. NLL and Calibration plots show their dependence, even asymptotically, on the misspecification of the noise-variance and the convergence to this behaviour at large \(n\). The MSE plot shows the increasing insensitivity to incorrect lengthscale estimation as \(n\) increases apart from the notable degradation at very small lengthscales. Further plots showing the dependence of each metric on all of the parameters (for a particular set) are given in \autoref{fig:sim_limits_grid}.
+  
+
+\section{A Highly Scalable GP Nearest Neighbour Regression Algorithm}
+\label{simple_implementation}
+\subsection{Parameter Estimation}
+\label{parameter_estimation}
+\textbf{Parameter Estimation Phase 1} The first step of parameter estimation (\autoref{fig:flowchart}) involves randomly selecting a small subset $E$ of the training data to obtain first-pass estimates $\hat{\bm{\theta}} = (\hat{l},{\hat{\sigma}}_\xi^2,{\hat{\sigma}}_f^2)$. Small subsets yield sub-optimal $\hat{\bm{\theta}}$ values, yet as shown in \ref{real_world_data}, these are capable of yielding strong MSE performance due to the robustness properties of \autoref{robustness}. We use the method in section 3.1 of \cite{deisenroth2015distributed} to estimate parameters from $E$, randomly partitioning $E$ into $w$ size-$s$ subsets ($ws = e$) and using a block diagonal approximation (with $w$ blocks of size $s \times s$ ) to the full $e \times e$ gram matrix. For \autoref{tab:metrics_best_dist} we set $e = 3000,s = 300,m = 10$.  For strong computational efficiency we set $e=|E|$ to a small {\it constant} value no matter the size of $n$. Thus as $n$ grows, an increasingly small portion of the data is used for this phase of parameter estimation and the associated cost does not increase with $n$. Note that other choices of cheap parameter estimation could be substituted here.
+
+\textbf{Parameter Estimation Phase 2 (calibration)} As shown in \autoref{robustness}, NLL and calibration performance derived from $\hat{\bm{\theta}} = (\hat{l},{\hat{\sigma}}_\xi^2,{\hat{\sigma}}_f^2)$ remain very sensitive to inaccuracies in $\hat{\sigma}_\xi^2$. An additional ``calibration step'' is used to refine those parameters: We randomly select a size $c$ calibration set $C$ (which is {\it otherwise unused}) from the training data and proceed according to \autoref{alg:NNGP_calibration}.
+
+
+  \begin{algorithm}[h]
+     \,\,\,\textbf{Input:} A size $c$ subset $C$ of $(\bm{x}^*,y^*)$ pairs from the training data, parameters $\hat{\bm{\theta}} = (\hat{l},\hat{\sigma}_\xi^2,\hat{\sigma}_f^2)$.
+    \begin{enumerate}[itemsep=1pt]
+      \item For each $(\bm{x}_i^*,y_i^*) \in C$ use the efficient GPnn predictive algorithm of \ref{efficient_nn_prediction}, with covariance function $\hat{c}(.,.)$ and parameters $\hat{\bm{\theta}} = (\hat{l},\hat{\sigma}_\xi^2,\hat{\sigma}_f^2)$, to obtain an estimate of the mean and variance, $\mu_i^*,\predvar_i$ of the predictive distribution of $y_i^*$ at $\bm{x}_i^*$.
+      \item Compute $\alpha = \frac{1}{c}\sum_{i=1}^c \frac{(y_i^* - \mu_i^*)^2}{\predvar_i}$.
+    \end{enumerate}    
+    \,\,\,\textbf{Output:} Calibrated parameters $\hat{\bm{\theta}}' = (\hat{l},\alpha \cdot \hat{\sigma}_\xi^2, \alpha \cdot \hat{\sigma}_f^2)$.
+     \caption{Calibration of Predictive Distribution}
+     \label{alg:NNGP_calibration}
+   \end{algorithm}
+Note that this process not only adjusts the noise variance estimate $\sigma_\xi^2$ but also the kernel scale parameter $\sigma_f^2$. In so doing it simultaneously calibrates the predictive distribution and improves NLL performance whilst leaving unchanged the MSE performance obtained from the original parameter estimates $\hat{\bm{\theta}} = (\hat{l},\hat{\sigma}_\xi^2,\hat{\sigma}_f^2)$. The lemma below is straightforward to prove (\autoref{calibration_phase_proof}):
+\begin{lemma}[Calibration]
+\label{calibration_lemma}
+The parameters $\hat{\bm{\theta}}'$ output from \autoref {alg:NNGP_calibration} produce GPnn predictions that (a) achieve perfect (weak) calibration on $C$, (b) minimise NLL on $C$ over all choices of $\alpha$ and (c) produce the same MSE as $\hat{\bm{\theta}}$ does on any choice of test set.
+\end{lemma}
+\begin{remark}
+     \hyperref[alg:NNGP_calibration]{Algorithm~\ref*{alg:NNGP_calibration}} can be applied to other GP methods, such as SVGP, to improve calibration.
+\end{remark}
+% \textbf{Remark 1} Algorithm 2 can be applied to other GP methods, such as SVGP, to improve calibration.
+% \newline
+% \newline
+\autoref{tab:metrics_best_dist} uses $c = 1000$; a simple refinement would be to select $c$ automatically (e.g. using a bootstrap) with optional manual override. Where accurate uncertainty calibration is paramount practitioners could devote much larger CPU resources to this phase (which is also easily distributed); when no uncertainty measures are to be used this calibration step can be bypassed altogether.
+
+
+\subsection{Efficient Nearest Neighbour Prediction}
+\label{efficient_nn_prediction}
+In order to implement GPnn prediction described in \ref{exact_NN_prediction} we use the scikit-learn NearestNeighbors package (\cite{scikit-learn}). This implements an efficient {\it approximate} nearest neighbour algorithm whereby one-time work is carried out to construct a table (counted within the total {\it training} times quoted) which subsequent calibration/test predictions then make use of. As is evident in \autoref{tab:train_times} and \hyperref[{fig:train}]{Figure~\ref*{fig:train}}, the nearest neighbour work increases with $\bm{x}$-dimension $d$. Alternative nearest neighbour algorithms and/or dimension-reduction techniques to help address this are yet to be investigated. We set the number of nearest neighbours to be $m = 400$ for all usages in this paper. 
+
+\section{Experimental Performance of GPnn Regression}
+\label{performance}
+
+\subsection{Performance on Real World Datasets}
+\label{real_world_data}
+\textbf {Implementational Details:} Comparisons are made between our method and the state-of-the-art approaches of SVGP \cite{Hensman} and five distributed methods (\cite{hinton2002training,cao2014generalized,tresp2000bayesian,deisenroth2015distributed} and \cite{amalg_SOD} following the recommendation in \cite{Cohen20b}) . Parameters for our method are given in \ref{parameter_estimation} and \ref{efficient_nn_prediction}. SVGP used 1024 inducing points; the distributed methods all used randomly selected subsets of sizes as close as possible to 625. The learning rate for the Adam optimiser was 0.01 for SVGP and 0.1 for our method and distributed methods. All runs in \autoref{tab:metrics_best_dist} used the the squared exponential (``RBF'') covariance function. A ``pre-whitening'' process (\ref{appx:prewhiten}) was applied to x values for all methods and the y values normalised (using training data-derived means and sds)  to have mean zero and variance 1. More complete details are given in \ref{appx:more_implementational_details}. SVGP was run on a single Tesla V100 GPU with 16GB memory; all distributed methods run on eight Intel Xeon Platinum 8000 CPUs sharing 32GB of memory. Our method was run on a Macbook Pro with 2.4 GHz Intel core i5. See \ref{appx:real_world_data} for a full explanation of our selection and pre-processing of datasets which, apart from Protein, are taken from the UCI repository.
+
+\textbf{Results}
+ Runs were made on three randomly selected $7/9,2/9$ splits into training and test sets. \autoref{tab:metrics_best_dist} shows MSE and NLL results for our method alongside SVGP and distributed method (note: $n=$ {\it training set} size). 
+The table shows only the best of the five distributed methods' results (w.r.t. MSE) but full results and details of all methods and all three performance measures are given in \ref{appx:distrib_var}. Complete calibration results are also plotted in \autoref{fig:results}.
+With the exception of the Bike dataset our method is found to outperform all methods simultaneously for both MSE and NLL, and calibration likewise bar a narrow second place on the Song dataset. \autoref{tab:train_times} and \hyperref[{fig:train}]{Figure~\ref*{fig:train}} show that this is achieved whilst undercutting the training costs of the other methods, an effect that is very pronounced for large training sets (e.g. approximately $100\times$ faster than the other methods at $n= 1.6 \times 10^6$ on House Electric). \hyperref[{fig:train}]{Figure~\ref*{fig:train}} shows that a significant portion of time involves calibration; this can be parallelised (or eliminated if uncertainty is not required). Note also that larger timings observed for higher dimensional datasets are due to slower performance of the approximate nearest-neighbour algorithm (\ref{efficient_nn_prediction}) in that regime, both for nn table construction and calibration. As discussed in \ref{efficient_nn_prediction}, future improvements may reduce this effect. It is very interesting that ``curse-of-dimensionality'' has not impacted on the method's MSE, NLL or calibration competitiveness at large $d$. This was despite the fact that a PCA analysis of the training $\bm{x}$ values showed no concentration within a low dimensional space (as to be expected given the prewhitening that has been applied  (\autoref{appx:prewhiten}).
+
+\begin{conjecture} 
+\label{conj:curse}
+Robustness to ``curse-of-dimensionality'' is at least partially explained by the increase in the intrinsic data-length-scale by a factor of order $\sqrt{d}$ that must arise in order for GP methods to be effective.
+\end{conjecture}
+The heuristic reasoning behind this conjecture is as follows: Unless length scale increases with $d$ the kernel gram matrix will exhibit an abundance of exceptionally small off-diagonal entries and hence be unable able to gain significant predictive power. A $\sqrt{d}$ increase serves to counterbalance this effect and seems consistent with length scales recovered from real data in practice.
+
+\begin{adjustbox}{max width=\textwidth, caption={RMSE and NLL results (mean and standard deviation over 3 runs) for the best distributed method (w.r.t. MSE), SVGP and our method.}, 
+label={tab:metrics_best_dist}, float=table}
+% \begin{adjustbox}{max width=\textwidth, float=table, addcode={\caption{...}\label{tab:metric_best_dist}}{}}
+\begin{tabular}{lllllllll}
+\toprule
+ &  &  & \multicolumn{3}{l}{\textbf{NLL}} & \multicolumn{3}{l}{\textbf{RMSE}} \\
+ &  &  & Distributed & OURS & SVGP & Distributed & OURS & SVGP \\
+Dataset & \(n\) & \(d\) &  &  &  &  &  &  \\
+\midrule
+Poletele & 4.6e+03 & 19 & 0.0091 ± 0.015 & \bfseries -0.214 ± 0.019 & -0.0667 ± 0.017 & 0.241 ± 0.0033 & \bfseries 0.195 ± 0.0042 & 0.226 ± 0.0059 \\
+Bike & 1.4e+04 & 13 & 0.977 ± 0.0057 & 0.953 ± 0.013 & \bfseries 0.93 ± 0.0043 & 0.634 ± 0.004 & 0.624 ± 0.0079 & \bfseries 0.606 ± 0.0033 \\
+Protein & 3.6e+04 & 9 & 1.11 ± 0.0051 & \bfseries 1.01 ± 0.0016 & 1.05 ± 0.0059 & 0.733 ± 0.0038 & \bfseries 0.666 ± 0.0014 & 0.688 ± 0.0043 \\
+Ctslice & 4.2e+04 & 378 & -0.159 ± 0.052 & \bfseries -1.26 ± 0.01 & 0.467 ± 0.016 & 0.237 ± 0.012 & \bfseries 0.132 ± 0.00062 & 0.384 ± 0.0064 \\
+Road3D & 3.4e+05 & 2 & 0.685 ± 0.0041 & \bfseries 0.371 ± 0.004 & 0.608 ± 0.018 & 0.478 ± 0.0023 & \bfseries 0.351 ± 0.0014 & 0.443 ± 0.008 \\
+Song & 4.6e+05 & 90 & 1.32 ± 0.0012 & \bfseries 1.18 ± 0.0045 & 1.24 ± 0.0012 & 0.851 ± 6.7e-05 & \bfseries 0.787 ± 0.0045 & 0.834 ± 0.0011 \\
+Houseelectric & 1.6e+06 & 8 & -1.34 ± 0.0013 & \bfseries -1.56 ± 0.0065 & -1.46 ± 0.0046 & 0.0626 ± 5.2e-05 & \bfseries 0.0506 ± 0.00072 & 0.0566 ± 0.00011 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+
+% not a very stable implementation:
+\noindent\begin{table}[ht]
+ \begin{varwidth}[b]{0.6\linewidth}
+   \caption{Corresponding recorded training times (with mean and standard deviation from 3 runs) associated to the metrics in \autoref{tab:metrics_best_dist}, i.e. recorded at the same time and with the time given for the ``distributed'' method relating to the best performing model in terms of MSE. Mean times are rounded to 3 s.f. and standard deviation to 2.}
+  \centering
+   \resizebox{\textwidth}{!}{%
+    \begin{tabular}[b]{llllll}
+    \toprule
+     &  &  & \multicolumn{3}{l}{\textbf{Train time/s}} \\
+     &  &  & Distributed & OURS & SVGP \\
+    Dataset & \(n\) & \(d\) &  &  &  \\
+    \midrule
+    Poletele & 4.6e+03 & 19 & 17.1 ± 0.66 & 28.8 ± 0.22 & \bfseries 11.9 ± 0.081 \\
+    Bike & 1.4e+04 & 13 & 43.5 ± 0.64 & \bfseries 28.4 ± 0.12 & 32.3 ± 0.15 \\
+    Protein & 3.6e+04 & 9 & 98.9 ± 1.7 & \bfseries 27.7 ± 0.19 & 81.1 ± 1.1 \\
+    Ctslice & 4.2e+04 & 378 & 86.9 ± 1.7 & \bfseries 76.1 ± 4.6 & 98.2 ± 1.8 \\
+    Road3D & 3.4e+05 & 2 & 1200.0 ± 110.0 & \bfseries 27.9 ± 1.3 & 760.0 ± 8.0 \\
+    Song & 4.6e+05 & 90 & 1050.0 ± 110.0 & \bfseries 138.0 ± 5.8 & 1080.0 ± 14.0 \\
+    Houseelectric & 1.6e+06 & 8 & 3110.0 ± 250.0 & \bfseries 32.0 ± 0.34 & 3720.0 ± 17.0 \\
+    \bottomrule
+    \end{tabular}
+  }
+  \label{tab:train_times}
+ \end{varwidth}%
+ % \hfill
+ \begin{minipage}[b]{0.4\linewidth}
+  \centering
+  \includegraphics[width=55mm]{figures/train_time_vs_model.pdf}
+  \captionof{figure}{Training times (s) for each model with ``high'' dimensional datasets highlighted.\textdagger: without calibration.}
+  \label{fig:train}
+ \end{minipage}%
+\end{table}
+
+\def\metricFigureScale{0.33}
+\begin{figure}
+% \centering
+\begin{minipage}{.29\linewidth}
+  \centering
+  \subfloat[]{\label{main:a}\includegraphics[scale=\metricFigureScale]{\detokenize{figures/calibration_vs_model_whitening.pdf}}}
+  \end{minipage}%
+  \begin{minipage}{.32\linewidth}
+  \centering
+  \subfloat[]{\label{main:b}\includegraphics[scale=\metricFigureScale]{\detokenize{figures/NLL_vs_model_whitening_rescaled.pdf}}}
+  \end{minipage}%
+  \begin{minipage}{.32\linewidth}
+  \centering
+  \subfloat[]{\label{main:c}\includegraphics[scale=\metricFigureScale]{\detokenize{figures/rMSE_vs_model_whitening.pdf}}}
+  \end{minipage}%
+  \caption{Experiment results on suite of UCI datasets. Optimal calibration performance is 1 (indicated by a black dashed line). Lower is better for NLL and RMSE. Y-axis truncated for readability for Calibration due to very large values on the ``Ctslice'' dataset. NLL is rescaled relative to the most extreme model performance. ``symlog'' refers to logarithmic axis rescaling applied to the \(y\)-axis on both positive and negative values (``symmetric'').}
+  \label{fig:results}
+\end{figure}
+
+\subsection{Performance on Massive Synthetic Datasets}
+\label{massive_datasets}
+We generated size $5 \times 10 ^7$ datasets using the 15-variable deterministic Oakley and O'Hagan function \cite{Oakley2004,simulationlib} with i.i.d. variance-$\sigma_\xi^2$ additive noise sampled from a zero-mean Laplacian distribution (with much wider tails than $\mc{N}(0,\sigma_\xi^2))$. This function has 5 inputs contributing significantly to output variance, 5 with smaller effect, and 5 with almost no effect. These properties are poorly matched by the isotropic covariance functions being applied, resulting in gross misspecification of the assumed $\mc{GRF}$ model and the additive noise. \autoref{fig:synth_metrics} shows performance achieved with both the squared exponential (``RBF'') covariance function and the exponential (Matérn 1/2) covariance function. It is very interesting to note the improvement in convergence rate achieved by the exponential kernel. (see \autoref{rem: indep_l} for a potential explanation of why isotropic covariance functions are so effective at large $n$).
+
+ \noindent\begin{figure}
+  % \centering
+  \includegraphics[scale=0.455]{\detokenize{figures/synth_metrics_v_n_nvs_comb.pdf}}
+  \caption{Behaviour of performance metrics on the Oakley and O'Hagan function-derived dataset (\cite{Oakley2004,simulationlib}) as a function of data size, \(n\). The horizontal green line indicates the limiting behaviour if the predictive and generative were to match. Shaded regions indicate 95\% confidence intervals for the fitted curves.}
+  \label{fig:synth_metrics}
+\end{figure}
+
+% \textbf{Remark 2:} 
+\begin{remark}
+    We checked to see whether this strong exponential kernel performance extended to UCI datasets. Surprisingly, given that it is not recommended for use in GP regression (e.g. \cite{GP_book} page 85),  it produced best RMSE performance across the board when compared with RBF and Matérn 3/2 kernels (\autoref{tab:best_kernels}), with Road3D RMSE reducing from 0.351 to 0.098. Exponential-kernel NLL performance was everywhere best apart from Ctslice and calibration was also better in most cases.
+\end{remark}
+
+
+\section{Discussion}
+
+\textbf{Related work}: The basic ``subset-of-data'' approximation (\cite{eval_framework}) also achieves training efficiency by using a small portion of training data and can achieve surprisingly goods results  (\cite{eval_framework}, \cite{exact_big_GP} section 5.1, \cite{Graphon_SoD}). But it typically would need a much greater proportion of training data than we are using for large $n$ due to its failure to leverage the power of large training sets for prediction; this explains why it is not consistently competitive with other methods. Passing references to the decoupling of prediction and estimation have been made, e.g. \cite{Stein2004,Bachoc2022,eval_framework}, but not been shown to be as consistently powerful as we have found, nor justified in terms of robustness theory or explored as a mainstream approach. Various works touch on the use of nearest neighbour prediction for GPs (e.g. \cite{Stein2004,Datta2016a,Datta2016,Tran2020,Wu2022}) but do not fully demonstrate or explain its effectiveness in comparison to other methods on large datasets, or exploit robustness in the way that we have. There has been recent work to extend local geo-spatial GP methods into sparse variational machine learning applications (\cite{Tran2020,Wu2022}), but this differs significantly in both the approach and perspectives of our work.  
+
+\textbf{Limitations and Future Research:} Our results exhibit a leap in speed and performance for GP regression at scale, but there remains more to be done to fully explain and extend performance (as evidenced by our remarks and conjectures). This is particularly so for high dimensional problems where (a) a faster nearest neighbour algorithm would have a particularly big pay-off and (b) there is a need to explain why ``curse-of-dimensionality'' appears not to have damaged the method's competitiveness (see \autoref{conj:curse}). Extensions of theory to broader aspects of GP robustness, rates of convergence and ``strong calibration'' (\autoref{predictive_measures}) are current areas of some the authors' ongoing work.
+
+
+\section*{Acknowledgments}
+We would like to thank IBM Research and EPSRC for supplying iCase funding for Anthony Stephenson and the UK National Cyber Security Centre for contributing toward Robert Allison's funding.
+
+\bibliographystyle{abbrv}
+\bibliography{cited_refs}
+\nocite{*}
+% \printbibliography

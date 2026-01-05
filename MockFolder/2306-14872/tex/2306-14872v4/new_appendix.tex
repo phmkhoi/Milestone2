@@ -1,0 +1,346 @@
+
+
+
+
+\section{Regret Decomposition of \POFUL{}}
+\label{sec:regret_decomp}
+To discuss the relationship between our method and those based on optimism \citep{abbasi2011improved,agrawal2013thompson,abeille2017linear}, we decompose the regret of \POFUL{} into three terms,  and sketch how they are bounded separately. 
+
+Let  $x_t^\star = \argmax_{x\in \cX_t} \dotp{x}{\theta^\star}$ be the optimal action and $\tilde{x}_t$ be the action chosen by \POFUL{}, the regret decomposes as
+%
+\begin{align*}
+\cR(T) & =\sum_{t=1}^T\dotp{x_t^\star}{ \theta^{\star}}-\dotp{\tilde{x}_t}{\theta^{\star}}\\
+%
+& = \underbrace{\sum_{t=1}^T\dotp{x_t^\star}{ \theta^{\star}}-\dotp{\tilde{x}_t}{\tilde{\theta}_t}}_{ \cR^{\PE}(T)}+ \underbrace{\sum_{t=1}^T\dotp{\tilde{x}_t}{\tilde{\theta}_t}-\dotp{\tilde{x}_t}{ \hparam_t}}_{\cR^{\PVT}(T)} +  \underbrace{\sum_{t=1}^T\dotp{\tilde{x}_t}{\hparam_t}-\dotp{\tilde{x}_t}{ \theta^{\star}}}_{\cR^{\RLS}(T)}\,.
+\end{align*}
+%
+$\cR^{RLS}(T)$ is the regret due to the estimation error of the RLS estimator. Note that $\tilde{x}_t$'s are the action sequence used to construct the RLS estimate. By Proposition~\ref{prop:potential} their cumulative $V_t^{-1}$-norm is bounded by $2d\log(1+t/\lambdareg)$. Hence, the upper bound of $\cR^{RLS}(T)$ is essentially determined by the $V_t$-distance between $\hparam_t$ and $\param$, which, via the Cauchy-Schwarz inequality, is characterized by the radius of the confidence ellipsoid $\cE^{RLS}_{t,\delta^\prime, \lambdareg}$. $\cR^{\PVT}(T)$ corresponds to the regret due to the exploration of \POFUL{} by choosing the pivot parameter $\tilde{\theta}_t$ rather than using $\hat\theta_t$ as OFUL would. Similar to  $\cR^{RLS}(T)$, the upper bound for this term is related to the $V_t$-distance between $\tparam_t$ and $\hparam_t$, which is controlled by construction and depends on the inflation parameter $\iota_t$. As a result, it can be shown that 
+$\cR^{RLS}(T)  = \tilde{\cO}(d\sqrt{T}) $ and $\cR^{\PVT}(T)  = \tilde{\cO}(d(\sum_{t = 1}^T \iota_{t}^2)^{1/2}) $ with probability $1-\delta$.  Notably, $\cR^{RLS}(T) = \tilde{\cO}(d\sqrt{T})  $, matching the known minimax lowerbound. For $\cR^{\PVT}(T)$ to match this lower bound as well, one way is to set $\iota_{t}=
+\tilde{\cO}(1)$ for all $t\in[T]$. However, it is known that, see for example \citep{agrawal2013thompson,abeille2017linear,hamidi2020frequentist}, such selection could be problematic for bounding $\cR^{PE}(T)$.
+
+$\cR^{PE}(T)$ corresponds to the \emph{pessimism} term. In the Bayesian analysis of LinTS, the expectation of this term is $0$, with respect to $\theta^\star$, as long as $\tparam_t$ and $\param$ are sampled from the same distribution, which occurs when LinTS has access to the true prior distribution for $\theta^\star$. In the frequentist analysis, however, we need to control the pessimism term incurred by any random sample $\tparam_t$.
+
+For OFUL, this term is bounded properly with high probability by the optimistic selection of OFUL actions\footnote{The term is further split into two parts as shown in the first few lines of proof of Proposition \ref{prop:instantaneous} in Appendix~\ref{proof:instantaneous}, with one term bounded by the optimism and the other term controlled by the $V_t$ distance between $\theta^{\star}$ and $\tilde{\theta}_t$.}. For LinTS, the only known analysis due to \cite{agrawal2013thompson} and \cite{abeille2017linear} gives a bound of order $\tilde{\cO}(d\sqrt{dT})$ using an optimism-based approach, which is worse than the Bayesian regret by a factor of $\sqrt{d}$. The key component of their proof is introducing inflation to the posterior variance by setting $\iota_t =\tilde{\cO}(\sqrt{d})$ to enforce exploration. For example, \cite{abeille2017linear} demonstrate that by using inflation, LinTS samples optimistic $\tparam_t$ with a probability greater than a constant, which means that the inequality $\dotp{x_t^\star}{ \theta^{\star}}\leq \dotp{\tilde{x}_t}{\tilde{\theta}_t}$ holds with a constant probability.
+
+For Greedy, there is no general theoretical guarantee for bounding the pessimism term without imposing additional structural assumptions. Our approach to tackle this challenge distinguishes us from methods based on optimism \citep{agrawal2013thompson,abeille2017linear}. Interestingly, \cite{abeille2017linear} conjectured that non-optimistic samples may provide beneficial exploration and help control the growth of regret.
+
+By relaxing the requirement for optimistic samples, we avoid inflating the posterior, which in turn prevents a $\sqrt{d}$-gap in the regret. Instead, we introduce a measure of the ``quality'' of \POFUL{} actions with respect to the regret and develop a computable upper bound for this quality using geometric information in the data. This approach yields a data-driven regret bound for \POFUL{} that matches the minimax optimal regret in some settings. Furthermore, it allows for the construction of variants of LinTS and Greedy with a provable frequentist regret bound that is minimax optimal up to only a constant factor.
+
+\section{Discrete Action Space}
+\label{sec:discrete_actions}
+
+% We start with the discrete action space scenario to illustrate our method. It turns out that upper bounding $\alpha_t$ is done by simply comparing the confidence interval lengths of all potentially optimal actions. 
+
+This section introduces the method for establishing an upper bound on $\alpha_t$ in the context of discrete action spaces.  It turns out that the process involves comparing confidence interval lengths across all potentially optimal actions.
+
+
+To see this, recall for an arbitrary action $x\in\cX_t$,  by Proposition~\ref{prop:beta}, with high probability its expected reward is bounded as 
+\$
+L_t(x) \coloneqq \dotp{x}{ \hat{\theta}_t}  - \iota_t \|x\|_{V_t^{-1}}   \beta_{t,\delta^\prime, \lambdareg}^{RLS}       
+\leq  \dotp{x}{{\theta}^\star}   \leq \dotp{x}{ \hat{\theta}_t}  +  \iota_t \|x\|_{V_t^{-1}}   \beta_{t,\delta^\prime, \lambdareg}^{RLS} \eqqcolon  U_t(x).
+\$ 
+The confidence interval length is proportional to $\|x\|_{V_t^{-1}} $. Therefore, to characterize the range of $\|x_t^\star\|_{V_t^{-1}}$, we only need to identify the set of potentially optimal actions and calculate the minimal $V_t^{-1}$-norm among all actions in that set. 
+
+
+Note that for an action $x \in \cX_t$  to remain potentially optimal, it cannot be dominated by another action. I.e.,    we require  $U_t(x) \geq \max_{y\in\cX_t}  L_t(y)$. Therefore, define \$\cC_t (\beta)\coloneqq \{x\in\cX_t: \dotp{x}{ \hat{\theta}_t}  +  \|x\|_{V_t^{-1}}  \beta \geq \max_{y\in\cX_t} \  \dotp{y}{ \hat{\theta}_t}  - \|y\|_{V_t^{-1}}    \beta \},\$
+the set of potentially optimal actions is given by $C_t(\beta_{t,\delta^\prime, \lambdareg}^{RLS})$. Similarly,  the set of actions that might be chosen by \POFUL{} is given by $\cC_t(\beta_{t,\delta^\prime, \lambdareg}^{\PVT} )$, where we let $\beta^{\PVT}_{t,\delta^\prime, \lambdareg} \coloneqq \iota_t \beta^{RLS}_{t,\delta^\prime, \lambdareg}$. The inflation parameter $\iota_t$ turns out to control the conservativeness when eliminating actions. 
+
+
+
+By comparing the range of $V_t^{-1}$-norm for both sets, an upper bound $\hat{\alpha}_t$ for the  uncertainty ratio $\alpha_t$ is given by
+  \# \label{eq:alpha_hat_2}
+  \hat{\alpha}_t\coloneqq \frac{\sup _{x\in \cC_t(\beta_{t,\delta^\prime, \lambdareg}^{RLS} )}\|x\|_{V_t^{-1}}}{ \inf _{x \in \cC_t(\beta_{t,\delta^\prime, \lambdareg}^{\PVT} )}\|x\|_{V_t^{-1}}}.
+ \#
+
+
+
+% \section{Details of Synthetic Environments}
+% \label{sec:Synthetic_Environments}
+% \paragraph{Example 1. Stochastic linear bandit with uniformly and independently distributed actions.} We fix $d = 50$, and sample $\param\sim\text{Unif}(\{\theta \in \mathbb{R}^d|\|\theta\|= 10\}) $ on a sphere with fixed norm. At each time $t$, we generate 100 i.i.d. random actions sampled from $\text{Unif}(\cS_{d-1})$ to form $\cX_t$. This is a basic example of standard stochastic linear bandit problems without any extra structure. We set the threshold  $\mu = 8$ for TS-MR and Greedy-MR. We average simulation results over 100 independent runs.  
+
+
+
+% \paragraph{Example 2. Contextual bandits embedded in the linear bandit problem  \citep{abbasi2013online}.} We fix $d = 50$, and sample $\param\sim\text{Unif}(\{\theta \in \mathbb{R}^d|\|\theta\|= 70\}) $. At each time $t$, we first  generate a random vector $u_t \sim \cN(0, \II_5)$ and let $x_{t,i}\in \RR^{50}$ be the vector whose $i$-th block of size 5 is a  copy of $u_t$, and other components are 0. Then $X_t = \{x_{t,i}\}_{i\in [10] }$ is an action set of size 10, sharing the same feature $u_t$ in different blocks. This problem is equivalent to a 10-armed contextual bandit. We \blue{set} $\mu = 12$ for TS-MR and Greedy-MR. Again, we average simulation results over 100 independent runs. 
+
+
+
+% \paragraph{Example 3. Prior mean mismatch \citep{hamidi2020frequentist}.} This is an example in which LinTS is shown to incur linear Bayesian regret. We sample $\theta^\star \sim \cN(m \mathbf{1}_{3d}, \II_{3d})$ and fix the action set $\cX_t = \{0, x_a, x_b\}$ for all $t\in[T]$, where $x_a = - \sum_{i=1}^{d} \frac{e_i}{\sqrt{3d}},  \quad x_b = \sum_{i=11}^{3d} \frac{e_i}{\sqrt{3d}}  - \sum_{i=1}^{d} \frac{e_i}{\sqrt{3d}}$.
+% It is shown in \cite{hamidi2020frequentist} that, when LinTS takes a wrong prior mean as input,  it has a large probability to choose  $\tilde{x}_2 = 0$, conditioned on $\tilde{x}_1 = x_a$. Note that choosing the zero action brings no information update to LinTS, it suffers a linear Bayesian regret when trying to escape from the zero action. We let $m = 10$ and set $d = 10$, so the problem is a $30$-dimensional linear bandit. We ser $\mu = 12$ for TS-MR and Greedy-MR. We carried out 100 independent runs.
+
+\section{Example Cases and empirical validations of Theorem~\ref{thm:alpha}}
+\label{sec:Cases}
+
+To better understand what Theorem \ref{thm:alpha} implies, we discuss some special cases in this section. 
+
+\paragraph{Case 1: a pure exploration regime.} \label{eg:pure} When the decision-maker doesn't care about the regret and adopts a pure exploration algorithm that plays actions in all directions sequentially, we expect $\lambda_i(V_t) = \cO(t)$ for all $i = 1,\dots, d$. Then $\hat{\alpha}_t \leq C$ for some constant $C>0$. Specifically, if $V_t = D I_d$ for some constant $D>0$, we have $\|x\|_{V_t^{-1}} =D^{-1} \|x\| = D^{-1}$ for all $x \in \cS_{d-1}$ and hence $ \hat{\alpha}_t = 1$  .
+
+\paragraph{Case 2:  linear structures.} 
+\label{eg:principle_eigen}
+
+When the reward takes a linear form in the action, for example, the stochastic linear bandits we study,  it's observed in practice that the estimate $\hat{\theta}_t$ tends to align in the first eigenspace of the uncertainty structure $V_t$ (empirically validated below). To see this, note that in order to maximize the reward in an online manner, bandit algorithms tend to select actions towards the confidence ellipsoid centered at  $\hat{\theta}_t$, hence forcing more exploration along the direction of $\hat{\theta}_t$, especially at the late stage of the algorithm when the ellipsoid is small. The following proposition states that, as long as the center $\hparam_t$ of the confidence ellipsoid $\cE_{t,\delta^\prime, \lambdareg}$  tends to be aligned with the first eigenspace of $V_t$, the corresponding uncertainty ratio tends to 1, indicating a regret bound matching the minimax $\tilde{\cO}(d\sqrt{T})$ rate by Theorem~\ref{thm:oracle_regret}. This provides a plausible explanation for the empirical success of LinTS and Greedy.
+\begin{proposition}\label{prop:align}
+	 Suppose $\lim_{t\to \infty}\frac{\|\hparam_t\|_{V_{t}}^2}{\|\hparam_t\|^2} =\lambda_{1}(V_{t}) $, it holds that $\lim_{t\to \infty} \hat{\alpha}_t = 1$.	
+\end{proposition}
+
+
+
+\proof{}
+	This corresponds to the case where $m, M \to \lambda_1(V_{t})$ in Lemma~\ref{lem:Vinv_norm}.
+	Without loss of generality, we let $M>\lambda_2(V_{t})$. Then
+	$
+	\hat{\alpha}_t  =(\lambda_{1}^{-1}(V_{t}) + \lambda_{d}^{-1}(V_{t})   - m{\lambda_{1}^{-1}(V_{t})\lambda_{d}^{-1}(V_{t}) })/(\lambda_{k}^{-1}(V_{t}) +  \lambda_{k+1}^{-1}(V_{t})   - {M}{\lambda_{k}^{-1}(V_{t})\lambda_{k+1}^{-1}(V_{t}) } ) \to \lambda_{1}^{-1}(V_{t})/\lambda_{1}^{-1}(V_{t}) = 1
+	$. 
+%	\end{proof}
+\endproof
+
+
+% \section{Empirical Validation of Case 2 from Section~\ref{eg:principle_eigen}}
+% \label{sec:vali}
+
+
+
+To empirically confirm that Case 2 is not merely theoretical, we examine the condition outlined in Proposition \ref{prop:align}. Our focus is on the ratio
+$
+\zeta_t\coloneqq \frac{\|\hat{\theta}_t\|_{V_t}^2/ \|\hat{\theta}_t\|^2}{\lambda_1(V_t)}
+$.  Notably, $\|\hat{\theta}_t\|_{V_t}^2 $ tends to approximate $\lambda_1 \|\hat{\theta}_t\|^2$ when $\hat{\theta}_t$ is proximate to the top eigenspace of $V_t$. Consequently, this ratio serves as a proxy of the alignment of $\hat{\theta}_t$ with the top eigenspace of $V_t$. Specifically, a $\zeta_t$ value of 1 signifies that $\hat{\theta}_t$ is within the top eigenspace.
+
+We resort to Example 1 from Section \ref{sec:simulation}, which epitomizes the general linear bandit problem in its standard form. The empirical sequence ${\zeta_t}$ is depicted in Figure~\ref{fig:proj}.
+
+ \begin{figure}[htp]
+	\centering
+%	\subfigure{
+		\includegraphics[width=.7\textwidth]{figures/proj_ex1.jpg} 
+	%}
+	\caption{Evolution of the alignment proxy $\zeta_t$ in Example 1.}
+	\label{fig:proj}
+\end{figure}
+
+%As we see in Figure~\ref{fig:proj}, for all bandit algorithms, $\zeta_t$ is already very high (above 0.9) at the very early stage of the implementation and tends to 1 eventually. This validates the tendency described in Case 2. Moreover, Figure~\ref{fig:proj} shows that this happens for all bandit algorithms considered, coinciding with our intuition that the tendency might come from the online nature of bandit algorithms. 
+%(We remark that the sharp decrease at the beginning is due to the behavior of the regularized least square estimator in over-parameterized regimes when $t$ is smaller than the dimension $d$.)
+
+
+
+Figure~\ref{fig:proj} reveals that for every bandit algorithm, the value of $\zeta_t$ is notably high (exceeding 0.9) at the early stages of implementation and gradually converges towards 1. This observation validates the behavior outlined in Case 2. Furthermore, the consistency of this phenomenon across all examined bandit algorithms suggests that such a tendency is likely a characteristic of the online nature of these algorithms.
+
+It is important to note that the initial sharp decline observed is attributed to the behavior of the regularized least squares estimator in over-parameterized scenarios, when $t$ is less than the dimension $d$.
+
+\newpage
+\section{TS-MR and greedy-MR Algorithms}
+\label{sec:TS-MR}
+\begin{algorithm}[!htp]
+	\caption{TS-MR (Greedy-MR)}\label{alg:TS-MR}
+	\begin{algorithmic}
+		\REQUIRE $T$, $\delta$,  $\{\iota_t\}_{t\in [T]}$, $\mu$	
+		\STATE Initialize $ V_{0} \leftarrow \lambda I_d$,  $\hat{\theta}_{1} \leftarrow 0$, $\delta^\prime \leftarrow \delta/2T$
+		\FOR{t = 1, 2 , \dots, T }
+		\STATE Calculate $\halpha_t$ using Theorem~\ref{thm:alpha}
+		\STATE $\hat{\mu_t} \leftarrow  \hat{\alpha}_t(1+\iota_t )+1+\iota_t$ 
+		\IF{$\hat{\mu}_t \leq \mu$}
+		\STATE Sample $\eta_t\sim \cD^{SA}(\delta^\prime)$ (defined in Section~\ref{sec:POFUL})
+		\STATE $\tilde{\theta}_{t}  \leftarrow \hat{\theta}_t +\iota_t \beta_{t,\delta^\prime, \lambdareg}^{RLS} V_t^{-\frac{1}{2}} \eta_t$
+		\STATE ${x}_{t} \leftarrow \arg \max _{x \in \mathcal{X}_t}\dotp{ x}{ \tilde{\theta}_{t}}$
+		\ELSE
+		\STATE   ${x}_{t} \leftarrow \arg \max _{x \in \mathcal{X}_t} \arg \max _{\theta \in \cE_{t,\delta^\prime, \lambdareg}^{RLS} }\dotp{ x}{ \tilde{\theta}_{t}}$
+		\ENDIF
+		\STATE Observe reward $r_{t}$
+		\STATE $V_{t+1} \leftarrow V_{t}+{x}_{t}  {x}_{t}^{\top}$
+		\STATE $\hat{\theta}_{t+1} \leftarrow V_{t+1}^{-1}\sum_{s=1}^{t} x_s r_{s}$.
+		\ENDFOR
+	\end{algorithmic}
+\end{algorithm}
+
+
+
+
+% \section{Fraction of OFUL Actions}
+
+% In this section, we show the fraction of OFUL actions used in Greedy-MR and TS-MR in all experiments. Notably, the results show that OFUL actions are only frequently used at certain beginning stage of the time horizon. This indicates that:
+% \begin{itemize}
+%     \item The proposed Greedy-MR and TS-MR algorithms only implement OFUL actions when necessary, and the fraction of OFUL remains low in most of the time horizon.  Hence, the computational cost remains relatively low. 
+%     \item Limited amount of course-corrected exploration at the beginning efficiently fixed TS and Greedy in the problematic instances.
+% \end{itemize}
+
+%  \begin{figure}[htp]
+% 	\centering
+% 	\begin{subfigure}[b]{0.32\textwidth}
+% 		\includegraphics[width=\textwidth]{figures/oful_fraction_ex1.jpg} 
+% 	\caption{example 1}
+% 		\label{fig:oful_fraction_ex1}
+% \end{subfigure}
+% 	\begin{subfigure}[b]{0.32\textwidth}
+% 	\includegraphics[width=\textwidth]{figures/oful_fraction_ex2.jpg} 
+% 	\caption{example 2}
+% 		\label{fig:oful_fraction_ex2}
+% 	\end{subfigure}
+%  	\begin{subfigure}[b]{0.32\textwidth}
+% 	\includegraphics[width=\textwidth]{figures/oful_fraction_ex3.jpg} 
+% 	\caption{example 3}
+% 		\label{fig:oful_fraction_ex3}
+% 	\end{subfigure}\\
+% 	\begin{subfigure}[b]{0.32\textwidth}
+% 		\includegraphics[width=\textwidth]{figures/oful_fraction_emp1.jpg} 
+% 	\caption{Cardiotocography dataset}
+% 		\label{fig:Cardiotocography}
+% \end{subfigure}
+% 	\begin{subfigure}[b]{0.32\textwidth}
+% 	\includegraphics[width=\textwidth]{figures/oful_fraction_emp2.jpg} 
+% 	\caption{JapaneseVowels dataset}
+% 		\label{fig:JapaneseVowels}
+% 	\end{subfigure}
+%  	\begin{subfigure}[b]{0.32\textwidth}
+% 	\includegraphics[width=\textwidth]{figures/oful_fraction_emp3.jpg} 
+% 	\caption{Segment dataset}
+% 		\label{fig:segment}
+% 	\end{subfigure}
+% 	\caption{Fraction of OFUL actions of TS-MR and Greedy-MR on synthetic and real-world data.}
+% 	\label{fig:empOfulFraction}
+% \end{figure}
+
+
+\section{Influence of $\mu$}
+\label{sec:tune_mu}
+In this section, we investigate the influence of $\mu$ and discuss strategies for selecting its value. We vary the value of $\mu$ and conduct simulations on Example 2 and the Segment dataset as done in Section~\ref{sec:simulation}. The former represents a scenario where course-correction is necessary (otherwise LinTS fails), while the latter represents a practical scenario where course-correction is unnecessary. The results are shown in Figures \ref{fig:oful_frac_ex2} and \ref{fig:oful_frac_emp3}. 
+
+ \begin{figure}[!htp]
+	\centering
+	\begin{subfigure}[b]{0.32\textwidth}
+		\includegraphics[width=\textwidth]{figures/cumuregrets_ex2_mu_4.jpg} 
+	\caption{example 2, $\mu = 4$}
+		\label{fig:cumuregrets_ex2_mu_4}
+\end{subfigure}
+	\begin{subfigure}[b]{0.32\textwidth}
+	\includegraphics[width=\textwidth]{figures/cumuregrets_ex2_mu_8.jpg} 
+	\caption{example 2, $\mu = 8$}
+		\label{fig:cumuregrets_ex2_mu_8}
+	\end{subfigure}
+ 	\begin{subfigure}[b]{0.32\textwidth}
+	\includegraphics[width=\textwidth]{figures/cumuregrets_ex2_mu_12.jpg} 
+	\caption{example 2, $\mu = 12$}
+		\label{fig:cumuregrets_ex2_mu_12}
+	\end{subfigure}\\
+	\begin{subfigure}[b]{0.32\textwidth}
+		\includegraphics[width=\textwidth]{figures/oful_frac_ex2_mu_4.jpg} 
+	\caption{example 2, $\mu = 4$}
+		\label{fig:oful_frac_ex2_mu_4}
+\end{subfigure}
+	\begin{subfigure}[b]{0.32\textwidth}
+	\includegraphics[width=\textwidth]{figures/oful_frac_ex2_mu_8.jpg} 
+	\caption{example 2, $\mu = 8$}
+		\label{fig:oful_frac_ex2_mu_8}
+	\end{subfigure}
+ 	\begin{subfigure}[b]{0.32\textwidth}
+	\includegraphics[width=\textwidth]{figures/oful_frac_ex2_mu_12.jpg} 
+	\caption{example 2, $\mu = 12$}
+		\label{fig:oful_frac_ex2_mu_12}
+	\end{subfigure}
+	\caption{Cumulative regret and fraction of OFUL actions of TS-MR and Greedy-MR on example 2. Shaded regions show the $\pm 2$ SE of the mean regret.}
+	\label{fig:oful_frac_ex2}
+\end{figure}
+
+
+
+ \begin{figure}[htp]
+	\centering
+	\begin{subfigure}[b]{0.32\textwidth}
+		\includegraphics[width=\textwidth]{figures/cumuregrets_emp3_mu_4.jpg} 
+	\caption{Segment dataset, $\mu = 4$}
+		\label{fig:cumuregrets_emp3_mu_4}
+\end{subfigure}
+	\begin{subfigure}[b]{0.32\textwidth}
+	\includegraphics[width=\textwidth]{figures/cumuregrets_emp3_mu_8.jpg} 
+	\caption{Segment dataset, $\mu = 8$}
+		\label{fig:cumuregrets_emp3_mu_8}
+	\end{subfigure}
+ 	\begin{subfigure}[b]{0.32\textwidth}
+	\includegraphics[width=\textwidth]{figures/cumuregrets_emp3_mu_12.jpg} 
+	\caption{Segment dataset, $\mu = 12$}
+		\label{fig:cumuregrets_emp3_mu_12}
+	\end{subfigure}\\
+	\begin{subfigure}[b]{0.32\textwidth}
+		\includegraphics[width=\textwidth]{figures/oful_frac_emp3_mu_4.jpg} 
+	\caption{Segment dataset, $\mu = 4$}
+		\label{fig:oful_frac_emp3_mu_4}
+\end{subfigure}
+	\begin{subfigure}[b]{0.32\textwidth}
+	\includegraphics[width=\textwidth]{figures/oful_frac_emp3_mu_8.jpg} 
+	\caption{Segment dataset, $\mu = 8$}
+		\label{fig:oful_frac_emp3_mu_8}
+	\end{subfigure}
+ 	\begin{subfigure}[b]{0.32\textwidth}
+	\includegraphics[width=\textwidth]{figures/oful_frac_emp3_mu_12.jpg} 
+	\caption{Segment dataset, $\mu = 12$}
+		\label{fig:oful_frac_emp3_mu_12}
+	\end{subfigure}
+	\caption{Cumulative regret and fraction of OFUL actions of TS-MR and Greedy-MR on Segment datasets. Shaded regions show the $\pm 2$ SE of the mean regret.}
+	\label{fig:oful_frac_emp3}
+\end{figure}
+
+
+
+
+
+
+We have the following observations on the influence of $\mu$:
+\begin{itemize}
+    \item In general, as $\mu$ increases, the fraction of OFUL actions decreases. For a sufficiently small $\mu$, the algorithms become OFUL (e.g., TS-MR in Figures~\ref{fig:cumuregrets_ex2_mu_4} and \ref{fig:cumuregrets_emp3_mu_4}). For a large $\mu$, the algorithms are similar to the original algorithms (e.g., TS-MR and Greedy-MR in Figures~\ref{fig:cumuregrets_ex2_mu_12} and \ref{fig:cumuregrets_emp3_mu_12}). 
+    \item By optimizing the choice of $\mu$, the performance of the corrected algorithm might outperform both OFUL and the base algorithm (e.g., Greedy-MR in Figures~\ref{fig:cumuregrets_ex2_mu_8} and \ref{fig:cumuregrets_emp3_mu_8}). This demonstrates that TS/Greedy-MR are not merely naive interpolations between TS/Greedy and OFUL, and that proper exploration in the initial stage benefits the long-term performance of the algorithms.
+    
+    \item As long as $\mu$ isn't too small,  the performance of the course-corrected algorithm are relatively robust to the choice of $\mu$. The simulations show $\mu\in[8,12]$ is a good initial choice.
+\end{itemize}
+
+\paragraph{Empirical guidelines and heuristics for choosing $\mu$.} In practice, we recommend setting $\mu$ to a moderate value, typically within the range $[8,12]$, as validated by our simulation results. The selection of $\mu$ should be guided by heuristics that ensure an appropriate fraction of course-corrected exploration during the initial stage. A suitable $\mu$ value is indicated when the fraction of OFUL actions is high at the beginning and gradually decreases to and maintains a low level. If the fraction of OFUL actions remains consistently high, increasing $\mu$ can help reduce computational costs. Conversely, if very few OFUL actions are executed during the initial stage, decreasing $\mu$ may be beneficial. Finally, we note that since algorithmic performance remains robust across moderate values of $\mu$, the precise selection of $\mu$ is unlikely to be a significant practical concern.
+
+ % If the fraction tends to decrease to a relatively low level, then the current $\mu$ is a proper choice to course-correct the current instance. If the fraction is always high, then we might need to increase $\mu$, until the fraction will decrease eventually.
+
+
+
+% \section{Additional Algorithmic Details}
+% For all simulations, we set $\lambdareg = 1$, $\delta = 0.001$.
+
+% \blue{
+
+% \textbf{TBD}
+% \begin{algorithm}[!htp]
+% 	\caption{TS-Freq}\label{alg:TS-MR}
+% 	\begin{algorithmic}
+% 		\REQUIRE $T$, $\delta$,  $\{\iota_t\}_{t\in [T]}$, $\mu$	
+% 		\STATE Initialize $ V_{0} \leftarrow \lambda \mathbb{I}$,  $\hat{\theta}_{1} \leftarrow 0$, $\delta^\prime \leftarrow \delta/2T$
+% 		\FOR{t = 1, 2 , \dots, T }
+% 		\STATE Calculate $\halpha_t$ using Theorem~\ref{thm:alpha}
+% 		\STATE $\hat{\mu_t} \leftarrow  \hat{\alpha}_t(1+\iota_t )+1+\iota_t$ 
+% 		\IF{$\hat{\mu}_t \leq \mu$}
+% 		\STATE Sample $\eta_t\sim \cD^{SA}(\delta^\prime)$ (defined in Section~\ref{sec:POFUL})
+% 		\STATE $\tilde{\theta}_{t}  \leftarrow \hat{\theta}_t +\iota_t \beta_{t,\delta^\prime, \lambdareg}^{RLS} V_t^{-\frac{1}{2}} \eta_t$
+% 		\STATE ${x}_{t} \leftarrow \arg \max _{x \in \mathcal{X}_t}\dotp{ x}{ \tilde{\theta}_{t}}$
+% 		\ELSE
+% 		\STATE   ${x}_{t} \leftarrow \arg \max _{x \in \mathcal{X}_t} \arg \max _{\theta \in \cE_t^{RLS}(\delta^\prime) }\dotp{ x}{ \tilde{\theta}_{t}}$
+% 		\ENDIF
+% 		\STATE Observe reward $r_{t}$
+% 		\STATE $V_{t+1} \leftarrow V_{t}+{x}_{t}  {x}_{t}^{\top}$
+% 		\STATE $\hat{\theta}_{t+1} \leftarrow V_{t+1}^{-1}\sum_{s=1}^{t} x_s r_{s}$.
+% 		\ENDFOR
+% 	\end{algorithmic}
+% \end{algorithm}
+
+
+
+
+% \textbf{TBD}
+
+% \begin{algorithm}
+% 	\caption{Greedy }\label{alg:Greedy}
+% 	\begin{algorithmic}
+% 		\REQUIRE $T$, $\delta$, $\lambdareg$
+% 		\STATE Initialize $ V_{0} \leftarrow \lambda \mathbb{I}$, $\widehat{\theta}_{1} \leftarrow 0$,  $\delta^\prime \leftarrow \delta/2T$
+% 		\FOR{t = 0, 1,  \dots, T }
+% 		\STATE Calculate $V_t$ and $\hat{\theta}_t$ according to \eqref{eq:ridge}
+% 		\STATE $\tilde{x}_{t} \leftarrow \argmax_{x\in\cX_t}\left( \dotp{x}{\hat{\theta}_{t}} \right)$
+% 		\STATE Observe reward $r_{t}$
+% 		\STATE $V_{t+1} \leftarrow V_{t}+\tilde{x}_{t}  \tilde{x}_{t}^{\top}$
+% 		\STATE $\hat{\theta}_{t+1} \leftarrow V_{t+1}^{-1}\sum_{s=1}^{t} \tilde{x}_s r_{s}$.
+% 		\ENDFOR
+% 	\end{algorithmic}
+% \end{algorithm}
+
+
+%}

@@ -244,7 +244,9 @@ def clean_tex(raw_content):
     return content
     
 
-def parse_paper(tex_path):
+def parse_paper(folder_path):
+    tex_path = folder_path + '/tex/'
+    
     if not os.path.isdir(tex_path): return None
     version_folders = os.listdir(tex_path)
     

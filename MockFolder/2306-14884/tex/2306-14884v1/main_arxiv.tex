@@ -1,0 +1,503 @@
+\documentclass{article}
+
+
+
+
+
+
+\usepackage[preprint]{neurips_2023}
+
+
+
+
+
+
+\usepackage[utf8]{inputenc} %
+\usepackage[T1]{fontenc}    %
+\usepackage{hyperref}       %
+\usepackage{url}            %
+\usepackage{booktabs}       %
+\usepackage{amsfonts}       %
+\usepackage{nicefrac}       %
+\usepackage{microtype}      %
+\usepackage{xcolor}         %
+\usepackage{subfigure}
+\usepackage[textsize=tiny]{todonotes}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{mathtools}
+\usepackage{amsthm}
+\usepackage{bm}
+\usepackage{float}
+\usepackage{graphicx,subfigure}
+\usepackage{caption}
+\usepackage[labelfont=bf]{caption}
+\usepackage[capitalize,noabbrev]{cleveref}
+\usepackage{wrapfig}
+\usepackage{adjustbox}
+\usepackage{natbib}
+\usepackage{multirow}
+\usepackage{selectp}
+
+
+\title{Learning to Modulate pre-trained Models in RL}
+
+
+
+
+\author{
+\hspace{-0.67cm}
+  \textbf{Thomas Schmied}$^{1}$,
+  \textbf{Markus Hofmarcher}$^{2}$,
+  \textbf{Fabian Paischer}$^{1}$,
+  \textbf{Razvan Pascanu}$^{3,4}$,
+  \textbf{Sepp Hochreiter}$^{1,5}$ \\
+\hspace{-0.67cm}
+  $^{1}$~ELLIS Unit Linz and LIT AI Lab, Institute for Machine Learning,\\
+\hspace{-0.67cm}
+  $^{2}$~JKU LIT SAL eSPML Lab, Institute for Machine Learning,\\
+\hspace{-0.67cm}
+                  ~~~~Johannes Kepler University, Linz, Austria\\
+\hspace{-0.67cm}
+  $^{3}$~Google DeepMind, $^{4}$~UCL\\
+\hspace{-0.67cm}
+  $^{5}$~Institute of Advanced Research in Artificial Intelligence (IARAI), Vienna, Austria\\
+\hspace{-0.67cm}
+  \texttt{schmied@ml.jku.at}
+}
+
+\begin{document}
+
+
+\maketitle
+
+
+
+\begin{abstract}
+Reinforcement Learning (RL) has been successful in various domains like robotics, game playing, and simulation.
+While RL agents have shown impressive capabilities in their specific tasks, they insufficiently adapt to new tasks.
+In supervised learning, this adaptation problem is addressed by large-scale pre-training followed by fine-tuning to new down-stream tasks.
+Recently, pre-training on multiple tasks has been gaining traction in RL.
+However, fine-tuning a pre-trained model often suffers from catastrophic forgetting, that is, the performance on the pre-training tasks deteriorates when fine-tuning on new tasks.
+To investigate the catastrophic forgetting phenomenon, we first jointly pre-train a model on datasets from two benchmark suites, namely Meta-World and DMControl.
+Then, we evaluate and compare a variety of fine-tuning methods prevalent in natural language processing, both in terms of performance on new tasks, and how well performance on pre-training tasks is retained.
+Our study shows that with most fine-tuning approaches, the performance on pre-training tasks deteriorates significantly.
+Therefore, we propose a novel method, Learning-to-Modulate (L2M), that avoids the degradation of learned skills by modulating the information flow of the frozen pre-trained model via a learnable modulation pool. 
+Our method achieves state-of-the-art performance on the Continual-World benchmark, while retaining performance on the pre-training tasks.
+Finally, to aid future research in this area, we release a dataset encompassing $50$ Meta-World and $16$ DMControl tasks.
+\end{abstract}
+
+\section{Introduction}
+Reinforcement Learning (RL) has been instrumental in training agents capable of achieving notable successes, both in simulation, and in the real-world \citep{Silver:16, Vinyals:19,Berner:19,Arjona:19,Bellemare:20,Degrave:2022}. 
+However, such agents are usually highly specialized and incapable of performing well outside of a narrowly-defined task.
+Furthermore, adapting a pre-trained agent to a new task by fine-tuning usually results in decreased performance on prior tasks.
+This effect is well-known in the literature as \textit{catastrophic forgetting} \citep{McCloskey:1989}.
+
+A common paradigm to learn multiple tasks concurrently is multi-task learning \citep{caruana:97}.
+However, typically, not all tasks we want an agent to learn are available at training time.
+In this case, new tasks must be learned in a sequential manner.
+Learning a new task ideally exploits knowledge from previously learned tasks and does not adversely affect the performance on these prior tasks.
+Recent works have demonstrated that models based on the Transformer architecture \citep{Vaswani:17} excel at learning multiple tasks concurrently from large offline datasets \citep{Lee:22,Reed:22,Jiang:22,Brohan:22,Gupta:22,Shridar:22}. 
+We want to utilize this capability in RL, thereby obtaining agents that can quickly learn new skills and adapt to new tasks.
+However, it is still unclear how an agent can learn new tasks and skills without negatively impacting its performance on the tasks it has already learned.
+ \begin{figure}
+        \centering
+        \includegraphics[width=1\textwidth]{figures/concept-small.pdf}
+        \caption{General setup of the experiments. We pre-train a Multi-Domain Decision Transformer (MDDT) model on a large set of tasks from multiple domains, namely Meta-World and DMControl. Then we fine-tune this model to learn additional tasks from these domains.}
+        \label{fig:mddt}
+\vspace{-0.5cm}
+\end{figure}
+
+Our aim is to find methods that enable an agent to efficiently learn new tasks without compromising its proficiency in previously acquired tasks. 
+In this regard, we draw inspiration from fine-tuning (FT) techniques prevalent in supervised learning, such as parameter-efficient fine-tuning (PEFT,~\citep{Houlsby:19,Hu:21,Liu:22}) and prompt-based tuning (PBT,~\citep{Lester:21,Xiang:21}). 
+Both PBT, and PEFT, incorporate a small set of new parameters to adapt a pre-trained model to new tasks at low cost. 
+Thus, they intrinsically avoid catastrophic forgetting. 
+However, it is unclear how well these methods can be adopted for training RL agents from offline datasets. 
+Therefore, we first conduct a comprehensive evaluation for fine-tuning a pretrained Decision Transformer (DT, \citealp{Chen:21})
+on two established RL benchmarks, namely Meta-World~\citep{Yu:22,Wolczyk:21} and DMControl~\citep{Tassa:18}. 
+We first pre-train a DT jointly on tasks from both domains, before adapting the pre-trained model to new tasks using various FT, PEFT and PBT methods (Figure \ref{fig:mddt}). 
+We find that FT methods adjust well to new tasks, but performance on previous tasks generally decreases. 
+PBT, in contrast, retains performance on previous tasks but does not adapt well to new tasks.
+
+\begin{wrapfigure}{r}{0.51\textwidth}
+    \centering
+    \vspace{-0.6cm}
+    \subfigure{\includegraphics[width=0.875\linewidth]{figures/neurips/cluster/clusters2.pdf}}
+    \caption{t-SNE clustering of state embeddings for the first ten MT40 and DMControl tasks. Similar tasks are clustered together, while dissimilar tasks are apart (legend is available in Appendix \ref{appendix:task-sep}).}
+    \label{fig:pretrain-tsne-l0-s}
+\end{wrapfigure}
+
+To combine the advantages of both approaches, we propose Learning-to-Modulate (L2M), 
+which is based on two recent works from NLP and computer vision, 
+namely Learning-to-prompt (L2P, \citealp{Wang:22}) and Low Rank Adaptation (LoRA, \citealp{Hu:21}). 
+L2M operates in a task-agnostic manner and efficiently adapts a pre-trained model to new tasks via a learnable modulation pool.
+The modulation pool consists of learnable keys that are associated with learnable modulation matrices.
+Based on the current context, L2M selects a set of modulators which are learned during fine-tuning on the new task. 
+This assumes that tasks can be well discriminated, such that suitable modulators are selected.
+Indeed, we observe an emergent clustering of tasks in the embedding layer after pre-training of our model, as illustrated in Figure \ref{fig:pretrain-tsne-l0-s}. 
+In turn, L2M is capable of quickly adapting to new tasks, while retaining performance on prior tasks, and introduces only minimal additional parameters per task relative to the full model size. 
+
+To summarize, we make the following \textbf{contributions}: 
+\begin{itemize}
+\item We conduct an extensive evaluation of fine-tuning, parameter-efficient fine-tuning, and prompting methods for Transformers in RL.
+\item We propose the novel L2M for efficient fine-tuning of a frozen pre-trained model by modulating the information flow via learnable modulation matrices.
+\item We release a dataset of trajectories for the Meta-World and DMControl benchmark suites.
+\end{itemize}
+
+\section{Method}\label{sec:method}
+
+We propose L2M, a method to adapt a pre-trained RL agent such that new tasks can be learned efficiently without compromising performance on pre-training tasks.
+To this end, we combine approaches from prompt-based tuning and parameter-efficient fine-tuning.
+
+\subsection{Background} 
+
+\textbf{Reinforcement Learning.} We consider a Markov decision process (MDP) represented by the tuple  $(\mathcal{S},\mathcal{A},\mathcal{P},\mathcal{R})$. 
+$\mathcal{S}$ and $\mathcal{A}$ denote state and action spaces, respectively, with states $s_t \in \mathcal{S}$ and actions $a_t \in \mathcal{A}$ at timestep $t$. 
+The transition function $\mathcal{P}(s_{t+1}\mid s_t, a_t)$ takes a state-action pair and yields a probability distribution over next states. 
+The reward function $\mathcal{R}(r_t \mid s_t, a_t)$ maps a given state-action pair to a scalar reward $r_t$.
+The objective is to learn a policy $\pi(a_t\mid s_t)$ that predicts an action $a_t$ given $s_t$ that maximizes the reward $r_t$.
+
+
+\textbf{Decision Transformer.} Decision Transformer (DT, \citealp{Chen:21}) rephrases RL as a sequence modelling problem.
+This assumes access to a dataset $\mathcal{D}=\{\tau_i \mid 1 \leq i \leq B \}$, where $\tau_i=(s_0, a_0, r_0, \ldots, s_T, a_T, r_T)$ represents a trajectory consisting of state-action-reward triplets and $B$ defines the number of trajectories in $\mathcal{D}$. 
+Further, they follow the definition of upside-down-RL \citep{Schmidhuber:19} and augment each trajectory $\tau_i$ with \emph{returns-to-go} $\hat R_t=\sum_{t'=t}^T r_{t'}$.
+The policy $\pi_{\theta} (a_t \mid s_{t-K: t}, \hat R_{t-K:t}, a_{t-K:t-1}, r_{t-K:t-1})$, with parameters $\theta$ and context length $K$, is then trained in a supervised manner.
+During inference, the policy produces a sequence of actions conditioned on a high return-to-go.
+
+\textbf{Low Rank Adaptation (LoRA).} 
+LoRA \citep{Hu:21} is a parameter efficient method for fine-tuning pre-trained models.
+It performs a low-rank decomposition of a weight matrix that is utilized to modulate the information flow in the pre-trained model.
+Particularly, we assume a pretrained layer $l$ with weight matrix $\bm{W}_l \in \mathbb{R}^{d_{\text{in}}\times d_{\text{out}}}$ that receives $\bm{x}_{l-1} \in \mathbb{R} ^ {d_{\text{in}}}$ as input.
+LoRA adds learnable low rank modulation matrices $\bm{A}_l \in \mathbb{R}^{d_{\text{in}}\times r}$ and $\bm{B}_l \in \mathbb{R}^{r \times d_{\text{out}}}$, where $r \ll d_{\text{in}}$.
+The output $\bm{h}_l$ of layer $l$ is then computed as:
+\begin{equation}\label{eq:lora}
+    \bm{h}_l = \bm{W}_l\bm{x}_{l-1} +  \bm{B}_l\bm{A}_l\bm{x}_{l-1}.
+\end{equation}
+During the fine-tuning stage, only the parameters of $\bm{A}_l$ and $\bm{B}_l$ are updated.
+ \begin{figure}
+        \centering
+        \includegraphics[width=1\textwidth]{figures/l2m.pdf}
+        \caption{Illustration of L2M. \textbf{(a)} We construct a query $\mathbf{q}_t$ by aggregating the embedded history of state-tokens. \textbf{(b)} The query $\mathbf{q}_t$ is matched with learnable keys in a modulation pool, which map to learnable modulation matrices. We retrieve the modulation matrices with the highest similarity between $\mathbf{q}_t$ and every key in the modulation pool. \textbf{(c)} Retrieved modulation matrices modify the pre-trained and frozen multi-domain DT.}
+        \label{fig:l2m-architecture}
+\end{figure}
+
+
+\subsection{Learning-to-Modulate (L2M)}
+\label{sec:l2m}
+We propose L2M, a method that combines the advantages of parameter-efficient fine-tuning and prompt-based tuning approaches.
+In particular, we rely on PEFT methods, such as LoRA (\citealp{Hu:21}), which we refer to as modulators of the pre-trained model. 
+Similar to Learning-to-prompt (L2P, \citealp{Wang:22}), we maintain a pool of modulators associated with learnable keys. 
+For a given input sequence, we retrieve the best modulator weights from the pool, and leverage them to alter the behaviour of the pretrained model (Figure \ref{fig:l2m-architecture}). 
+
+We define a \emph{modulation pool} that contains a set of $M$ keys, $\mathbf{K}_{\text{pool}} = \{\mathbf{k}_i \mid 1 \leq i \leq M \}$.
+Each $\mathbf{k}_i$ is associated with a set of modulation matrices $\{ \mathbf{A}_{b}^i, \mathbf{B}_{b}^i \}$, for each layer block $b$ of a DT with $B$ layer blocks.
+At time $t$, we compose all states in a trajectory $\tau$ into a matrix $\mathbf{S}_{\leq t}$ after they are processed via the embedding layer of the DT.
+Subsequently, we reduce the matrix to a query vector $\mathbf{q}_t \in \mathbb{R}^{d_q}$ by an aggregation function $g(\cdot)$:
+\begin{equation}
+    \mathbf{q}_t = g(\mathbf{S}_{\leq t})
+\end{equation}
+For the aggregation function $g(\cdot)$, we use mean-pooling.
+Further, we retrieve a set of modulation matrices $\{ \mathbf{A}_{b}^j, \mathbf{B}_{b}^j \mid 1 \leq b \leq B\}$ by the maximum similarity between each $\mathbf{k} \in \mathbf{K}_{\text{pool}}$ and the query $\mathbf{q}_t$ at timestep $t$:
+\begin{equation}
+    j \ = \ \operatorname*{argmax}_{\mathbf{k} \in \mathbf{K}_p} \ \text{sim} (\mathbf{q}_t, \mathbf{k}) \ n(\mathbf{k})^{-1}
+\end{equation}
+In our case, $\text{sim}(\cdot, \cdot)$ corresponds to the cosine similarity and $n(\mathbf{k})^{-1}$ represents the inverse selection count for key $\mathbf{k}$ up to the current task.
+This way, we discourage that queries for different tasks attend to the same key. 
+We use $\{ \mathbf{A}_{b}^j, \mathbf{B}_{b}^j \mid 1 \leq b \leq B\}$ to modulate the DT according to \cref{eq:lora}. 
+More specifically, we employ LoRA on the queries and values in the attention mechanism, as well as on the activation in the feed-forward block in the pre-trained DT.
+Subsequently, we learn the weights of the module using gradient descent while keeping the pretrained model frozen. 
+Following \citet{Wang:22}, the key is updated by maximizing the cosine similarity between $\mathbf{q}_t$ and $\mathbf{k}_j$ via an additional term in the end-to-end loss function.
+Similar to \citet{Hu:21}, we initialize $\mathbf{A}$ according to a normal distribution around zero and $\mathbf{B}$ with zeros.
+Thus, no modulation occurs at the beginning of training.
+All keys in $\mathbf{K}_{\text{pool}}$ are initialized uniformly from $[-1, 1]$. 
+
+L2M unifies the benefits of both, LoRA and L2P by ensuring high-performance and few additional learnable parameters, while it avoids forgetting on the pre-trained tasks.
+Moreover, it provides a simple task-matching mechanism and enables scalability to numerous tasks.
+
+\subsection{Multi-Domain Decision Transformer (MDDT)}
+We extend the Decision Transformer architecture proposed by \citet{Chen:21} to handle inputs from multiple domains with varying state/action spaces.
+Since the dimensionality of states differ between Meta-World and DMControl we construct a unified state space, that comprises all dimension of DMControl and Meta-World environments. This state-space consists of 204 dimensions in total.
+Dimensions that are unused by a certain environment are filled with zeros.
+Finally, the states are embedded with a linear layer before serving as input to the MDDT.
+Similar to \citet{Reed:22} and \citet{Brohan:22}, we tokenise each action dimension and autoregressively predict action tokens. In the environments we consider, all actions are bounded by [-1, 1]. 
+We use a min-max tokenisation, which comprises min-max normalisation and subsequent uniform discretisation into 64 bins. 
+These changes enable processing observations and actions originating from different environments at training and test time. 
+In line with prior work \citep{Chen:21, Lee:22}, we train the DT via return-conditioned upside-down RL using a cross-entropy loss to predict next actions autoregressively.
+Unlike \citet{Lee:22}, we set the target return to the maximum observed return in the respective dataset, but also found that constant proxies per domain work well.
+Further details on our MDDT are available in Appendix \ref{appendix:mddt}.
+
+
+
+\section{Experiments}\label{sec:experiments}
+We consider two different benchmark suites that comprise 66 different tasks in total, namely Meta-World~\citep{Yu:22,Wolczyk:21} and DMControl~\citep{Tassa:18}.
+Meta-World consists of 50 diverse tasks for robotic manipulation, such as grasping, manipulating objects, opening/closing a window, pushing buttons, locking/unlocking a door, and throwing a basketball. 
+We follow \citet{Wolczyk:21} and split them into $40$ pre-training (MT40), and $10$ fine-tuning tasks (CW10). 
+We use Meta-World v2, instead of v1 used by \citet{Wolczyk:21}, but will refer to it as Meta-World throughout this work.
+Further, we select $16$ tasks from DMControl and assign $10$ tasks to the pre-training (DMC10) and leave the remaining $6$ tasks for the fine-tuning set (DMC6).
+We elaborate on the different environments and the selection criteria, as well as on the data collection procedure in Appendix \ref{appendix:environments}, and Appendix \ref{appendix:data}, respectively.
+Unlike Meta-World, where the simulated robot arm is the same across all tasks, DMControl consists of robotic tasks with a variety of robot morphologies.
+Therefore, the state representation varies substantially across tasks.
+
+We collect a dataset by training task-specific agents on each task using an agent based on Soft Actor Critic (SAC)  \citep{Haarnoja:18}
+\footnote{Available at: \url{https://github.com/ml-jku/L2M}}.
+The average performance for SAC across the Meta-World and DMControl task splits is shown in Table \ref{tab:mt40-cw10}. 
+For each of the $50$ tasks in Meta-World, we include $10$K trajectories of length $200$ in the dataset, amounting to 100M transitions in total. 
+For DMControl, we include $1000$ trajectories of length $1000$ for each task, amounting to $16$M transitions in total.
+The datasets contain the entire replay buffer of the task-specific agents, and consequently behaviours ranging from random to expert.
+We choose this collection scheme since prior work has illustrated the benefits of training agents on data that comprises mixed behaviour \citep{Lee:22}.
+Details on the training procedure, including hyperparameters and learning curves, are available in Appendix \ref{appendix:data}.
+\begin{table}[h]
+\centering
+    \caption{Performance measures of task specific SAC-based agents used for data collection averaged over the different task splits. Mean and standard deviation are shown.}
+    \subtable[Meta-World]{
+        \centering
+        \begin{tabular}{l c r}
+            \toprule
+             \textbf{Dataset} & \textbf{Success Rate} &      \textbf{Mean Reward} \\
+            \midrule
+             MT40 &  0.84 ± 0.34 & 1414.62 ± 439.39 \\
+             CW10 &    1.0 ± 0.0 & 1540.49 ± 184.43 \\
+            \bottomrule
+        \end{tabular}
+    }
+    \hspace{1cm}
+    \subtable[DMControl]{
+        \centering
+        \begin{tabular}{l r}
+            \toprule
+            \textbf{Dataset} &  \textbf{Mean Reward} \\
+            \midrule
+            DMC10 & 788.36 ± 219.11 \\
+            DMC6 & 840.37 ± 216.63 \\
+            \bottomrule
+        \end{tabular}
+     }
+    \label{tab:mt40-cw10}
+\end{table}
+
+Figure \ref{fig:mddt} illustrates our experimental design.
+First, we pre-train a MDDT on all pre-training datasets (MT40 and DMC10) simultaneously (see Section \ref{sec:exp-pretrain}). 
+Next, we conduct a broad evaluation of different FT, PEFT and PBT methods to adapt the pre-trained model to each of the held-out fine-tuning tasks (CW10 and DMC6).
+In Section~\ref{sec:exp-adaptation}, we show the results for fine-tuning on all CW10 and DMC6 tasks individually.
+Finally, we present results for training all methods in a continual RL setup, in which tasks are introduced sequentially (Section \ref{sec:exp-cl}).
+
+Unless mentioned otherwise, we report IQM and 95\% bootstrapped confidence intervals, as proposed by \citet{Agarwal:21} ($3$ seeds per method and 50K bootstrap samples). 
+We report success rates and data-normalized scores (normalized by mean score in dataset and random agent performance as suggested by \citet{Fu:20}) for Meta-World and DMControl, respectively. 
+
+
+\subsection{Pre-training} \label{sec:exp-pretrain}
+We pre-train a MDDT on all transitions present in MT40 and DMC10. 
+Ideally, this results in a general agent that can perform all 50 tasks.
+Indeed, we show strong performance on the pre-training tasks (60\% for MT40, 94\% for DMC10). 
+We experiment with different model sizes (40M to 200M parameters), varying number of Transformer layers, number of heads per layer and embedding dimension. 
+Generally, there is a trend that more complex models attain higher performance. 
+For all our subsequent experiments, we use a 40M parameter model, as it achieves a good trade-off between performance and training time. 
+Performance scores, learning curves, implementation details and hyperparameters for our pre-training experiments are provided in Appendix \ref{appendix:pre-training}.
+
+
+After pre-training, we analyse the learned representations of the model via t-SNE \citep{Van:08}. 
+Figure \ref{fig:pretrain-tsne-l0-s} illustrates emerging clusters of learned state embeddings for ten tasks of MT40 and DMC10. 
+We observe that similar tasks cluster together (e.g., \textit{button-press-v2} and \textit{button-press-wall-v2}), whereas dissimilar tasks are well separated (e.g., \textit{assembly-v2} and \textit{bin-picking-v2}). 
+We repeat this analysis for rewards, RTG and action token embeddings and explain the clustering procedure in Appendix \ref{appendix:task-sep}. 
+
+
+\subsection{Single-Task Fine-Tuning}
+\label{sec:exp-adaptation}
+
+We evaluate the performance of various FT, PEFT and PBT strategies for fine-tuning on the held-out tasks.
+Overall, we compare a total of 9 methods: Full fine-tuning (FT), FT of action head (FT-head), FT of last Transformer layer and action head (FT-last+head), Adapters \citep{Houlsby:19}, LoRA \citep{Hu:21} (IA$\text{)}^3$ \citep{Liu:22}, Prompt-tuning \citep{Lester:21}, Prefix-tuning \citep{Xiang:21}, and P-tuning v2 \citep{Liu:21a}. 
+We do not compare against meta-RL algorithms, as \citet{Mandi:22} showed that FT approaches perform on-par or better on several tasks.
+We also experimented with PromptDT \citep{Xu:22}, and VIMA \citep{Jiang:22}, recent prompt-based approaches for Transformers in RL.
+A detailed list of hyperparameters, training details and description for each method are provided in Appendix \ref{appendix:adaptation}. 
+We fine-tune the pre-trained model for each task individually and aggregate the performance over all tasks within each domain.
+
+\begin{figure}[t]
+     \centering
+     \subfigure[CW10]{\includegraphics[width=0.45\textwidth]{figures/neurips/adapt/cw10_ie.png}}
+    \hspace{0.3cm}
+     ~
+     \subfigure[DMC6]{\includegraphics[width=0.46\textwidth]{figures/neurips/adapt/dmc_ie.png}}
+    \caption{IQM and 95\% CIs for single-task fine-tuning on \textbf{(a)} CW10 and \textbf{(b)} DMC6. Models are pre-trained on MT40/DMC6 and are then optimized for each CW10/DMC6 task individually.}
+    \label{fig:off-main1}
+\end{figure}
+
+In Figure \ref{fig:off-main1}, we show the results for all methods on CW10 and DMC6.
+Overall, FT attains the highest scores, since it can utilize the entire model capacity.
+Thus, it serves as an upper bound in terms of performance. 
+Adapters achieve the second-highest scores on average, followed by LoRA, (IA$\text{)}^3$ and FT-last+head. 
+Notably, there is a large gap between PBT and PEFT methods, particularly on MT40.
+Fine-tuning the action head for each task separately, results in the worst performance.
+While the absolute scores differ between the two domains, the relative performance ranking among methods remains equivalent. 
+On DMC6, we observe a larger performance gap between full FT and PEFT methods. 
+While in Meta-World only the locomotion differs between tasks, in DMControl the entire robot morphology may change. 
+Therefore, more capacity of the model is required to sufficiently adapt to the new tasks.
+
+\begin{wrapfigure}{r}{0.5\textwidth}
+     \centering
+     \vspace{-0.3cm}
+     \includegraphics[width=0.90\linewidth]{figures/neurips/adapt/cw10_params.png}
+    \caption{Success rate vs. fraction of parameters trained for various fine-tuning techniques on single-task experiments for CW10.}
+    \label{fig:off-main2}
+\end{wrapfigure}
+
+We highlight the efficacy of the considered methods by comparing the fraction of trainable parameters against attained performance on CW10 in Figure \ref{fig:off-main2} (see Appendix \ref{appendix:adaptation} for same comparison on DMC6).
+FT updates all parameters, while Adapters update two orders of magnitude less parameters (2.1\%). 
+In contrast, LoRA requires less than half the amount of parameters of Adapters (1\%), while reaching the same level of performance. 
+Notably, (IA$\text{)}^3$, trains approximately the same amount of parameters as Prompt-tuning (0.21\%), but attains significantly higher performance.
+This result indicates that we can achieve decent performance with a small amount of trainable parameters if the tasks are similar.
+Overall, LoRA compares favourably in both dimensions.
+
+\subsection{Continual Fine-Tuning}\label{sec:exp-cl}
+
+Ultimately, our goal is to adapt the pre-trained model to multiple novel tasks, while alleviating forgetting of tasks learned during pre-training.
+In this regard, we adapt the pre-trained model to all fine-tuning tasks in a sequential manner, as proposed by \citet{Wolczyk:21} for CW10.
+Moreover, we evaluate forgetting by measuring the performance on tasks acquired during pre-training after fine-tuning. 
+
+\begin{figure}[h]
+     \centering
+     \subfigure[CW10]{\includegraphics[width=0.44\textwidth]{figures/neurips/cl/ie_cw10.png}\label{fig:cl-main-ie-1}}
+    \hspace{0.3cm}
+     ~
+     \subfigure[DMC6]{\includegraphics[width=0.44\textwidth]{figures/neurips/cl/ie_dmc6.png}\label{fig:cl-main-ie-2}}
+    \caption{IQM and 95\% CIs of success rates for CRL experiments on \textbf{(a)} CW10 and \textbf{(b)} DMC6. Models are pre-trained on MT40+DMC10 and are then trained on the tasks from CW10/DMC6 sequentially. On each task, we train for 100K steps and then move to the next task in the sequence.}
+    \label{fig:cl-main-ie}
+\end{figure}
+
+We compare the following fine-tuning variations: Full fine-tuning (FT), training task-specific action heads (FT-head), and tuning the last layer and task-specific action heads (FT-last+head).
+Additionally, we augment the PBT methods of the previous section with a prompt pool as in L2P, which enables learning of task-specific prompts. 
+We refer to these methods as L2P + Prompt-tuning (L2P-PT), L2P + Prefix-tuning (L2P-PreT), L2P + P-tuning v2 (L2P-Pv2).
+We note that L2P-PT reflects the original version of L2P proposed by \citet{Wang:22} applied in computer vision. 
+Additionally, we compare L2M to two established methods from Continual RL, namely Elastic Weight Consolidation (EWC, \citealp{Kirkpatrick:17}), and L2 \citep{Kirkpatrick:17}.
+Moreover, we add another implementation of L2M, which is equipped with an oracle that provides information on what task is currently being observed.
+In contrast to \citet{Wolczyk:21}, we do not use separate action heads per task for L2M to remain task agnostic.
+To illustrate an upper bound of performance, we provide scores for two multi-task baselines, which train on all tasks simultaneously, either from scratch, or after the pre-training stage (Table \ref{tab:crl_full} in Appendix \ref{appendix:cl}).
+We train each method for 100K steps per task and evaluate on all tasks every 50K steps. 
+Training details and hyperparameters are available in Appendix \ref{appendix:cl}.
+
+In Figures \ref{fig:cl-main-ie-1} and \ref{fig:cl-main-ie-2}, we show the performance scores of all methods on CW10 and DMC6, respectively. 
+In addition, we report forgetting scores (as calculated by \citet{Wolczyk:21}), and rewards obtained at the end of training, in Appendix \ref{appendix:cl}.
+L2M outperforms all other approaches in both domains, attaining an average success rate of 65\% across CW10 tasks and a normalized score of 43\% across DMC6 tasks. 
+Adding a task oracle to L2M increases the success rate to 76\% and 75\% on CW10 and DMC6, respectively, and closely matches the single-task performance of LoRA.
+L2P combined with different prompting approaches performs significantly worse than L2M.
+Interestingly, the established CRL method EWC does not mitigate forgetting sufficiently. 
+Similar results for EWC were reported by \citet{Ben:22} in an online RL setting. 
+We aim to investigate this behaviour in more detail in future work.
+To the best of our knowledge, the results of our method, L2M, are the highest reported results on Continual-World v2 to date. 
+Prior work reports average success rates of roughly 40\% \citep{Caccia:22,Ben:22}. 
+Even though L2M outperforms other approaches on DMC6, there is a considerable gap between L2M and L2M-oracle. 
+We surmise this is due to conflation effects in the prompt pool and aim to investigate this in more detail in future work.
+
+
+\begin{figure}[h]
+     \centering
+     \includegraphics[width=0.42\linewidth]{figures/neurips/cl/post_legend.png}
+     \\
+    \begin{minipage}[b]{0.44\linewidth}
+        \centering
+        \includegraphics[width=1\linewidth]{figures/neurips/cl/post_bar_mt40.png}
+    \end{minipage}
+    \hspace{0.25cm}
+     ~
+    \begin{minipage}[b]{0.44\linewidth}
+        \centering
+        \includegraphics[width=1\linewidth]{figures/neurips/cl/post_bar_dmc10.png}
+    \end{minipage}
+    \caption{Performance on the MT40 and DMC10 pre-training tasks after fine-tuning.}
+    \label{fig:cl-pretrain-perf}
+\end{figure}
+
+Finally, we evaluate performance on the pre-training tasks after fine-tuning, as shown in Figure \ref{fig:cl-pretrain-perf}. 
+To remain task-agnostic, we train a set of 100 keys for the pre-training tasks, which we concatenate to the set of keys introduced during the fine-tuning stage.
+While FT, L2 and EWC experience a severe drop in performance, L2M and L2P-based approaches maintain a similar performance level as prior to fine-tuning. 
+Thus, L2M preserves performance on the pre-training tasks, while it effectively adapts to new tasks.
+
+\subsection{Ablations}\label{sec:exp-ablation}
+
+\textbf{Alternative Modulators.}  
+We conduct an ablation study in which we compare L2M against L2M in combination with (IA$\text{)}^3$ in Appendix \ref{appendix:cl}.
+Instead of the low-rank modulation matrices, (IA$\text{)}^3$ employs elementwise multiplication with learnable modulation vectors. 
+While performance decreases with L2M-(IA$\text{)}^3$, it compares favourably in terms of parameter-efficiency. Depending on the task at hand, this may be preferred. 
+
+\textbf{Aggregation token.} 
+As specified in Section \ref{sec:l2m}, we use embedded state tokens aggregated over the sequence as query for the prompt pool in L2M.
+This design choice is inspired by the observed task separation in the embedding layer after pre-training (see Figure \ref{fig:pretrain-tsne-l0-s}). 
+In Appendix \ref{appendix:cl}, we investigate this choice of tokens (state, action, reward, RTG) representing the query. 
+Indeed, we observe that using the state embeddings results in the best performance, as it aids task separation. 
+In contrast, using RTG or action embeddings deteriorates performance.
+
+\textbf{Modulation targets.} 
+One important design choice in L2M is which weights of the pre-trained model should be modulated. 
+By default, we employ LoRA on the queries and values in the self-attention mechanism, and on the position-wise feedforward layer. 
+In Appendix \ref{appendix:adaptation}, we conduct an ablation study in which we vary the modulation targets. 
+Our analysis suggests that modulating the attention mechanism is not as important as modulating the position-wise feed-forward layer.
+However, modulating both, the attention mechanism, as well as the position-wise feed-forward layer yields the best results.
+
+Additional ablation studies are available in Appendix \ref{appendix:adaptation} and \ref{appendix:cl}.
+
+\section{Related Work}\label{sec:relatedwork}
+
+\textbf{Transformers in RL.} Since the inception of Transformers \citep{Vaswani:17} there has been a widespread adoption of the underlying architecture in many areas of Machine Learning research such as NLP \citep{Devlin:18,Radford:19,Brown:20}, computer vision \citep{Dosovitskiy:21,He:22,Radford:21,Fürst:21,Ramesh:21,Rombach:22}, speech recognition \citep{Radford:22,Baevski:20} or video generation \citep{Ho:22,Singer:22}. 
+More recently, Transformers have found their way into RL. 
+Similar to the DT \citet{Chen:21}, Trajectory Transformer \citep{Janner:21} is based on the GPT architecture \citep{Radford:18}, but relies on dynamics modelling. \citet{Lee:22} extended DT to a multi-game setup to learn to play 46 Atari games.
+Meanwhile, a variety of DT-variants have been proposed \citep{Zheng:22,Wang_bootstrapped:22,Shang:22,Meng:21}. \citet{Siebenborn:22} replace the Transformer in DT with an LSTM \citep{Hochreiter:97}. 
+PromptDT \citep{Xu:22} demonstrated that prompting a pre-trained DT model with expert trajectories can improve the agent's ability to generalize to new tasks. 
+However, the tasks they consider do not differ substantially. 
+\citet{Jiang:22} presented a prompt-based Transformer for robot manipulation, that integrates multi-modal prompts via cross-attention. 
+\citet{Reed:22} trained a Transformer that scaled to over 600 tasks. 
+Most recently, \citet{Brohan:22} presented a scalable Transformer for real-world robotics manipulation.
+\citet{Laskin:22} and \citet{Liu:23} make use of a multi-episodic context to elicit in-context learning capabilities.
+Other works use a Transformer backbone for history compression in online RL \citep{Parisotto:20,Paischer:22,Paischer:23}.
+\citet{Li:23} and \citet{Yang:23} cover the landscape of Transformers in RL in more detail.
+
+\textbf{Continual and multi-task RL.}
+A plethora of works have considered learning multiple tasks concurrently via RL \citep{Tanaka:03,Rusu:policy:16,Borsa:16,Rajeswaran:17,Bsat:17,Andreas:17,Deramo:20,Yu:20,Igl:20,Sodhani:21}.
+In CRL, however, tasks are considered to not be readily available at the same time.
+Many CRL methods were proposed for computer vision, but can also be applied to a CRL setting. 
+Early works include regularization approaches, such as EWC \citep{Kirkpatrick:17}, Synaptic Intelligence \citep{Zenke:17}, Memory-aware Synapses \citep{Aljundi:18}, Gradient Episodic Memory (GEM, \citealp{Lopez:17}) and A-GEM \citep{Chaudhry:18}. 
+Other approaches rely on adding new modules to existing architecture \citep{Rusu:16}, iterative pruning \citep{Mallya:18}, or improved exploration \citep{Steinparz:22}. 
+A number of approaches have been tested on the Continual-World benchmark \citep{Wolczyk:21}, including 3RL \citep{Caccia:22}, ClonExSAC \citep{Wolczyk:22} and Modulating masks \citep{Ben:22}. 
+L2P \citep{Wang:22} learns to prompt a frozen Vision Transformer \citep{Dosovitskiy:21} and consistently outperforms prior methods on a number of CL benchmarks. 
+Other follow-up works that rely on a prompting mechanism for CL have been proposed \citep{Wang_dual:22, Smith:22, Razdaibiedina:23}. 
+Recent works provide a comprehensive overview of the field of CRL \citep{Hadsell:20,Lesort:20,Khetarpal:22,Baker:23}. 
+
+\textbf{Parameter-efficient fine-tuning and Prompting.} Large-language models (LLMs) are usually pre-trained on vast amounts of data \cite{Devlin:18,Radford:19,Brown:20}. 
+After pre-training, it is desirable to specialize or fine-tune the foundation model \citep{Bommasani:21} to a down-stream task. 
+A common way is fine-tuning all network weights or a fraction thereof. 
+Fine-tuning the entire network is costly and suffers from catastrophic forgetting.
+Parameter-efficient fine-tuning methods and prompt-based tuning offer attractive alternatives. 
+\citet{Houlsby:19} repurposed Adapter modules \citep{Rebuffi:17} to interleave pretrained Transformer layers. 
+Variations thereof have been proposed \citep{Bapna:19,Pfeiffer:20,Pfeiffer:20a,Karimi:21}. 
+Low Rank Adaptation injects trainable low-rank decomposition matrices into every layer of the model \citep{Hu:21}.
+(IA$\text{)}^3$ modulates the inner activation flow of the Transformer layers by elementwise multiplication with learned modulation vectors \citep{Liu:22}.
+Prompt tuning conditions the pre-trained model on new tasks by prepending learnable prompts to the embedded input sequence \citep{Lester:21}. 
+Similarly, prefix-tuning adds learnable prefix vectors to the keys and values of each attention head input \cite{Xiang:21}.
+P-tuning v2, applies learnable prompts at each Transformer layer, instead of merely the input layer \citep{Liu:21a}.
+UniPELT combines different PEFT methods in a unified framework \citep{Mao:22}
+\citet{Liu:21} give a comprehensive overview of prompt-based learning for NLP.
+
+\section{Conclusion}\label{sec:conclusion}
+Adapting agents to new tasks, while preserving performance on previously learned tasks, remains a major challenge towards more general RL agents.
+Consequently, we conduct a comprehensive evaluation of established fine-tuning, PEFT and PBT methods for Transformers in RL. 
+We evaluate both how well new tasks are learned and how strongly performance deteriorates on the pre-training tasks.
+While full fine-tuning of a pre-trained model adapts well to new tasks, it suffers from catastrophic forgetting of pre-training tasks. 
+Prompt-based tuning techniques preserve performance on pre-training tasks, but cannot compete on new tasks.
+We propose a novel method, L2M, which performs well in both dimensions. 
+L2M enables efficient fine-tuning of pre-trained models via learnable modulation matrices, resulting in high performance both on new tasks and on pre-training tasks.
+Finally, we release a large dataset of trajectories for the Meta-World and DMControl benchmark suites to facilitate future research in the domain of offline RL.
+
+For future work, we envision an investigation on the compositionality of learned modulation matrices.
+While currently a distinct set of modulators is selected for a given input sequence, we believe that by combining and sharing modulators across tasks, our method can improve in terms of performance as well as in parameter-efficiency. 
+Such an approach could improve forward-transfer, where new tasks benefit even more from previously learned tasks by combining existing skills. 
+Furthermore, the context length of the models we consider is currently limited. Extending the context to leverage information from multiple episodes and tasks may improve the model's ability to generalize to new tasks or domains. 
+Another promising avenue of research is to investigate more diverse domains and explore how different fine-tuning methods perform on more distinct fine-tuning domains.
+
+
+\begin{ack}
+The ELLIS Unit Linz, the LIT AI Lab, the Institute for Machine Learning, are supported by the Federal State Upper Austria. IARAI is supported by Here Technologies. We thank the projects AI-MOTION (LIT-2018-6-YOU-212), AI-SNN (LIT-2018-6-YOU-214), DeepFlood (LIT-2019-8-YOU-213), Medical Cognitive Computing Center (MC3), INCONTROL-RL (FFG-881064), PRIMAL (FFG-873979), S3AI (FFG-872172), DL for GranularFlow (FFG-871302), EPILEPSIA (FFG-892171), AIRI FG 9-N (FWF-36284, FWF-36235), ELISE (H2020-ICT-2019-3 ID: 951847), Stars4Waters (HORIZON-CL6-2021-CLIMATE-01-01). We thank Audi.JKU Deep Learning Center, TGW LOGISTICS GROUP GMBH, University SAL Labs Initiative, FILL Gesellschaft mbH, Anyline GmbH, Google, ZF Friedrichshafen AG, Robert Bosch GmbH, UCB Biopharma SRL, Merck Healthcare KGaA, Verbund AG, GLS (Univ. Waterloo) Software Competence Center Hagenberg GmbH, T\"{U}V Austria, Frauscher Sensonic and the NVIDIA Corporation.
+\end{ack}
+
+
+\bibliography{refs}
+\bibliographystyle{apalike}
+\include{appendix}
+\end{document}

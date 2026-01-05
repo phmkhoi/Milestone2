@@ -1,0 +1,87 @@
+%!TEX root=./neurips_2023.tex
+
+\section{Introduction}
+
+\begin{figure}[!t]
+\begin{minipage}{\textwidth}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\columnwidth]{figs/top_v2.png}
+    \vspace{-1mm}
+    \caption{An overview of parameter-efficient modules (PEMs) and available PEM combination of our study. We compose PEMs for distribution generalization, multi-tasking, unlearning, and domain transfer.}
+    \label{fig:main_fig}
+\end{figure}
+\end{minipage}
+\vspace{-10pt}
+\end{figure}
+
+% LLM → parameter-efficient finetuning
+% zero-shot combine → arithmetic
+% parameter-efficient module can do task arithmetic
+
+% Finetuning pretrained language models (PLMs) has been the prevailing methods in NLP for transferring pretrained models to downstream tasks. 
+% Traditional finetuning updates all the model parameters, resulting in a separate model copy for each specific application. This process is prohibitively expensive due to the growing size of PLMs. 
+% To mitigate this issue, 
+Parameter-efficient finetuning (PEFT) methods -- that only adjust a small number of parameters while keeping most pretrained parameters frozen -- are becoming a standard approach to customize pretrained language models (PLMs) due to its competitive performance and reduced memory and storage cost~\citep{houlsby2019parameter,li2021prefix,he2021towards}. 
+% Most PEFT approaches insert additional modules into the pretrained model, the representative ones are adapter~\citep{xx}, prefix tuning~\citep{xxx}, LoRA~\citep{xxx}, and IA$^3$~\citep{xxx}. 
+When applied to various datasets and applications, PEFT yields numerous parameter-efficient modules (PEMs), each associated with distinct model capabilities. These compact, easily manageable modules can be transferred with minimal effort, presenting an appealing perspective of modular deep learning to view PEFT methods~\citep{pfeiffer2023modular}, then a natural question arises: can we compose these lightweight modules to leverage the diverse skills they embody?
+% For example, PEFT methods have shown comparable or superior performance over full finetuning widely employed recently to customize large language models like LLaMA through instruction tuning~\citep{xxx}.
+
+In this work, we study the composition of trained PEMs to achieve highly flexible manipulation of the module capabilities. This includes integrating modules trained on varied data distributions to facilitate generalization on different distributions, fusing learned skills into a multi-task learner, unlearning certain abilities, or 
+% even more sophisticated, obtaining new skills on an unseen combination of task and domain by composing relevant ones.
+transferring domains.
+Importantly, we seek to meet these objectives in a \emph{training-free} manner, as the corresponding training data is often unavailable in these scenarios. 
+To this end, we propose to compose different PEMs in the parameter space via linear arithmetic operations, which merge separate modules into one module. 
+Specifically, we define addition and negation operators for the PEM architecture of focus as the basic operators -- addition is intended to aggregate module skills, akin to a multi-task setting, while negation aims to retract certain abilities from the underlying pretrained model. 
+These two operators can be composed to perform various linear arithmetic operations on the module parameters -- for instance, deriving PEMs with an advanced composition of skills through an analogy operation, similar to the well-known word embedding equation ``\texttt{queen = king - man + woman}'' as we will show in \textsection\ref{sec:combine}.
+An overview of the proposed method is illustrated in Figure~\ref{fig:main_fig}.
+Notably, our approach does not require additional training due to the simplicity of the addition and negation operators and linear arithmetic involved. 
+
+This work draws inspiration from a recent line of research on merging all the model parameters in a full finetuning setting~\citep{wortsman2022model,matena2022merging,jin2022dataless}, where they show that starting from the same pretrained model, different model parameters could be added to boost performance.~\citet{ilharco2022editing} explore editing models by performing arithmetic operations on all the model parameter updates, while we focus on parameter-efficient modules which necessitate specially designed operators as we will demonstrate in \textsection\ref{sec:definition}. 
+Prior works on composing PEMs fuse their outputs with another learnable module~\citep{pfeiffer2021adapterfusion} or in a mixture-of-expert fashion~\citep{wang2022adamix}, both of which require additional training.~\citet{qin2022exploring,chronopoulou2023adaptersoup} explore the addition of the PEM parameters in multi-task scenarios. 
+However, our approach distinguishes itself by (1) studying flexible arithmetic operation in a more systematic way, not limited to addition, (2) examining the composition of PEMs in broader settings beyond multi-task applications, and (3) extending the base model of PEM to modern large language models such as LLaMA~\citep{touvron2023llama}.
+
+
+In this study, we focus on LoRA~\citep{hu2021lora} and \ia~\citep{liu2022few} as our PEM architectures, two state-of-the-art PEFT methods. 
+% that achieve superior performance than traditional adapters~\citep{houlsby2019parameter}. 
+Experiments are conducted on four diverse settings with text benchmarks, composing PEMs for: 
+(1) distribution generalization, (2) multi-tasking, (3) unlearning, and (4) domain transfer. We additionally extend our approach to detoxify large language models such as Alpaca-LoRA~\citep{alpacalora}.
+% (1) aggregating PEMs trained on the same task but on different distributions (\textsection\ref{sec:datasetsplit}), (2) transferring a PEM trained on one task to assist another task (\textsection\ref{sec:multitask})\jz{change to: merging PEMs trained on different tasks for multi-tasking}, (3) detoxifying a PLM through the use of a toxic PEM (\textsection\ref{sec:neg}), and (4) composing multiple PEMs from varying domains and tasks to achieve generalization on a new combination of task and domain (\textsection\ref{sec:combine}). \jz{(5) conducting PEM negation as a detoxifier on Alpaca-LoRA.}
+Our results demonstrate that the proposed approach is able to successfully compose the PEMs without additional training across all settings, achieving significant gains using a new PEM derived from arithmetic operations of existing ones.
+
+
+
+% Besides cost savings, PEFT represents a promising avenue towards modular deep learning by featuring a lightweight module for each task or domain~\citep{pfeiffer2023modular}. 
+% In this regard, how to compose 
+% % In the era of large language models (LLMs), finetuning is often used to specialize LLMs towards specific needs, for example, instruction tuning on different domains~\citep{xxx}.
+
+% In this paper, we study how to 
+
+
+% Large language models (LLMs) have become the prevailing methods for natural language processing (NLP) \jhc{in specific downstream}{} tasks~\citep{devlin2018bert,liu2019roberta,raffel2020exploring}.\jh{use the correct citation format, also note there is a space before citation} One strategy to decrease the expense of domain adaptation and LLM version updates is to freeze the entire model and only finetune a small number of parameters in newly added modules\cite{he2021towards}. 
+% During the training process, task-specific knowledge and information are integrated into parameter-efficient modules, which could represent a significant advancement if the knowledge could be consolidated effectively when modules are combined.
+% Inspired by task arithmetic\cite{ilharco2022editing}, we investigate whether parameter-efficient modules can perform arithmetic operations to edit model appearance without additional training.
+
+% Low-Rank Adaptation\cite{hu2021lora}, or LoRA, involves the insertion of trainable rank decomposition matrices into every layer of the Transformer architecture, and it demonstrates comparable performance to full finetuning. Infused Adapter by Inhibiting and Amplifying Inner Activations\cite{liu2022few}, or $\rm{(IA)^3}$, scales activations using learned vectors, thereby introducing only a relatively small number of new parameters and avoiding initialization issues.
+% We selected both LoRA and $\rm{(IA)^3}$ as parameter-efficient modules and conducted a combined study on the three arithmetic operations of addition, negation, and task analogy.
+
+% % this format looks not good
+% \begin{itemize}
+%     \item Addition
+    
+%     The addition operation, also referred to as model merging\cite{wortsman2022model}\cite{wortsman2022robust}\cite{matena2022merging}\cite{jin2022dataless}, has several variations depending on the training setting, which include: 1) the same task and dataset but different hyperparameter settings\cite{wortsman2022model}, 2) the same task but different data distributions\cite{jin2022dataless}, and 3) multitask\cite{matena2022merging}. Previous work has mostly focused on merging full finetuning models. In the domain of parameter-efficient tuning, Qin\cite{qin2022exploring} merged Houslby adapters on setting 1) and performed a simple trial on setting 3). Chronopoulou\cite{chronopoulou2023adaptersoup} primarily focused on setting 2), with adapters trained on various domains for language modeling task. In our study, we conducted experiments under settings 2) and 3). We divided each dataset in GLUE\cite{wang2018glue} into two parts with imbalanced labels and the merged LoRA and $\rm{(IA)^3}$ yielded $1.519\%$ and $2.267\%$ accuracy improvements, respectively. In the multitask setting, we merged MNLI\cite{williams2017broad} and RTE\cite{giampiccolo2007third}, resulting in less than $0.046$ performance drop.
+    
+%     \item Negation
+
+%     Model forgetting is an effective technique to mitigate the negative outputs of large models. In this study, we found that lightweight modules are more suitable for this approach than full finetuning\cite{ilharco2022editing}. We used the GPT-2\cite{radford2019language} as the base model, and trained LoRA and $\rm{(IA)^3}$ on the Civil Comments\cite{borkan2019nuanced}. 
+%     These lightweight modules were then negated by multiplying the values of their parameters by $-1$, scaled, and added to the original GPT-2 model to reduce its output's toxicity. % It is more precise to say 'multiplying the values of delta h by -1, but we may have to explain what delta h is in this way...
+%     This approach significantly reduce the toxicity of the model's output from $0.100$ to $0.014$. Meanwhile, the language ability of the model, as measured by the perplexity score on WikiText-103\cite{merity2016pointer}, remained within an acceptable range. 
+
+%     \item Task Analogy
+
+%     The arithmetic operation in task analogy includes addition and negation. Consider four tasks, A, B, C, and D, where task analogy is defined as 'A is to B as C is to D' \cite{ilharco2022editing}. For instance, A and B are related within the same domain, while C and D are related to a different one. Additionally, A and C belong to the same task, while B and D belong to another. In cases where there is absolutely no training data available for task D, then we can use the arithmetic combination of $\rm{B+(C-A)}$ to obtain a parameter-efficient module that targets D. This approach can yield better results compared to direct transfer of the B module. We selected two datasets of Amazon\cite{mcauley2013hidden} and Yelp\cite{zhang2015character}, and two tasks of sentiment classification and language model modeling, and used them to construct four tasks of A, B, C, and D. We observed an average improvement of $0.750\%$ for LoRA and $0.550\%$ for $\rm{(IA)^3}$ on D compared to B, which is comparable to the improvement obtained through full finetuning.
+% \end{itemize}
+
+% To account for mode connectivity\cite{ainsworth2022git}, we also analyzed the effect of using different LoRA initialization on the experimental results.
+
+% In this paper, we demonstrate that parameter-efficient modules can serve as lightweight task vectors, performing arithmetic operations in various scenarios without requiring any training, which is fast, cost-effective, and convenient. Additionally, these modules are easy to upload and download from the web, contributing to the modularity and composability of the model. Introducing the concept of parameter-efficient combining, we highlight the potential for future model editing, where researchers can upload their own trained parameter-efficient modules to the community or combine modules trained by others for direct use.

@@ -1,0 +1,690 @@
+\documentclass{article} % For LaTeX2e
+\usepackage{iclr2023_conference_tinypaper,times}
+
+% Optional math commands from https://github.com/goodfeli/dlbook_notation.
+\input{math_commands.tex}
+
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{graphicx}
+\graphicspath{ {./images/} }
+
+
+\title{The Art of Embedding Fusion: Optimizing Hate Speech Detection}
+
+% Authors must not appear in the submitted version. They should be hidden
+% as long as the \iclrfinalcopy macro remains commented out below.
+% Non-anonymous submissions will be rejected without review.
+
+\author{Mohammad Aflah Khan, Neemesh Yadav, Mohit Jain \& Sanyam Goyal \\
+Indraprastha Institute of Information Technology\\
+New Delhi, India \\
+\texttt{\{aflah20082,neemesh20529,mohit20221,sanyam20116\}@iiitd.ac.in} \\
+}
+
+% The \author macro works with any number of authors. There are two commands
+% used to separate the names and addresses of multiple authors: \And and \AND.
+%
+% Using \And between authors leaves it to \LaTeX{} to determine where to break
+% the lines. Using \AND forces a linebreak at that point. So, if \LaTeX{}
+% puts 3 of 4 authors names on the first line, and the last on the second
+% line, try using \AND instead of \And before the third author name.
+
+\newcommand{\fix}{\marginpar{FIX}}
+\newcommand{\new}{\marginpar{NEW}}
+
+\iclrfinalcopy % Uncomment for camera-ready version, but NOT for submission.
+\begin{document}
+
+
+\maketitle
+
+\begin{abstract}
+Hate speech detection is a challenging natural language processing task that requires capturing linguistic and contextual nuances. Pre-trained language models (PLMs) offer rich semantic representations of text that can improve this task. However there is still limited knowledge about ways to effectively combine representations across PLMs and leverage their complementary strengths. In this work, we shed light on various combination techniques for several PLMs and comprehensively analyze their effectiveness. Our findings show that combining embeddings leads to slight improvements but at a high computational cost and the choice of combination has marginal effect on the final outcome. We also make our codebase public \href{https://github.com/aflah02/The-Art-of-Embedding-Fusion-Optimizing-Hate-Speech-Detection}{here}.
+\end{abstract}
+
+\section{Introduction}
+
+Recent advances in deep learning have been significantly influenced by the introduction of pretrained models \cite{zhou2023comprehensive}, which serve as a strong foundation for various downstream tasks such as classification, generation, and sequence labeling. In particular, these models generate dense vector representations of input text that have been effective across a wide range of models, replacing older techniques such as TF-IDF, Word2Vec, and GLoVe. The success of pretrained language models (PLMs) has led to the development of domain-specific versions, such as HateBERT \cite{caselli2020hatebert} and BERTweet \cite{nguyen-etal-2020-bertweet}, which use the same architecture as BERT \cite{devlin-etal-2019-bert}. In this study we aim to identify the most effective model or combination of models (BERT, HateBERT, and BERTweet) for hate speech classification tasks. 
+
+% \subsection{Style}
+
+% Papers to be submitted to the ICLR 2023 Tiny Papers track must be prepared according to the
+% instructions presented here.
+
+%% Please note that we have introduced automatic line number generation
+%% into the style file for \LaTeXe. This is to help reviewers
+%% refer to specific lines of the paper when they make their comments. Please do
+%% NOT refer to these line numbers in your paper as they will be removed from the
+%% style file for the final version of accepted papers.
+
+% Authors are required to use the ICLR \LaTeX{} style files obtainable at the
+% ICLR website. Please make sure you use the current files and
+% not previous versions. Tweaking the style files may be grounds for rejection.
+
+% \subsection{Retrieval of style files}
+
+% The style files for ICLR and other conference information are available online at:
+% \begin{center}
+%    \url{http://www.iclr.cc/}
+% \end{center}
+% The file \verb+iclr2023_conference_tinypaper.pdf+ contains these
+% instructions and illustrates the
+% various formatting requirements your ICLR paper must satisfy.
+% Submissions must be made using \LaTeX{} and the style files
+% \verb+iclr2023_conference_tinypaper.sty+ and \verb+iclr2023_conference_tinypaper.bst+ (to be used with \LaTeX{}2e). The file
+% \verb+iclr2023_conference_tinypaper.tex+ may be used as a ``shell'' for writing your paper. All you
+% have to do is replace the author, title, abstract, and text of the paper with
+% your own.
+
+% The formatting instructions contained in these style files are summarized in
+% sections \ref{gen_inst}, \ref{headings}, and \ref{others} below.
+
+\section{Related Work}
+\label{rel_work}
+
+% Hate Speech detection has been a prevelant task in the NLP community for quite some time now. There have been various attempts at recognizing Hate Speech using a wide range of techniques such as combining N-Gram \& linguistic features with machine learning models \cite{davidson2017automated}, using contrastive learning \cite{kim-etal-2022-generalizable}, re-training LLMs on hateful data \cite{caselli2020hatebert} amongst others.
+
+% PLMs have been successful in generating context rich word embeddings which can be subsequently combined to generate sentence embeddings by pooling these token representations or taking the embedding of the [CLS] token. Alternatively siamese networks have also been trained to generate sentence embeddings \cite{reimers-gurevych-2019-sentence}.
+
+% Since different PLMs were trained on different datasets and have different sizes we expect their capabilities to be different. Previous works have shown combining them via concatenation has helped boost performance \cite{lester2020multiple}. More specifically for the Hate Speech Detection task there are also works which have combined embedding from different sources \cite{BADRI2022769} to show performance boosts but to the best of our knowledge no work has compared all the well known ways to combine word embeddings.
+
+Hate speech detection has been a prevalent task in the NLP community for a long time. Various techniques have been used to recognize hate speech, such as combining n-gram and linguistic features with machine learning models \cite{davidson2017automated}, contrastive learning \cite{kim-etal-2022-generalizable}, and retraining language models on hateful data \cite{caselli2020hatebert}. Pre-trained language models (PLMs) have been successful in generating context-rich word embeddings, which can be combined to generate sentence embeddings using different methods like pooling embeddings or training siamese networks \cite{reimers-gurevych-2019-sentence}. However, as different PLMs were trained on different datasets and have different sizes, their capabilities are expected to differ. Although previous works have shown that combining embeddings from different sources can boost performance (\cite{lester2020multiple},  \cite{BADRI2022769}), no work has compared all the well-known ways to combine word embeddings for hate speech detection.
+
+Overall, hate speech detection is an important task in NLP, and various techniques have been used to achieve it. PLMs have been successful in generating context-rich word embeddings, but their capabilities differ depending on their training dataset and size. Combining embeddings from different sources has been shown to improve performance, but there is currently no work that compares all the well-known ways to combine word embeddings for hate speech detection.
+
+\section{Dataset}
+
+Three datasets are utilized in this study: OLID \cite{zampieri2019predicting} for offensive vs non-offensive Twitter post classification, Latent Hatred \cite{elsherief-etal-2021-latent} for implicit hate vs explicit hate vs non hate classification, and DynaHate \cite{vidgen-etal-2021-learning} for hate vs non-hate classification with human-in-the-loop generated sentences. Dataset statistics are provided in \ref{dataset-statistics} and preprocessing steps are outlined in \ref{dataset-preproc}.
+
+\section{Methodology}
+\label{methodology}
+
+For each sentence we first produce an embedding using BERT, HateBERT as well as BERTweet by using pooler output. Pooler output is the last layer hidden-state of the first token of the sequence (classification token), further processed by a Linear layer and a Tanh activation function. This is a model endpoint exposed under the HuggingFace API, \cite{wolf-etal-2020-transformers}.
+
+We conduct experiments using three random seeds, utilizing five combination strategies (addition, concatenation, interleaving, multiplication, and random interleaving) to combine two or all three embeddings. Each standalone/combined embedding is used to train a multi-layer perceptron (MLP) for the classification task using five-fold cross-validation. We anticipate Concatenation and Interleave methods to perform similarly, as MLPs do not take positional information. We expect random interleaving to perform poorly, as embeddings become degenerate and dimensions lose meaning. Finally, we expect combining multiple embeddings to outperform using a single embedding. More detailed explanations of these methods can be found in \ref{embedding-combination} and \ref{model-params}.
+
+
+
+% bert bertweet hatebert interleaved  &     0.716 &     0.710 \\
+% bert bertweet hatebert concat       &     0.705 &     0.701 \\
+% hatebert bertweet interleaved       &     0.704 &     0.698 \\
+% hatebert bertweet concat            &     0.700 &     0.695 \\
+% bert hatebert concat                &     0.693 &     0.687 \\
+
+\begin{table}[t]
+\scriptsize
+\begin{center}
+\parbox{.45\linewidth}{
+\centering{
+    \begin{tabular}{|p{1.5in}|c|}
+    \hline
+    \centering{Model} & Accuracy\\
+    \hline \hline
+    \centering{bert bertweet hatebert interleaved}&0.716\\
+    \centering{bert bertweet hatebert concat}&0.705\\
+    \centering{hatebert bertweet interleaved}&0.704 \\
+    \centering{hatebert bertweet concat}&0.700 \\
+    \centering{bert hatebert concat}&0.693 \\
+    \hline
+    \end{tabular}
+    \caption{\centering{DynaHate Results: Top 5 Combinations}}
+    \label{resultsTable:dynahate-top-5}
+}}
+\quad
+\parbox{.45\linewidth}{
+\centering{
+    \begin{tabular}{|c|c|}
+    \hline
+    \centering{Model}&Accuracy\\
+    \hline \hline
+    \centering{hatebert bertweet interleaved}     &     0.703 \\
+    \centering{hatebert bertweet multiplied}     &     0.700 \\
+    \centering{bert bertweet hatebert concat}      &     0.700 \\
+    \centering{bert bertweet hatebert multiplied}  &     0.700 \\
+    \centering{bert bertweet interleaved}          &     0.700 \\
+    \hline
+    \end{tabular}
+    \caption{\centering{LatentHatred Results: Top 5 Combinations}}
+    \label{resultsTable:latenthatred-top-5}
+}}
+\end{center}
+\end{table}
+
+\section{Results}
+
+From Tables~\ref{resultsTable:dynahate-top-5}, \ref{resultsTable:latenthatred-top-5}, we observe that the performances of the classifiers are very similar irrespective of the combination of embeddings. Only random interleaving is a poor choice as it makes the embeddings degenerate. Combinations where the dimensionality increases seem to be marginally better which can be attributed to the fact that it brings in more data for the model to extrapolate relations. In all the three tables~\ref{resultsTable:dynahate-full-results}, \ref{resultsTable:latenthatred-full-results}, and \ref{resultsTable:olid-full-results}, the top 3 methods of combination remain to be interleaving, concatenation and multiplication of embeddings, but only marginally. In general having more than one embedding seems to be marginally better and amongst the 3 models HateBERT and BERTweet are more likely to perform better which can be attributed to their training on Hateful and Twitter data.
+
+\section{Conclusion}
+
+% With this study we conclude that, the combination of embeddings does not take a huge role for classification tasks over MLPs because they do not consider the positional information of inputs. Hence, changing the order in which we pass the embeddings does not matter. Still, the order of the dimensions of the original embedding does matter because scrambling them would result in losing a lot of implicit knowledge that the embedding might have had stored.\\
+% Our results show that concatenation and interleaving perform similarly as we would expect. Addition also being a popular embedding combination choice performs fairly well. Very few works are seen to use multiplication however we see that it's performance is quite similar to addition across tasks. Hence in low-compute settings, we can use a combination such as addition which does not increase the dimensionality of the input while attaining similar performance as concatenation can increase the input by 2-3x size which will take longer to train and also consume more resources.
+
+The results\footnote{Due to the paper's length constraints, we have shown the results and a graphical representation of these results for all embedding combinations in \ref{exp-results}.} indicate that concatenation and interleaving have similar performance as expected. Addition, a commonly used embedding combination, also shows good performance. Although multiplication is rarely used, its performance is comparable to addition across tasks. Therefore, in low-compute settings, an embedding combination such as addition can be used to achieve similar performance as concatenation without increasing the input dimensionality by 2-3x, which would require more training time and resources.
+
+
+% \section {Headings}
+% \subsection{Headings: second level}
+
+% Second level headings are in small caps,
+% flush left and in point size 10. One line space before the second level
+% heading and 1/2~line space after the second level heading.
+
+% \subsubsection{Headings: third level}
+
+% Third level headings are in small caps,
+% flush left and in point size 10. One line space before the third level
+% heading and 1/2~line space after the third level heading.
+
+% \section{Citations, figures, tables, references}
+% \label{others}
+
+% These instructions apply to everyone, regardless of the formatter being used.
+
+% \subsection{Citations within the text}
+
+% Citations within the text should be based on the \texttt{natbib} package
+% and include the authors' last names and year (with the ``et~al.'' construct
+% for more than two authors). When the authors or the publication are
+% included in the sentence, the citation should not be in parenthesis using \verb|\citet{}| (as
+% in ``See \citet{Hinton06} for more information.''). Otherwise, the citation
+% should be in parenthesis using \verb|\citep{}| (as in ``Deep learning shows promise to make progress
+% towards AI~\citep{Bengio+chapter2007}.'').
+
+% The corresponding references are to be listed in alphabetical order of
+% authors, in the \textsc{References} section. As to the format of the
+% references themselves, any style is acceptable as long as it is used
+% consistently.
+
+% \subsection{Footnotes}
+
+% Indicate footnotes with a number\footnote{Sample of the first footnote} in the
+% text. Place the footnotes at the bottom of the page on which they appear.
+% Precede the footnote with a horizontal rule of 2~inches
+% (12~picas).\footnote{Sample of the second footnote}
+
+% \subsection{Figures}
+
+% All artwork must be neat, clean, and legible. Lines should be dark
+% enough for purposes of reproduction; art work should not be
+% hand-drawn. The figure number and caption always appear after the
+% figure. Place one line space before the figure caption, and one line
+% space after the figure. The figure caption is lower case (except for
+% first word and proper nouns); figures are numbered consecutively.
+
+% Make sure the figure caption does not get separated from the figure.
+% Leave sufficient space to avoid splitting the figure and figure caption.
+
+% You may use color figures.
+% However, it is best for the
+% figure captions and the paper body to make sense if the paper is printed
+% either in black/white or in color.
+% \begin{figure}[h]
+% \begin{center}
+% %\framebox[4.0in]{$\;$}
+% \fbox{\rule[-.5cm]{0cm}{4cm} \rule[-.5cm]{4cm}{0cm}}
+% \end{center}
+% \caption{Sample figure caption.}
+% \end{figure}
+
+% \subsection{Tables}
+
+% All tables must be centered, neat, clean and legible. Do not use hand-drawn
+% tables. The table number and title always appear before the table. See
+% Table~\ref{sample-table}.
+
+% Place one line space before the table title, one line space after the table
+% title, and one line space after the table. The table title must be lower case
+% (except for first word and proper nouns); tables are numbered consecutively.
+
+% \begin{table}[t]
+% \caption{Sample table title}
+% \label{sample-table}
+% \begin{center}
+% \begin{tabular}{ll}
+% \multicolumn{1}{c}{\bf PART}  &\multicolumn{1}{c}{\bf DESCRIPTION}
+% \\ \hline \\
+% Dendrite         &Input terminal \\
+% Axon             &Output terminal \\
+% Soma             &Cell body (contains cell nucleus) \\
+% \end{tabular}
+% \end{center}
+% \end{table}
+
+% \section{Default Notation}
+
+% In an attempt to encourage standardized notation, we have included the
+% notation file from the textbook, \textit{Deep Learning}
+% \cite{goodfellow2016deep} available at
+% \url{https://github.com/goodfeli/dlbook_notation/}.  Use of this style
+% is not required and can be disabled by commenting out
+% \texttt{math\_commands.tex}.
+
+% \vspace{4cm}
+% \centerline{\bf Numbers and Arrays}
+% \bgroup
+% \def\arraystretch{1.5}
+% \begin{tabular}{p{1in}p{3.25in}}
+% $\displaystyle a$ & A scalar (integer or real)\\
+% $\displaystyle \va$ & A vector\\
+% $\displaystyle \mA$ & A matrix\\
+% $\displaystyle \tA$ & A tensor\\
+% $\displaystyle \mI_n$ & Identity matrix with $n$ rows and $n$ columns\\
+% $\displaystyle \mI$ & Identity matrix with dimensionality implied by context\\
+% $\displaystyle \ve^{(i)}$ & Standard basis vector $[0,\dots,0,1,0,\dots,0]$ with a 1 at position $i$\\
+% $\displaystyle \text{diag}(\va)$ & A square, diagonal matrix with diagonal entries given by $\va$\\
+% $\displaystyle \ra$ & A scalar random variable\\
+% $\displaystyle \rva$ & A vector-valued random variable\\
+% $\displaystyle \rmA$ & A matrix-valued random variable\\
+% \end{tabular}
+% \egroup
+% \vspace{0.25cm}
+
+% \centerline{\bf Sets and Graphs}
+% \bgroup
+% \def\arraystretch{1.5}
+
+% \begin{tabular}{p{1.25in}p{3.25in}}
+% $\displaystyle \sA$ & A set\\
+% $\displaystyle \R$ & The set of real numbers \\
+% $\displaystyle \{0, 1\}$ & The set containing 0 and 1 \\
+% $\displaystyle \{0, 1, \dots, n \}$ & The set of all integers between $0$ and $n$\\
+% $\displaystyle [a, b]$ & The real interval including $a$ and $b$\\
+% $\displaystyle (a, b]$ & The real interval excluding $a$ but including $b$\\
+% $\displaystyle \sA \backslash \sB$ & Set subtraction, i.e., the set containing the elements of $\sA$ that are not in $\sB$\\
+% $\displaystyle \gG$ & A graph\\
+% $\displaystyle \parents_\gG(\ervx_i)$ & The parents of $\ervx_i$ in $\gG$
+% \end{tabular}
+% \vspace{0.25cm}
+
+
+% \centerline{\bf Indexing}
+% \bgroup
+% \def\arraystretch{1.5}
+
+% \begin{tabular}{p{1.25in}p{3.25in}}
+% $\displaystyle \eva_i$ & Element $i$ of vector $\va$, with indexing starting at 1 \\
+% $\displaystyle \eva_{-i}$ & All elements of vector $\va$ except for element $i$ \\
+% $\displaystyle \emA_{i,j}$ & Element $i, j$ of matrix $\mA$ \\
+% $\displaystyle \mA_{i, :}$ & Row $i$ of matrix $\mA$ \\
+% $\displaystyle \mA_{:, i}$ & Column $i$ of matrix $\mA$ \\
+% $\displaystyle \etA_{i, j, k}$ & Element $(i, j, k)$ of a 3-D tensor $\tA$\\
+% $\displaystyle \tA_{:, :, i}$ & 2-D slice of a 3-D tensor\\
+% $\displaystyle \erva_i$ & Element $i$ of the random vector $\rva$ \\
+% \end{tabular}
+% \egroup
+% \vspace{0.25cm}
+
+% \vspace{3cm}
+% \centerline{\bf Calculus}
+% \bgroup
+% \def\arraystretch{1.5}
+% \begin{tabular}{p{1.25in}p{3.25in}}
+% % NOTE: the [2ex] on the next line adds extra height to that row of the table.
+% % Without that command, the fraction on the first line is too tall and collides
+% % with the fraction on the second line.
+% $\displaystyle\frac{d y} {d x}$ & Derivative of $y$ with respect to $x$\\ [2ex]
+% $\displaystyle \frac{\partial y} {\partial x} $ & Partial derivative of $y$ with respect to $x$ \\
+% $\displaystyle \nabla_\vx y $ & Gradient of $y$ with respect to $\vx$ \\
+% $\displaystyle \nabla_\mX y $ & Matrix derivatives of $y$ with respect to $\mX$ \\
+% $\displaystyle \nabla_\tX y $ & Tensor containing derivatives of $y$ with respect to $\tX$ \\
+% $\displaystyle \frac{\partial f}{\partial \vx} $ & Jacobian matrix $\mJ \in \R^{m\times n}$ of $f: \R^n \rightarrow \R^m$\\
+% $\displaystyle \nabla_\vx^2 f(\vx)\text{ or }\mH( f)(\vx)$ & The Hessian matrix of $f$ at input point $\vx$\\
+% $\displaystyle \int f(\vx) d\vx $ & Definite integral over the entire domain of $\vx$ \\
+% $\displaystyle \int_\sS f(\vx) d\vx$ & Definite integral with respect to $\vx$ over the set $\sS$ \\
+% \end{tabular}
+% \egroup
+% \vspace{0.25cm}
+
+% \centerline{\bf Probability and Information Theory}
+% \bgroup
+% \def\arraystretch{1.5}
+% \begin{tabular}{p{1.25in}p{3.25in}}
+% $\displaystyle P(\ra)$ & A probability distribution over a discrete variable\\
+% $\displaystyle p(\ra)$ & A probability distribution over a continuous variable, or over
+% a variable whose type has not been specified\\
+% $\displaystyle \ra \sim P$ & Random variable $\ra$ has distribution $P$\\% so thing on left of \sim should always be a random variable, with name beginning with \r
+% $\displaystyle  \E_{\rx\sim P} [ f(x) ]\text{ or } \E f(x)$ & Expectation of $f(x)$ with respect to $P(\rx)$ \\
+% $\displaystyle \Var(f(x)) $ &  Variance of $f(x)$ under $P(\rx)$ \\
+% $\displaystyle \Cov(f(x),g(x)) $ & Covariance of $f(x)$ and $g(x)$ under $P(\rx)$\\
+% $\displaystyle H(\rx) $ & Shannon entropy of the random variable $\rx$\\
+% $\displaystyle \KL ( P \Vert Q ) $ & Kullback-Leibler divergence of P and Q \\
+% $\displaystyle \mathcal{N} ( \vx ; \vmu , \mSigma)$ & Gaussian distribution %
+% over $\vx$ with mean $\vmu$ and covariance $\mSigma$ \\
+% \end{tabular}
+% \egroup
+% \vspace{0.25cm}
+
+% \centerline{\bf Functions}
+% \bgroup
+% \def\arraystretch{1.5}
+% \begin{tabular}{p{1.25in}p{3.25in}}
+% $\displaystyle f: \sA \rightarrow \sB$ & The function $f$ with domain $\sA$ and range $\sB$\\
+% $\displaystyle f \circ g $ & Composition of the functions $f$ and $g$ \\
+%   $\displaystyle f(\vx ; \vtheta) $ & A function of $\vx$ parametrized by $\vtheta$.
+%   (Sometimes we write $f(\vx)$ and omit the argument $\vtheta$ to lighten notation) \\
+% $\displaystyle \log x$ & Natural logarithm of $x$ \\
+% $\displaystyle \sigma(x)$ & Logistic sigmoid, $\displaystyle \frac{1} {1 + \exp(-x)}$ \\
+% $\displaystyle \zeta(x)$ & Softplus, $\log(1 + \exp(x))$ \\
+% $\displaystyle || \vx ||_p $ & $\normlp$ norm of $\vx$ \\
+% $\displaystyle || \vx || $ & $\normltwo$ norm of $\vx$ \\
+% $\displaystyle x^+$ & Positive part of $x$, i.e., $\max(0,x)$\\
+% $\displaystyle \1_\mathrm{condition}$ & is 1 if the condition is true, 0 otherwise\\
+% \end{tabular}
+% \egroup
+% \vspace{0.25cm}
+
+
+
+% \section{Final instructions}
+% Do not change any aspects of the formatting parameters in the style files.
+% In particular, do not modify the width or length of the rectangle the text
+% should fit into, and do not change font sizes (except perhaps in the
+% \textsc{References} section; see below). Please note that pages should be
+% numbered.
+
+% \section{Preparing PostScript or PDF files}
+
+% Please prepare PostScript or PDF files with paper size ``US Letter'', and
+% not, for example, ``A4''. The -t
+% letter option on dvips will produce US Letter files.
+
+% Consider directly generating PDF files using \verb+pdflatex+
+% (especially if you are a MiKTeX user).
+% PDF figures must be substituted for EPS figures, however.
+
+% Otherwise, please generate your PostScript and PDF files with the following commands:
+% \begin{verbatim}
+% dvips mypaper.dvi -t letter -Ppdf -G0 -o mypaper.ps
+% ps2pdf mypaper.ps mypaper.pdf
+% \end{verbatim}
+
+% \subsection{Margins in LaTeX}
+
+% Most of the margin problems come from figures positioned by hand using
+% \verb+\special+ or other commands. We suggest using the command
+% \verb+\includegraphics+
+% from the graphicx package. Always specify the figure width as a multiple of
+% the line width as in the example below using .eps graphics
+% \begin{verbatim}
+%    \usepackage[dvips]{graphicx} ...
+%    \includegraphics[width=0.8\linewidth]{myfile.eps}
+% \end{verbatim}
+% or % Apr 2009 addition
+% \begin{verbatim}
+%    \usepackage[pdftex]{graphicx} ...
+%    \includegraphics[width=0.8\linewidth]{myfile.pdf}
+% \end{verbatim}
+% for .pdf graphics.
+% See section~4.4 in the graphics bundle documentation (\url{http://www.ctan.org/tex-archive/macros/latex/required/graphics/grfguide.ps})
+
+% A number of width problems arise when LaTeX cannot properly hyphenate a
+% line. Please give LaTeX hyphenation hints using the \verb+\-+ command.
+
+\subsubsection*{Acknowledgements}
+We express our gratitude to Devansh Gupta \& Rishi Singhal for their valuable feedback on the initial drafts of our paper. We also extend our thanks to Dr. Md. Shad Akhtar for providing guidance during the early stages of this work when it was just a course project.
+
+\subsubsection*{URM Statement}
+It is acknowledged by the authors that all of the authors involved in this work meet the URM criteria of the ICLR 2023 Tiny Papers Track.
+
+\bibliography{iclr2023_conference_tinypaper}
+\bibliographystyle{iclr2023_conference_tinypaper}
+
+\appendix
+\section{Appendix}
+
+\subsection{Dataset Statistics}
+\label{dataset-statistics}
+
+\begin{table}[h]
+\begin{center}
+\begin{tabular}{||c c c||} 
+ \hline
+ Split & Offensive (OFF) & Not Offensive (NOT) \\  [0.5ex]
+ \hline\hline
+Train & 3485 & 7107 \\ 
+ \hline
+ Dev & 915 & 1733 \\
+ \hline
+ Test & 240 & 620 \\
+ \hline
+\end{tabular}
+\end{center}
+\caption{OLID Dataset Statistics}
+\end{table}
+
+\begin{table}[h]
+\begin{center}
+\begin{tabular}{||c c c||} 
+ \hline
+ Split & Hate & Not Hate \\  [0.5ex]
+ \hline\hline
+Train & 17740 & 15184 \\ 
+ \hline
+ Dev & 2167 & 1933 \\
+ \hline
+ Test & 2268 & 1852 \\
+ \hline
+\end{tabular}
+\end{center}
+\caption{DynaHate Dataset Statistics}
+\end{table}
+
+\begin{table}[h]
+\begin{center}
+\begin{tabular}{||c c c c||} 
+ \hline
+ Split & Implicit Hate & Explicit Hate & Not Hate \\  [0.5ex]
+ \hline\hline
+Train & 3991 & 590 & 7501 \\ 
+ \hline
+ Dev & 1356 & 228 & 2444 \\
+ \hline
+ Test & 1753 & 271 & 3346 \\
+ \hline
+\end{tabular}
+\end{center}
+\caption{LatentHatred Dataset Statistics}
+\end{table}
+
+\subsection{Data Preprocessing}
+\label{dataset-preproc}
+
+We follow the following steps for dataset preprocessing - 
+
+\begin{enumerate}
+    \item Remove emojis
+    \item Remove stray punctuations
+    \item Replace URLs and HTML Tags with a placeholder
+    \item Replace usernames with a placeholder
+    \item Remove extra whitespaces
+\end{enumerate}
+
+
+
+
+\subsection{Embeddings Combination Methods}
+\label{embedding-combination}
+
+\begin{enumerate}
+    \item Addition: Simply adding the embeddings
+    \item Multiplication: Element wise multiplication of the embeddings
+    \item Interleaving: Interleaving the embeddings to form a common embedding. For instance if the embeddings are [1,2,3] \& [4,5,6] the interleaved output would be [1,4,2,5,3,6]
+    \item Concatenation: Simply concatenate the embeddings
+    \item Random Interleaving: Instead of interleaving in an ordered fashion we interleave in a random fashion for each sample. This therefore acts as a baseline as the dimensions do not align across samples
+\end{enumerate}
+
+\subsection{Design Choices for the Models}
+\label{model-params}
+
+For all our experiments we use the MLPClassifier API from scikit-learn. We use the following parameters for Grid Search - 
+
+\begin{enumerate}
+    \item "hidden\_layer\_sizes": [(128), (128,64)]
+    \item "activation": ["relu"]
+    \item "solver": ["adam"]
+    \item "learning\_rate\_init": [0.001, 0.0001]
+    \item "learning\_rate": ["adaptive"]
+    \item "early\_stopping": [True]
+    \item "max\_iter": [10000]
+\end{enumerate}
+
+We use 3 Random Seeds - {3, 7, 42}
+
+\subsection{Results}
+\label{exp-results}
+
+We request the reader to refer to Tables~\ref{resultsTable:dynahate-full-results}, \ref{resultsTable:latenthatred-full-results}, and \ref{resultsTable:olid-full-results} given below, for quantitative information regarding the scores for all the embedding combinations reported over the Accuracy and Macro F1 metrics.
+
+For a graphical representation of these scores, kindly refer to the Figures~\ref{figure:Accuracy_DynaHate}, \ref{figure:F1_DynaHate} for results over the DynaHate dataset, \ref{figure:Accuracy_LatentHatred}, \ref{figure:F1_LatentHatred} for results over the LatentHatred dataset, and \ref{figure:Accuracy_OLID}, \ref{figure:F1_OLID} for the OLID dataset.
+
+\begin{table}[htbp]
+\begin{center}
+    \begin{tabular}{|c|c|c|}
+    \hline
+    Embedding Combination & Accuracy & Macro F1\\
+    \hline \hline
+    bert bertweet hatebert interleaved       &     0.716 &     0.710 \\ \hline
+    bert bertweet hatebert concat            &     0.705 &     0.701 \\ \hline
+    hatebert bertweet interleaved            &     0.704 &     0.698 \\ \hline
+    hatebert bertweet concat                 &     0.700 &     0.695 \\ \hline
+    bert hatebert concat                     &     0.693 &     0.687 \\ \hline
+    bert hatebert interleaved                &     0.692 &     0.686 \\ \hline
+    bert bertweet hatebert added             &     0.687 &     0.684 \\ \hline
+    hatebert bertweet added                  &     0.687 &     0.680 \\ \hline
+    bert hatebert added                      &     0.687 &     0.681 \\ \hline
+    hatebert                                 &     0.686 &     0.681 \\ \hline
+    hatebert bertweet multiplied             &     0.684 &     0.682 \\ \hline
+    bert hatebert multiplied                 &     0.682 &     0.675 \\ \hline
+    bert bertweet concat                     &     0.678 &     0.671 \\ \hline
+    bert bertweet interleaved                &     0.678 &     0.664 \\ \hline
+    bert bertweet hatebert multiplied        &     0.677 &     0.674 \\ \hline
+    bert bertweet added                      &     0.668 &     0.662 \\ \hline
+    bert                                     &     0.663 &     0.652 \\ \hline
+    bert bertweet multiplied                 &     0.663 &     0.657 \\ \hline
+    bertweet                                 &     0.642 &     0.638 \\ \hline
+    bert hatebert randomlycombined           &     0.550 &     0.355 \\ \hline
+    bert bertweet hatebert randomlycombined  &     0.550 &     0.360 \\ \hline
+    bert bertweet randomlycombined           &     0.549 &     0.362 \\ \hline
+    hatebert bertweet randomlycombined       &     0.548 &     0.369 \\ \hline
+    \end{tabular}
+    \caption{DynaHate Results for all embedding combinations.}
+    \label{resultsTable:dynahate-full-results}
+\end{center}
+\end{table}
+
+\begin{table}[htbp]
+\begin{center}
+    \begin{tabular}{|c|c|c|}
+    \hline
+    Embedding Combination & Accuracy & Macro F1\\
+    \hline \hline
+    hatebert bertweet interleaved            &     0.703 &     0.494 \\ \hline
+    hatebert bertweet multiplied             &     0.700 &     0.469 \\ \hline
+    bert bertweet hatebert concat            &     0.700 &     0.517 \\ \hline
+    bert bertweet hatebert multiplied        &     0.700 &     0.486 \\ \hline
+    bert bertweet interleaved                &     0.700 &     0.486 \\ \hline
+    hatebert bertweet concat                 &     0.699 &     0.465 \\ \hline
+    bertweet                                 &     0.699 &     0.482 \\ \hline
+    bert bertweet hatebert added             &     0.697 &     0.478 \\ \hline
+    bert bertweet concat                     &     0.697 &     0.474 \\ \hline
+    bert bertweet multiplied                 &     0.696 &     0.493 \\ \hline
+    bert bertweet hatebert interleaved       &     0.695 &     0.477 \\ \hline
+    bert hatebert concat                     &     0.694 &     0.480 \\ \hline
+    hatebert bertweet added                  &     0.693 &     0.476 \\ \hline
+    bert hatebert multiplied                 &     0.693 &     0.457 \\ \hline
+    bert bertweet added                      &     0.690 &     0.452 \\ \hline
+    bert hatebert added                      &     0.689 &     0.463 \\ \hline
+    bert hatebert interleaved                &     0.686 &     0.451 \\
+    hatebert                                 &     0.684 &     0.440 \\ \hline
+    bert                                     &     0.683 &     0.430 \\ \hline
+    bert bertweet randomlycombined           &     0.623 &     0.256 \\ \hline
+    bert bertweet hatebert randomlycombined  &     0.623 &     0.256 \\ \hline
+    bert hatebert randomlycombined           &     0.623 &     0.256 \\ \hline
+    hatebert bertweet randomlycombined       &     0.623 &     0.257 \\ \hline
+    \end{tabular}
+    \caption{LatentHatred Results for all embedding combinations.}
+    \label{resultsTable:latenthatred-full-results}
+\end{center}
+\end{table}
+
+\begin{table}[htbp]
+\begin{center}
+    \begin{tabular}{|c|c|c|}
+    \hline
+    Embedding Combination & Accuracy & Macro F1\\
+    \hline \hline
+    bert bertweet interleaved                &     0.813 &     0.732 \\ \hline
+    bert bertweet concat                     &     0.812 &     0.738 \\ \hline
+    bert bertweet hatebert interleaved       &     0.808 &     0.719 \\ \hline
+    bert bertweet hatebert concat            &     0.805 &     0.721 \\ \hline
+    bert bertweet hatebert added             &     0.802 &     0.707 \\ \hline
+    bert hatebert multiplied                 &     0.802 &     0.700 \\ \hline
+    hatebert bertweet concat                 &     0.802 &     0.722 \\ \hline
+    hatebert bertweet multiplied             &     0.801 &     0.720 \\ \hline
+    bert bertweet added                      &     0.797 &     0.700 \\ \hline
+    bert hatebert interleaved                &     0.797 &     0.711 \\ \hline
+    bert hatebert concat                     &     0.795 &     0.702 \\ \hline
+    hatebert bertweet interleaved            &     0.795 &     0.703 \\ \hline
+    bert hatebert added                      &     0.792 &     0.685 \\ \hline
+    bert bertweet multiplied                 &     0.792 &     0.698 \\ \hline
+    bert bertweet hatebert multiplied        &     0.792 &     0.696 \\ \hline
+    bert                                     &     0.791 &     0.704 \\ \hline
+    hatebert                                 &     0.790 &     0.691 \\ \hline
+    bertweet                                 &     0.783 &     0.680 \\ \hline
+    hatebert bertweet added                  &     0.777 &     0.663 \\ \hline
+    bert hatebert randomlycombined           &     0.721 &     0.420 \\ \hline
+    bert bertweet randomlycombined           &     0.721 &     0.419 \\ \hline
+    bert bertweet hatebert randomlycombined  &     0.721 &     0.419 \\ \hline
+    hatebert bertweet randomlycombined       &     0.721 &     0.419 \\ \hline
+    \end{tabular}
+    \caption{OLID Results for all embedding combinations.}
+    \label{resultsTable:olid-full-results}
+\end{center}
+\end{table}
+
+
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=1\textwidth]{images/Accuracy_DynaHate.pdf}
+\caption{Accuracy for DynaHate}
+\label{figure:Accuracy_DynaHate}
+\end{figure}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=1\textwidth]{images/F1_DynaHate.pdf}
+\caption{Macro F1 for DynaHate}
+\label{figure:F1_DynaHate}
+\end{figure}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=1\textwidth]{images/Accuracy_LatentHatred.pdf}
+\caption{Accuracy for Latent Hatred}
+\label{figure:Accuracy_LatentHatred}
+\end{figure}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=1\textwidth]{images/F1_LatentHatred.pdf}
+\caption{Macro F1 for Latent Hatred}
+\label{figure:F1_LatentHatred}
+\end{figure}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=1\textwidth]{images/Accuracy_OLID.pdf}
+\caption{Accuracy for OLID}
+\label{figure:Accuracy_OLID}
+\end{figure}
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=1\textwidth]{images/F1_OLID.pdf}
+\caption{Macro F1 for OLID}
+\label{figure:F1_OLID}
+\end{figure}
+
+\end{document}

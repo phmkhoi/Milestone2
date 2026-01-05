@@ -1,0 +1,108 @@
+\section{Corpus Construction}
+\label{sec:construction}
+
+\noindent\textbf{Overview.} Our data is obtained from online TV drama channel\footnote{\url{https://v.qq.com/channel/tv}.}, from which we downloaded the original videos, their well-structured metadata (abstract, release year, protagonist list, etc.), the corresponding BSCs, and plot descriptions composed by professional editors. 
+Among the huge pool of available TV drama series, we manually picked out the high-quality ones that (1) have a view count of no less than 100,000, (2) contain more than one episode, and (3) each episode has received at least one BSC.
+
+After human annotations, as shown in Tab.~\ref{tab:compare}, we ended up with 83 TV drama series, which consist of 1,106 episodes. Their total duration is 39,900 minutes, i.e., 36 minutes per episode.
+Consistent with existing multimodal resources~\citep{movienet2020eccv,movie22022arxiv}, we respectively set the frame rate and video resolution at 480$\times$270 and 25 per second.
+The encoding format is H264, and the encapsulation format is AVC1.
+We harvested 24,875 clips, with an average duration of 63 seconds. We utilised FFmpeg to conduct uniform interceptions, yielding 4 screenshot frames per clip. 
+In particular, to eliminate the influence of subtitles and video website watermark icons in downstream tasks, we mask them in screenshots separately.
+We also collected Chinese subtitles within the clips using an open-source OCR toolkit, with an average of 9 words per subtitle.
+Each clip corresponds to a standalone plot described in a sentence. The mean word count of such sentences is 40 words, leading to a total volume of 918,432 words for all clips.
+As for BSCs, after applying an internal filter for content compliance and only preserving sentences that have a word count between 5 and 50, we finally included 26,438,007 samples (i.e., averagely 23,904 per episode and 663 per minute) into \TVD, with an average length of 13 words. 
+We carefully aligned all these modalities with timestamps.
+
+
+
+\label{sec:genre_tag_sys}
+
+% \begin{figure}[t]
+% \centering
+% \includegraphics[width=0.48\textwidth]{figure/fig_genre_details.pdf}
+% \caption{
+% Distribution of \TVD genre tags on the first layer.
+% The left and right axes are for the numbers of clips and episodes, respectively.}
+% \label{fig:genre_tags}
+% \end{figure}
+
+% \begin{figure}
+% \centering
+% \subfigure{
+% \begin{minipage}[t]{0.33\linewidth}
+% \centering
+% \includegraphics[width=1.0in]{figure/fig_age.pdf}\\
+% \end{minipage}%
+% }%
+% \subfigure{
+% \begin{minipage}[t]{0.33\linewidth}
+% \centering
+% \includegraphics[width=1.0in]{figure/fig_education.pdf}\\
+% \end{minipage}%
+% }%
+% \subfigure{
+% \begin{minipage}[t]{0.33\linewidth}
+% \centering
+% \includegraphics[width=1.0in]{figure/fig_occupation.pdf}\\
+% \end{minipage}%
+% }%
+% \centering
+% \caption{Summary of annotator background.}
+% \label{fig:pie}
+% \end{figure}
+
+\begin{wrapfigure}{r}{0.6\textwidth}
+\centering
+    \includegraphics[width=0.55\textwidth]{figure/fig_genre_details.pdf}
+    \vspace{-0.2in}
+    \caption{
+    Distribution of \TVD genre tags on the first layer.
+    The \colorbox{myred}{left} and \colorbox{myblue}{right} axes are for the numbers of clips and episodes, respectively.
+    }
+    \label{fig:genre_tags}
+    \vspace{-0.1in}
+\end{wrapfigure}
+
+\noindent\textbf{Genre Tag System.} To facilitate tasks such as genre classification (see~\cref{sec:tasks}), we supplement the metadata of each of the 83 TV dramas with fine-grained genre tags. Through literature review, we found that existing academic genre tag systems may be unsuitable for TV dramas. On the one hand, their granularity tends to be too coarse (e.g., \citep{simoes2016ijcnn}, \citep{moviescope2019arxiv}, and \citep{movienet2020eccv} respectively provide 4, 13, and 24 categories only) to accurately distinguish different dramatic types. On the other hand, most of these tag systems focus on movies, thus failing to cover several important TV drama genres (e.g. Unit Drama). Therefore, we introduce a two-level system with 58 genre tags, which is presented in the appendix. As this system has been applied to a major Chinese video website\footnote{\url{https://v.qq.com/}.} where it was verified by commercial successes (e.g., achieving more than 150 million Daily Active Users), we recommend it to the wider community of video/multimodal processing for research use.
+
+% Fig.~\ref{fig:genre_tags} and Tab.~\ref{tab:genre_tags}
+
+\begin{wrapfigure}{r}{0.6\textwidth}
+\centering
+\subfigure{
+\begin{minipage}[t]{0.33\linewidth}
+\centering
+\includegraphics[width=1.0in]{figure/fig_age.pdf}\\
+\end{minipage}%
+}%
+\subfigure{
+\begin{minipage}[t]{0.33\linewidth}
+\centering
+\includegraphics[width=1.0in]{figure/fig_education.pdf}\\
+\end{minipage}%
+}%
+\subfigure{
+\begin{minipage}[t]{0.33\linewidth}
+\centering
+\includegraphics[width=1.0in]{figure/fig_occupation.pdf}\\
+\end{minipage}%
+}%
+\centering
+\caption{Summary of annotator background.}
+\label{fig:pie}
+\vspace{-0.1in}
+\end{wrapfigure}
+
+\noindent\textbf{Annotating Plot-Oriented Clips.} We recruited Chinese native speakers from a crowd-sourcing platform\footnote{\url{https://soho.qq.com/home}}. 
+Considering the cognitive level requirements due to the complexity of plot understanding~\citep{dev-theory-mind,child-theory-mind}, we only accepted annotators who have at least finished high school education. Eventually, 449 human annotators were selected. Their ages range from 18 to 40 years old. Almost half of them are college students or Internet practitioners (either accounting for 24.1\%). The entire annotation work cost 1,183 hours of human labour in total, i.e., averagely 2.37 hours for each annotator, 1.07 hours for each episode, and 2.87 minutes for segmenting each plot-oriented clip. See more statistics in Fig.~\ref{fig:pie}.
+
+When segmenting one episode, an annotator received the complete video and the corresponding plot narrative which was written by professionals and crawled from the web (see above). Normally one such narrative has multiple sentences, with each defining a standalone plot. 
+The annotator was first required to watch the episode in its entirety.  
+Then, for each plot-focused sentence, the annotator was asked to choose from three options: `\textit{Video is not playable}', `\textit{Plot in this sentence is covered in one video span}', and `\textit{Plot in this sentence is not covered by one video span}' (the selection yielded an overall percentage of 0\%, 95.3\%, and 4.7\%).
+We found that `\textit{Plot in this sentence is not covered by one video span}' was selected when the text seemed too vague or the annotators believed there are multiple plots in a single sentence.  In such a rare case, we made manual checks to decide whether to remove directly or divide the sentence into finer-grained pieces.
+In most cases (i.e., `\textit{Plot in this sentence is covered in one video span}' was selected), the annotator was asked to mark the start and end timestamps of the video clip corresponding to the plot described in the sentence. During a post-processing step, we removed all the clips that are overly long (i.e., more than 10 minutes). 
+
+To assess the annotation quality, we randomly selected 10\% samples and assigned them to two independent annotators.
+We use Inter-Annotator Agreement~\citep{iaa1996pm} as the metric. Specifically, if the ratio of the intersection and union of the plot intervals given by different annotators is greater than 60\%, the annotations are considered to be consistent. 
+Since the final Kappa score is 0.7152, which is within (0.6, 0.8], the result is validated as a "substantial agreement". This proves that the annotations of \TVD are of high quality.

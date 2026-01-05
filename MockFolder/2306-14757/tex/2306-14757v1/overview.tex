@@ -1,0 +1,160 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{System Overview}
+\label{sec:overview}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\system is a Byzantine log replication technology enabling blocks to be broadcast in parallel, such that each broadcast block is \emph{finalized} independently and instantaneously into an individual slot in the log.
+Every finalized block is eventually \emph{committed} to the total ordering, 
+so that all network bandwidth has utility in disseminating blocks.
+Finalizing log slots in parallel addresses our goal of having both high throughput and low latency.
+
+\subsection{The Log Abstraction}
+\label{sec:log-abstraction}
+% ..............
+\system exposes an abstraction of a totally ordered log to the set of validators. 
+The log is a sequence of indexable \emph{slots} that contain \emph{blocks} or
+a special $\bot$ value.
+To add a block to the log, \system interface exposes to validators a \propose event call.
+We say that a slot is \emph{finalized} once it is filled with a finalized block or a $\bot$.
+Slots become finalized consistently and irreversibly across all correct validators.
+
+In common settings, 
+validators are notified through a \commit event when a contiguous prefix of the log, starting with the genesis, containing finalized slots grows.
+\Cref{fig:log}(top) shows a potential log instance with slots $1-4$ finalized and committed. 
+
+In case ``holes'' are left in the log, they are finalized with a special $\bot$ value via a fallback consensus mechanism, allowing higher slots in the log to become committed. 
+\Cref{fig:log}(bottom) shows pending slots ($5$ and $7$) becoming finalized with permanent holes, allowing slots $6$ and $8$ to become committed.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\columnwidth]{figures/log-basic-alt}
+  \includegraphics[width=\columnwidth]{figures/log-holes-alt}
+  \caption{\system. The top shows slots $1-4$ are finalized contiguously, and a \commit notification is sent. 
+Slots $6$ and $8$ are finalized but their \commit is pending until $5$ and $7$ become finalized.
+On the bottom, slots $5$ and $7$ become permanent holes via a fallback consensus decision, allowing a commit notification to be sent on slots $6$ and $8$.}
+  \label{fig:log}
+\end{figure}
+
+
+% ..................
+\subsection{Technical Approach}
+
+\system is composed of two principal protocols that interweave together, a low-latency/high-throughput happy path, and a high-throughput DAG-based fallback path.
+
+\paragraph{Happy Path.}
+In order to allow blocks to be added to the log in parallel,
+we introduce a broadcast primitive called \primitive, a variant of Byzantine consistent broadcast~\cite{CachinGR11} that with two features: 
+First, processing broadcasts includes enforcing unique slot numbers. 
+Second, broadcasts expose two API events, \bbcaadopt and \bbcadeliver, with a commit-adopt guarantee: \bbcadeliver occurs only it \bbcaadopt occurs at $2f+1$ validators.
+
+Blocks of transactions are broadcast in parallel, as soon as validators are ready to add them to the log.
+Every validator may invoke \primitive to add a block to the log with a \emph{desired} slot number.
+To use \primitive,
+a validator prepares a block with some payload, a set of \emph{causal} references to a causal-frontier of previously delivered \primitive blocks, 
+a field to identify its sender, and metadata.  
+Multiple validators may propose blocks for different slot numbers simultaneously.
+Strategies for slot allocation will be discussed later.
+A correct validator finalizes a block $b$ when it consistently delivers $b$ via \primitive
+and it has finalized all the blocks in $b$'s causal references.
+
+In the common case, 
+when \primitive is invoked by a correct sender with a unique slot number $sn$ and with block $b$, all correct validators eventually receive
+ a \commit event for $b$ at slot $sn$.
+
+% ................
+\paragraph{Fallback Path.}
+
+We use a fallback consensus protocol to finalize slots that remain empty due to faults.
+To address the issue of empty slots, 
+we build a fallback mechanism on a direct acyclic graph (DAG) created by \primitive broadcasts. 
+In this manner, while a gap in the log may delay the \commit event for higher slots, 
+the log continues to be filled so the resources of the system are continuously utilized. 
+Moreover, consensus decisions about empty slots are embedded within normal broadcasts and have throughput utility as well.
+The fallback mechanism works as follows.
+
+Each validator maintains a timer for $sn$, the first empty slot it knows of.
+Upon timeout, the validator uses a special \finalize\ mechanism 
+that causes the validator to stop participating in \primitive for slot $sn$, 
+and to broadcast a ``complaint''.
+The complaint carries an intermediate \bbcaadopt event, which \primitive exposes, 
+that has the following guarantee:
+if \bbcadeliver of a block $b$ with slot $sn$ ever occurs at any correct validator, 
+then $f+1$ correct validators will incur \bbcaadopt with $b$ upon invoking \finalize.
+We then use a fallback consensus protocol to finalize $sn$ with either a special $\bot$ value, 
+or with the (unique) block $b$ indicated in complaints as \finalize-adopted values.
+
+The specific fallback consensus protocol in \system is implemented on top of a DAG using the in-DAG consensus framework introduced in 
+the partial-synchrony part of Bullshark~\cite{spiegelman2022bullshark} and generalized to general DAGs in Fino~\cite{fino}.
+%
+Briefly, utilizing Fino, 
+a \emph{leader-proposal} which causally follows \finalize\ complaints from a quorum of validators determines a value, possibly $\bot$, for the stalled slot number.
+A proposal becomes committed through $f+1$ successor blocks interpreted as \emph{votes}. 
+
+
+\paragraph{Ticketmaster.}
+Key to the performant functioning of \system, and ultimately to its progress,
+is a contention-free allocation of slot numbers to validators. 
+We capture the abstract functionality of slot numbering by a role referred to as a ticketmaster.
+A naïve ticketmaster strategy is a simple round robin rotation among all validators.
+Even such a naïve regime has certain desirable features, including fairness and guaranteed liveness.
+However, \system would get delayed by the slowest sender.
+More elaborate regimes are discussed in \Cref{sec:ticketmaster}, embodying greater adaptability and dynamism.
+
+% ..........................
+\subsection{Enhancements}
+
+\system includes two principal enhancements over the basic protocol, slotless-blocks and \eagercommit events.
+
+\paragraph{Slotless blocks.}
+
+In case of contention over slot numbers, 
+at most one invocation of \primitive with the same $sn$ will succeed.
+\primitive salvages the blocks which could not be delivered with a slot number by allowing a failed validator to 
+\emph{yield} the slot $sn$ and be delivered as a \emph{slotless} block.
+The yield mechanism ensures \primitive liveness, and also ensures
+that the bandwidth used for dissemination of yielded-blocks is not wasted.
+This is similar to uncle blocks~\cite{sompolinsky2015secure}, effectively flattening a sub-graph of blocks linked to a single slot number.
+After \primitive delivers a block $b$ with an empty slot number,
+another block $b'$ may reference $b$ as a causal predecessor. 
+When $b'$ becomes committed, all its causal predecessors become committed as well 
+(using any deterministic ordering among them). 
+In \Cref{fig:slotless}, blocks $S$, $T$, $U$, $V$, $W$ are slotless; the block at slot 3 has three causal predecessors, $S$, $T$, and $U$, that become committed jointly with it.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\columnwidth]{figures/log-slotless-alt}
+  \caption{Slotless blocks $S$, $T$, $U$, $V$, $W$. Slot 3 causal predecessors, $S$, $T$, and $U$, become finalized and committed jointly with it.
+\eagercommit notifications are received on slots $6$ and $8$.}
+  \label{fig:slotless}
+\end{figure}
+
+
+\paragraph{Eager finality.}
+
+\system supports an \eagercommit event in addition to \commit events, such that validators are notified as soon as individual slots become finalized, possibly out-of-order.
+\Cref{fig:slotless} shows 
+slots $6$ and $8$ already finalized and a \eagercommit notification is sent on the blocks in these slots.
+Exposing finalized slots \emph{eagerly} via \eagercommit 
+notifications is optional. Using \commit offers a standard, totally-ordered log replication service to validators,
+whereas \eagercommit may be used to support new use-cases.
+By mixing both interfaces, it is possible to construct applications that utilize total ordering for consensus operations (such as abort, or reconfiguration) while employing \eagercommit for steady state. We describe several possible use-cases of \eagercommit.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\columnwidth]{figures/multisig-final}
+  \includegraphics[width=\columnwidth]{figures/multisig-commit}
+  \caption{A $3$-out-of-$4$ threshold signature with a deadline example.
+  On the top, signature shares $\sigma1$,$\sigma2$, and $\sigma3$ can be aggregated as soon as they become finalized. 
+On the bottom, the block which indicates a deadline is committed before $3$ signature shares are committed, and, therefore, the signature reconstruction is aborted.}
+  \label{fig:threshold}
+\end{figure}
+
+As observed previously in~\cite{baudet2020fastpay, rocket2019scalable, guerraoui2019consensus}, supporting payments requires only partial ordering, that can be readily supported via \eagercommit events. 
+Some blockchains, e.g., Sui~\cite{sui} and Linera~\cite{linera}, support single-owner tokenized assets requiring only FIFO ordering of an owner's operations. They provide cross-owner ordering for compound transactions by explicit request.
+\system can support owner-only ordering by allowing owners to subscribe to \eagercommit events for their own operations. 
+Cross-owner ordering is automatically facilitated by waiting for \commit events in sequence order.
+
+%
+Another example is a $t$-out-of-$n$ threshold signature reconstruction with a deadline.
+In this example, the signature can be reconstructed as soon as $t$ signature shares are finalized.
+The total order is only required to enforce the deadline, i.e. abort the reconstruction if fewer than $t$ shares are added to the log by a certain slot. 
+\Cref{fig:threshold} demonstrates a $3$-out-of-$4$ example.

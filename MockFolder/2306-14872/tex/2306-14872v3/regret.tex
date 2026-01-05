@@ -1,0 +1,121 @@
+
+
+
+
+\section{Frequentist Regret Analysis of POFUL}
+\label{sec:regret}
+In this section, we present the frequentist regret analysis of POFUL algorithms. We first introduce useful concentration events that hold with high-probability. 
+
+\begin{definition}
+	Fix $\delta \in(0,1)$ and $\delta^\prime = \delta/2T$. We define $\beta^{\PVT}_t(\delta^\prime)  \coloneqq \iota_t(\delta) \beta^{\RLS}_t(\delta^\prime) $ and 
+\$
+\
+\hat{\cA}_t & \coloneqq \left\{ \forall s\leq t: \left\|\widehat{\theta}_t-\theta^{\star}\right\|_{V_t} \leq \beta^{RLS}_t(\delta^\prime)\right \},\quad
+\tilde{\cA}_t  \coloneqq \left\{ \forall s\leq t: \left\|\tilde{\theta}_t-\hat{\theta}_t\right\|_{V_t} \leq \beta^{\PVT}_t(\delta^\prime) \right\}.
+\$
+We also define $ \cA_t  \coloneqq \hat{\cA}_t \cap  \tilde{\cA}_t $ .
+
+\end{definition}
+\begin{proposition}\label{prop:concentration}
+		Under Assumptions~\ref{assump:bounded-parameter}, \ref{assump:bounded-action-sets} and \ref{assump:noise} , we have
+$\prob{\cA_T} \geq 1 - \delta.
+$
+\end{proposition}
+
+
+
+
+
+
+
+In the following, we decompose the regret of POFUL into three terms, $\cR^{PE}(T)$, $\cR^{\PVT}(T)$ and $\cR^{RLS}(T)$,  and sketch how they are bounded separately. Let  $x_t^\star = \argmax_{x\in \cX_t} \dotp{x}{\theta^\star}$ be the benchmark action and $\tilde{x}_t$ be the action chosen by POFUL, the regret decomposes as
+\$
+\cR(T) 
+& = \sum_{t=1}^T\dotp{x_t^\star}{ \theta^{\star}}-\dotp{\tilde{x}_t}{\tilde{\theta}_t}+ \sum_{t=1}^T\dotp{\tilde{x}_t}{\tilde{\theta}_t}-\dotp{\tilde{x}_t}{ \hparam_t} +  \sum_{t=1}^T\dotp{\tilde{x}_t}{\hparam_t}-\dotp{\tilde{x}_t}{ \theta^{\star}}\\
+& \eqqcolon   \cR^{\PE}(T)  + \cR^{\PVT}(T)  + \cR^{\RLS}(T).
+\$
+
+$\cR^{RLS}(T)$ is the regret due to the estimation error of the RLS estimator. Note that $\tilde{x}_t$'s are the action sequence used to construct the RLS estimate. By Proposition~\ref{prop:potential} their cumulative $V_t^{-1}$-norm is bounded by $2d\log(1+t/\lambda)$. Hence the upper bound of $\cR^{RLS}(T)$ is essentially determined by the $V_t$-distance between $\hparam_t$ and $\param$, which are characterized by the confidence ellipsoids $\cE^{RLS}_t$. $\cR^{\PVT}(T)$ corresponds to the regret due to the exploration of POFUL by choosing the pivot parameter $\tilde{\theta}_t\in\cE^{\PVT}_t$. Similar to  $\cR^{RLS}(T)$, the upperbound is related to the $V_t$-distance between $\tparam_t$ and $\hparam_t$, which is controlled by construction and depends on the inflation parameter $\iota_t$. As a result, it can be shown that 
+$\cR^{RLS}(T)  = \tilde{\cO}(d\sqrt{T}) $ and $\cR^{\PVT}(T)  = \tilde{\cO}(d(\sum_{t = 1}^T \iota_{t}^2)^{1/2}) $ with probability $1-\delta$.  Notably, $\cR^{RLS}(T) = \tilde{\cO}(d\sqrt{T})  $, matching the known minimax lowerbound. For $\cR^{\PVT}(T)$ to match this lower bound as well, one way is to set $\iota_{t}=
+\tilde{\cO}(1)$ for all $t\in[T]$. However, later we see this could be problematic for bounding $\cR^{PE}(T)$.
+
+$\cR^{PE}(T)$ corresponds to the pessimism term.  In the Bayesian analysis of LinTS, the expectation of this term is $0$, with respect to $\theta^\star$, as long as $\tparam_t$ and $\param$ are sampled from the same distribution which occurs when LinTS has access to the true prior distribution for $\theta^\star$. In the frequentist analysis, however, we need to control the pessimism term incurred by any random sample $\tparam_t$. For OFUL, this term is bounded properly with high probability by the construction of OFUL actions. For LinTS, the only known analysis due to \cite{agrawal2013thompson,abeille2017linear} gives a bound of order $\tilde{\cO}(d\sqrt{dT})$ using an optimism-based approach, which is worse than the Bayesian regret by a factor of $\sqrt{d}$. The key component of their proof is introducing inflation to the posterior variance by setting $\iota_t =\tilde{\cO}(\sqrt{d})$. In \cite{abeille2017linear},  the inflation is necessary for them to lower bound the probability that LinTS samples optimistic $\tparam_t$ that leads to a nonpositive pessimism i.e. $\dotp{x_t^\star}{ \theta^{\star}}\leq \dotp{\tilde{x}_t}{\tilde{\theta}_t}$ with a constant probability. For Greedy, there isn't a general theoretical guarantee to bound the pessimism term without additional structures. The way of bounding it distinguishes our method from the methods based on optimism \citep{agrawal2013thompson,abeille2017linear}, and enables us to improve the frequentist regret of LinTS and Greedy that cannot be analyzed by the optimism-based methods. 
+\begin{comment}
+	The requirement of sampling optimistic $\tilde\theta_t$ makes the inflation of posterior necessary, however, it also leads to the extra $\sqrt{d}$-factor in regret for such optimism-based approaches. Nevertheless, there is evidence showing that optimism might be a too strong requirement \citep{lattimore2017end} for linear bandit problems. 
+\end{comment}
+
+
+In fact, non-optimistic samples might be able to control the pessimism term. Our method does not force choosing optimistic samples and hence there is no need to inflate the posterior. As a result, it does not introduce a $\sqrt{d}$-gap in the regret. Instead, we introduce a measurement of the ``quality'' of POFUL actions with respect to the regret, and develop a computable upper bound for this quality using geometric approaches. The main merits are an instance-dependent regret bound for POFUL that matches the minimax optimal regret in some settings, and variants of LinTS and Greedy with provable frequentist regret bound that is minimax optimal up to only a constant factor. 
+
+\subsection{An Instance-Dependent Regret Bound for POFUL}
+
+In the following, we condition on the event $\cA_T$  which holds with probability $1-\delta$. The following proposition bounds the instantaneous regret of POFUL and we defer the proof to Appendix~\ref{proof:instantaneous}.
+\begin{proposition}\label{prop:instantaneous}
+Suppose ${\theta}^\star \in \cE_t^{RLS}(\delta^\prime) $ and $\tilde{\theta}_t \in \cE_t^{\PVT}(\delta ^\prime)$, it holds that 
+	\$
+\dotp{x_t^\star}{ \theta^{\star}}-\dotp{\tilde{x}_t}{\theta^{\star}}\leq (1+\iota_t-\tau_t)\|x^{\star}_t\|_{V^{-1}_t}\beta_t^{RLS}(\delta^\prime) +   (1+\iota_t+\tau_t)\|\tilde{x}_t\|_{V^{-1}_t}\beta_t^{RLS}(\delta^\prime).
+\$
+\end{proposition}
+
+
+
+
+
+
+On the right-hand side, since the oracle optimal action sequence  $\{x^{\star}_t\}_{t\in[T]}$ is unknown to the algorithm and is different from the action sequence  $\{\tilde{x}_t\}_{t\in[T]}$ played by POFUL, one cannot apply Proposition~\ref{prop:potential} to bound the summation $\sum_{t=1}^T \left\|\tilde{x}_t\right\|_{V_t^{-1}}^2 $ to get an upperbound of the regret. To fix the problem due to this discrepancy,  the key point is connecting  $\{\tilde{x}_t\}_{t\in[T]}$ and $\{x^{\star}_t\}_{t\in[T]}$ in terms of the $V_t^{-1}$-norm. This motivates the following definition.
+
+
+
+
+\begin{definition}
+	For each $t\geq 1$, let $\tilde{x}_t$ and $x_t^\star$ respectively denote the action chosen by POFUL and the optimal action.  We define the \emph{uncertainty ratio} at time $t$ as $\alpha_t \coloneqq \|x_t^\star\|_{V_t^{-1}}/\|\tilde{x}_t\|_{V_t^{-1}}    $. We also define the \emph{(instantaneous) regret proxy} at time $t$ as $\mu_t  \coloneqq  \alpha_t(1+\iota_t -\tau_t)+1+\iota_t+\tau_t$. 
+
+	
+
+\end{definition}
+
+Note that $ \dotp{x}{\widehat{\theta}_t-\theta^{\star}}\leq\|x\|_{V_t^{-1}} \beta_t^{RLS}
+$ holds with high probability, we have that $\|x\|_{V_t^{-1}} $ essentially determines the length of the confidence interval of the reward $\dotp{x}{\theta^{\star}}$.  Hence, $\alpha_t$ serves as the ratio of uncertainty degrees of the reward obtained by the optimal action $x^{\star}_t$ and the chosen action $\tilde{x}_t$.
+
+
+ 
+The intuition behind the definition for $\mu_t$ is constructing a regret upper bound similar to that of OFUL.  Specifically,  Proposition~\ref{prop:instantaneous} indicates
+$ \dotp{x_t^\star}{ \theta^{\star}}-\dotp{\tilde{x}_t}{\theta^{\star}} \leq \mu_t  \|\tilde{x}_t\|_{V_t^{-1}} \beta^{RLS}_t
+$,
+and we can check that the instantaneous regret of OFUL satisfies 
+$\dotp{x_t^\star}{ \theta^{\star}}-\dotp{\tilde{x}_t}{\theta^{\star}} \leq 2\|\tilde{x}_t\|_{V_t^{-1}}   \beta^{RLS}_t$. In this sense, $\mu_t$ is a proxy of the instantaneous regret incurred by POFUL at time $t$. Moreover, OFUL can be regarded as a POFUL algorithm whose $\mu_t$ is fixed at 2, and we could extend the definition of $\alpha_t$ to OFUL by solving $\mu_t  =  \alpha_t(1+\iota_t -\tau_t)+1+\iota_t+\tau_t$ and set $\alpha_t \equiv 1 $ for OFUL (recall $\iota_t  \equiv 0$ and $\tau_t \equiv 1$ for OFUL). 
+
+The following Theorem connects $\{\mu_t\}_{t\in[T]}$ and $\cR(T)$ and we postpone the proof to Appendix~\ref{sec:proof_regret}. It provides an oracle but general frequentist regret upper bound for all POFUL algorithms.
+
+
+\begin{theorem}[Oracle frequentist regret bound for POFUL] 
+\label{thm:oracle_regret} Fix $\delta \in(0,1)$ and let $\delta^\prime = \delta/2T$. Under Assumptions~\ref{assump:bounded-parameter}, \ref{assump:bounded-action-sets} and \ref{assump:noise}, with probability $1-\delta$, 
+POFUL achieves a frequentist regret of
+\#\label{eq:oracle_regret_wo_inflation}
+\cR(T) \leq     \sqrt{2 d \left(\sum_{t=1}^T\mu_t^2\right)\log \left(1+\frac{T}{\lambda}\right) 
+ }\beta_T^{RLS}(\delta^\prime).
+\#
+\end{theorem}
+
+\begin{remark}
+	We call Theorem~\ref{thm:oracle_regret} an  \emph{oracle} regret bound as  $\{\mu_t\}_{t\in[T]}$ for general POFUL depends on the unknown system parameter $\param$. In general, they cannot be calculated by the decision-maker. Nevertheless, note that $(1+\iota_t -\tau_t) \geq 0$ for OFUL, LinTS, and Greedy. Suppose we can derive computable upper bounds $\{\hat{\alpha}_t\}_{t\in[T]}$ for $\{\alpha_t\}_{t\in[T]}$ respectively, then we could calculate upper bounds for $\{\mu_t\}_{t\in[T]}$ as well, and Theorem~\ref{thm:oracle_regret} instantly turns into a data-driven regret bound for POFUL, and could be utilized later for the course correction. This is indeed our aim in the next section and we achieve it using geometric arguments.
+\end{remark}
+
+
+
+\begin{remark}
+	A similar notion of (the reciprocal of) our $\alpha_t$ can be found in the Discussion section in \citet{abeille2017linear}, where they indicate their proof of regret bound for LinTS can be reproduced if LinTS samples $\tilde{\theta}_t$  satisfying $\|x^\star(\tparam_t)\|_{V_t^{-1}} \geq \alpha \|x^\star(\param_t)\|_{V_t^{-1}} $ with constant probability for some $\alpha>0$. They comment that the set of these parameters doesn't coincide with the set of optimistic parameters and it remains an open problem whether one could relax the requirement of oversampling the posterior through this observation. Our work answers this question positively in the next section by investigating the property of (the reciprocal of their)  $\alpha$ using geometric arguments, providing 
+an explanation for LinTS's empirical success.	
+\end{remark}
+
+
+
+
+
+
+
+
+ 
+
+
+

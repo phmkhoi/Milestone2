@@ -1,0 +1,2057 @@
+\documentclass[12pt,a4paper]{JHEP3}
+
+%%%%%%%%%%%%%%
+\usepackage{amscd,amsmath,amssymb,amsfonts,xspace,mathtools}
+  \usepackage{xcolor}
+  \usepackage{tikz-cd}
+  \let\normalcolor\relax      
+% \usepackage{showlabels}
+%\usepackage{bbold}
+\usepackage{latexsym}  
+ \usepackage{graphicx} 
+ 
+% \usepackage[english]{babel}  
+%\usepackage{refcheck}  
+    
+\usepackage{graphicx, subfig, float}
+%%%%%%%%%%%%%
+
+\usepackage{epsfig,amsfonts,amssymb}
+%\usepackage{amsmath}
+%\usepackage{textcomp,wasysym}
+%\usepackage{phaistos,hieroglf}
+%%\usepackage{maths_min}
+%\usepackage[margin=2.5cm]{geometry}
+%\usepackage[pdftex, breaklinks=true, linktocpage,
+%colorlinks=true, urlcolor=blue, linkcolor=blue, citecolor=red]{hyperref}
+%\usepackage[all]{hypcap}
+%\usepackage[colorlinks=true,urlcolor=blue,linkcolor=blue]{hyperref}
+%\usepackage{cite}
+%%\usepackage{hyperref}
+%%\usepackage{tikz}
+\usepackage{framed}
+%\usepackage{breqn}
+%\usepackage{flexisym}
+%\usepackage[english]{babel}
+%%\usepackage{refcheck}
+%
+%\usepackage{ifpdf}
+%\usepackage[utf8]{inputenc}
+%\usepackage{longtable}
+%\usepackage{young}
+%\usepackage[makeroom]{cancel}
+%\usepackage[normalem]{ulem}
+%\usepackage{framed}
+%\usepackage{verbatim}
+%\usepackage{fancyhdr}
+%\usepackage[all]{hypcap}
+%\usepackage{bm, bbm}
+%\usepackage[usenames, dvipsnames]{xcolor}
+%\usepackage{tikz-cd}
+%
+%\usepackage{eurosym, xspace}
+%\usepackage[nottoc]{tocbibind}
+%\usepackage{graphicx, subfig, float}
+%\usepackage[multiple]{footmisc}
+%\usepackage{authblk}
+%
+%\pagestyle{plain}
+%\graphicspath{{images/}}
+%\usepackage[sort&compress, english]{cleveref}
+
+\hoffset=-1in
+\voffset=-1in 
+\textwidth=16.7cm
+\oddsidemargin=2.2cm
+\evensidemargin=2.2cm
+\topmargin=-0.2cm
+\textheight=24.0cm
+
+\newcommand{\refb}[1]{(\ref{#1})}
+\newcommand{\Tr}{\mathop{\mathrm{Tr}}}
+\newcommand{\Pf}{\mathop{\mathrm{Pf}}}
+%\newcommand{\det}{\mathop{\mathrm{det}}}
+%\newcommand{\log}{\mathop{\mathrm{log}}}
+\newcommand{\Res}{\mathop{\mathrm{Res}}}
+\newcommand{\sgn}{\mathop{\mathrm{sgn}}}
+\newcommand{\nn}{\ensuremath{\nonumber{}}}
+%
+
+
+\title{Black holes and the loss landscape in machine learning}
+
+
+\author{Pranav Kumar$^1$, Taniya Mandal$^2$, Swapnamay Mondal$^3$ 
+\\
+$^1$ {\it Capgemini Engineering R \& D, Kadubisanahalli, Bengaluru, 560103, India} \\
+$^2$ {\it Department of Physics, Indian Institute of Technology Kanpur, Kalyanpur, Kanpur 208016, India}
+\\
+$^3$ {\it Dublin Institute for Advanced Studies, 10 Burlington Road, Dublin, Ireland}
+\\
+\vspace*{2mm}\\
+{\tt e-mail: pranavkr29@gmail.com, taniyam@iitk.ac.in, swapno@maths.tcd.ie }
+\vspace*{-3mm}
+}  
+ 
+%\centerline{\bf Abstract} \bigskip
+
+\abstract{
+Understanding the loss landscape is an important problem in machine learning. 
+One key feature  of the loss function, common to many neural network architectures, is the presence of exponentially many low lying local minima. 
+Physical systems with similar energy landscapes may provide useful insights.
+In this work, we point out that black holes naturally give rise to such landscapes, owing to the existence of black hole entropy. 
+For definiteness, we consider 1/8 BPS black holes in $\mathcal{N}=8$ string theory. These provide an infinite family of potential landscapes arising in the microscopic descriptions of corresponding black holes. The counting of minima amounts to black hole microstate counting. Moreover, the exact numbers of the minima for these landscapes are a priori known from dualities in string  theory. 
+Some of the minima are connected by  paths of low loss values, resembling mode connectivity.
+We  estimate the number of runs needed to find all the solutions. Initial explorations suggest that Stochastic Gradient Descent can find a significant fraction of the minima.
+} 
+
+ 
+\begin{document}
+ 
+\maketitle
+
+\pagebreak
+%%%%%%%%%%%%%%%%%%%%%%st%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Introduction and summary}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Machine learning has achieved tremendous success in various applications of practical interest \cite{NIPS2012_c399862d, 5740583, Manning}, as well as in more academic endeavours involving large datasets. These include, but are not limited to, string theory landscape \cite{He:2017aed,He:2017set,Ruehle:2017mzq,Carifio:2017bov,Mutter:2018sra,He:2021eiu}, 
+Calabi Yau manifolds \cite{Bull:2018uow, Bull:2019cij,Jejjala:2020wcc,Berglund:2022gvm,Erbin:2020srm,Erbin:2020tks,He:2020lbz,Anderson:2020hux,Berman:2021mcw,Erbin:2021hmx},
+knot invariants \cite{Craven:2020bdz,Craven:2021ckk,Craven:2022cxe, Gukov:2020qaj}, 
+holography \cite{Hashimoto:2018ftp,Hashimoto:2018bnb,Tan:2019czc,Akutagawa:2020yeo, Yan:2020wcd}, conformal field theory \cite{Chen:2020dxg, Basu:2022qaf, Kuo:2021lvu, Kantor:2021kbx,Kantor:2021jpz,Kantor:2022epi}, Lie groups \cite{Chen:2020jjw,Lal:2022otf}. Connections between deep learning and quantum field theory have been explored in \cite{Koch:2019fxy,Halverson:2020trp,Maiti:2021fpy,Halverson:2021aot, Erbin:2021kqf,Grosvenor:2021eol,Erbin:2022lls,Banta:2023kqe}.
+ Also see \cite{CaboBizet:2020cse,Hashimoto:2019bih,Betzler:2020rfg,Krippendorf:2020gny,Bao:2020nbi,Ruehle:2020jrk,He:2023csq, bedolla2020machine,samarakoon2021machine,carrasquilla2017machine,decelle2022introduction,RevModPhys.91.045002} for other applications of machine learning in Physics.  
+
+Most machine learning tasks amount to choosing an optimal Neural Network (NN). This  is usually done by first defining a loss function, which depends on various parameters of the NN (and number in millions in realistic applications), then one finds a suitable minima of the loss function, often by Stochastic Gradient Descent (SGD) \cite{EonBottou1998OnlineLA}. 
+Thus gaining an understanding of the loss function landscape is crucial for machine learning.
+
+
+The loss function, also referred to as the cost function,  is in general a non-convex function. Finding a global minimum of a general non-convex function is hard \cite{10.1162/089976602760408035, livni2014computational, shalevshwartz2017failures}, in fact NP-hard \cite{Murty1987SomeNP}, \cite{10.5555/2969735.2969792}.
+Nevertheless in practice optimizing a Deep Neural Network (DNN) is usually possible. This has led many to believe that after all, for DNN-s the loss function does not have spurious local minima \cite{freeman2017topology, hoffer2018train, soudry2016bad}.
+
+This is indeed the case for shallow linear NN-s, which have only saddles and no local minima \cite{BALDI198953}. For  deep linear networks, all local minima of the  squared loss function are global, with other critical points being saddles \cite{kawaguchi2016deep}. It has been further argued  that the same holds true for non-linear networks, under certain assumptions \cite{kawaguchi2016deep}. 
+For a fully connected network with squared loss and analytic activation function, all minima have been argued to be global \cite{nguyen2017loss}.  Similar results were previously shown in \cite{107014, fra, 410380}.
+
+Although optimization of deep linear models exhibits some similarities with optimization of deep non-linear  models \cite{saxe2014exact},  ``local implies global'' picture seems not to carry over to non-linear DNN-s.
+E.g. spurious minima have been shown to exist for shallow Rectified Linear Unit (ReLU) networks \cite{safran2018spurious}. It  has been suggested that absence of spurious local minima might be a feature specific to deep linear networks and might be destroyed as soon as non-linearity is introduced  \cite{yun2019small, zou2018stochastic, swirszcz2017local}.  For Convolutional Neural Networks (CNN) with  piecewise linear activation function, spurious minima have been argued to be common \cite{liu2021spurious}.
+
+
+Local or global, exponentially many minima seems to be a generic feature of the loss function. 
+Typically DNNs involve millions of parameters, but even for moderately sized networks, the number of local optima and saddle points already shows exponential growth in the number of parameters \cite{NIPS1995_3806734b, NIPS1996_a51fb975, choromanska2015loss, pmlr-v38-choromanska15}.
+Existing evidence suggests that critical points that lie high on the loss landscape are more likely to be saddles, whereas low-lying critical points are more likely to be local minima \cite{Ramu-2005, Bray_2007, fyodorov2007replica}. It has been argued that the main obstacle in finding global minimum comes not from local minima, but from saddles \cite{dauphin2014identifying, pascanu2014saddle}.
+
+%%%{\color{red}Connect better}.\\
+Apart from these generalities, realistic DNN-s are too complicated to admit much analytical understanding.
+Thus it is useful to study simpler models, which captures broad features  of DNN-s \cite{Goodfellow-et-al-2016}. 
+Physical systems are particularly appealing in this regard, as they can often provide a physics way of thinking about NN optimization.
+
+Connection to Physics is usually made by interpreting the loss function as some sort of energy. Glassy systems present natural candidates as their energy landscapes necessarily have many minima. Indeed, connection between NN-s and spin glasses has been known for quite some time \cite{PhysRevA.32.1007, Nakanishi_1997}. 
+More recently, the loss function of a fully-connected feed-forward deep network with ReLUs  has been related to the Hamiltonian of a spin glass model \cite{choromanska2015loss, pmlr-v38-choromanska15, pmlr-v40-Choromanska15}. Critical points in these models have a layered structure \cite{auffinger2011random, Auffinger_2013}. 
+Nevertheless, similarities of DNN and glassy systems are limited \cite{Baity_Jesi_2019}. Most significantly, getting stuck at local minima for long time is the quintessential glassy behaviour \cite{bouchaud1997equilibrium, cugliandolo2002dynamics, Berthier_2011}, whereas  DNN-s somehow manage to find their minima. 
+
+Other approaches to understand the loss landscape include algebraic geometric approach \cite{mehta2018loss} and energy landscape approach \cite{C7CP01108C}. The later is known to be particularly useful in study of molecules \cite{Wales}.
+
+%%% \item
+Our goal in this work is rather humble. We point out that the physical potential of certain microscopic descriptions of black holes in string theory capture some key features of the loss landscape. 
+The motivation for this work is to relate exponential degeneracy of loss function minima to the exponential degeneracy of quantum states in a statistical mechanical system.  This connection can be made explicit for supersymmetric black holes, where the black hole entropy implies the existence of exponentially many degenerate states, which in turn can be related to the minima of a potential through supersymmetric quantum mechanics.
+Whereas connection between statistical mechanics and machine learning has been explored in the literature  \cite{doi:10.1146/annurev-statistics-032921-013738, doi:10.1146/annurev-conmatphys-031119-050745}, this particular  angle has not been  explored to the best of our knowledge. 
+
+
+
+%%% \item
+A black hole carries an entropy $S_{BH} = \frac{A}{4 \ell_P^2}$, called Bekenstein-Hawking entropy \cite{Bekenstein1, Bekenstein2, BCH, Hawking75}. Here $A$ is the area of the event horizon of the black hole and $\ell_P= \sqrt{\frac{G \hbar}{c^3}}$ is the Planck length, G is the Newton's constant, $\hbar$ is the  Planck's constant and $c$ is velocity of light. Providing  a statistical mechanical interpretation of this entropy is a highly non-trivial challenge, supposed to be addressed by a theory of quantum gravity, such as string theory. 
+
+In deed, $S_{BH}$ is reproduced from microscopic state counting in a wide variety of black holes in string theory \cite{Strominger:1996sh, Maldacena:1997de, Shih:2005qf}. It is done by providing a ``microscopic description'' of a black hole as a bound state of more fundamental solitonic objects in string theory, then coming up with a  low energy description  of that bound state dynamics and finally counting states carrying appropriate quantum numbers. In all known cases, this microscopic counting accounts for $S_{BH}$, when the black hole is large, which is reflected in largeness of the quantum numbers. 
+
+Microscopic descriptions of black holes come in a wide variety in string theory. For definiteness, we consider 1/8 BPS black holes in N=8 String theory, carrying only Ramond-Ramond charges. The microscopic description of such black holes is given by bound state of D-branes, whose low energy dynamics is captured by a supersymmetric quantum mechanics with matrix and vector-like degrees of freedom \cite{Chowdhury:2014yca, Chowdhury:2015gbk}. 
+The number of potential minima of this supersymmetric quantum mechanics approaches $e^{S_{BH}}$ asymptotically for large charges, i.e. for large black holes.
+ Nevertheless, thanks to the dualities in string theory, the exact number of potential minima is known (without actually finding those) for arbitrary charges \cite{Shih:2005qf, Sen:2009gy}. This is a notable advantage over spin glass models for the loss landscape. E.g. testing the efficiency of an algorithm in finding different global minima is easier in current setting, as the exact number of minima is already known.
+
+The black holes under consideration carry four kinds of electro-magnetic charges, three of which we take to be 1, and consider one parameter family of black holes labelled by the fourth charge, which we denote by $N$. For large $N$, the number of minima grows as $e^{2\pi \sqrt{N} - 2 \ln{} 4N}$. For few small $N$-s, the number of minima are given in Table \ref{indextable}. Note that all the minima are global.
+%
+%
+\begin{table}[htb]
+\begin{center}
+\begin{tabular}{|c||c|c|c|c|c|c|c|c|c|c|c}
+\hline
+N & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 & 10\\
+\hline
+number of minima  & 12 & 56 & 208 & 684 & 2032 & 5616 & 14592 & 36088 & 85500 & 195312\\
+\hline
+\end{tabular}
+\end{center}
+\caption{Number of minima of the potential landscape for small charges}\label{indextable}
+\end{table}
+%
+
+For non-linear DNN-s, a more desirable landscape would have been one with exponentially many low lying local minima, only one of which is global. Such a landscape might be obtainable by spontaneously breaking the supersymmetry. But we shall not explore this possibility in this work.
+
+The paper is organized as follows. In Section \ref{s2}, we give a quick introduction to black hole entropy, and explain how it arises in string theory. Readers familiar with the topic can jump to Section \ref{s3}, where we discuss the relevant potential to be minimized \refb{V_F}. In section \ref{s4}, we estimate the number of runs required to find all the minima and discuss the performance of Stochastic Gradient Descent in this regard. In section \ref{s5} we discuss future directions.
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{A brief introduction to black hole entropy in string theory} \label{s2}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+This section contains well known facts about black holes in string theory and readers familiar with the subject can skip this section.
+
+\paragraph{A quick introduction to black hole entropy:}
+Black holes are astronomical objects, formed by collapse of  dead stars. Their claim to fame is that nothing, not even light, can escape their gravitational  pull.
+From a theoretical perspective, black holes are solutions to Einstein's equations with event horizon. A curious feature of such solutions is that they are entirely fixed by a handful  of parameters, such as mass, angular  momentum, electric and magnetic charges etc, and therefore leaving no scope for any microstructure and hence any entropy. However this is rather problematic, since one could violate the second law of thermodynamics, by simply throwing an entropic object into a black hole. Making use of an existing result in classical gravity that area of the event horizon  of a black hole does not go down in a physical process \cite{PhysRevLett.26.1344}, Bekenstein proposed that a black hole should be assigned an entropy proportional to the area of its event horizon \cite{Bekenstein1, Bekenstein2}. In fact it was shown in \cite{BCH} that the ``laws of black hole mechanics'' have striking resemblance with the laws of black  hole mechanics, although it was unclear whether this was a coincidence or not. In particular a black hole with non-zero temperature, is expected to emit thermal radiation, which would contradict the very  definition of a black hole.
+
+This issue was settled by Hawking as he found that quantum mechanically black holes emit thermal radiation \cite{Hawking75}, with a temperature consistent with the findings of  \cite{BCH}. In particular, this work led to a precise formula for black hole entropy
+\begin{align}
+S_{BH} &= \frac{A}{4 \ell_P^2} \, , \quad  \ell_P= \sqrt{\frac{G \hbar}{c^3}} \, . \label{Sbh}
+\end{align} 
+This remarkable finding however led to only deeper puzzles. Now that black holes are understood to have an entropy, as  per standard statistical mechanical understanding of entropy, there must also exist $e^{S_{BH}}$ black hole  microstates. Classical gravity leaves us clueless, whereas the appearance of the Planck length $\ell_P$ in the black hole entropy formula \refb{Sbh}, suggests that answers lie in a theory of quantum gravity, such as string theory.
+
+\paragraph{How black holes arise in string theory:}
+The low energy physics of string theory is captured by supergravity theories. These supergravity theories have black hole solutions. The black holes considered in this paper, are of this type. By  the virtue of being embedded in string theory, it is often possible have an understanding of their microstates.
+
+%Furthermore, the supergravity theories have multiple $U(1)$ gauge fields and there exist black holes, charged under these gauge fields. In fact, we will restrict 
+
+We will restrict to black hole solutions, that preserve some supersymmetry. Such black holes are extremal, namely ``their charge equals mass''. Here charge refers to charge (both electric and magnetic) under various U(1) gauge fields of supergravity. 
+These charges are meaningful even beyond four dimensional supergravity, in particulars their carriers can be identified as membrane  like objects (called D-branes) in full string theory. This provides an alternative description of black holes as bound states of D-branes. This description, usually referred to as microscopic description, makes the microstates manifest. 
+
+Extremal black holes carry zero temperature and hence the entropy is simply the logarithm of ground state degeneracy\footnote{The distinction between degeneracy and the index (the $14^{th}$ helicity supertrace in this case) is not too relevant for this work.}. 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{The potential landscape in microscopic description of black holes} \label{s3}
+
+
+In most well known examples, the microscopic description of black holes is a two dimensional  Conformal Field Theory (CFT) \cite{Strominger:1996sh, Maldacena:1997de}. In such description, one looks for degeneracy of states at a given CFT level, which is captured by Cardy formula \cite{PhysRevLett.26.1344}. In this approach there is no energy landscape involved. 
+
+Since we are looking for a potential landscape with ground states corresponding to its minima, quantum mechanical, i.e. 0+1 dimensional microscopic descriptions are better suited. For supersymmetric black holes, this quantum mechanics is supersymmetric, i.e. preserves some supercharges, which annihilate the ground states. For supersymmetric  quantum mechanics (SQM), it is known that the index $\mathcal{I} := N_B - N_F$ is  given by the Euler characteristic of the vacuum manifold, i.e. manifold on which the potential vanishes \cite{Witten_morse, Schellekens_Warner, Witten_elliptic}. Since the potential is a sum of squares in this case, vacuum manifold is also the space of minima. In general, this vacuum manifold is a continuous space and its cohomology corresponds to the space spanned by the supersymmetric ground states.
+%are in one to one correspondence with the supersymmetric ground states, with 
+Rank  of a form decides the bosonic/fermionic nature of  the corresponding state.  
+
+For spherically symmetric supersymmetric black holes in four space time dimensions, Zero Angular Momentum Conjecture \cite{Chowdhury:2015gbk} further implies that the black hole microstates lie in middle cohomology\footnote{The group of spatial rotations has been identified as Lefschetz SU(2) acting on the cohomology of the moduli  space \cite{Denef:2002ru, Bena:2012hf}.}, and carry zero angular momentum \cite{Sen:2009gy, Dabholkar:2010rm, Sen:2011ktd, Bringmann:2012zr}.  This in particular implies $N_F=0$, thus the degeneracy $d = N_B + N_F$ equals the index $\mathcal{I}$. 
+
+Zero Angular Momentum Conjecture implies that the vacuum manifold is a set of points, in which case the cohomology only contains 0-forms%\footnote{It should be mentioned that Quiver Quantum Mechanics, which describes bound state of black holes, typically gives rise to a continuous vacuum manifold, and hence states carrying non-zero angular momentum. Nevertheless, when the quiver has loops, there are exponentially many states in the middle cohomology.}
+. 
+Each discreet global minima is associated with a 0-form, i.e. a black hole microstate.
+%The 0-forms are in one to one correspondence with the global minima in this case, and hence each global minima corresponds to a black hole microstate.
+ Consequently,  the number of global minima equals the degeneracy, which is the exponential of the black hole entropy. This possibility is realized by 1/8 BPS black holes in $\mathcal{N}=8$ string theory, in a duality frame, where all charges are carried by D-branes \cite{Chowdhury:2014yca, Chowdhury:2015gbk}.
+
+Other relevant quantum mechanical descriptions include quiver quantum mechanics \cite{Denef:2002ru}, especially scaling quivers \cite{Bena:2012hf, Chattopadhyaya:2021rdi, Beaujard:2021fsk}, which share many similarities with single centered black holes. Whereas such quivers do exhibit exponentially many states in the middle cohomology, the vacuum manifold is not a discreet set of points, hence not particularly suitable for the present purpose. 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{The system}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+The system involves a single D2 brane stretched along the spatial directions $x^4, x^5$, a single D2 brane stretched along the spatial directions $x^6, x^7$, a single D2 brane stretched along the spatial directions $x^8, x^9$,  and N D6 branes stretched along the spatial directions $x^4, x^5,x^6, x^7,x^8, x^9$. This D-brane configuration is summarized in the Table \ref{Dconfig}.
+%
+\begin{table}[htb]
+\begin{center}
+\begin{tabular}{|c||c|c|c|c|c|c|c|c|c|c}
+\hline
+& 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 \\
+\hline
+D2 &  &  &  & $\checkmark$ & $\checkmark$ &  &  &  &  \\
+\hline
+D2 &  &  &  &  &  & $\checkmark$ & $\checkmark$ &  &  \\
+\hline
+D2 &  &  &  &  &  &  &  & $\checkmark$ & $\checkmark$ \\
+\hline
+D6 &  &  &  & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ \\
+\hline
+\end{tabular}
+\end{center}
+\caption{The D-brane configuration}\label{Dconfig}
+\end{table}
+%
+
+Note that there is no spatial direction along which all  the D-branes extend. Thus the low energy dynamics is that of an effective particle.
+%Thus the D-branes intersect at a point and hence should be described by a quantum mechanics, i.e. a 0+1 dimensional theory. 
+This feature is rather distinctive, as very often the low energy dynamics of microscopic descriptions of black hole in string theory is captured by an effective string \cite{Strominger:1996sh, Maldacena:1997de}. 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Field content and gauge symmetry}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Excitation modes of the system correspond to to the modes of open strings stretched between these branes. Further the massless modes are the most relevant ones for low energy physics. Such modes/fields can be arranged in supersymmetric multiplets. We shall use the 4 dimensional supermultiplets, dimensionally reduced to $1$ dimension, i.e. only time.
+
+There are two different types of open strings: strings starting and ending on the same brane and strings starting and ending on different branes.
+\begin{enumerate}
+\item
+For each brane, first kind of strings give rise to the field content of $\mathcal{N}=4$ super  Yang Mills theory, which has a $\mathcal{N}=1$ vector multiplet and three $\mathcal{N}=1$ chiral multiplets. The bosonic content of these multiplets are summarized in Table \ref{adjfield}:
+%
+%
+\begin{table}[htb]
+\begin{center}
+\begin{tabular}{|c||c|c|c|c|c|c|c|c|c|c}
+\hline
+& 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 \\
+\hline
+D2 & $X_1^{1}$ & $X_2^{1}$ & $X_3^{1}$ & Re $\Phi^1_1$ & Im $\Phi^1_1$ & Re $\Phi^1_2$ & Im $\Phi^1_2$ &  Re $\Phi^1_3$ &  Im $\Phi^1_3$ \\
+\hline
+D2 & $X_1^{2}$ & $X_2^{2}$ & $X_3^{2}$ & Re $\Phi^2_1$ & Im $\Phi^2_1$ & Re $\Phi^2_2$ &  Im $\Phi^2_2$ & Re $\Phi^2_3$ & Im $\Phi^2_3$ \\
+\hline
+D2 & $X_1^{3}$ & $X_2^{3}$ & $X_3^{3}$ & Re $\Phi^3_1$ & Im $\Phi^3_1$ &  Re $\Phi^3_2$ &  Im $\Phi^3_2$ & Re $\Phi^3_3$ & Im $\Phi^3_3$ \\
+\hline
+D6 & $X_1^{4}$ & $X_2^{4}$ & $X_3^{4}$ & Re $\Phi^4_1$ & Im $\Phi^4_1$ & Re $\Phi^4_2$ &  Im $\Phi^4_2$ & Re $\Phi^4_3$ & Im $\Phi^4_3$ \\
+\hline
+\end{tabular}
+\end{center}
+\caption{Bosonic fields coming from strings starting and ending on the same D-brane}\label{adjfield}
+\end{table}
+The superscripts denote the stack number. $(X_1^{k}, X_2^{k} , X_3^{k})$ describe the position of the $k^{th}$ brane in 3 dimensional non-compact space. $\Phi^k_{1,2,3} = \text{Re} \Phi^k_{1,2,3} + i \, \text{Im} \Phi^k_{1,2,3}$ respectively describe position of the $k^{th}$ brane along compact 4-5, 6-7 and 8-9 directions\footnote{These directions are compact, but as long as separation of diffent D-branes along  these directions are small, effects of compactness will not be relevant.}.
+
+
+A stack of $N$ D-branes comes with a $U(N)$ gauge symmetry. Thus the three D2 branes are associated with three different $U(1)$ symmetries, whereas the D6 brane stack is associated with a $U(N)$ symmetry. Fields described above furnish adjoint representations of respective gauge groups. Since $U(1)$ acts trivially on adjoints, this means the fields on first three rows of Table \ref{adjfield} are gauge invariant or scalars, whereas those on the last row are $N \times N$ matrices transforming in adjoint representation of $U(N)$. 
+
+\item
+The second kind of strings for every pair $(kl)$ of branes  give rise to $\mathcal{N}=2$ hypermultiplet, or equivalently two $\mathcal{N}=1$ chiral multiplets $Z^{kl}, Z^{lk}$. We will abuse notation to denote the complex scalars of these multiplets by the same name. 
+$Z^{kl}$ transforms as fundamental under $U(N_k)$ and anti-fundamental under $U(N_l)$. Here $N_k=1$ for $k=1,2,3$ and N for k=4. 
+\end{enumerate}
+Note, no field is charged under the overall $U(1)$. Hence the gauge symmetry of the system is $U(1) \times U(1) \times U(N)$, where  the two $U(1)$-s can be taken to be any two relative $U(1)$.
+
+A D-brane system spontaneously breaks various translational symmetries of the ambient spacetime. These broken symmetries appear as Goldstones in the worldvolume theory of the D-branes. For the system  at hand these are
+\begin{align}
+\sum_{k=1}^3 \vec{X}^k + \frac{1}{N} \Tr{} \vec{X}^{4} \, , \, \Phi^1_1 + \frac{1}{N} \Tr{} \Phi^{4}_1  \, , \, \Phi^2_2 + \frac{1}{N} \Tr{} \Phi^{4}_2  \, , \, \Phi^3_3 + \frac{1}{N} \Tr{} \Phi^{4}_3  \, , \, \Phi^1_2 + \Phi^3_2 \, , \, \Phi^1_3 + \Phi^2_3 \, , \, \Phi^2_1 + \Phi^3_1 \, . \label{Goldstone}
+\end{align}
+The 7 supermultiplets containing these fields decouple from the dynamics. Fermions in these multiplets, which account for 28 off-shell degrees of freedom, correspond to the broken supersymmetries. This perfectly matches the fact that system preserves 4 real supercharges ($\mathcal{N}=1$ in 4 dimensional language) out of total 32 ($\mathcal{N}=8$ in 4 dimensional language).
+
+Among the $\Phi$ fields, we can use translational symmetry to set $\Phi^1_1 = 0, \Phi^2_2 = 0, \Phi^3_3 = 0$. Then among various $\Phi$ fields, only the following combinations appear in the dynamics:\\
+\begin{align}
+\Phi^{(12)} &:= \Phi^1_3 - \Phi^2_3 \, , \, \Phi^{(23)}  = \Phi^2_1 - \Phi^3_1 \, , \, \Phi^{(31)} :=  \Phi^3_2 - \Phi^1_2 \, , \,  \Phi^{4}_1 \, , \, \Phi^{4}_2 \, , \, \Phi^{4}_3 \, . \label{phisurvive}
+\end{align}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{The potential or loss function}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+The detailed Lagrangian of the system is discussed in \cite{Chowdhury:2014yca, Chowdhury:2015gbk}. Here we directly jump to the potential. The potential (to be treated as the loss function) is a sum of 3 non-negative terms 
+\begin{align}
+V &= V_{gauge} +V_D + V_F \, .
+\end{align}
+$V$ is minimized, when each of $V_{gauge} ,V_D , V_F$ individually vanish\footnote{For spontaneously broken supersymmetry, minimum value of the potential occurs at some positive value of the potential. This is not the case here.}.
+Among  these, $V_{gauge}$ can be set to 0, simply by putting the $X$ fields to zero, i.e. taking  3 non-compact coordinates of different stacks of D-branes to coincide. $X$ fields do not appear in $V_D$ and $V_F $, and hence can be safely forgotten. In fact, for non-zero values of $Z$ fields, which is the case for all minima, this is the only way to make $V_{gauge}$ vanish.
+
+Setting $V_D$ to zero has the effect of fixing the scale of various fields. This effect can be incorporated by complexifying the $U(1) \times U(1) \times U(N)$ gauge invariance to $\mathbb{C}^* \times \mathbb{C}^* \times GL(N, \mathbb{C})$. Hence  it suffices to minimize $V_F$, subject  to the complexified gauge invariance. Thus in the following we shall discuss only about $V_F$ and relegate the details of $V_{gauge}$ and $V_D$ to Appendix \ref{VgaugeD}. 
+
+The ``F-term potential'' $V_F$ is derived in terms of an underlying superpotential $W$, which is detailed in  Appendix \ref{appsup}.
+For now, it is useful to first define some intermediate objects:
+\begin{align}
+%\nn
+%X^{(k)}_{ab} &= [X^{(k)}_a, X^{(k)}_b]\, , \Phi^{(k)}_{AB} := [\Phi^{(k)}_A, \Phi^{(k)}_B] \, , Y^{(k)}_{aA} := [X^{(k)}_a,\Phi^{(k)}_A] \, , H^{(kl)}_a := X_a^{(k)} Z^{(kl)} - Z^{(kl)} X_a^{(l)} \\
+\nn
+F^{12} &=  Z^{12} Z^{21} + c^{12}   ~,~
+F^{21} =  Z^{21} Z^{12} + c^{12} , \\
+\nn
+F^{23} &= Z^{23} Z^{32} + c^{23}  ~,~ 
+F^{32} =  Z^{32} Z^{23} + c^{23}  , \\
+\nn
+F^{13} &=  Z^{13} Z^{31} + c^{13}   ~,~
+F^{31} =  Z^{31} Z^{13} + c^{13}  , \\
+\nn
+F^{14} &= Z^{14}. Z^{41} + c^{14} N  ~,~
+F^{41} =  Z^{41} Z^{14} + c^{14} \mathbb{I}_{N} + [\Phi_2^4, \Phi_3^4]  , \\
+\nn
+F^{24} &=  Z^{24}. Z^{42} + c^{24} N ~,~ 
+F^{42} =  Z^{42} Z^{24} + c^{24} \mathbb{I}_{N} + [\Phi_3^4, \Phi_1^4]  , \\
+\nn
+F^{34} &=   Z^{34}. Z^{43} + c^{34} N  ~,~
+F^{43} =  Z^{43} Z^{34} + c^{34} \mathbb{I}_{N} - [\Phi_2^4,\Phi_1^4] , \\
+\nn
+%
+G^{21} &=  \Phi^{(12)}  Z^{21} + Z^{23} Z^{31} + Z^{24} . Z^{41}  ~,~ G^{12} =  \Phi^{(12)}  Z^{12} + Z^{13} Z^{32} + Z^{14} . Z^{42}  \, , \\
+\nn
+G^{31} &=  \Phi^{(31)} Z^{31}  + Z^{32} Z^{21} - Z^{34} . Z^{41}   ~,~ G^{13} =  \Phi^{(31)}  Z^{13}  + Z^{12} Z^{23} + Z^{14} . Z^{43} \, ,  \\
+\nn
+G^{32} &=  \Phi^{(23)} Z^{32}  + Z^{31} Z^{12} + Z^{34} . Z^{42}  ~,~ G^{23} = \Phi^{(23)} Z^{23} + Z^{21} Z^{13} + Z^{24} . Z^{43}  \, ,  \\
+\nn
+G^{41} &=   - \Phi_1^4 Z^{41} + Z^{42} Z^{21} + Z^{43} Z^{31}  ~,~ G^{14} =  - Z^{14} \Phi_1^4 + Z^{12} Z^{24} - Z^{13} Z^{34}  \, ,  \\
+\nn
+G^{42} &=  - \Phi_2^4 Z^{42} + Z^{43} Z^{32} + Z^{41} Z^{12}  ~,~ G^{24} = - Z^{24} \Phi_2^4 + Z^{21} Z^{14} + Z^{23} Z^{34}  \, ,  \\
+G^{43} &=  - \Phi_3^4 Z^{43} - Z^{41} Z^{13} + Z^{42} Z^{23}   ~,~ G^{34} =  - Z^{34} \Phi_3^4 + Z^{31} Z^{14} + Z^{32} Z^{24}  \, . \label{Fterm}
+\end{align}
+Here $c^{12}, c^{13}, c^{23}, c^{14} , c^{24} , c^{34}$ are complex non-zero parameters. Note $F^{41}, F^{42}, F^{43}$ are matrices, $G^{41}, G^{42}, G^{43}$ are column vectors, $G^{14}, G^{24}, G^{34}$ are row vectors and rest of the combinations are numbers. The F-term potential $V_F$ is the  sum of modulus square of 
+all terms in \refb{Fterm}, i.e. 
+\begin{align}
+\nn
+V_F &=  \sum_{i \neq j, i,j =1}^3 |F^{ij}|^2 + \sum_{i=1}^3 |F^{i4}|^2 +  \sum_{i=1}^3 \Tr{} (F^{4i})^\dagger F^{4i} \\
+&+ \sum_{i \neq j, i,j =1}^3 |G^{ij}|^2 + \sum_{i=1}^3 \left( (G^{4i})^\dagger G^{4i} + G^{i4} (G^{i4})^\dagger  \right) \label{V_F}.
+\end{align}
+We will use the words minima and solutions interchangeably.
+It suffices to think of $V_F$ as the loss function. Minima of $V_F$ are solutions to the equations
+\begin{align}
+F^{kl} &= 0 \, , \, G^{kl} = 0 \, , \quad k \neq l, \, k,l =1,2,3,4 \, . \label{Feqn}
+\end{align}
+Equations \refb{Feqn} are invariant under the complexified gauge transformations
+\begin{align}
+\nonumber
+&Z^{12} \rightarrow \lambda_{12} Z^{12} \, , \, Z^{21} \rightarrow \lambda_{12}^{-1} Z^{21} \, , \, 
+Z^{23} \rightarrow \lambda_{23} Z^{23} \, , \, Z^{32} \rightarrow \lambda_{23}^{-1} Z^{32} \, , \\
+\nonumber
+&Z^{13} \rightarrow \lambda_{12} \lambda_{23} Z^{13} \, , \, Z^{31} \rightarrow \lambda_{12}^{-1} \lambda_{23}^{-1} Z^{31} \, , \\
+\nonumber
+&Z^{14} \rightarrow \lambda_{12} \lambda_{23} Z^{14} M^{-1} \, ,  Z^{24} \rightarrow \lambda_{23} Z^{24} M^{-1} \, ,  Z^{34} \rightarrow  Z^{34} M^{-1} \, , \\
+\nonumber
+&Z^{41} \rightarrow \lambda_{12}^{-1} \lambda_{23}^{-1} M Z^{41} \, , \, Z^{42} \rightarrow \lambda_{23}^{-1} M Z^{42} \, , \, Z^{43} \rightarrow M Z^{43} \, , \\
+&\Phi_i^{4} \rightarrow M \Phi^{4}_i M^{-1} \, . \label{complexgauge}
+\end{align}
+where $\lambda_{12} \in \mathbb{C}^\ast, \lambda_{23} \in \mathbb{C}^\ast,  M \in GL(N, \mathbb{C})$. The $U(1) \times  U(1) \times U(N)$ subgroup of this is the gauge group.  
+
+Solutions to \refb{Feqn}, that are related by $ \mathbb{C}^\ast \times  \mathbb{C}^\ast \times  GL(N, \mathbb{C})$ gauge transformations acting as in \refb{complexgauge}, are to be counted as same solution. In other words, a physical solution really stands for a gauge orbit.
+%Solutions of \refb{Feqn} are supposed to be subject to $U(1) \times U(1) \times U(N)$ gauge invariance as well as D-term equations $V_D=0$. Combined effect of this is same as $ \mathbb{C}^\ast \times  \mathbb{C}^\ast \times  GL(N, \mathbb{C})$ gauge  invariance, acting as \refb{complexgauge} \footnote{To verify this claim, one could take a solution of \refb{Feqn} subject to $ \mathbb{C}^\ast \times  \mathbb{C}^\ast \times  GL(N, \mathbb{C})$ gauge invariance, then act by elements of the coset $ \left( \mathbb{C}^\ast \times  \mathbb{C}^\ast \times  GL(N, \mathbb{C}) \right) / \left( U(1) \times U(1) \times U(N) \right)$ on this solution and then impose D-term equations on the transformed solution. This imposes equations on the coset, which should have a unique solution. We shall assume this to hold true, as this has previously been seen to be the case for small N-s}.
+%Intuitively one can think of D-term equations as fixing the scale whereas gauge choice fixing  the ``phase". 
+In this work, we shall get rid of $ \mathbb{C}^\ast \times  \mathbb{C}^\ast \times  GL(N, \mathbb{C})$ redundancy, by fixing gauge and will minimize the  loss function in remaining variables. Various choices of gauge are discussed in Appendix \ref{appgauuge}.
+
+If the gauge redundancy is not fixed, then each discreet  minima turns into a continuous space of minima, corresponding to the gauge orbit. This can be thought of as a trivial realization of 
+is similar to the phenomena of mode connectivity found in some NN architectures, i.e. existence of paths of almost constant loss connecting two minima of the loss function  \cite{garipov2018loss, raghavan2020sparsifying}.
+
+%{\color{gray}Some NN architectures exhibit mode connectivity, i.e. existence of paths of almost constant loss connecting two minima of the loss function  \cite{garipov2018loss, raghavan2020sparsifying}.}
+
+The minima of $V_F$ can also be thought of as minima of a slightly simpler potential \refb{Vfsimple}. We relegate this to Appendix \ref{appsimple}, since this simpler potential  \refb{Vfsimple} is not the physical potential. But if one's sole concern is to find a potential landscape with exponentially many minima, then this simpler potential is as good as  the physical one. For the special  case of $N=1$, the system can be further simplified to one with only 3 complex variables. This is discussed in Appendix \ref{appN1}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\newpage
+\section{Searching for multiple minima with Stochastic  Gradient Descent} \label{s4}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Different minima of the loss function represent different ways of learning the same data, with minima having lower loss value representing better learning. When all the minima are global, as in linear DNN-s \cite{kawaguchi2016deep}, all minima ought to be equally good by this standard. However, since the weights and biases of NN-s corresponding to different global minima are different, something must be different about learnings corresponding to different minima. 
+Whether this difference is merely technical or it translates to some qualitative differences is not obvious at this stage. It is conceivable that at least some different minima might actually differ qualitatively. E.g. wider minima might offer better generalisability \cite{NIPS1994_01882513, chaudhari2017entropysgd, keskar2017largebatch}.
+
+To study this important issue, first of all we need to be able to find all (or at least a large fraction of all) the minima. 
+The ability of an algorithm to find various minima thus becomes relevant. 
+The black holes discussed in last section provide an excellent settings to test this.
+In this section, we discuss how  SGD performs in this regard, i.e. whether or not and in how many runs it can find all the minima. 
+%%%%%%%%%%%
+\subsection{Estimated number of runs required to find all the minima}
+%%%%%%%%%%%
+Before we set out, it is useful to estimate the typical number of runs in which one might expect to find all the minima. More precisely, 
+\textit{ if the loss function has $K$ minima and an algorithm randomly  hits one minima in each run with equal likelihood, then what is the probability $p(K,n)$ of finding all the solutions after $n$ runs?}
+
+Such a $p(K,n)$ must satisfy
+\begin{align}
+\nn
+p(K,n) &= 0 \quad \text{for} \quad n=1, \dots , K-1 \, , \\
+\lim_{n \rightarrow \infty} p(K,n) &= 1 \, . \label{pexpect}
+\end{align}
+Running the algorithm $n$ times will produce a sequence (of minima) of length $n$. There are $K^n$ such sequences. The question at hand can be phrased as combinatorial questions about such sequences and the answer will likely involve objects like binomial coefficients. 
+We make the following ansatz for $p(K,n)$
+\begin{align}
+p_{ansatz} (K,n) &:= 1 - \frac{1}{K^n} \sum_{a=1}^{K-1} (-1)^{a-1} ~ {{K} \choose {a}}  \,  (K-a)^n \, , \label{pKn}
+\end{align}
+which satisfies the condition \refb{pexpect} $\forall \, n, K \geq 1, n, K \in \mathbb{Z}$. Here ${{K} \choose {a}} = \frac{K!}{ a! (K-a)!}$ are the binomial coefficients\footnote{sometimes denoted as $~^KC_a$.}. Satisfaction of the second condition of \refb{pexpect} is obvious, whereas satisfaction of the first condition can be verified. For the simple case of K=3, a derivation of this formula is given in Appendix \ref{appp3n}.
+
+For $K=12$, which is the number of minima of \refb{V_F} for $N=1$, the function $p(K,n)$ is plotted in Fig. \ref{run12}.
+%%%%%%%%%%%
+\begin{figure}[H]
+\begin{center}
+\includegraphics[scale=.8]{run12.pdf}
+\caption{Probability $p(12,n)$ of finding all 12 minima in $n$ runs}\label{run12}
+\end{center}
+\end{figure}
+Note, the estimate \refb{pexpect} ignores the possibility that a run may fail to find any minima whatsoever. As we discuss later, we actually find this to be a frequent occurrence.
+
+A measure of efficiency of an algorithm in finding all the minima might be introduced as follows. 
+ Let $n_\epsilon$ be the number of runs needed to reach probability $1 - \epsilon$ for some small $\epsilon$, i.e.  $p(K, n_\epsilon) = 1-\epsilon$.
+Let the fraction of minima found by an algorithm after $n_\epsilon$ runs be $f (n_\epsilon)$. Then we might define 
+\begin{align}
+\mathbb{E}_\epsilon := \frac{f (n_\epsilon)}{1- \epsilon} \, . \label{effdef}
+\end{align}
+As the number of runs approach infinity, or equivalently $\epsilon \rightarrow 0$,  the efficiency $\mathbb{E}_\epsilon$ approaches its asymptotic value $\mathbb{E}_0$. If the algorithm is unable to find all the minima, then $\mathbb{E}_\epsilon<1$ for small enough $\epsilon$.
+If the algorithm is able to find all the minima after $n_c$ runs, then $\mathbb{E}_{\epsilon(n_c)} >1$. If one keeps running the algorithm, $\mathbb{E}_\epsilon$ approaches its asymptotic value $\mathbb{E}_0 = 1$. 
+
+
+ 
+%%%%%%%%%%%
+\subsection{Black holes: A case study}
+
+\subsubsection{$N=1$}
+%\paragraph{$N=1$}
+
+The case $N=1$ is the simplest one and admits 12 global minima. The minima can be found using Mathematica \cite{Mathematica} at one go, and rather quickly. The goal here is however to check whether the SGD can at all find all 12 minima or not. This question is of some interest since to the best of our knowledge, it is not clear as of now whether or  not SGD can find all the minima of a loss function. The tensorflow library \cite{tensorflow2015-whitepaper} is particularly helpful for this task. Note that although we are using the machinery of machine learning, we are not quite doing machine learning. In particular, there is no neural network involved.
+
+Coming to the loss function, firstly we note that if the parameters $c_{ij}$-s are all taken to be real, then the equations \refb{Feqn} and the loss function \refb{V_F} remain unchanged under simultaneous complex conjugation and/or sign change of all the fields. This implies that given any minima of the loss function \refb{V_F} a field configuration obtained by complex conjugation and/or sign change of a minima, should also be a minima. Thus the minima occur in quadruplets. In the special case, where all the fields in a minima are either real of imaginary, these operations give doublets. To exploit these symmetries, we consider real $c_{ij}$-s. To be specific, we work with the following set  of $c_{ij}$ parameters:
+\begin{align}
+c_{12} &= 2/3, \, c_{31} = 3/5, \, c_{14} = 5/7, \, c_{23} = 7/11, \, c_{24} = 11/13, \, c_{34} = 13/17 \, . \label{c}
+\end{align}
+There is a $\mathbb{C}^\ast \times \mathbb{C}^\ast \times \mathbb{C}^\ast$ complexified gauge redundancy, which affects various Z-fields, but not the $\Phi$-fields. This gauge redundancy can be fixed for example by fixing $Z^{12}, Z^{13}, Z^{14}$ to arbitrary complex numbers. The specifics of gauge choice affect the minima, but not the gauge invariant fields or combinations of fields. Thus the gauge invariants offer a useful way of labelling the  minima.  In Table \ref{solnN=1}, we  mention the $\Phi$-fields  for all 12 minima obtained using Mathematica \cite{Mathematica}. By virtue of being  gauge invariant, any choice of gauge will result in $\Phi$-fields for minima to be those in Table \ref{solnN=1}.
+%
+\begin{table}[htb]
+\begin{center}
+\scalebox{0.6}{
+\begin{tabular}{|c||c|c|c|c|c|c|c}
+\hline
+~ & $\Phi^{(12)}$ & $\Phi^{(23)}$ & $\Phi^{(31)}$ & $\Phi^{4}_1$ & $\Phi^{4}_2$ & $\Phi^{4}_3$ \\
+\hline
+1  & 0.114667 & 3.04279 & -0.426835 & 3.07604 & 0.00561356 & 0.441079 \\
+ \hline
+2 & -0.114667 & -3.04279 & 0.426835 & -3.07604 & -0.00561356 & -0.441079 \\
+\hline
+3  & 2.50319 & 0.148546 & -0.475075 & 0.523547 & -0.00663202 & 2.54768  \\
+ \hline
+4 & -2.50319 & -0.148546 & 0.475075 & -0.523547 & 0.00663202 & -2.54768 \\
+ \hline
+5 & 0.757429 & 0.703097 & -0.769789 & 1.05802 & -0.181488 & 1.06349 \\
+ \hline
+6 & - 0.757429 & -0.703097 & 0.769789 & -1.05802 & 0.181488 & -1.06349\\
+ \hline
+7 &  - 0.113796  i &  - 0.126033  i &  + 2.48169  i &  0.653677  i &  2.40634  i &  0.616251  i \\
+ \hline
+8 &  0.113796  i &  0.126033  i &  - 2.48169  i &  -  0.653677  i &  - 2.40634  i &  - 0.616251  i  \\
+ \hline
+9 & 0.133727 + 1.5199  i & 0.139324 + 1.60413  i & -0.966204 + 0.664837  i & 0.829512 - 0.761908  i & -0.0896705 - 1.37815  i & 0.77546 -  0.721537  i \\
+ \hline
+10 & 0.133727 - 1.5199  i & 0.139324 - 1.60413  i & -0.966204 -  0.664837  i & 0.829512 + 0.761908  i & -0.0896705 + 1.37815  i & 0.77546 +  0.721537  i \\
+  \hline
+11  & -0.133727 + 1.5199  i & -0.139324 + 1.60413  i & 0.966204 +  0.664837  i & -0.829512 - 0.761908  i & 0.0896705 -  1.37815  i & -0.77546 - 0.721537  i \\
+ \hline
+12 & -0.133727 - 1.5199  i & -0.139324 - 1.60413  i & 0.966204 -  0.664837  i & -0.829512 + 0.761908  i & 0.0896705 +  1.37815  i & -0.77546 + 0.721537  i \\
+ \hline     
+\end{tabular}}
+\end{center}
+\caption{Minima for N=1}\label{solnN=1}
+\end{table}
+%
+
+One can further proceed to obtain some understanding of the loss function landscape. We only undertake some preliminary exploration  in this direction. Given that we have the analytic form of the loss function \refb{V_F} as well as locations of the minima, one might wonder about mode connectivity, i.e. existence of paths of relatively low loss connecting these minima. With this  question in mind we study the loss function along line segments connecting different minima. The resulting cross section of the loss function vanishes at the ends of such segments, and rises to some maximal value in the middle\footnote{Empirically we find loss function along these segments to be highly symmetric, although the reason behind this symmetry is not apparent to us.}. This maximal value varies depending on the segments. E.g. in Figure \ref{hill}, we plot the loss function along segments connecting minimum 1 to other 11 minima. For some of the segments, the maximal value of the loss function is rather low. This feature resembles mode connectivity. The maximal value presumably depends on the parameters $c_{ij}$-s. It is unclear whether mode connectivity persists even if  $c_{ij}$-s are taken to be larger than those in \refb{c}.
+%%%%%%%%%%%
+\begin{figure}[H]
+\begin{center}
+\includegraphics[scale=1]{hill1.pdf}
+\caption{Potential barriers along a straight line connecting minimum 1 to other 11 minima for  $N=1$. The x-axis parameterises a line segment connecting solution 1 to solution $j$ for $j=2, \dots , 12$, such that $x=0$ corresponds to solution 1 and  $x=1$ corresponds to solution $j$, ``barrier$_{1,j}$'' denotes the potential along such a line segment.}\label{hill}
+\end{center}
+\end{figure}
+%
+Other questions of interest include distribution of critical points, especially the saddle points. We do not attempt this here. 
+
+Now we comment  on number of runs needed to find the minima. If we use the information that the minima appear in doublets/quadruplets, then it suffices to find one minima in every doublet/quadruplet. We could find at least one minima in each doublet/quadruplet in 35 runs. 
+Thus the efficiency $\mathbb{E}_0$, as defined in  \refb{effdef} is unity.
+The number 35 is significantly smaller  than the number of estimated runs, a random algorithm would take to find all the minima \refb{pKn}. Figure \ref{run12} suggests it would take about 80 runs to find all 12 minima. 
+
+However the situation worsens, if we forget about the symmetries and try to find all 12 minima independently. 
+Counting  configurations with loss value $< 10^{-7}$ as valid  minima, we have only 11 out of 12 minima in 200 runs\footnote{Actually we did get the 12-th  one (first minima in Table  \ref{runN=1}), but with a loss value around $10^{-3}$, so it could not be counted.}. These accounted for 109 runs. Among the remaining runs, some reached comparatively larger but still small loss values and the configurations were close to various minima.
+To be specific, number of configurations reached with loss of the order of $10^{-7}, 10^{-6}, 10^{-5}, 10^{-4}, 10^{-3}, 10^{-2}$ respectively are $2,1,5,3,5,3$. 
+Rest had even higher loss values and some showed runaway behaviour as well.
+
+Curiously, different minima appear with different frequencies. Table \ref{runN=1} summaries which minima was hit how many times. 
+\begin{table}[htb]
+\begin{center}
+\scalebox{1.0}{
+\begin{tabular}{|c|c|}
+\hline
+minima number & number of hits \\
+\hline
+1   & 0   \\
+ \hline
+2   & 1 \\
+\hline
+3   &  8  \\
+ \hline
+4   &  8   \\
+ \hline
+5   & 24  \\
+ \hline
+6   & 25  \\
+ \hline
+7   & 3  \\
+ \hline
+8   &  3  \\
+ \hline
+9  & 6  \\
+ \hline
+10   & 12  \\
+  \hline
+11   & 10  \\
+ \hline
+12  & 9 \\
+ \hline     
+\end{tabular}}
+\end{center}
+\caption{Number of times various minima for N=1 was found (out of 200 runs), i.e. loss function dipped below $10^{-7}$}\label{runN=1}
+\end{table}
+%
+We note that minima in same doublet/quadruplet often appear with same/similar frequency, with minima 5,6 being the most frequent and minima 1,2 being the list. This raises the question -  what is special about  the minima that are found more frequently? We note that the  least frequent minima hosts the largest as well as the smallest Hessian eigenvalues among all minima\footnote{Hessian eigenvalues are the same for minima in same doublet/quadruplet.}, and therefore has the widest range of eigenvalues. The  Hessian eigenvalues of various doublet/quadruplet are given in Table \ref{HessianN=1}. 
+%
+%This raises the question, what is special about the minima that are found more frequently? To answer this we take a look at the Hessian matrices for various minima. Since  the Hessian matrices of minima related by  sign change and / or complex conjugation are the same, we really have 5 different Hessian matrices, which can be taken to correspond to minima 1, 3, 5, 7, 9. A list of eigenvalues of these Hessians is given in Table \ref{HessianN=1}.
+%
+\begin{table}[htb]
+\begin{center}
+\scalebox{0.5}{
+\begin{tabular}{|c||c|c|}
+\hline
+minima number  & eigenvalues of the Hessian (up to 4 decimal points) \\
+\hline
+1,2  & 290.331, \, 290.331, \,49.0113, \,49.0113, \,32.591, \,32.591, \,16.29, \,16.29, \,2.98038, \,2.98038, \, 2.21897, \,2.2189, \,
+    1.5384, \,1.5384, \,0.0551, \,0.0551, \,0.0004, \,0.0004   \\
+\hline
+3,4  &  195.306, \, 195.306, \, 38.7135, \, 38.7135, \, 20.3297, \, 20.3297, \, 14.1516, \, 
+14.1516, \, 3.20372, \, 3.20372, \, 2.1753, \, 2.1753, \, 1.3116, \, 1.3116, \, 
+0.0678, \, 0.0678, \, 0.0007, \, 0.0007 \\
+ \hline
+5,6  & 31.6017, \,31.6017, \,14.2884, \,14.2884, \,8.6984, \,8.6984, \,4.4307, \,4.4307, \,2.8221, \, 2.8221, \,2.0027, \,2.0027, \,1.1111, \,1.1111, \,0.0494, \,0.0494, \,0.0184, \,0.0184 \\
+ \hline
+7,8  & 99.8704, \,99.8704, \,31.1475, \,31.1475, \,13.7417, \,13.7417, \,9.9342, \,9.9342, \,3.1265, \, 3.1265, \,2.4533, \,2.4533, \,1.3331, \,1.3331, \,0.1656, \,0.1656, \,0.0110, \,0.0110 \\
+ \hline
+9,10,11,12  &  25.8232, \,25.8232, \,9.8151, \,9.8151, \,5.1493, \,5.1493, \,3.4729, \,3.4729, \,3.0792, \,    3.0792, \,2.412, \,2.412, \,1.8277, \,1.8277, \,0.5702, \,0.5702, \,0.2699, \,0.2699  \\
+ \hline
+\end{tabular}}
+\end{center}
+\caption{Eigenvalues for Hessians of different doublets/quadruplets of minima for N=1}\label{HessianN=1}
+\end{table}
+%
+
+A visual representation of the same is given in Figure \ref{hess}. Five blocks represent five different eigenvalue sets. We choose to plot the logarithms, since the eigenvalues differ by several orders of magnitudes. The widest block at the  bottom of Figure \ref{hess} corresponds to minima 1,2. The narrowest block, corresponding to minima 9,10,11,12, however are not the most frequent ones.
+
+%This is better visualized using Figure \ref{hess}, where the ranges of the logarithms of eigenvalues are shown.  Five blocks represent five different eigenvalue sets. We choose to plot the logarithms, since the eigenvalues differ by several orders of magnitudes. One curious feature of  the eigenvalues is that the minima with the largest eigenvalues are also the ones with smallest eigenvalue. I.e. if the minima are ordered by increasing smallest eigenvalue, or decreasing largest  eigenvalues, both give the ordering 1,3,7,5,9. When juxtaposed against the increasing frequency, which gives 1, 9,  3 or 7, 5.
+%
+%If we compare themost frequent minima (ii.e. minima 5-6) with the least frequent one (minima 1-2)
+%%%%%%%%%%%
+\begin{figure}[H]
+\begin{center}
+\includegraphics[scale=.5]{Eigen_hess.pdf}
+\caption{A plot of logarithm of the eigenvalues ranges}\label{hess}
+\end{center}
+\end{figure}
+%
+
+
+\subsubsection{$N>1$}
+%\paragraph{$N>1$}
+The loss function \refb{V_F} becomes significantly complicated for $N>1$ due to non-Abelian nature of the variables. But  the essential task remains the same. The loss function \refb{V_F} vanishes at the global minima and we decide on some small cut-off for loss function, which  if reached, we take the configuration to be a minima. We take this cut-off to be $10^{-6}$. 
+
+Again, using the fact that minima appear in doublets/quadruplets, it suffices to find one minimum for each doublet/quadruplet. With this fact utilised, for the $N=2$ case we could find all 56 of 56 minima, whereas for the $N=3$ case we could find 176 out of 208 minima. The efficiency $\mathbb{E}_0$ is respectively $1$ and $11/13 \sim .846$ for $N=2,3$.
+Number of runs in both cases were were hopelessly high and hence we did not keep track of the same. 
+
+%. So for this case $\mathbb{E}_0 = 11/13 \sim .846$, but this asymptotic value was reached rather slowly.
+For $N=4$, we were unable to reach  small enough values of the loss function in reasonable time using SGD. We believe this obstacle can be overcome with more effort and perhaps more expertise. But since is is not indispensable for the main argument of this work, we do not attempt it here.
+
+As in the case of $N=1$, we use SGD to look for the minima. We have made extensive use of the Tensorflow library \cite{tensorflow2015-whitepaper}. As previously stressed, we are not machine learning anything and there is no neural network in sight. We are merely using the machinery of machine learning to find the minima of \refb{V_F}. 
+
+Due to large number of variables involved, we do not list the field configuration corresponding to the minima for $N>1$. The interested reader is referred to \cite{Chowdhury:2015gbk} for the case $N=2$.
+
+In the following, we mention some relevant details of our quest for the loss minima. Many of these details are also present in the $N=1$ case, but assume more significance for $N>1$, due to increased complexity.
+
+\begin{itemize}
+%\item
+% Add all those equations into one and consider that to be a cost function that needs to be minimized using an optimizer. This approach works as each of those equations never evaluate to < 0, so the solution to the combined cost function is the solution to each one of them. Starting from a random initial point, a Stochastic Gradient Descent(SGD) type algorithm helps find a solution where the combined cost function is sufficiently close to 0. This is determined by setting a threshold value, typically taken to be $10^{-6}$.
+%
+%In terms of ML, this is a very simple approach and does not involve any training, and only uses the engine inside every neural network( i.e the mechanism to find a minima of the cost function), the optimizer, to solve this problem. The supersymmetry of this system, which ensures all minima evaluate to 0, makes the problem easier to handle, as we don't need to monitor the gradients of the cost function, and only its value. 
+
+\item
+Initial values: \,
+Since the run might hit different  minima depending on the starting point, we chose the initial values of all the variables randomly in the range (-5,5) from a normal or uniform distribution. For initial values beyond this range, the runs usually manifested a runaway behaviour, presumably due to the quartically diverging nature of the loss function. We also considered purely real/imaginary initial values, which yielded only limited success. 
+
+We also explored some special initial values, where derivatives of the loss function along some directions vanish and also initial values at which some of the 
+$F$-s and $G$-s  \refb{V_F}, \refb{Feqn} vanish. But  these did not lead to any new minima.
+
+%The initial value of the variables were chosen from a random normal or uniform distribution, where the upper and lower bounds were roughly between -5 and 5 for all the variables. The value of the loss function increased quadratically, so for variables greater than 5, the run would often result in a runaway solution. Some special cases of the initial values were also tried(taking all the values as real/imaginary etc) but they yielded limited success.
+
+\item
+Two Cycles Optimization: \,
+As many runs seem  to get stuck at plateaus with
+%result in flat directions where the one would be stuck at a
+ loss value of order 1, we switched to a two cycle optimization where we would only continue if the loss value had come below a set threshold after running for a set number of steps. If it had, we would use those values of parameters to run a second cycle, using that same optimizer, or a different one. 
+ %sor merely change the hyperparameters of the old one.%, like learning rate, momentum, alpha etc. 
+
+%\item
+%Initial Positions\\
+%As stated above, initial positions were randomly chosen, but when that wasn't enough, two saddle functions were created to achieve saddle points from an obtained solution, by manipulating certain variables. This strategy was combined with two cycles optimization, but it was not as successful at finding new solutions as we had anticipated. 
+
+\item
+Hyperparameter Tuning: \,  
+The most important hypermeter is the learning rate, which we took to be smaller than $10^{-2}$, as the probability of runaway behaviour increased above this value. The number of steps needed to reach a minimum was of the order of $10^5$ (sometimes more). Smaller learning rate (e.g. $< 10^{-3}$) required more steps (of the order of $10^7$ or more) and more time (order of hours) to find a minimum. However once a small enough loss value has been reached, smaller step-size is desirable. So sometimes we tweaked the learning rate in the middle of the run accordingly. %so as to decrease it with decreasing loss value.
+Another important hyperparameter was momentum, whose default value of 0.9. Even with these precautions, roughly one in every ten runs converged to a minima for the case of $N=3$.
+
+%....................
+%
+%In the runs where a minima was yielded, which was roughly once every 10 runs for N=3, the number of steps for the optmizer to reach a minima was of the order of $10^5$, and sometimes more.
+%
+% The learning rate was always kept under $10^{-2}$ as the probability of a runaway minima increased above that value. Though sometimes keeping the learning rate really small( $< 10^{-3}$), it could take $10^7$ steps to reach a minima, and this could only be tractable using the compiled version of tensorflow, or using the @tf.function decorator, and even then a minima could take hours to materialize {\color{red} for N=3?}.
+%
+%Amongst all the optimizers tried, SGD works best, especially in the initial phase when the cost values are high. Some minima are more common than others(i.e. more runs end up at that minima). We addressed it by modifying the function around an already found minima, but that only led to further numerical problems. 
+%
+%Among the hyperparameters tuned, learning rate was the foremost, followed by momentum, whose default value of 0.9 is a nice estimate to start with. Keeping it really high leads to finding minima very quickly, but it can just as easily lead to runaway minimas or repeatedly ending at the same minimum, since some minima are easier to reach than others. Learning rate was also tweaked in the middle of the run, often being reduced as the loss decreased, so as to make the optimizer take smaller and smaller steps to arrive at the minima, and not yield a runaway minima or stray far from the minima and having to restart the process. 
+
+\item
+Excluding already found minima: \, 
+As in $N=1$, some minima are found more frequently than others for $N>1$ as well. To avoid this repetition, one may  modify the loss function by adding a hump around an already found minima $x_0$. This modified loss function does not have $x_0$ as a global minima, but other minima of  the original loss function continue to be the minima of the modified loss function. A smooth choice of hump function will affect the locations as well as values of other minima as well, but these effects can be made arbitrarily small by appropriate choice of the hump. A more serious problem occurs due to new local minima and/or saddles introduced by the hump function. Not surprisingly, we did not find such modification of loss landscape to be helpful.
+%The hump function might be constructed out of $\tanh$ functions, which will change both  the values and locations of the original minima, but by a negligible amount.
+A simple realization of this idea is presented in Appendix \ref{appexclude}. 
+
+\item
+Gauge choice: \,
+For N=2 and higher, finding all the minima in a single gauge proved difficult, hence we ran the search for multiple gauge choices. For N=2, two gauge choices sufficed to produce all the minima, but more were required for N=3. In Appendix \ref{appgauuge}, we discuss a wide class of gauge choices for arbitrary $N>1$.
+
+In order to distinguish same minima found in different gauges, gauge invariant markers were calculated and used to count the number of linearly independent minima found(given the choice of special $c_{ij}$-s, minima can have two or four fold symmetry). The simplest gauge invariants are $\Phi^{(12)}, \Phi^{(23)}, \Phi^{(31)}, \Tr{} \Phi^4_1, \Tr{} \Phi^4_2, \Tr{} \Phi^4_3$.
+
+\item
+Scaling: \, 
+Under the scale transformations $Z \to \lambda Z, \, \Phi \to \lambda \Phi, \, c_{ij} \to \lambda^2 c_{ij}$, the loss function \refb{V_F} changes by an over all scaling factor of $\lambda^4$. It follows that the minima of this rescaled loss function are related to those of the original one by simple scaling.
+This fact can be used to scale up/down the $c_{ij}$-s, find minima of the resultant loss function and then transform back the minima by reverse scaling. This essentially has the effect of zooming in/out the loss landscape. This technique led to some new minima for $N=3$.
+
+%One more technique which we tried was to scale the loss function so as to deform the landscape, hoping to make some minima more accessible. In order to do that, we chose a scale $\mathbb{\lambda}$ and manipulate the loss function, and subsequently divide by an appropriate power of $\mathbb{\lambda}$ to normalize the function. This method was the last trick that yielded any new solutions for N=3, taking us to 176.
+\end{itemize}
+
+%searrch did not seem to converge in reasonable time
+
+%\section{Number of times minima appeared fo $N=1$}
+%\begin{enumerate}
+%    \item Total number of runs: $132$
+%    \item Minima at:  2.503, number of times: 3
+%    \item Minima at:  -2.503, number of times: 2
+%    \item Minima at:  0.757, number of times: 12
+%    \item Minima at:  -0.757, number of times: 15
+%    \item Minima at:  -0.114, number of times: 1
+%        \item Minima at:  0.114, number of times: {\color{red}{?????}}
+%    \item Minima at:  0.113 i, number of times: 3
+%    \item Minima at:  -0.113 i, number of times: 3
+%    \item Minima at:  0.133+1.519 i, number of times: 4
+%    \item Minima at:  0.133-1.519 i, number of times: 7
+%    \item Minima at:  -0.133+1.519 i, number of times: 4
+%    \item Minima at:  -0.133-1.519 i, number of times: 4
+%            
+%\end{enumerate}
+%Total number of runs: 132
+%
+%
+%
+%\section{eigenvalues}
+%\begin{enumerate}
+%    \item For
+%\begin{eqnarray*}
+%   && \Phi_{12}\to -0.114667,\Phi_{23}\to -3.04279,\Phi _{31}\to 0.426835,\\&&\Phi_{1}\to -3.07604,\Phi_{2}\to -0.00561356,\Phi_{3}\to -0.441079 
+%\end{eqnarray*}  and its conjugates, the eigenvalues are
+%
+%\begin{eqnarray*}
+%    \{&& 290.331,290.331,49.0113,49.0113,32.591,32.591,16.29,16.29,2.98038,2.98038,\\&& 2.21897,2.21897,
+%    1.5384,1.5384,0.0551624,0.0551624,0.000400123,0.000400123\}
+%\end{eqnarray*}
+%
+%\item 
+%For \begin{eqnarray*}
+%&&  \Phi_{12}\to -2.50319,\Phi_{23}\to -0.148546,\Phi_{31}\to 0.475075,\\&&\Phi_{1}\to -0.523547,\Phi_{2}\to 0.00663202,\Phi_{3}\to -2.54768\  
+%\end{eqnarray*}
+%and conjugates, the eigenvalues are
+%\begin{eqnarray*}
+%    &&195.306, 195.306, 38.7135, 38.7135, 20.3297, 20.3297, 14.1516, 
+%14.1516, 3.20372,\\&& 3.20372, 2.1753, 2.1753, 1.31163, 1.31163, 
+%0.0678305, 0.0678305, 0.000709295, 0.000709295
+%\end{eqnarray*}
+%\item For
+%\begin{eqnarray*}
+%   &&\Phi_{12}\to 0.\, -0.113796 i,\Phi_{23}\to 0.\, -0.126033 i,\Phi_{31}\to 0.\, +2.48169 i,\\
+%   &&\Phi_{1}\to 0.\, +0.653677 i,\Phi_{2}\to 0.\, +2.40634 i,\Phi_{3}\to 0.\, +0.616251 i\
+%\end{eqnarray*}
+%
+%eigenvalues
+%\begin{eqnarray*}
+%    &&99.8704,99.8704,31.1475,31.1475,13.7417,13.7417,9.93423,9.93423,3.12659,\\
+%    &&3.12659,2.45333,2.45333,1.33312,1.33312,0.165663,0.165663,0.0110497,0.0110497
+%\end{eqnarray*}
+%\item For
+%\begin{eqnarray*}
+%   && \Phi_{12}\to 0.757429,\Phi_{23}\to 0.703097,\Phi_{31}\to -0.769789,\\&&\Phi_{1}\to 1.05802,\Phi_{2}\to -0.181488,\Phi_ {3}\to 1.06349
+%\end{eqnarray*}
+%eigenvalues
+%\begin{eqnarray*}
+%    && 31.6017,31.6017,14.2884,14.2884,8.6984,8.6984,4.43071,4.43071,2.82213,\\
+%    && 2.82213,2.00272,2.00272,1.11114,1.11114,0.0494435,0.0494435,0.0184561,0.0184561
+%\end{eqnarray*}
+%\item  For
+%\begin{eqnarray*}
+%    &&\Phi_{12}\to -0.133727+1.5199 i,\Phi_{23}\to -0.139324+1.60413 i,\Phi_{31}\to 0.966204\, +0.664837 i,\\
+%    &&\Phi_{1}\to -0.829512-0.761908 i,\Phi_{2}\to 0.0896705\, -1.37815 i,\Phi_{3}\to -0.77546-0.721537 i
+%\end{eqnarray*}
+%eigenvalues
+%\begin{eqnarray*}
+%    && 25.8232,25.8232,9.81512,9.81512,5.14937,5.14937,3.47293,3.47293,3.07929,\\
+%    && 3.07929,2.412,2.412,1.82774,1.82774,0.570274,0.570274,0.269967,0.269967
+%\end{eqnarray*}
+%\end{enumerate}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\newpage
+\section{Discussion} \label{s5}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+In this work we have focused on the presence of exponentially many low lying local minima of the loss landscape, which seems to be a generic feature found in diverse NN architectures. We have pointed out that the physical potential in microscopic description of black holes in string theory naturally give rise to similar landscapes.
+This is quite striking since these potentials can have as few as a couple of dozens parameters in simple cases, compared to millions of parameters in realistic DNN models. Furthermore, in this case, the exact number of minima is known a priori, owing to the stringent mathematical structure of string theory. Physically, the presence of exponentially many minima has its origin in black hole entropy.
+Apart from establishing a curious connection between quantum gravity and machine learning, our work provides a large class of computationally cheap testing grounds for studying questions related to the loss landscape, some of which we have explored in this work.
+
+%especially questions pertaining to large number of minima. We have explored some of thi 
+%Our work assume significance in light of the following observation.
+
+The possibilities offered by the connection made in this work far exceed explorations carried out here. 
+Firstly, our computational resources limited our exploration to landscapes for small charges, i.e. landscapes with relatively small number of minima. It is imperative to carry out similar investigations for larger charges, where the exponential degeneracy of minima becomes apparent. We have mostly relied on SGD, as means of finding the minima, as preliminary experience indicated SGD to be the most efficient. However a detailed study of the performances of other algorithms is desirable. 
+
+Apart from finding the minima, the landscapes discussed  in this work, offer perfect settings for testing the role of saddle points in search convergence. We have noted that with increasing $N$, the search gets slower. It would be interesting to enumerate the number of saddles, which should not be too difficult as the potential has an analytic form. Although we have not attempted this in the present work. 
+
+More realistic parallels of loss landscapes of non-linear DNN-s have non-degenerate minima. As mentioned earlier, such landscapes can easily be obtained from the ones discussed in this work, simply by adding to the potential a slowly varying function bound from below.  It would be interesting to explore  whether and how such changes affect the search for minima.
+
+A more futuristic, yet perhaps most intriguing possibility would be to machine learn the minima of the loss function themselves. At present times, when one is usually content with finding any one set of hyperparameters with low enough loss value, this may sound too far-fetched. But as the technical advancements take place at a  galloping pace, it may soon be commonplace to find several local minima of the loss function of a DNN. Questions pertaining to multitude of minima would then be of practical interest. In the meantime, we might obtain theoretical insights into similar questions by studying the potential landscapes pointed out in this paper, which are much simpler to study due to small number of parameters involved.
+
+%............................................
+%
+%In practical applications of machine learning, one  is usually content with finding a NN with low enough value of the loss function. But as our technical capabilities increase, finding multiple minima of the loss function might become a routine matter. 
+%We would presumably wonder about finer questions  concerning multiple minima. E.g. we may wonder what differentiates various minima of loss function. If we allow ourselves to be more imaginative, after finding a large number of minima, one might attempt to machine learn the minima of the loss function themselves, amounting to machine learning machine learning! 
+%
+%As of now, it is somewhat challenging to pose these questions for actual DNNs, owing to their poorly understood loss landscape. The  potentials discussed in this work, provide excellent testing grounds, for posing such questions. 
+%
+%Although we have made preliminary  investigations of  these potential landscapes, much remains to be done. 
+%
+%
+%
+%Studying similar questions in the present may arm us when 
+%
+%
+%Perhaps most importantly, the usefulness of a toy model lies is offering key insights, that might have been difficult to obtain in the actual problem of interest. For the problem at hand this requires not only the knowledge of minima, but also the knowledge of other critical points, especially saddles, as they have significant bearing on convergence fo the search for minima. We have noted that with increasing $N$, the search gets slower. Whether this is due to the presence of an increasing number of saddles would be interesting to understand. 
+%
+%preliminary investigations  
+%
+%would presumably wonder about finer questions. One such key question would be 
+% 
+%\begin{itemize}
+%\item
+%Desirable to collet more data for higher N-s. \\
+%Although we have noted significant slowdown 
+%\item
+%Other algorithms such as Adam, ? , ? \\
+%\item
+%A more complete analysis of maxima and saddles.
+%\item
+%Adding a random function to generate a landscape to lift the degeneracy. 
+%\end{itemize}
+
+\paragraph{Acknowledgement:} We are indebted to Ashoke Sen, %{\color{blue}for initial ideas leading to this project as well as for his comments on the draft}.
+for pointing out that black hole microstate counting can be framed as a machine learning problem as well as for his comments. 
+It is a pleasure to thank Shailesh Lal and Challenger  Mishra for illuminating discussions. The work of T.M. is supported by the grant SB/SJF/2019-20/08. The work of S.M. was supported by Dublin Institute for Advanced Studies.
+%We would like to thank Abhishek Chowdhury for initial discussions. S.M's research is supported by ??? grant. T.M's research is supported by ???.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newpage
+\appendix
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{The index} \label{appindex}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+The black hole under consideration preserves 1/8 of the full supersymmetry. This can be seen as follows: the  each stack of D-branes naively preserves half of the available supersymmetry. Applied to first three stacks, this implies preservation of 1/8 of total supersymmetry. It can be checked that the fourth stack does not break any remaining supersymmetry. 
+
+Broken  supersymmetries lead to 32-4=28 Goldstinos in the theory describing the intersecting D-brane system. Since the D-brane system  nevertheless preserves some supersymmetry, there exists 28 Goldstones as well, given in \refb{Goldstone}.
+
+The  naive Witten  index vanishes due to the Goldstinos. This is because any Goldstino will be associated with two fermionic creation operators, and given any state, leads to four degenerate states, two of which are bosonic and two fermionic.
+
+Thus in the trace, one must insert extra factors to soak up the Goldstinos. This task is accomplished in this case by the 14-th helicity  supertrace \cite{Bachas:1996bp, Gregori:1997hi}
+\begin{align}
+B_{14} &= - \frac{1}{14 !}  \Tr{} (2J_3)^{14} (-1)^{2J_3} \, .
+\end{align}
+Computing $B_{14}$ is same as the computing Witten index in a reduced system, obtained by removing the Goldstone multiplets. 
+
+In a different duality frame, these indices have been computed \cite{Shih:2005qf, Sen:2009gy}.
+% and are given by
+%\begin{align}
+%\nonumber
+%B_{14} &= - \sum_{s| \ell_1, \ell_2} s \widehat{c} (\Delta/s^2) \, , ~~\Delta \equiv 4 N_1 N_2 N_3 N_4 \, , \\
+%- \vartheta_1(z | \tau)^2 \eta(\tau)^{-6} &\equiv \sum_{k,l} \widehat{c} (4k-l^2) e^{2 \pi i (k \tau + l z)} \, . 
+%\end{align}
+For configurations considered in this work, i.e. with charge vector $(1,1,1,N)$, 
+%one gets $B_{14} = -\widehat{c} (4N)$. Where the numbers $\widehat{c} (4N)$ 
+ the generating function for $B_{14}(N)$ is given by 
+\begin{align}
+\sum_{N=0}^\infty B_{14}(N) q^N &= \frac{\sum_{n \in \mathbb{Z}} q^{n(n+1)}}{ \prod_{n=1}^\infty (1-q^n)^6} \, .
+\end{align}
+The right hand side can be easily expanded in Mathematica and the expansion coefficients can be extracted.
+First few terms of this expansion are computed to be \cite{Mathematica}
+\begin{align}
+2+12 q+56 q^2+208 q^3+684 q^4+2032 q^5+5616 q^6+14592 q^7+36088 q^8+85500 q^9+195312 q^{10}+ \dots \, .
+\end{align}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Details of $V_{gauge}$ and $V_D $} \label{VgaugeD}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\begin{align}
+%\nn
+%V_{gauge} &= \sum_{k \neq l \atop{k,l =1}}^3 \sum_{a=1}^3 \left( X^{k}_a - X^{l}_a \right)^2 | Z^{kl}|^ 2 
+%+ \sum_{k=1}^3 \Tr{} \left[ \left( X_a^4 Z^{4k} - Z^{4k} X_a^k \right)^\dagger  \left( X_a^4 Z^{4k} - Z^{4k} X_a^k \right) \right] \\
+%\nn
+%&+ \sum_{k=1}^3 \Tr{} \left[ \left( X_a^k Z^{k4} - Z^{k4} X_a^4 \right)^\dagger  \left( X_a^k Z^{k4} - Z^{k4} X_a^4 \right)  \right] \\
+%&+ \sum_{a, A=1}^3 \Tr{} \left( \left[ X^{4}_a, \, \Phi^{4}_A \right]^\dagger \left[ X^{4}_a, \, \Phi^{4}_A \right] \right)
+%+ \frac{1}{4} \sum_{a, b=1}^3 \Tr{} \left( \left[ X^{4}_a, \, X^{4}_b \right]^\dagger \left[ X^{4}_a, \, X^{4}_b \right] \right)
+%\end{align}
+%The potential (to be treated as loss function) is a sum of 3 terms 
+We  write $V_{gauge}$ and $V_D$ for the most general case where the $k^{th}$ stack, $k=1, 2 , 3 , 4$, has $N_k$ of D-branes. This puts all four stacks in same footing and enables usage of similar notations for all stacks, hence simplifying the expressions of $V_{gauge}$ and $V_D$. The case at hand can easily be obtained by putting $N-1=N_2=N_3=1, N_4=N$. 
+
+The gauge potential is given by
+\begin{align}
+%V_{gauge} &= \sum_{k,l=1; k\neq l}^3 \sum_{a=1}^3 \left|  H^{(kl)}_a \right|^2 + 
+\nonumber
+V_{gauge} &= \sum_{k,l=1; k\neq l}^4 \sum_{a=1}^3 \Tr{} \left[ \left( H^{kl}_a \right)^\dagger \left( H^{kl}_a \right) \right] + \sum_{k=1}^4 \sum_{a=1}^3 \sum_{A=1}^3 \Tr{} \left[ \left( Y^{k}_{aA} \right)^\dagger Y^{k}_{aA} \right] \\
+\nonumber
+&+ \frac{1}{4} \sum_{k=1}^4 \sum_{a,b=1}^3 \Tr{} \left[ \left( X^{k}_{ab} \right)^\dagger X^{k}_{ab}  \right] \, , 
+\end{align}
+where
+\begin{align}
+X^{k}_{ab} &= [X^{k}_a, X^{k}_b]\, , %\Phi^{(k)}_{AB} := [\Phi^{(k)}_A, \Phi^{(k)}_B] \, , 
+Y^{k}_{aA} := [X^{k}_a,\Phi^{k}_A] \, , H^{kl}_a := X_a^{k} Z^{kl} - Z^{kl} X_a^{l} 
+\end{align}
+F-term equations entail that all $Z$-s and $\Phi$-s are non-vanishing. Demanding a vanishing $V_{gauge}$ then implies
+\begin{align}
+X^{k}_a&= 0 \quad k=1,2,3,4, \, a=1,2,3 \, .
+\end{align}
+The D-term potential has the general form
+\begin{align}
+V_D &= \frac{1}{2} \sum_{k=1}^4 \Tr{} \left[ \left( \sum_{l \neq k} Z^{kl} Z^{kl \dagger} -  \sum_{l \neq k} Z^{lk \dagger} Z^{lk} + \sum_{A=1}^3 \left[ \Phi^{k}_A, \Phi^{k\dagger}_A \right] - c^{k} \mathbb{I}_{N_k} \right)^2 \right] \, .
+\end{align}
+%
+$c^{(k)}$-s are arbitrary real numbers, called Fayet-Illipoulos (FI) parameters,  satisfying $\sum_k c^{(k)}=0$. For the case at hand $(N_1, N_2, N_3, N_4) = (1,1,1,N)$.
+
+%Note that vanishing of $V_F$ and $V_{gauge}$ requires
+%\begin{align}
+%F^{kl} &= 0 \, , \, G^{kl} = 0 \, , \, H^{kl} = 0 \, , \, \\
+%Y^{k}_{aA} &= 0 \, , \, X^{k}_{ab} = 0 \, . 
+%\end{align}
+%D-term equations  can be traded for complexifying gauge invariance\footnote{As a consistency check, }.
+%
+%From now onwards, we restrict to the case $(N_1, N_2, N_3, N_4) = (1,1,1,N)$.
+%This can be further simplified, using the  following observations:
+%\begin{enumerate}
+%\item
+%There are 28 Goldstones, corresponding to 28 broken supersymmetries. These are
+%\begin{align}
+%\nn
+%&X^{(1)}_a+X^{(2)}_a+X^{(3)}_a+ \frac{1}{N}\Tr{} X^{(4)}_a \, , a=0,1,2,3\\
+%\nn
+%&\Phi_i^{(i)} + \frac{1}{N}\Phi_i^{(4)} \, , \, \quad i=1,2,3 \, , \\
+%&\Phi_3^{(1)} + \Phi_3^{(2)} \, , \, \Phi_2^{(1)} + \Phi_2^{(3)} \, , \, \Phi_1^{(2)} + \Phi_1^{(3)} \, , \, 
+%\end{align}
+%Using translational symmetry, let us fix 
+%\begin{align}
+%\Phi^i_i &= 0 \, , i=1,2,3 \, .
+%\end{align}
+%Remaining $\Phi^i_k, i=1,2,3$ appear in the following combinations:
+%\begin{align}
+%\Phi^{(12)} := \Phi^{1}_3 - \Phi^{2}_3 \, , \, \Phi^{(23)} := \Phi^{2}_1 - \Phi^{3}_1 \, , \,\Phi^{(31)} := \Phi^{3}_2 - \Phi^{1}_2 \, , 
+%\end{align}
+%which are fixed by vanishing of $G^{12}, G^{21}, G^{23}, G^{32}, G^{13}, G^{31}$ as follows:
+%\begin{align}
+%\nn
+%\Phi^{(12)} &= - \frac{Z^{23} Z^{31} + Z^{24} Z^{41}}{Z^{21}} = - \frac{Z^{13} Z^{32} + Z^{14} Z^{42}}{Z^{12}} \, , \,\\
+%\nn
+%\Phi^{(23)} &= - \frac{Z^{31} Z^{12} + Z^{34} Z^{42}}{Z^{32}} = - \frac{Z^{21} Z^{13} + Z^{24} Z^{43}}{Z^{23}} \, , \, \\
+%\Phi^{(31)} &= - \frac{Z^{32} Z^{21} - Z^{34} Z^{41}}{Z^{31}} = - \frac{Z^{12} Z^{23} + Z^{14} Z^{43}}{Z^{13}}  \, . %\label{phifix}
+%\end{align}
+%This requires non-vanishing $Z^{12}, Z^{21}, Z^{23},Z^{32},Z^{13},Z^{31}$, which in turn is ensured by vanishing $F^{12}, F^{21}, F^{23}, F^{32}, F^{13}, F^{31}$.
+%%
+%\item
+%Using translational symmetry along $\mathbb{R}^3$, we can set $\vec{X}^{(1)} = \vec{0}$. 
+%For $Z^{ij} \neq 0 \, \forall i \neq j=1,2,3,4$, vanishing of $H^{(kl)}_a$ for various $(kl),a$ then requiures
+%\begin{align}
+%\vec{X}^{(k)} &= 0 \quad k=1,2,3,4. \label{xvanish}
+%\end{align}
+%We shall substitute \refb{xvanish} which would be justified a posteriori, as we will find $Z^{ij} \neq 0 \, \forall i \neq j=1,2,3,4$.
+%\end{enumerate}
+%With these substitutions, it suffices to solve for 
+%\begin{align}
+%\nn
+%F^{12} &= 0 \, , \, F^{23} = 0 \, , \, F^{31} = 0 \, , \, F^{41} = 0 \, , \, F^{42} = 0 \, , \, F^{43} = 0 \, ,\\
+%G^{41} &= 0 \, , \, G^{42} = 0 \, , \, G^{43} = 0 \, , \, G^{14} = 0 \, , \, G^{24} = 0 \, , \, G^{34} = 0 \, , \, 
+%E^{12} = 0 \, , \, E^{23} = 0 \, , \, E^{31} = 0 \, .  %\label{effeqn}
+%\end{align}
+%where
+%\begin{align}
+%\nonumber
+%%X^{(k)}_{ab} &= [X^{(k)}_a, X^{(k)}_b]\, , \Phi^{(k)}_{AB} := [\Phi^{(k)}_A, \Phi^{(k)}_B] \, , Y^{(k)}_{aA} := [X^{(k)}_a,\Phi^{(k)}_A] \, ,
+%%H^{(kl)}_a := X_a^{(k)} Z^{(kl)} - Z^{(kl)} X_a^{(l)} \\
+%%F^{14} &= Z^{14} Z^{41} - c^{14} N_4 \mathbb{I}_{N_1} - [\Phi_2^1, \Phi_3^1]  ~,~
+%F^{23} &= Z^{23} Z^{32} + c^{23} ~,~
+%%F^{32} &=  Z^{32} Z^{23} - c^{23} N_2 \mathbb{I}_{N_3} + [\Phi_2^3, \Phi_3^3]   ~,~
+%F^{41} =  Z^{41} Z^{14} + c^{14} \mathbb{I}_{N_4} + [\Phi_2^4, \Phi_3^4]  , \\
+%\nonumber
+%%F^{13} &=  Z^{13} Z^{31} + c^{13} N_3 \mathbb{I}_{N_1} + [\Phi_3^1, \Phi_1^1]   ~,~
+%%F^{24} =  Z^{24} Z^{42} + c^{24} N_4 \mathbb{I}_{N_2} + [\Phi_3^2, \Phi_1^2]  , \\
+%F^{31} &=  Z^{31} Z^{13} + c^{13}  ~,~
+%F^{42} =  Z^{42} Z^{24} + c^{24}  \mathbb{I}_{N_4} + [\Phi_3^4, \Phi_1^4]  , \\
+%\nonumber
+%F^{12} &=  Z^{12} Z^{21} + c^{12}  ~,~
+%%F^{21} =  Z^{21} Z^{12} + c^{12} N_1 \mathbb{I}_{N_2} + [\Phi_2^2,\Phi_1^2]  , \\
+%%F^{34} &=   Z^{34} Z^{43} + c^{34} N_4 \mathbb{I}_{N_3} + [\Phi_2^3,\Phi_1^3]  ~,~
+%F^{43} =  Z^{43} Z^{34} + c^{34} \mathbb{I}_{N_4} + [\Phi_1^4,\Phi_2^4] , \\
+%\nonumber
+%%
+%E^{12} &= Z^{12} Z^{23} Z^{31} + Z^{12} Z^{24} Z^{41} - Z^{21} Z^{13} Z^{32} - Z^{21} Z^{14} Z^{42} ,  \\
+%\nonumber
+%E^{31} &= Z^{13} Z^{32} Z^{21} - Z^{13} Z^{34} Z^{41} - Z^{31} Z^{12} Z^{23} - Z^{31} Z^{14} Z^{43} ,  \\
+%\nonumber
+%E^{23} &= Z^{23} Z^{31} Z^{12} + Z^{23} Z^{34} Z^{42} - Z^{32} Z^{21} Z^{13} - Z^{32} Z^{24} Z^{43}  \, , \\
+%\nonumber
+%%
+%G^{41} &=  - \Phi_1^4 Z^{41} + Z^{42} Z^{21} + Z^{43} Z^{31}  ~,~ G^{14} =  - Z^{14} \Phi_1^4 + Z^{12} Z^{24} - Z^{13} Z^{34}  \\
+%\nonumber
+%G^{42} &=  - \Phi_2^4 Z^{42} + Z^{43} Z^{32} + Z^{41} Z^{12}  ~,~ G^{24} =  - Z^{24} \Phi_2^4 + Z^{21} Z^{14} + Z^{23} Z^{34}  \\
+%G^{43} &=  - \Phi_3^4 Z^{43} - Z^{41} Z^{13} + Z^{42} Z^{23}   ~,~ G^{34} =  - Z^{34} \Phi_3^4 + Z^{31} Z^{14} + Z^{32} Z^{24}  \, . \label{simpleeqn}
+%\end{align}
+%Finding solutions to \refb{effeqn} can be recast as finding minima of the following potential, or loss function
+%\begin{align}
+%\nn
+%V_{eff} &= |F^{12}|^2 +  |F^{23}|^2 +  |F^{31}|^2 + \Tr{} \left[ \left( F^{41} \right)^\dagger  F^{41} \right]   + \Tr{} \left[ \left( F^{42} \right)^\dagger  F^{42} \right]
+%+ \Tr{} \left[ \left( F^{43} \right)^\dagger  F^{43} \right] \\
+%\nn
+%&+  \left( G^{41} \right)^\dagger  G^{41} +  \left( G^{42} \right)^\dagger  G^{42} +  \left( G^{43} \right)^\dagger  G^{43}  
+%+  G^{14}  \left( G^{14} \right)^\dagger +  G^{24}  \left( G^{24} \right)^\dagger +  G^{34}  \left( G^{34} \right)^\dagger \\
+%&+  |E^{12}|^2 +  |E^{23}|^2 +  |E^{31}|^2 \, .
+%\end{align}
+%Equations \refb{effeqn} are invariant under the transformations
+%\begin{align}
+%\nonumber
+%&Z^{12} \rightarrow \lambda_{12} Z^{12} \, , \, Z^{21} \rightarrow \lambda_{12}^{-1} Z^{21} \, , \, 
+%Z^{23} \rightarrow \lambda_{23} Z^{23} \, , \, Z^{32} \rightarrow \lambda_{23}^{-1} Z^{32} \, , \\
+%\nonumber
+%&Z^{13} \rightarrow \lambda_{12} \lambda_{23} Z^{13} \, , \, Z^{31} \rightarrow \lambda_{12}^{-1} \lambda_{23}^{-1} Z^{31} \, , \\
+%\nonumber
+%&Z^{14} \rightarrow \lambda_{12} \lambda_{23} Z^{14} M^{-1} \, ,  Z^{24} \rightarrow \lambda_{23} Z^{24} M^{-1} \, ,  Z^{34} \rightarrow  Z^{34} M^{-1} \, , \\
+%\nonumber
+%&Z^{41} \rightarrow \lambda_{12}^{-1} \lambda_{23}^{-1} M Z^{41} \, , \, Z^{42} \rightarrow \lambda_{23}^{-1} M Z^{42} \, , \, Z^{43} \rightarrow M Z^{43} \, , \\
+%&\Phi_i^{4} \rightarrow M \Phi^{4}_i M^{-1} \, . %\label{complexgauge}
+%\end{align}
+%where $\lambda_{12} \in \mathbb{C}^\star, \lambda_{23} \in \mathbb{C}^\star,  M \in GL(N, \mathbb{C})$. 
+%Recall, the solutions of \refb{effeqn} are supposed to be subject to D-term equations as well as $U(1) \times U(1) \times U(N)$ gauge invariance, combined effect of which is same as modding out by $ \mathbb{C}^\star \times  \mathbb{C}^\star \times  GL(N, \mathbb{C})$, acting as \refb{complexgauge}. Intuitively one can think of D-term equations fixing the scale whereas gauge choice fixing  the ``phase". 
+%
+%In  the following we shall get rid of $ \mathbb{C}^\star \times  \mathbb{C}^\star \times  GL(N, \mathbb{C})$ redundancy, by fixing gauge and will minimize the  loss function in remaining variables. 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{The superpotential} \label{appsup}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+the F-term potential in a supersymmetric theory has the following structure
+\begin{align}
+V &= \sum_\alpha \left| \frac{\partial W}{\partial \varphi_\alpha} \right|^2 = \frac{\partial W}{\partial \varphi_\alpha}  \frac{\partial \overline{W}}{\partial \overline{\varphi_\alpha}} 
+%\frac{\partial V}{\partial \varphi_j} &=  \frac{\partial^2 W}{\partial \varphi_i \partial \varphi_j}  \frac{\partial \overline{W}}{\partial \overline{\varphi_i}} 
+\end{align}
+where $\varphi_\alpha$ stands for various chiral multiplets (or complex scalars therein) in the theory. 
+
+The superpotential in the present case is given by\footnote{We have dropped an overall factor of $\sqrt{2}$, which is  irrelevant for the analysing the minima.} \cite{Chowdhury:2015gbk}
+\begin{align}
+\nn
+W &= W_1 + W_2 + W_3 + W_4 \, , \\ 
+\nn
+W_1 &= \Phi^{(12)} Z^{12} Z^{21} + \Phi^{(23)} Z^{32} Z^{23} + \Phi^{(31)} Z^{31} Z^{13} - \Tr{} \Phi^{4}_1 Z^{41} Z^{14} - \Tr{} \Phi^{4}_2 Z^{42} Z^{24} - \Tr{} \Phi^{4}_3 Z^{43} Z^{34} \\
+\nn
+W_2 &= Z^{12} Z^{23} Z^{31} +  Z^{13} Z^{32} Z^{21} + Z^{12} Z^{24}. Z^{41}  +  Z^{21} Z^{14}. Z^{42}  \\
+\nn
+&-  Z^{13} Z^{34}. Z^{41}  +  Z^{31} Z^{14} . Z^{43}  +  Z^{23} Z^{34} . Z^{42}  + Z^{32} Z^{24} . Z^{41} \\
+\nn
+W_3 &= c^{12} \Phi^{(12)}_3 + c^{23} \Phi^{(23)}_1 + c^{31} \Phi^{(31)}_2 - c^{14} \Tr{} \Phi_1^{4} - c^{24} \Tr{} \Phi_2^{4} - c^{34} \Tr{} \Phi_3^{4} \\
+W_4 &= - \Tr{} \left( \Phi^{4}_1 \Phi^{4}_2 \Phi^{4}_3 -   \Phi^{4}_1 \Phi^{4}_3 \Phi^{4}_2 \right) \, , 
+\end{align}
+where $ \Phi^{(12)},  \Phi^{(23)},  \Phi^{(31)}$ are as defined in \refb{phisurvive}.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Gauge fixing}\label{appgauuge}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+The system has a $\mathbb{C}^\ast  \times \mathbb{C}^\ast \times \times GL(N, \mathbb{C})$ gauge symmetry.
+First and second $\mathbb{C}^\ast$ gauge symmetries can respectively be fixed by fixing $Z^{12}, Z^{23}$ to some complex numbers. 
+
+$GL(N, \mathbb{C})$ can be fixed in many ways. We choose to fix one of $Z^{41}, Z^{42}, Z^{43}, Z^{14}, Z^{24}, Z^{34}$ to a randomly chosen vector $Z^{fix}$ and one of $\Phi^{4}_1, \Phi^{4}_2, \Phi^{4}_3$ to a $N \times N$ matrix $\Phi_{fix}$ with all but $N$ components fixed.
+Ability of taking any configuration of say $Z^{41}, \Phi^4_1 $ to this configuration depends on the existence of a unique $M \in GL(N, \mathbb{C})$ satisfying
+\begin{align}
+M Z^{41} &= Z^{fix} \quad , \quad M \Phi^4_1 M^{-1} = \Phi_{fix} \, \Rightarrow \, M \Phi^4_1 = \Phi_{fix} M \, .
+\end{align}
+These being linear equations in entries of $M$, will generally admit unique solution.
+
+Simplest choice of $\Phi_{fix}$ would be a diagonal matrix. We point out a more general choice, which is to fix first $N-1$ rows of $\Phi_{fix}$ to randomly chosen numbers. For different choices of these random numbers, different minima might be more accessible.
+
+As an explicit example, consider $N=3$. In  this case, 
+\begin{align}
+\Phi_{fix} &=
+\begin{pmatrix}
+r_{11} & r_{12} & r_{13} \\
+r_{21} & r_{22} & r_{23} \\
+v_1 & v_2 & v_3
+\end{pmatrix} \, ,
+\end{align}
+where $r_{ij}$-s are randomly chosen complex numbers (to be held fixed in the course of SGD) and $v_i$-s are dynamic variables (to be varied in the course of SGD).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Simplification of the potential landscape} \label{appsimple}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%Further simplification is possible by noting that 
+The variables $\Phi^{(12)} , \Phi^{(13)} , \Phi^{(23)}$ can be  eliminated by solving $G^{ij}=0 , \, i \neq j, \, i,j=1,2,3$ \refb{Fterm}, \refb{Feqn}. 
+Each of $\Phi^{(12)} , \Phi^{(13)} , \Phi^{(23)} $ are fixed by two equations: 
+\begin{align}
+\nn
+\Phi^{(12)} &= - \frac{Z^{23} Z^{31} + Z^{24} Z^{41}}{Z^{21}} = - \frac{Z^{13} Z^{32} + Z^{14} Z^{42}}{Z^{12}} \, , \,\\
+\nn
+\Phi^{(23)} &= - \frac{Z^{31} Z^{12} + Z^{34} Z^{42}}{Z^{32}} = - \frac{Z^{21} Z^{13} + Z^{24} Z^{43}}{Z^{23}} \, , \, \\
+\Phi^{(31)} &= - \frac{Z^{32} Z^{21} - Z^{34} Z^{41}}{Z^{31}} = - \frac{Z^{12} Z^{23} + Z^{14} Z^{43}}{Z^{13}}  \, , \label{phifix}
+\end{align}
+giving 3 consistency conditions:
+\begin{align}
+E^{12} &:= Z^{12} Z^{23} Z^{31} + Z^{12} Z^{24} Z^{41} - Z^{21} Z^{13} Z^{32} - Z^{21} Z^{14} Z^{42} =0 ,  \\
+\nonumber
+E^{31} &:= Z^{13} Z^{32} Z^{21} - Z^{13} Z^{34} Z^{41} - Z^{31} Z^{12} Z^{23} - Z^{31} Z^{14} Z^{43} =0 ,  \\
+\nonumber
+E^{23} &:= Z^{23} Z^{31} Z^{12} + Z^{23} Z^{34} Z^{42} - Z^{32} Z^{21} Z^{13} - Z^{32} Z^{24} Z^{43} =0 \, . 
+\end{align}
+We  also note $F^{ij} = F^{ji}, \, i \neq j , \, i,j=1,2,3$, and $F^{i4} = \Tr{} F^{4i}, \, i=1,2,3$. So solving \refb{Feqn} is same as eliminating  $\Phi^{(12)} , \Phi^{(13)} , \Phi^{(23)}$ and solving  
+\begin{align}
+\nn
+E^{12} &= 0 \, , \, E^{23} = 0 \, , \, E^{31} = 0 \, , \\
+\nn
+F^{12} &= 0 \, , \, F^{23} = 0 \, , \, F^{31} = 0 \, , \, F^{41} = 0 \, , \, F^{42} = 0 \, , \, F^{43} = 0 \, ,\\
+G^{41} &= 0 \, , \, G^{42} = 0 \, , \, G^{43} = 0 \, , \, G^{14} = 0 \, , \, G^{24} = 0 \, , \, G^{34} = 0 \, \, ,  \label{effeqn}
+\end{align}
+which in turn is same as finding global minima of the effective potential
+\begin{align}
+\nn
+V_{eff} &= |F^{12}|^2 +  |F^{23}|^2 +  |F^{31}|^2 + \Tr{} \left[ \left( F^{41} \right)^\dagger  F^{41} \right]   + \Tr{} \left[ \left( F^{42} \right)^\dagger  F^{42} \right]
++ \Tr{} \left[ \left( F^{43} \right)^\dagger  F^{43} \right] \\
+\nn
+&+  \left( G^{41} \right)^\dagger  G^{41} +  \left( G^{42} \right)^\dagger  G^{42} +  \left( G^{43} \right)^\dagger  G^{43}  
++  G^{14}  \left( G^{14} \right)^\dagger +  G^{24}  \left( G^{24} \right)^\dagger +  G^{34}  \left( G^{34} \right)^\dagger \\
+&+  |E^{12}|^2 +  |E^{23}|^2 +  |E^{31}|^2 \, . \label{Vfsimple}
+\end{align}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Further simplification for $N=1$} \label{appN1}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+For $N=1$, all the variables are Abelian and the equations \refb{Feqn} simplify considerably.
+In particular, all $\Phi$ -s can be fixed in terms of $Z$-s and rest of the F-term equations reduce to the following 9 equations:
+\begin{align}
+\nn
+Z^{ij} Z^{ji} &= -c_{ij} \, \quad 1 \leq i < j \leq 4 \, , \\
+\nn
+Z^{23} Z^{31} Z^{12} +  Z^{23} Z^{34} Z^{42} &= Z^{32} Z^{21} Z^{13} + Z^{32} Z^{24} Z^{43} \, , \\
+\nn
+Z^{24} Z^{41} Z^{12} +  Z^{24} Z^{43} Z^{32} &= Z^{42} Z^{21} Z^{14} + Z^{42} Z^{23} Z^{34} \, , \\
+Z^{34} Z^{41} Z^{13} +  Z^{34} Z^{42} Z^{23} &= - Z^{43} Z^{31} Z^{14} + Z^{43} Z^{32} Z^{24} \, . \label{9eqn}
+\end{align}
+%The last three equations can be expressed in terms of gauge invariant variables:
+Define
+\begin{align}
+u_7 &= Z^{12} Z^{24} Z^{41} \, ,~u_8 = Z^{13} Z^{34} Z^{41} \, ,~u_9 = Z^{23} Z^{34} Z^{42} \, .
+\end{align}
+Using first 6 equations  of \refb{9eqn}, we have
+%To do so, first we note
+\begin{align}
+\nn
+Z^{12} Z^{23} Z^{31} &= \frac{u_7}{Z^{24} Z^{41}} \frac{u_9}{Z^{34} Z^{42}} \frac{ (-c_{13}) }{Z^{13}} = \frac{c_{13} u_7 u_9}{ c_{24} u_8} \, , \\
+\nn
+Z^{32} Z^{21} Z^{13} &= \frac{(-c_{23})}{Z^{23}} \frac{(-c_{12})}{Z^{12}} \frac{u_8}{Z^{34} Z^{41}} = - \frac{c_{23} c_{12} c_{24} u_8}{u_7 u_9} \, , \\
+Z^{32} Z^{24} Z^{43} &= - \frac{c_{23} c_{24} c_{34}}{u_9} \, , 
+Z^{42} Z^{21} Z^{14} = - \frac{c_{24} c_{12} c_{14}}{u_7} \, , 
+Z^{43} Z^{31} Z^{14} = - \frac{c_{34} c_{13} c_{14} }{u_8}  \, .
+\end{align}
+%The first equation becomes
+%\begin{align*}
+%\frac{c_{13} u_7 u_9}{ c_{24} u_8} + u_9 +  \frac{c_{23} c_{12} c_{24} u_8}{u_7 u_9} + \frac{c_{23} c_{24} c_{34}}{u_9} &= 0 \\
+%c_{13} u_7^2 u_9^2 + c_{24} u_7 u_8 u_9^2 +  c_{23} c_{12} c_{24}^2 u_8^2 + c_{23} c_{24}^2 c_{34}u_7 u_8 &= 0 
+%\end{align*}
+%Second equation becomes
+%\begin{align*}
+%u_7 -   \frac{c_{23} c_{24} c_{34}}{u_9} +  \frac{c_{24} c_{12} c_{14}}{u_7} -u_9 &= 0 \\
+%u_7^2 u_9 - u_7 u_9^2 -  c_{23} c_{24} c_{34} u_7 + c_{24} c_{12} c_{14} u_9  &= 0 \, .
+%\end{align*}
+%Third equation becomes 
+%\begin{align*}
+%u_8 + u_9 - \frac{c_{34} c_{13} c_{14} }{u_8} + \frac{c_{23} c_{24} c_{34}}{u_9} &= 0 \\
+%u_8^2 u_8 + u_8 u_9^2 - c_{34} c_{13} c_{14} u_9 + c_{23} c_{24} c_{34} u_8 &= 0 
+%\end{align*}
+Using this,  last 3 equations  of \refb{9eqn} become
+%To sum up we have the following set of equations\footnote{In my thesis, the first equation is misprinted}:
+\begin{align}
+\nonumber
+c_{13} u_7^2 u_9^2 + c_{24} u_7 u_8 u_9^2 +  c_{23} c_{12} c_{24}^2 u_8^2 + c_{23} c_{24}^2 c_{34}u_7 u_8 &= 0 \, , \\
+\nonumber
+u_7^2 u_9 - u_7 u_9^2 -  c_{23} c_{24} c_{34} u_7 + c_{12} c_{14} c_{24} u_9  &= 0 \, , \\
+u_8^2 u_9 + u_8 u_9^2 - c_{34} c_{13} c_{14} u_9 + c_{23} c_{24} c_{34} u_8 &= 0 \, .
+\end{align}
+Solutions with non-vanishing $u_7,u_8,u_9$ are the physical ones. It can easily be checked (e.g. in Mathematica) that there are 12 physical solutions.
+%%%%%%%%%%%%
+\section{Derivation  of $p(3,n)$} \label{appp3n}
+%%%%%%%%%%%%
+To start with we recall  \refb{pKn}, which entails 
+\begin{align}
+p_{ansatz} (3,n) &:= 1 - \frac{1}{3^n} \sum_{a=1}^{2} (-1)^{a-1} ~ {{3} \choose {a}} \,  (3-a)^n 
+%= 1 - \frac{3 \times 2^n - 3 \times 1^n}{3^n} 
+= 1 - \frac{ 2^n - 1}{3^{n-1}} 
+ %\sum_{a=1}^{2} (-1)^{a-1} ~ {{3} \choose {a}} \,  (3-a)^n 
+ \, , \label{p3n}
+\end{align}
+
+
+Let $m_S$ denote the number of sequences with entries drawn from the set $S \subset \{1,2,3\}$. Thus,
+\begin{align}
+m_{\{12\}} = m_{\{13\}} = m_{\{23\}} = 2^n,~m_{\{1\}}=m_{\{2\}}=m_{\{3\}}=1 \, .
+\end{align}
+Note $m_{\{12\}}$ is the number of sequences without 3, $m_{\{13\}}$ is the number of sequences without 2, $m_{\{23\}}$ is the number of sequences without 1. Thus, up to overcounting, number of sequences without at least one of $1,2,3$ is $m_{\{12\}} + m_{\{13\}} + m_{\{23\}}$.
+To take care of overcountings, we note the sequence $1^n$ is counted in both $m_{\{12\}}$ and $m_{\{13\}}$. Similar statements hold for sequences $2^n$ and $3^n$. With overcountings taken care of, the number of sequences without at least one of $1,2,3$ is
+\begin{align}
+\nonumber
+m_{\{12\}} + m_{\{13\}} + m_{\{23\}} - m_{\{1\}} - m_{\{2\}} - m_{\{3\}} &= 3 (2^n - 1) \\
+\Rightarrow p(3,n) &= 1 - \frac{3 (2^n -1)}{3^n} = 1 - \frac{2^n-1}{3^{n-1}} \, ,
+\end{align}
+which precisely matches \refb{p3n}.
+Note $p(3,1)=p(3,2)=0$, as expected.
+%%%%%%%%%%%%
+\section{Excluding already found solutions} \label{appexclude}
+%%%%%%%%%%%%
+We consider a simple function $f$ with multiple degenerate minima and try to  modify the function to another function $\tilde{f}$, such that one of the minima of $f$ is not a minima of $\tilde{f}$, but others continue to be so, at least approximately. This can be achieved simply by adding a localized hump around the minimum to be excluded.
+
+A simple choice for the hump function around a point $x_0$ would be 
+\begin{align}
+t(x_0) &:= \frac{1 - \tanh \left( \lambda (x-x_0)^2 - a \right)}{2} \, , 
+\end{align}
+where the parameter $a$ controls  the height  of the hump and $\lambda$ its width. If a function $f(x)$ has a minima at $x_0$, then we can take $\tilde{f}(x) = f(x) + t(x_0)$ to be the modified function. As an example, in Fig. \ref{exclusive}, we plot the function $f(x) = (x^2-1)^2, \, t(1), \, \tilde{f}(x) = f(x) + t(x_0)$. As can  be seen in Fig. \ref{exclusive}, the modified function (the green plot) and the original function (the blue plot) essentially coincide except in a small neighbourhood of the point $x=1$. Whereas the global minima at $x=1$ is avoided, new local minima shows up.
+
+%%%%%%%%%%%
+\begin{figure}[H]
+\begin{center}
+\includegraphics[scale=.8]{exclusion.pdf}
+\caption{The blue graph is the original potential, the orange graph is the hump added and the green graph is the resultant modified potential. The hump function is $\frac{1 - \tanh \left( 10 (x-1)^2 - 0.1 \right)}{2}$.}\label{exclusive}
+\end{center}
+\end{figure}
+
+%%%%%
+%\section{Hills and valleys}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%We have a potential of the form
+%\begin{align*}
+%V(z_1, \dots, z_n) &= \sum_i |f_i(z_1, \dots z_n)|^2 \, ,
+%\end{align*}
+%with $f_i$-s being quadratic or cubic polynomials. Clearly for large enough $z$, all $|f_i|^2$ are positive, thus all solutions are contained in a sphere of finite radius. It suffices to search within this ball.
+%
+%Within this ball, $V(z)$ defines a hilly landscape, with valley corresponding to the minima of $V$ and hills corresponding to the maxima.
+%
+%Although we are after the valleys, the hilltops might be useful as starting points of the search, since around the hilltops in a relatively small region, depending on the direction one can end up at different minima. 
+%
+%How to figure out the hilltops? We note, that the F-term potential has the following structure
+%\begin{align}
+%V &= \sum_i \left| \frac{\partial W}{\partial \varphi_i} \right|^2 = \frac{\partial W}{\partial \varphi_i}  \frac{\partial \overline{W}}{\partial \overline{\varphi_i}} \\
+%\frac{\partial V}{\partial \varphi_j} &=  \frac{\partial^2 W}{\partial \varphi_i \partial \varphi_j}  \frac{\partial \overline{W}}{\partial \overline{\varphi_i}} 
+%\end{align}
+%We recall the superpotential in the present case is given by\footnote{We have dropped an overall factor of $\sqrt{2}$, which is  irrelevant for the reset analysis}
+%\begin{align}
+%\nn
+%W &= W_1 + W_2 + W_3 + W_4 \, , \\ 
+%\nn
+%W_1 &= \Phi^{(12)}_3 Z^{12} Z^{21} + \Phi^{(23)}_1 Z^{32} Z^{23} + \Phi^{(31)}_2 Z^{31} Z^{13} - \Tr{} \Phi^{(4)}_1 Z^{41} Z^{14} - \Tr{} \Phi^{(4)}_2 Z^{42} Z^{24} - \Tr{} \Phi^{(4)}_3 Z^{43} Z^{34} \\
+%\nn
+%W_2 &= Z^{12} Z^{23} Z^{31} +  Z^{13} Z^{32} Z^{21} + Z^{12} Z^{24}. Z^{41}  +  Z^{21} Z^{14}. Z^{42}  \\
+%\nn
+%&-  Z^{13} Z^{34}. Z^{41}  +  Z^{31} Z^{14} . Z^{43}  +  Z^{23} Z^{34} . Z^{42}  + Z^{32} Z^{24} . Z^{41} \\
+%\nn
+%W_3 &= c^{12} \Phi^{(12)}_3 + c^{23} \Phi^{(23)}_1 + c^{31} \Phi^{(31)}_2 - c^{14} \Tr{} \Phi_1^{(4)} - c^{24} \Tr{} \Phi_2^{(4)} - c^{34} \Tr{} \Phi_3^{(4)} \\
+%W_4 &= - \Tr{} \left( \Phi^{(4)}_1 \Phi^{(4)}_2 \Phi^{(4)}_3 -   \Phi^{(4)}_1 \Phi^{(4)}_3 \Phi^{(4)}_2 \right)
+%\end{align}
+%Second derivatives are given by
+%\begin{align}
+%\frac{\partial^2 W}{\partial  Z^{12} \partial Z^{21} } &= \Phi^{(12)}_3 \, , \,
+%\frac{\partial^2 W}{\partial  Z^{13} \partial Z^{31} } = \Phi^{(31)}_2 \, , \,
+%\frac{\partial^2 W}{\partial  Z^{23} \partial Z^{32} } = \Phi^{(23)}_1 \, , \\
+%\frac{\partial^2 W}{\partial  Z^{41}_i \partial Z^{14}_j } &= - \Phi^{(4)}_{1, ji } \, , \, 
+%\frac{\partial^2 W}{\partial  Z^{42}_i \partial Z^{24}_j } = - \Phi^{(4)}_{2, ji } \, , \,
+%\frac{\partial^2 W}{\partial  Z^{43}_i \partial Z^{34}_j } = - \Phi^{(4)}_{3, ji } \, , \\
+%\frac{\partial^2 W}{\partial  Z^{12} \partial Z^{23} } &= Z^{31} \, , \, 
+%\frac{\partial^2 W}{\partial  Z^{12} \partial Z^{24}_i } = Z^{41}_i \, , \, 
+%\frac{\partial^2 W}{\partial  Z^{12} \partial Z^{31} } = Z^{23} \, , \, 
+%\frac{\partial^2 W}{\partial  Z^{12} \partial Z^{41}_i } = Z^{24}_i \, , \, \\
+%\frac{\partial^2 W}{\partial  Z^{21} \partial Z^{13} } &= Z^{32} \, , \, 
+%\frac{\partial^2 W}{\partial  Z^{21} \partial Z^{14}_i } = Z^{42}_i \, , \, 
+%\frac{\partial^2 W}{\partial  Z^{21} \partial Z^{32} } = Z^{13} \, , \, 
+%\frac{\partial^2 W}{\partial  Z^{21} \partial Z^{42}_i } = Z^{14}_i \, , \,  \\
+%\frac{\partial^2 W}{\partial  Z^{13} \partial Z^{32} } &= Z^{21} \, , \, 
+%\frac{\partial^2 W}{\partial  Z^{13} \partial Z^{34}_i } = Z^{41}_i \, , \, 
+%\frac{\partial^2 W}{\partial  Z^{13} \partial Z^{41} } = Z^{34}_i \, , \, \\
+%\frac{\partial^2 W}{\partial  Z^{31} \partial Z^{14}_i } &= Z^{43}_i \, , \, 
+%\frac{\partial^2 W}{\partial  Z^{31} \partial Z^{23} } = Z^{12}_i \, , \, 
+%\frac{\partial^2 W}{\partial  Z^{31} \partial Z^{43}_i } = Z^{14}_i \, , \, \\
+%\frac{\partial^2 W}{\partial  Z^{14}_i \partial Z^{42}_j } &= Z^{21} \delta_{ij} \, , \, 
+%\frac{\partial^2 W}{\partial  Z^{14}_i \partial Z^{43}_j } = Z^{31} \delta_{ij} \, , \, 
+%\frac{\partial^2 W}{\partial  Z^{41}_i \partial Z^{24}_j } = Z^{12} \delta_{ij} \, , \, 
+%\frac{\partial^2 W}{\partial  Z^{41}_i \partial Z^{34}_j } = Z^{13} \delta_{ij} \, , \, \\
+%\frac{\partial^2 W}{\partial  Z^{24}_i \partial Z^{43}_j } &= Z^{32} \delta_{ij} \, , \, 
+%\frac{\partial^2 W}{\partial  Z^{24}_i \partial Z^{32} } = Z^{43}_{i} \, , \, 
+%\frac{\partial^2 W}{\partial  Z^{42}_i \partial Z^{23} } = Z^{34}_{i} \, , \, 
+%\frac{\partial^2 W}{\partial  Z^{42}_i \partial Z^{34}_j } = Z^{23} \delta_{ij} \, , \, \\
+%\end{align}
+%
+%....................................................................
+%\begin{align*}
+%\frac{\partial V}{\partial z_a} &= \sum_i \left( \frac{\partial f_i}{\partial z_a} f_i^* + h.c \right)
+%\end{align*}
+%For us 
+%\begin{align*}
+%\frac{\partial V}{\partial Z^{12}} &= Z^{21} (F^{12})^* + (G^{12})^* \Phi^{(12)}_3 + (G^{13})^* Z^{23} + (G^{32})^* Z^{31}  
+%%\left( Z^{23} Z^{31} + Z^{24} Z^{41} \right) (E^{12})^* - Z^{23} Z^{31} (E^{13})^* +  Z^{23} Z^{31} (E^{23})^*  
+%+ (G^{14})^\dagger Z^{24}  + (G^{42})^\dagger (Z^{41}) \, , \\
+%\frac{\partial V}{\partial Z^{21}} &= Z^{12} (F^{12})^* + (G^{21})^* \Phi^{(12)}_3 + (G^{31})^* Z^{32} +  (G^{23})^* Z^{13} 
+%%- \left( Z^{13} Z^{32} + Z^{14} Z^{42} \right) (E^{12})^* + Z^{13} Z^{32} (E^{13})^* -  Z^{13} Z^{32} (E^{23})^*  
+%+ (G^{24})^\dagger Z^{14}  + (G^{41})^\dagger (Z^{42}) \, , \\
+%\frac{\partial V}{\partial Z^{13}} &= Z^{31} (F^{13})^* + (G^{13})^* \Phi^{(31)}_2 + (G^{23})^* Z^{21} +  (G^{31})^* Z^{32} 
+%%\left( Z^{32} Z^{21} - Z^{34} Z^{41} \right) (E^{13})^* - Z^{32} Z^{21} (E^{12})^* -  Z^{32} Z^{21} (E^{23})^*  
+%- (G^{14})^\dagger  Z^{34}  - (G^{43})^\dagger (Z^{41}) \, , \\ 
+%\frac{\partial V}{\partial Z^{31}} &= Z^{13} (F^{13})^* + (G^{31})^* \Phi^{(31)}_2 + (G^{21})^* Z^{23} +  (G^{32})^* Z^{12} 
+%%\left( Z^{12} Z^{23} + Z^{14} Z^{43} \right) (E^{13})^* + Z^{12} Z^{23} (E^{12})^* + Z^{12} Z^{23} (E^{23})^*  
+%+ (G^{34})^\dagger Z^{14}  + (G^{41})^\dagger (Z^{43}) \, , \\ 
+%\frac{\partial V}{\partial Z^{23}} &= Z^{32} (F^{23})^* +  (G^{23})^* \Phi^{(23)}_1 + (G^{21})^* Z^{31} +  (G^{13})^* Z^{12} 
+%%\left( Z^{31} Z^{12} + Z^{34} Z^{42} \right) (E^{23})^* + Z^{12} Z^{31} (E^{12})^* -  Z^{31} Z^{12} (E^{13})^*  
+%+ (G^{24})^\dagger Z^{34}  + (G^{43})^\dagger (Z^{42}) \, , \\ 
+%\frac{\partial V}{\partial Z^{32}} &=  Z^{23} (F^{23})^* + (G^{32})^* \Phi^{(23)}_1 + (G^{31})^* Z^{21} +  (G^{12})^* Z^{32} 
+% %\left( Z^{21} Z^{13} + Z^{24} Z^{43} \right) (E^{23})^* - Z^{21} Z^{13} (E^{12})^* + Z^{21} Z^{13} (E^{13})^*  
+%+ (G^{34})^\dagger Z^{24}  + (G^{42})^\dagger (Z^{43}) \, , 
+%\end{align*}
+%\begin{align*}
+%\frac{\partial V}{\partial Z^{14}_a} &= Z^{41}_a (F^{14})^* +  ((F^{41})^\dagger Z^{41})_a 
+%%- Z^{42}_a  Z^{21} (E^{12})^* - Z^{43}_a Z^{31} (E^{13})^* 
+%- (\Phi_1)_{ab} (G^{14}_b)^*  + Z^{21} (G^{24}_a)^* + Z^{31} (G^{34}_a)^* \\
+%\frac{\partial V}{\partial Z^{41}_a} &= Z^{14}_a (F^{41})^* %+ Z^{12}  Z^{24}_a (E^{12})^* - Z^{13} Z^{34}_a (E^{13})^* 
+%- (G^{4}_b)^* (\Phi_1)_{ba} + Z^{12} (G^{42}_a)^* - Z^{13} (G^{43}_a)^* \\
+%\frac{\partial V}{\partial (\Phi_1)_{ab}} &= \left[ (F^{42})^\dagger,  \Phi_3 \right]_{ba} + \left[ \Phi_2, (F^{43})^\dagger \right]_{ba} - Z^{41}_b (G^{41}_a)^*  - Z^{14}_a (G^{14})^*_b \, , \\
+%\frac{\partial V}{\partial (\Phi_2)_{ab}} &= \left[ \Phi_3, (F^{41})^\dagger \right]_{ba} + \left[ (F^{43})^\dagger, \Phi_1 \right]_{ba} - Z^{42}_b (G^{42}_a)^* - Z^{24}_a (G^{24})^*_b \, , \\
+%\frac{\partial V}{\partial (\Phi_3)_{ab}} &= \left[ (F^{41})^\dagger, \Phi_2 \right]_{ba} + \left[ \Phi_1, (F^{42})^\dagger \right]_{ba} - Z^{43}_b (G^{43}_a)^* - Z^{34}_a (G^{34})^*_b \, ,.
+%\end{align*}
+%%%%%%%%%%%%%%%
+%\subsection{saddle trials for (1,1,1,1)}
+%\begin{itemize}
+%\item
+%The Higgs saddle:  \\
+%Set all $\Phi=0$. Then?
+%\item
+%The Coulomb saddle:  \\
+%Set all (gauge remains unfixed) $Z=0$. This implies that all $G=0$ and $F^{ij} = c^{ij}$. Thus irrespective of the value of $\Phi$, these {\it unphysical} configurations are critical points. 
+%
+%If we gauge fix say $Z_{1i}=1, \, i=2,3,4$, and further choose $Z_{i1}= - c^{1i}$, so that $F_{1i}=0, \, i=2,3,4$. We set rest  of the Z-s to 0. Also set  $\Phi^{(12)}_3 = 0, \, \Phi^{(31)}_2=0, \, \Phi^{(4)}_1 = 0$
+%These imply
+%\begin{align}
+%G^{21} &= - c^{12} \Phi^{(12)}_3 = 0 \, , \, G^{12} =  \Phi^{(12)}_3 =0  \, , \\ 
+%G^{31} &= - c^{13} \Phi^{(31)}_2 =0 \, , \, G^{13} =  \Phi^{(31)}_2 = 0  \, , \\
+%G^{41} &= - c^{14} \Phi^{(4)}_1 = 0\, , \, G^{14} =  - \Phi^{(4)}_1 =0  \, , \\
+%G^{32} &= -c^{13} \, , \, G^{23} = -c^{12} \, , \\
+%G^{42} &= -c^{14} \, , \, G^{24} = -c^{12} \, , \\
+%G^{43} &= c^{14} \, , \, G^{34} = -c^{13} \, , 
+%\end{align} 
+%With these, 
+%\begin{align}
+%\partial_{Z^{12}} V &= 0 + 0 + 0 + (c^{13})^2 + 0 + (c^{14})^2
+%\end{align}
+%%
+%\item
+%Let all $G_{ij}=0$, which puts $\Phi$-s on-shell, and imposes 3 conditions on $Z$-s. This also  ensures $\frac{\partial V}{\partial \Phi}=0$. Vanishing of $\frac{\partial V}{\partial Z_{ij}}$ requires vanishing of $Z^{ij} (F^{ij})^*$. Now  $Z$-s can not vanish, since $\Phi_{on-shell} \sim 1/Z$. So $F^{ij}=0$ and hence the corresponding saddles are the global minima. Useless. 
+%\item
+%All equations involving only $Z$-s are satisfied. These include the F equations and the E equations. 
+%\item
+%
+%\end{itemize}
+%%%%%%%%%%%%%%%%
+%\subsection{some explicit saddles}
+%%%%
+%\paragraph{saddle 1:}
+%\begin{align}
+%\nonumber
+%\text{gauge fixed variables} & \rightarrow z_{12}, z_{23}, z_{14}, z_{24} \\
+%\nonumber
+%\text{on shell variables} & \rightarrow z_{13},  z_{34}, z_{42}, z_{43}, \phi_1, \phi_2, \phi_3 \\
+%\nonumber
+%\text{set to zero} &\rightarrow z_{21}= z_{31} = z_{32}=0, z_{41}=0 \\
+%\text{saddle for} & \rightarrow z_{12}, z_{13}, z_{14}, \phi_1  
+%\end{align}
+%%%%
+%\paragraph{saddle 2:}
+%\begin{align}
+%\nonumber
+%\text{gauge fixed variables} & \rightarrow z_{12}, z_{23}, z_{14}, z_{24} \\
+%\nonumber
+%\text{on shell variables} & \rightarrow z_{13},  z_{41}, z_{42}, z_{43}, \phi_2, \phi_3 \\
+%\nonumber
+%\text{set to zero} &\rightarrow z_{21}= z_{31} = z_{32}=0, z_{34}=0, \phi_1=0 \\
+%\text{saddle for} & \rightarrow z_{13}, z_{23}, z_{14}, z_{43},  \phi_3  
+%\end{align}
+%%%
+%\subsection{Avoiding known solutions}
+%%%%
+%Let $\{\varphi_{sol}^{(1)}\}$ be the minima of the loss function $L(\{\varphi\})$, found first. We want to avoid repetitions. If we define a modified loss function
+%\begin{align}
+%L_1(\{\varphi\}) &:= L (\{\varphi\}) + e^{-a (\varphi - \varphi_{sol}^{(1)})^2}
+%\end{align}
+%This function is everywhere positive. However we can choose $a$ to be sufficiently large to ensure that away from the 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\section{Explicit solutions for N=2 (from \cite{Chowdhury:2015gbk} ?)}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%The $D$ term was on and ordinary gauge transformations were fixed. Thus if we wish to compare to a formulation where D terms are traded for complexified gauge transformations, then we should look at only gauge invariants. To this end we look at the following three gauge invariants
+%\begin{align}
+%\Phi^{(12)}_3 &:= \Phi^{(1)}_3 - \Phi^{(2)}_3 \, ,\, \Phi^{(23)} := \Phi^{(2)}_1 - \Phi^{(3)}_1 \, , \,  \Phi^{(31)} := \Phi^{(3)}_2 - \Phi^{(1)}_2 \, .
+%\end{align}
+%In my thesis, $c_{ij}$-s were chosen to be
+%\begin{align}
+%c_{12} &= \frac{2}{3} , \, c_{13} = \frac{3}{5} , \, c_{14} = \frac{5}{7} , \,c_{23} = \frac{7}{11} , \,c_{24} = \frac{11}{13} , \, c_{34} = \frac{13}{17}  \, . 
+%\end{align}
+%Translational symmetry along internal directions was used to choose we had chosen $\Phi^{(1)_{1,2,3}} =0 , \Phi^{(2)}_{1,2}=0, \Phi^{(3)}_3=0$, and hence
+%\begin{align}
+%\Phi^{(12)}_3 &:= - \Phi^{(2)}_3 \, ,\, \Phi^{(23)} := - \Phi^{(3)}_1 \, , \,  \Phi^{(31)} := \Phi^{(3)}_2 \, .
+%\end{align}
+%56 solutions appear in 6 doublet and 11 quadruplets: $2 \times 6 + 4 \times 11 =56$. 
+%
+%For one representative from each doublet/ qudruplet, we present $\Phi^{(12)}, \, \Phi^{(23)},\, \Phi^{(31)}$ in table \ref{N=2soltable} and
+%$\Tr{} \Phi^{(4)}_1, \, \Tr{} \Phi^{(4)}_2, \, \Tr{} \Phi^{(4)}_3$ in table \ref{N=2soltable2}.
+%%%
+%\begin{figure}[h]
+%\begin{center}
+%\begin{tabular}{c|c|c|c|}
+%\hline
+%&$\Phi^{(12)}$ & $\Phi^{(23)}$ & $\Phi^{(31)}$ \\
+%\hline \hline
+%1 & 0.49066 & 0.52570 & -1.3450  \\
+%\hline
+%2 & {\color{blue} 2.2283 i} & {\color{blue} 2.3555 i } & - 1.1947 i  \\
+%\hline
+%3 & {\color{blue} 2.2265 i } &{\color{blue} 2.3550 i} & - 0.087600 i  \\
+%\hline
+%4 & - 1.2460 i & 1.1153 i & {\color{violet}2.4939 i}  \\
+%\hline
+%5 & 2.1494 i & 2.2566 i & 3.2237 i  \\
+%\hline
+%6 & 1.0605 i & -1.3233 i & {\color{violet} 2.4873 i }\\
+%\hline
+%7 & 0.14716 + 0.55274 i & 0.15369 + 0.58393 i & - 0.8983 + 2.4883 i \\
+%\hline
+%8 & 1.0386 + 0.9771 i & 1.0513 + 0.9773 i & - 1.6481 + 0.1394 i  \\
+%\hline
+%9 & 3.7027 + 0.1711 i & 0.45217 - 1.08965 i & {\color{magenta}-1.31223 + 0.02937 i}  \\
+%\hline 
+%10 & 0.42589 + 1.01614 i & 4.3726 - 0.1178 i & {\color{magenta}- 1.27855 - 0.01388 i } \\
+%\hline
+%11 & {\color{purple}3.7967 + 0.6721 i} & {\color{purple}4.4427 + 0.7059 i }& - 0.66723 + 0.48517 i  \\
+% \hline
+%12 & {\color{purple} 3.6825 + 0.6863 i} & {\color{purple}-4.3083 + 0.7236 i } & - 0.03074 + 0.48708 i \\
+% \hline
+%13 & 0.26139 + 0.99093 i & -3.8126 + 0.2532 i & -0.61422 - 0.01569 i  \\
+%\hline
+%14 & 3.1688 + 0.2287 i & -0.24929 + 1.05474 i & 0.57752 - 0.03039 i \\
+%\hline
+%15 & 0.49305 + 0.88504 i & 0.47057 + 0.91614 i & 0.114229 + 0.033999 i  \\
+%\hline
+%16 & 0.13172 + 0.75084 i & 0.13792 + 0.80345 i & - 0.2954 - 3.4158 i \\
+% \hline
+%17 & 0.2915 + 2.1764 i & 0.3057 + 2.3029 i & -1.7000 + 0.4665 i  \\
+% \hline \hline
+%\end{tabular}
+%\end{center}
+%\caption{$\Phi^{(12)}, \Phi^{(23)}, \Phi^{(31)}$ for solutions in N=2 case} \label{N=2soltable}
+%\end{figure}
+%%%%
+%%
+%\begin{figure}[h]
+%\begin{center}
+%\begin{tabular}{c|c|c|c|}
+%\hline
+% & $\Tr{} \Phi^{(4)}_1$ & $\Tr{} \Phi^{(4)}_2$ & $\Tr{} \Phi^{(4)}_3$ \\
+% \hline \hline
+%1 & -1.44562 & 0.12878 & -1.34059 \\
+%\hline
+%2 & {\color{blue}1.75661 i} & 4.1016 i & {\color{blue}1.65836 i} \\
+%\hline
+% 3 & {\color{blue} 1.78047 i} & -3.3362 i & {\color{blue}1.68179 i} \\
+% \hline
+%4 &  -1.86085 i & {\color{violet}-2.50047 i} & 0.276253 i \\
+%\hline
+%5 &   0.13394 i & -0.47576 i & 0.12918 i \\
+%\hline
+%6 & 0.288254 i & {\color{violet}-2.51557 i} & -1.75648 i \\
+%\hline
+%7 & -0.86876 + 0.27643 i & {\color{cyan}0.01922 - 1.09192 i} & {\color{cyan}-0.81188 + 0.26226 i} \\
+%\hline
+%8 & -2.30979 + 0.53099 i & {\color{cyan} 0.0095 + 1.08435 i} & {\color{cyan}-0.81188 + 0.26226 i} \\
+%\hline
+% 9 & -1.75711 - 0.32349 i & {\color{magenta}-0.21276 - 1.11342 i }& -4.49304 - 1.35818 i \\
+% \hline
+%10 &  -5.21453 + 1.3874 i & {\color{magenta}-0.206742 + 1.09245 i} & -1.60322 + 0.31206 i \\
+%\hline
+%11 &  -4.97296 + 0.52942 i & -0.38365 + 0.6338 i & -4.25804 + 0.4961 i\\
+%\hline
+%12 & 3.79893 + 0.513 i & -0.01142 + 0.63193 i & -3.24707 + 0.4831 i \\
+%\hline
+%13 &  3.03441 + 1.04436 i & 0.12978 + 1.08316 i & -0.56619 + 0.32234 i \\
+%\hline
+%14 &  0.547408 + 0.338006 i & -0.134906 + 1.10011 i & -2.45867 + 0.99403 i \\
+%\hline
+%15 &  -0.18527 + 0.54115 i & 0.1165 + 1.12171 i & -0.211297 + 0.496283 i \\
+%\hline
+%16 &  -0.92348 + 1.94223 i & -0.4664 + 4.6659 i & -0.86266 + 1.82819 i \\
+%\hline
+%17 &  -2.21745 + 2.04498 i & -0.43652 + 3.12741 i & -2.07102 + 1.92907 i \\
+%  \hline \hline      
+%\end{tabular}
+%\end{center}
+%\caption{$\Phi^{(4)}_1, \Phi^{(4)}_2, \Phi^{(4)}_3$ for solutions in N=2 case} \label{N=2soltable2}
+%\end{figure}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\pagebreak
+\bibliography{mlbh} 
+\bibliographystyle{JHEP}   
+
+
+
+\end{document}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%\bibliographystyle{unsrt} 
+ \providecommand{\href}[2]{#2}
+ \begingroup\raggedright
+ \begin{thebibliography}{10}
+%
+\bibitem{Chowdhury:2014yca} 
+  A.~Chowdhury, R.~S.~Garavuso, S.~Mondal and A.~Sen,
+  ``BPS State Counting in N=8 Supersymmetric String Theory for Pure D-brane Configurations,''
+  JHEP {\bf 1410}, 186 (2014)
+  %doi:10.1007/JHEP10(2014)186
+  \href{https://arxiv.org/abs/1405.0412}{{\tt 1405.0412}}.
+%
+\bibitem{Chowdhury:2015gbk} 
+  A.~Chowdhury, R.~S.~Garavuso, S.~Mondal and A.~Sen,
+  ``Do All BPS Black Hole Microstates Carry Zero Angular Momentum?,''
+  JHEP {\bf 1604}, 082 (2016)
+%  doi:10.1007/JHEP04(2016)082
+\href{https://arxiv.org/abs/1511.06978}{{\tt 1511.06978}}.
+ %
+ \bibitem{Shih:2005qf} 
+  D.~Shih, A.~Strominger and X.~Yin,
+  ``Counting dyons in N=8 string theory,''
+  JHEP {\bf 0606}, 037 (2006), \href{https://arxiv.org/abs/hep-th/0506151}{{\tt 0506151}}.
+  %
+  \bibitem{Sen:2009gy} 
+  A.~Sen,
+  ``Arithmetic of N=8 Black Holes,''
+  JHEP {\bf 1002}, 090 (2010)
+  doi:10.1007/JHEP02(2010)090,\href{https://arxiv.org/abs/0908.0039}{{\tt 0908.0039}}.
+  %
+\bibitem{Krishnan:2020sfg} 
+  C.~Krishnan, V.~Mohan and S.~Ray,
+  ``Machine Learning ${\cal N}=8, D=5$ Gauged Supergravity,''
+  \href{https://arxiv.org/abs/2002.12927}{{\tt 2002.12927}}.
+%
+\bibitem{Comsa:2019rcz} 
+  I.~M.~Comsa, M.~Firsching and T.~Fischbacher,
+  ``SO(8) Supergravity and the Magic of Machine Learning,''
+  JHEP {\bf 1908}, 057 (2019), \href{https://arxiv.org/abs/1906.00207}{{\tt 1906.00207}}.
+%
+\bibitem{Bobev:2020ttg} 
+  N.~Bobev, T.~Fischbacher, F.~F.~Gautason and K.~Pilch,
+ ``A Cornucopia of AdS$_5$ Vacua,''
+  \href{https://arxiv.org/abs/2003.03979v1}{{\tt 2003.03979}}.
+  %
+\bibitem{google}
+\href{https://colab.research.google.com}{{\tt https://colab.research.google.com}}
+  
+\bibitem{nedlermead}
+\href{https://en.wikipedia.org/wiki/Nelder?Mead_method}{{\tt https://en.wikipedia.org/wiki/Nelder?Meadmethod}}
+
+\bibitem{swarm}
+\href{https://en.wikipedia.org/wiki/Particle_swarm_optimization}{{\tt https://en.wikipedia.org/wiki/Particleswarmoptimization}}
+
+\bibitem{rl}
+\href{https://spinningup.openai.com/en/latest/}{{\tt https://spinningup.openai.com/en/latest/}}
+
+\bibitem{LIGO}
+B.~ P~. Abbott et al.,
+``Observation of Gravitational Waves from a Binary Black Hole Merger", 	Phys. Rev. Lett. {\bf 116}, 061102 (2016)
+
+\bibitem{Hawking1}
+S.~W.~ Hawking,
+``Gravitational Radiation from Colliding Black Holes," 	Phys. Rev. Lett. {\bf 26}, 1344-1346 (1971)
+
+\bibitem{Bekenstein1}
+J.~D.~ Bekenstein, ``Black Holes and Entropy", Phys. Rev. {\bf D7}, 2333-2346 (1973).
+
+\bibitem{Bekenstein2}
+J.~D.~ Bekenstein, ``Generalized Second Law of Thermodynamics in Black-Hole Physics", Phys. Rev. {\bf D9}, 3292-3300 (1974).
+
+\bibitem{BCH}
+J.~M.~ Bardeen, B.~ Carter, and S.~W.~ Hawking, ``The Four Laws of Black Hole Mechanics'',  Commun. Math. Phys. {\bf 31}, 161-170 (1973).
+
+\bibitem{Hawking2}
+S.~W.~Hawking, ``Particle Creation by Black Holes,"  Comm. Math. Phys. {\bf 43}, 199 (1975).
+
+\bibitem{Wald}
+R.~ M.~ Wald,
+ ?Black hole entropy in the Noether charge,? Phys. Rev. D {\bf 48}, 3427 (1993) [arXiv:gr- qc/9307038].
+
+\bibitem{JKM}
+T.~ Jacobson, G.~ Kang and R.~ C.~ Myers,
+ ``On Black Hole Entropy,? Phys. Rev. D {\bf 49}, 6587 (1994) [arXiv:gr-qc/9312023].
+
+\bibitem{Iyer-Wald}
+V.~ Iyer and R.~ M.~ Wald, 
+``Some properties of Noether charge and a proposal for dynamical black hole entropy,? Phys. Rev. D {\bf 50}, 846 (1994) [arXiv:gr-qc/9403028].
+
+\bibitem{JKM2}
+T.~ Jacobson, G.~ Kang and R.~ C.~ Myers,
+ ``Black hole entropy in higher curvature gravity,? arXiv:gr- qc/9502009.
+
+\bibitem{susskind}
+L.~Susskind, ``Some speculations about black hole entropy in string theory,"[arXiv:hep-th/9309145]].
+
+\bibitem{susskind_uglum}
+L.~ Susskind and J.~ Uglum,
+``Black Hole Entropy in Canonical Quantum Gravity and Superstring Theory,"
+ Phys. Rev. D {\bf 50} 2700(1994) [hep- th/9401070].
+ 
+%\cite{Russo:1994ev}
+\bibitem{Russo:1994ev} 
+J.~G.~Russo and L.~Susskind,
+``Asymptotic level density in heterotic string theory and rotating black holes,''
+Nucl.\ Phys.\ B {\bf 437}, 611 (1995)
+%doi:10.1016/0550-3213(94)00532-J
+[hep-th/9405117].
+%%CITATION = doi:10.1016/0550-3213(94)00532-J;%%
+%101 citations counted in INSPIRE as of 10 May 2016
+ 
+\bibitem{PS}
+M.~ K.~ Prasad and C.~ M.~ Sommerfield, Phys. Rev. Lett. {\bf 35} 760 (1975).
+
+\bibitem{B}
+E.~ B.~ Bogomol?nyi, Sov. J. Nucl. Phys. {\bf 24} 449 (1976).
+
+ %\cite{Sen:1995in}
+ \bibitem{Sen:1995in} 
+ A.~Sen,
+ ``Extremal black holes and elementary string states,''
+ Mod.\ Phys.\ Lett.\ A {\bf 10}, 2081 (1995)
+% doi:10.1142/S0217732395002234
+ [hep-th/9504147].
+ %%CITATION = doi:10.1142/S0217732395002234;%%
+ %358 citations counted in INSPIRE as of 10 May 2016
+ 
+ %\cite{Strominger:1996sh}
+ \bibitem{Strominger:1996sh} 
+ A.~Strominger and C.~Vafa,
+ ``Microscopic origin of the Bekenstein-Hawking entropy,''
+ Phys.\ Lett.\ B {\bf 379}, 99 (1996)
+% doi:10.1016/0370-2693(96)00345-0
+ [hep-th/9601029].
+ %%CITATION = doi:10.1016/0370-2693(96)00345-0;%%
+ %2138 citations counted in INSPIRE as of 28 May 2016
+ 
+ %\cite{Breckenridge:1996is}
+ \bibitem{Breckenridge:1996is} 
+ J.~C.~Breckenridge, R.~C.~Myers, A.~W.~Peet and C.~Vafa,
+ ``D-branes and spinning black holes,''
+ Phys.\ Lett.\ B {\bf 391}, 93 (1997)
+% doi:10.1016/S0370-2693(96)01460-8
+ [hep-th/9602065].
+ %%CITATION = doi:10.1016/S0370-2693(96)01460-8;%%
+ %461 citations counted in INSPIRE as of 01 Jun 2016
+ 
+ %\cite{Callan:1996dv}
+ \bibitem{Callan:1996dv} 
+ C.~G.~Callan and J.~M.~Maldacena,
+ ``D-brane approach to black hole quantum mechanics,''
+ Nucl.\ Phys.\ B {\bf 472}, 591 (1996)
+% doi:10.1016/0550-3213(96)00225-8
+ [hep-th/9602043].
+ %%CITATION = doi:10.1016/0550-3213(96)00225-8;%%
+ %627 citations counted in INSPIRE as of 01 Jun 2016
+ 
+ %\cite{Horowitz:1996fn}
+ \bibitem{Horowitz:1996fn} 
+ G.~T.~Horowitz and A.~Strominger,
+ ``Counting states of near extremal black holes,''
+ Phys.\ Rev.\ Lett.\  {\bf 77}, 2368 (1996)
+% doi:10.1103/PhysRevLett.77.2368
+ [hep-th/9602051].
+ %%CITATION = doi:10.1103/PhysRevLett.77.2368;%%
+ %321 citations counted in INSPIRE as of 01 Jun 2016
+ 
+ %\cite{Breckenridge:1996sn}
+ \bibitem{Breckenridge:1996sn} 
+ J.~C.~Breckenridge, D.~A.~Lowe, R.~C.~Myers, A.~W.~Peet, A.~Strominger and C.~Vafa,
+ ``Macroscopic and microscopic entropy of near extremal spinning black holes,''
+ Phys.\ Lett.\ B {\bf 381}, 423 (1996)
+% doi:10.1016/0370-2693(96)00553-9
+ [hep-th/9603078].
+ %%CITATION = doi:10.1016/0370-2693(96)00553-9;%%
+ %183 citations counted in INSPIRE as of 01 Jun 2016
+ 
+ %\cite{Maldacena:1996gb}
+ \bibitem{Maldacena:1996gb} 
+ J.~M.~Maldacena and A.~Strominger,
+ ``Statistical entropy of four-dimensional extremal black holes,''
+ Phys.\ Rev.\ Lett.\  {\bf 77}, 428 (1996)
+% doi:10.1103/PhysRevLett.77.428
+ [hep-th/9603060].
+ %%CITATION = doi:10.1103/PhysRevLett.77.428;%%
+ %259 citations counted in INSPIRE as of 01 Jun 2016
+ 
+ %\cite{Johnson:1996ga}
+ \bibitem{Johnson:1996ga} 
+ C.~V.~Johnson, R.~R.~Khuri and R.~C.~Myers,
+ ``Entropy of 4-D extremal black holes,''
+ Phys.\ Lett.\ B {\bf 378}, 78 (1996)
+% doi:10.1016/0370-2693(96)00383-8
+ [hep-th/9603061].
+ %%CITATION = doi:10.1016/0370-2693(96)00383-8;%%
+ %202 citations counted in INSPIRE as of 01 Jun 2016
+ 
+ %\cite{Horowitz:1996ac}
+ \bibitem{Horowitz:1996ac} 
+ G.~T.~Horowitz, D.~A.~Lowe and J.~M.~Maldacena,
+ ``Statistical entropy of nonextremal four-dimensional black holes and U duality,''
+ Phys.\ Rev.\ Lett.\  {\bf 77}, 430 (1996)
+% doi:10.1103/PhysRevLett.77.430
+ [hep-th/9603195].
+ %%CITATION = doi:10.1103/PhysRevLett.77.430;%%
+ %161 citations counted in INSPIRE as of 01 Jun 2016
+ %%%%
+ 
+ \bibitem{cardy}
+J.~L.~ Cardy, 
+ ``Operator content of two-dimensional conformally invariant theories,"
+ Nucl.\ Phys.\ B {\bf 270}, 186 (1986).
+ 
+\bibitem{0903.1477}
+A.~Sen,
+``Arithmetic of Quantum Entropy Function,''
+JHEP {\bf 0908}, 068 (2009)
+[arXiv:0903.1477 [hep-th]].
+%%CITATION = JHEPA,0908,068;%%
+
+\bibitem{1009.3226}
+A.~Dabholkar, J.~Gomes, S.~Murthy and A.~Sen,
+``Supersymmetric Index from Black Hole Entropy,''
+JHEP {\bf 1104}, 034 (2011)
+[arXiv:1009.3226 [hep-th]].
+%%CITATION = ARXIV:1009.3226;%%
+
+\bibitem{1008.4209} 
+A.~Sen,
+``How Do Black Holes Predict the Sign of the Fourier Coefficients of Siegel Modular Forms?,''
+Gen.\ Rel.\ Grav.\  {\bf 43}, 2171 (2011)
+[arXiv:1008.4209 [hep-th]].
+%%CITATION = ARXIV:1008.4209;%%
+%9 citations counted in INSPIRE as of 25 Jan 2014
+
+
+\bibitem{1208.3476} 
+K.~Bringmann and S.~Murthy,
+``On the positivity of black hole degeneracies in string theory,''
+arXiv:1208.3476 [hep-th].
+%%CITATION = ARXIV:1208.3476;%%
+
+\bibitem{0702146} 
+F.~Denef and G.~W.~Moore,
+``Split states, entropy enigmas, holes and halos,''
+JHEP {\bf 1111}, 129 (2011)
+[arXiv:hep-th/0702146].
+%%CITATION = HEP-TH/0702146;%%
+%261 citations counted in INSPIRE as of 25 Apr 2014
+
+
+\bibitem{1103.1887} 
+J.~Manschot, B.~Pioline and A.~Sen,
+``A fixed point formula for the index of multi-centered N=2 black holes,''
+JHEP {\bf 1105}, 057 (2011)
+[arXiv:1103.1887 [hep-th]].
+%%CITATION = ARXIV:1103.1887;%%
+%25 citations counted in INSPIRE as of 25 Apr 2014
+
+\bibitem{1205.5023}
+I.~Bena, M.~Berkooz, J.~de~Boer, S.~El-Showk, and D.~Van~den Bleeken,
+``{Scaling BPS Solutions and pure-Higgs States},'' {JHEP} {\bf 1211}
+171  (2012)
+[arXiv:1205.5023 [hep-th]].
+%%CITATION = ARXIV:1205.5023;%%.
+
+\bibitem{1205.6511}
+S.-J. Lee, Z.-L. Wang, and P.~Yi, ``{Quiver Invariants from Intrinsic Higgs
+	States},'' {JHEP} {\bf 1207}  169 (2012)
+[arXiv:1205.6511 [hep-th]].
+%%CITATION = ARXIV:1205.6511;%%.
+
+\bibitem{1207.0821}
+S.-J. Lee, Z.-L. Wang, and P.~Yi, ``{BPS States, Refined Indices, and Quiver
+	Invariants},'' {JHEP} {\bf 1210} 094 (2012)
+[arXiv:1207.0821 [hep-th]].
+%%CITATION = ARXIV:1207.0821;%%.
+
+\bibitem{1207.2230} 
+J.~Manschot, B.~Pioline and A.~Sen,
+``From Black Holes to Quivers,''
+JHEP {\bf 1211}, 023 (2012)
+[arXiv:1207.2230 [hep-th]].
+%%CITATION = ARXIV:1207.2230;%%
+%15 citations counted in INSPIRE as of 25 Apr 2014
+
+\bibitem{1302.5498} 
+J.~Manschot, B.~Pioline and A.~Sen,
+``On the Coulomb and Higgs branch formulae for multi-centered black holes and quiver invariants,''
+JHEP {\bf 1305}, 166 (2013)
+[arXiv:1302.5498 [hep-th]].
+%%CITATION = ARXIV:1302.5498;%%
+%7 citations counted in INSPIRE as of 25 Apr 2014
+
+\bibitem{0702141} 
+A.~Sen,
+``Walls of Marginal Stability and Dyon Spectrum in N=4 Supersymmetric String Theories,''
+JHEP {\bf 0705}, 039 (2007)
+[hep-th/0702141].
+%%CITATION = HEP-TH/0702141;%%
+
+
+\bibitem{0702150} 
+A.~Dabholkar, D.~Gaiotto and S.~Nampuri,
+``Comments on the spectrum of CHL dyons,''
+JHEP {\bf 0801}, 023 (2008)
+[arXiv:hep-th/0702150].
+%%CITATION = HEP-TH/0702150;%%
+%69 citations counted in INSPIRE as of 27 Apr 2014
+
+\bibitem{0712.0043} 
+S.~Banerjee and A.~Sen,
+``Duality orbits, dyon spectrum and gauge theory limit of heterotic string theory on $T^6$,''
+JHEP {\bf 0803}, 022 (2008)
+[arXiv:0712.0043 [hep-th]].
+%%CITATION = ARXIV:0712.0043;%%
+%34 citations counted in INSPIRE as of 27 Apr 2014
+
+\bibitem{0804.0651} 
+A.~Sen,
+``U-duality Invariant Dyon Spectrum in type II on $T^6$,''
+JHEP {\bf 0808}, 037 (2008)
+[arXiv:0804.0651 [hep-th]].
+%%CITATION = ARXIV:0804.0651;%%
+%14 citations counted in INSPIRE as of 01 May 2014
+
+\bibitem{0705.3874} 
+A.~Sen,
+``Two centered black holes and N=4 dyon spectrum,''
+JHEP {\bf 0709}, 045 (2007)
+[arXiv:0705.3874 [hep-th]].
+%%CITATION = ARXIV:0705.3874;%%
+
+\bibitem{0706.2363} 
+M.~C.~N.~Cheng and E.~Verlinde,
+``Dying Dyons Don't Count,''
+JHEP {\bf 0709}, 070 (2007)
+[arXiv:0706.2363 [hep-th]].
+%%CITATION = ARXIV:0706.2363;%%
+
+\bibitem{0803.1014} 
+A.~Sen,
+``N=8 Dyon Partition Function and Walls of Marginal Stability,''
+JHEP {\bf 0807}, 118 (2008)
+[arXiv:0803.1014 [hep-th]].
+%%CITATION = ARXIV:0803.1014;%%
+%33 citations counted in INSPIRE as of 26 Apr 2014
+
+\bibitem{Witten:1982df} 
+E.~Witten,
+``Constraints on Supersymmetry Breaking,''
+Nucl.\ Phys.\ B {\bf 202}, 253 (1982).
+%%CITATION = NUPHA,B202,253;%%
+
+\bibitem{0001189} 
+S.~Sethi and M.~Stern,
+``Invariance theorems for supersymmetric Yang-Mills theories,''
+Adv.\ Theor.\ Math.\ Phys.\  {\bf 4}, 487 (2000)
+[hep-th/0001189].
+%%CITATION = HEP-TH/0001189;%%
+%12 citations counted in INSPIRE as of 11 Nov 2015
+
+\bibitem{9903163} 
+J.~M.~Maldacena, G.~W.~Moore and A.~Strominger,
+``Counting BPS black holes in toroidal Type II string theory,''
+arXiv:hep-th/9903163.
+%%CITATION = HEP-TH/9903163;%%
+
+
+\bibitem{0506151} 
+D.~Shih, A.~Strominger and X.~Yin,
+``Counting dyons in N=8 string theory,''
+JHEP {\bf 0606}, 037 (2006)
+[arXiv:hep-th/0506151].
+%%CITATION = HEP-TH/0506151;%%
+%32 citations counted in INSPIRE as of 25 Jan 2014
+
+\bibitem{0908.0039} 
+A.~Sen,
+``Arithmetic of N=8 Black Holes,''
+JHEP {\bf 1002}, 090 (2010)
+[arXiv:0908.0039 [hep-th]].
+%%CITATION = ARXIV:0908.0039;%%
+%13 citations counted in INSPIRE as of 26 Apr 2014
+
+\bibitem{9701069} 
+L.~Alvarez-Gaume and S.~F.~Hassan, ``Introduction to S-duality in $ N = 2 $ supersymmetric 
+gauge theories  (A pedagogical review of the work of Seiberg and Witten)," 
+Fortsch. Phys. {\bf 45} 159  (1997)  [arXiv:hep-th/9701069].
+%%CITATION = HEP-TH/9701069;%%
+
+\bibitem{0708.1270} 
+A.~Sen,
+``Black Hole Entropy Function, Attractors and Precision Counting of Microstates,''
+Gen.\ Rel.\ Grav.\  {\bf 40}, 2249 (2008)
+[arXiv:0708.1270 [hep-th]].
+%%CITATION = ARXIV:0708.1270;%%
+%209 citations counted in INSPIRE as of 26 Apr 2014
+
+\bibitem{0206072} 
+F.~Denef,
+``Quantum quivers and Hall / hole halos,''
+JHEP {\bf 0210}, 023 (2002)
+[hep-th/0206072].
+%%CITATION = HEP-TH/0206072;%%
+
+
+%\bigskip
+
+\bibitem{9611205} 
+C.~Bachas and E.~Kiritsis,
+``$F^4$ terms in N=4 string vacua,''
+Nucl.\ Phys.\ Proc.\ Suppl.\  {\bf 55B}, 194 (1997)
+[hep-th/9611205].
+%%CITATION = HEP-TH/9611205;%%
+
+\bibitem{9708062} 
+A.~Gregori, E.~Kiritsis, C.~Kounnas, N.~A.~Obers, P.~M.~Petropoulos and B.~Pioline,
+``$R^2$ corrections and nonperturbative dualities of N=4 string ground states,''
+Nucl.\ Phys.\ B {\bf 510}, 423 (1998)
+[hep-th/9708062].
+%%CITATION = HEP-TH/9708062;%%
+
+\bibitem{1005.3044}
+S.~Banerjee, R.~K.~Gupta and A.~Sen,
+``Logarithmic Corrections to Extremal Black Hole Entropy from Quantum Entropy
+Function,''
+JHEP {\bf 1103}, 147 (2011)
+[arXiv:1005.3044 [hep-th]].
+%%CITATION = ARXIV:1005.3044;%%
+
+\bibitem{1106.0080}
+S.~Banerjee, R.~K.~Gupta, I.~Mandal, A.~Sen,
+``Logarithmic Corrections to N=4 and N=8 Black Hole Entropy: A One Loop Test of Quantum Gravity,''
+JHEP {\bf 1111}, 143 (2011)
+[arXiv:1106.0080 [hep-th]].
+%%CITATION = ARXIV:1106.0080;%%
+
+
+\bibitem{1012.0265} 
+A.~Dabholkar, J.~Gomes and S.~Murthy,
+``Quantum black holes, localization and the topological string,''
+JHEP {\bf 1106}, 019 (2011)
+[arXiv:1012.0265 [hep-th]].
+%%CITATION = ARXIV:1012.0265;%%
+%22 citations counted in INSPIRE as of 25 Jan 2014
+
+\bibitem{1111.1161} 
+A.~Dabholkar, J.~Gomes and S.~Murthy,
+``Localization \& Exact Holography,''
+JHEP {\bf 1304}, 062 (2013)
+[arXiv:1111.1161 [hep-th]].
+%%CITATION = ARXIV:1111.1161;%%  
+
+
+\bibitem{1404.0033} 
+A.~Dabholkar, J.~Gomes and S.~Murthy,
+``Nonperturbative black hole entropy and Kloosterman sums,''
+JHEP {\bf 1503}, 074 (2015)
+[arXiv:1404.0033 [hep-th]].
+%%CITATION = ARXIV:1404.0033;%%
+
+\bibitem{singular}
+W.~Decker,  G.-M.~Greuel, G.~Pfister and H.~Sch{\"o}nemann, 
+``\newblock {\sc Singular} {4-0-2} --- {A} computer algebra system for polynomial computations,''
+\newblock {http://www.singular.uni-kl.de} (2015).
+
+\bibitem{mac}
+D.~R. Grayson and M.~E.~Stillman, ``Macaulay2, 
+a software system for research in algebraic geometry,''
+\newblock {http://www.math.uiuc.edu/Macaulay2/} (2015).
+
+\bibitem{math}
+Wolfram Research, Inc., Mathematica, Version 10.3, Champaign, IL (2015).
+
+\bibitem{0502050}
+S.~D.~Mathur,
+``The fuzzball proposal for black holes: An elementary review,''
+Fortsch.\ Phys.\  {\bf 53}, 793 (2005)
+[arXiv:hep-th/0502050].
+%%CITATION = FPYKA,53,793;%%
+
+\bibitem{0810.4525}
+S.~D.~Mathur,
+``Fuzzballs and the information paradox: a summary and conjectures,''
+arXiv:0810.4525 [hep-th].
+%%CITATION = ARXIV:0810.4525;%%
+
+\bibitem{0701216}
+I.~Bena and N.~P.~Warner,
+``Black holes, black rings and their microstates,''
+Lect.\ Notes Phys.\  {\bf 755}, 1 (2008)
+[arXiv:hep-th/0701216].
+%%CITATION = LNPHA,755,1;%%
+
+\bibitem{0804.0552}
+K.~Skenderis and M.~Taylor,
+``The fuzzball proposal for black holes,''
+Phys.\ Rept.\  {\bf 467}, 117 (2008)
+[arXiv:0804.0552 [hep-th]].
+%%CITATION = PRPLC,467,117;%%
+
+\bibitem{0811.0263}
+V.~Balasubramanian, J.~de Boer, S.~El-Showk and I.~Messamah,
+``Black Holes as Effective Geometries,''
+Class.\ Quant.\ Grav.\  {\bf 25}, 214004 (2008)
+[arXiv:0811.0263 [hep-th]].
+%%CITATION = CQGRD,25,214004;%%
+
+\bibitem{1507.06670} 
+O.~Lunin,
+``Bubbling geometries for $AdS_2 \times S^2$,''
+arXiv:1507.06670 [hep-th].
+%%CITATION = ARXIV:1507.06670;%%
+
+\bibitem{1101.4254} 
+A.~Sen,
+``State Operator Correspondence and Entanglement in $AdS_2/CFT_1$,''
+Entropy {\bf 13}, 1305 (2011)
+[arXiv:1101.4254 [hep-th]].
+%%CITATION = ARXIV:1101.4254;%%
+
+\bibitem{FMS} 
+D.~Friedan, E.~J.~Martinec and S.~H.~Shenker,
+``Conformal Invariance, Supersymmetry and String Theory,''
+Nucl.\ Phys.\ B {\bf 271}, 93 (1986).
+%%CITATION = NUPHA,B271,93;%%
+
+\bibitem{9908142} 
+N.~Seiberg and E.~Witten,
+``String theory and noncommutative geometry,''
+JHEP {\bf 9909}, 032 (1999)
+[arXiv:hep-th/9908142].
+%%CITATION = HEP-TH/9908142;%%
+%3265 citations counted in INSPIRE as of 26 Apr 2014
+
+\bibitem{0007235} 
+J.~R.~David,
+``Tachyon condensation in the D0 / D4 system,''
+JHEP {\bf 0010}, 004 (2000)
+[arXiv:hep-th/0007235].
+%%CITATION = HEP-TH/0007235;%%
+%31 citations counted in INSPIRE as of 26 Apr 2014
+
+@misc{kawaguchi2016deep,
+      title={Deep Learning without Poor Local Minima}, 
+      author={Kenji Kawaguchi},
+      year={2016},
+      eprint={1605.07110},
+      archivePrefix={arXiv},
+      primaryClass={stat.ML}
+}
+
+%%%%%%%%%%%%%%%%%%%
+
+\end{thebibliography}
+\endgroup
+
+
+
+
+
+
+
+
+
+
+
+
+
