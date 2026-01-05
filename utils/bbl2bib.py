@@ -24,6 +24,7 @@ def clean_text(text):
             break
 
     text = text.strip(' .,;:')
+    text = text.lower()
     return re.sub(r'\s+', ' ', text).strip()
  
 def format_authors(text):
@@ -35,7 +36,6 @@ def format_authors(text):
     return text
 
 def parse_bbl(bbl_content):
-    # entry_pattern = re.compile(r"\\bibitem\[.*?\]\{(.*?)\}([\s\S]*?)(?=\\bibitem|\\end\{thebibliography\})", re.MULTILINE)
     entry_pattern = re.compile(r"\\bibitem(?:\[.*?\])?\{(.*?)\}([\s\S]*?)(?=\\bibitem|\\end\{thebibliography\})", re.MULTILINE)
     bib_references = []
 
@@ -59,7 +59,6 @@ def parse_bbl(bbl_content):
             fields['title'] = clean_text(blocks[0])
             info_text = blocks[0]
 
-        # source_match = re.search(r'(\{\\em\s+(.*?)\}|\\emph\{(.*?)\})', info_text)
         source_match = re.search(r'(\{\\em\s+((?:[^{}]|\{.*?\})*)\}|\\emph\{((?:[^{}]|\{.*?\})*)\})', info_text)
         
         source_name = ""
@@ -144,7 +143,10 @@ def read_bibs_in_dir(dir_path: str):
     for bib_file in bib_files:
         bib_path = os.path.join(dir_path, bib_file)
         with open(bib_path, "r", encoding="utf-8", errors="ignore") as f:
-            refs_parsed = bibtexparser.loads(f.read())
+            content = f.read()
+            content = content.replace('cvpr', '{cvpr}')
+            
+            refs_parsed = bibtexparser.loads(content)
             references.extend(refs_parsed.entries)
 
     return references
@@ -153,8 +155,13 @@ def bbl2bib(folder_path: str) -> None:
     '''
         folder_path: tex
     '''
+    parent_dirname = os.path.abspath(os.path.dirname(folder_path)[:-(len('tex'))])
+    if not os.path.isfile(os.path.join(parent_dirname, 'references.json')):
+        print('Not Exist')
+        return
+    
     references = []
-    if not os.path.isdir(folder_path): return None
+    if not os.path.isdir(folder_path): return
     if not os.listdir(folder_path): return
 
     for folder_version_path in os.listdir(folder_path):
