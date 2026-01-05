@@ -1,6 +1,5 @@
 from sklearn.linear_model import SGDClassifier
 from sklearn.utils import shuffle
-from utils.feature_engineering import vector_train, ground_truth_train, nothing, cite_to_arkiv
 import numpy as np
 from sklearn.metrics import log_loss
 import copy
@@ -17,22 +16,21 @@ class Model:
             early_stopping=False,    
             warm_start=True,     
         )
-        self.classes = np.unique(ground_truth_train)
         self.dirname = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
     def load(self, file_path):
         with open(file_path, "rb") as f:
             self.model = pickle.load(f)
 
-    def train(self, num_epoch=1000):
+    def train(self, vector, ground_truth, num_epoch=1000):
         best_loss = float('inf') 
         best_model = None
-
+        self.classes = np.unique(ground_truth)
         for _ in range(num_epoch):
-            X_train, y_train = shuffle(vector_train, ground_truth_train)
+            X_train, y_train = shuffle(vector, ground_truth)
             self.model.partial_fit(X_train, y_train, self.classes)
-            proba = self.model.predict_proba(vector_train)
-            current_loss = log_loss(ground_truth_train, proba)
+            proba = self.model.predict_proba(vector)
+            current_loss = log_loss(ground_truth, proba)
             if current_loss < best_loss:
                 best_loss = current_loss
                 best_model = copy.deepcopy(self.model)
@@ -74,10 +72,6 @@ class Model:
                 prediction[entry_name] = [arkiv_ids[i] for i in top_k_idx]
             file_name = os.path.join(self.dirname, paper_id, "pred.json")
             self.save_pred(file_name, ground_truth, prediction, type)
-
-model = Model()
-model.train()
-model.predict_top_k(nothing, 5, cite_to_arkiv)
 
 # print(ground_truth_valid)
 # print(json.dumps(cite_arkiv_test, indent=4))
