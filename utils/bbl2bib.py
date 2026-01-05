@@ -2,6 +2,8 @@ import re
 import os
 from utils.utils import find_root_file, get_paper_content
 import bibtexparser
+import json
+import Levenshtein
 
 def clean_text(text):
     if not text: return ""
@@ -27,6 +29,7 @@ def clean_text(text):
     text = text.lower()
     return re.sub(r'\s+', ' ', text).strip()
  
+ 
 def format_authors(text):
     if not text: return ""
     text = clean_text(text)
@@ -34,6 +37,7 @@ def format_authors(text):
     text = text.replace(', ', ' and ')
     text = re.sub(r'\s+and\s+and\s+', ' and ', text)
     return text
+
 
 def parse_bbl(bbl_content):
     entry_pattern = re.compile(r"\\bibitem(?:\[.*?\])?\{(.*?)\}([\s\S]*?)(?=\\bibitem|\\end\{thebibliography\})", re.MULTILINE)
@@ -131,6 +135,7 @@ def parse_bbl(bbl_content):
         bib_references.append(fields)
     return bib_references
 
+
 def read_bibs_in_dir(dir_path: str):
     if not os.path.isdir(dir_path):
         return None
@@ -151,40 +156,32 @@ def read_bibs_in_dir(dir_path: str):
 
     return references
 
-def bbl2bib(folder_path: str) -> None:
-    '''
-        folder_path: tex
-    '''
-    parent_dirname = os.path.abspath(os.path.dirname(folder_path)[:-(len('tex'))])
-    if not os.path.isfile(os.path.join(parent_dirname, 'references.json')):
-        print('Not Exist')
-        return
-    
-    references = []
-    if not os.path.isdir(folder_path): return
-    if not os.listdir(folder_path): return
-
-    for folder_version_path in os.listdir(folder_path):
-        full_path = folder_path + folder_version_path
-        
-        ref_dicts = read_bibs_in_dir(full_path)
-        if ref_dicts is None:
-            root_path = find_root_file(full_path)
-            content = get_paper_content(root_path)
-            ref_dicts = parse_bbl(content)
-        
-        references.append(ref_dicts)
-    if references:
-        result = deduplicate_reference(references)
-    
-    output_path = os.path.join(os.path.dirname(folder_path)[:-(len('tex'))], 'extracted.bib')
-    with open(output_path, "w", encoding="utf-8") as f:
-        f.write(result)
-        # print(f"Write refs in {output_path}")
 
 def deduplicate_reference(results: list[str]) -> str:
+    # title_map = {}
+    # ID_map = {}
+    # keys = ['ID', 'author', 'title', 'year']
+    
+    # for obj in results[0]:
+    #     valid = True
+    #     for key in keys:
+    #         if key not in obj.keys():
+    #             valid = False
+    #             break
+            
+    #     if valid:
+    #         title_map.update({obj['title']: obj})
+    #         ID_map.update({obj['ID']: obj})
+    # for i in range(1, len(results)):
+    #     for j in range(len(results[i])):
+    #         keys = ['ID', 'author', 'title', 'year']
+    #         for k in keys:
+    #             if k not in results[i][j].keys():
+    #                 results[i].remove(results[i][j])
+    #                 break
     title_map = {obj['title']: obj for obj in results[0]}
     ID_map = {obj['ID']: obj for obj in results[0]}
+        
     for i in range(1, len(results)):
         for j in range(len(results[i])):
             title = results[i][j]['title']
@@ -205,21 +202,162 @@ def deduplicate_reference(results: list[str]) -> str:
                 title_map[title] = results[i][j]
     
     bib_entries = []
+    keys = ['ID', 'author', 'title', 'year']
     for fields in title_map.values():
-        entry_str = f"@{fields['ENTRYTYPE']}{{{fields['ID']},\n"
-        order = ['author', 'title', 'booktitle', 'journal', 'publisher', 'year', 'volume', 'number', 'pages', 'howpublished']
+        valid = True
+        for key in keys:
+            if key not in fields.keys():
+                valid = False
+                break
         
-        for k in order:
-            if k in fields and fields[k]:
-                entry_str += f"  {k} = {{{fields[k]}}},\n"
-        entry_str += "}\n"
-        bib_entries.append(entry_str)
-    return "\n".join(bib_entries)
+        if not valid:
+            continue
+        
+        year_match = re.search(r'\d+', fields['year'])
+        if year_match:
+            year = year_match.group()
+        else:
+            year = 0
+        
+        temp_dict = {
+            'cite-key': fields['ID'].lower(),
+            'authors': fields['author'].lower().strip(),
+            'title': fields['title'].lower().strip(),
+            'year': int(year)
+        }
+        
+        bib_entries.append(temp_dict)
+    return bib_entries
 
-# if __name__ == "__main__":
-#     bib_output_file = "references.bib"
+
+def extract_references(folder_path: str) -> None:
+    '''
+        folder_path: tex
+    '''
+    references = []
     
-#     # bbl2bib(bbl_input_file, bib_output_file)
+    tex_folder = folder_path + '/tex/'
+    
+    if not os.path.isdir(tex_folder): return None
+    if not os.listdir(tex_folder): return None
 
-#     #Truyền vào folder gốc
-#     bbl2bib("1706-03762/tex", bib_output_file)
+    for folder_version_path in os.listdir(tex_folder):
+        full_path = tex_folder + folder_version_path
+        
+        ref_dicts = read_bibs_in_dir(full_path)
+        if ref_dicts is None:
+            root_path = find_root_file(full_path)
+            content = get_paper_content(root_path)
+            ref_dicts = parse_bbl(content)
+        
+        ref_dicts_valid = []
+        for r in ref_dicts:
+            keys = ['ID', 'author', 'title', 'year']
+            valid = True
+            for key in keys:
+                if key not in r.keys(): 
+                    valid = False
+                    ref_dicts.remove(r)
+                    break
+            if valid: ref_dicts_valid.append(r)
+                    
+        references.append(ref_dicts_valid)
+    if references:
+        # print(references)
+        result = deduplicate_reference(references)
+            
+    return result
+
+def convert_references_to_objects(folder_path: str):
+    ref_path = os.path.join(folder_path, 'references.json')
+    with open(ref_path, 'r', encoding='utf-8') as fr:
+        ref_dict = json.load(fr)
+        
+    ref_list = []
+    for key, value in ref_dict.items():
+        temp_dict = {
+            'arxiv-id': key.lower().strip(),
+            'title': value['paper_title'].lower().strip(),
+            'authors': ' and '.join(value['authors']).lower().strip(),
+            'year': int(value['submission_date'][:4])
+        }
+        ref_list.append(temp_dict)
+        
+    return ref_list
+
+def get_reference_objects(folder_path: str):
+    extracted_refs = extract_references(folder_path)
+    converted_refs = convert_references_to_objects(folder_path)
+    
+    # if extracted_refs and converted_refs:
+    #     extracted_path = os.path.join(folder_path, 'extracted.json')
+    #     converted_path = os.path.join(folder_path, 'converted.json')
+        
+        # with open(extracted_path, "w", encoding="utf-8") as f:
+        #     json.dump(extracted_refs, f, indent=4, ensure_ascii=False)
+            
+        # with open(converted_path, "w", encoding="utf-8") as f:
+        #     json.dump(converted_refs, f, indent=4, ensure_ascii=False)
+        
+    return converted_refs, extracted_refs
+
+def get_ground_truth(converted_refs, extract_refs, threshold):
+    groundtruth_dicts = {}
+    
+    if not (converted_refs and extract_refs):
+        return None
+    
+    for item in extract_refs:
+        best_ratio = 0
+        arxiv_id = None
+        
+        for candidate in converted_refs:
+            ratio = Levenshtein.ratio(item['title'], candidate['title'])
+            if ratio >= threshold:
+                if ratio > best_ratio:
+                    best_ratio = ratio
+                    arxiv_id = candidate['arxiv-id']
+                    
+        if best_ratio > 0:
+            groundtruth_dicts[f'{item['cite-key']}'] = arxiv_id
+            
+    return groundtruth_dicts
+    
+def get_dataset(folder_path, threshold=0.9, nums=1500):
+    dirs = os.listdir(folder_path)
+    entries = []
+    refs = []
+    groundtruth_dict = {}
+    cnt = 0
+    cnt_dict = 0
+
+    for dir in (dirs):
+        path = os.path.join(folder_path, dir)
+    
+        if not os.path.isfile(os.path.join(path, 'references.json')):
+            # print(f'[ERROR][prepare_dataset]: {os.path.join(path, 'references.json')} Not Existed')
+            continue
+        
+        converted_refs, extract_refs = get_reference_objects(path)
+        
+        if not extract_refs or not converted_refs:
+            continue
+        
+        entries.append(extract_refs)
+        refs.append(converted_refs)
+        
+        temp_dict = get_ground_truth(converted_refs, extract_refs, threshold)
+        if temp_dict:
+            groundtruth_dict.update(temp_dict)
+            
+            groundtruth_path = os.path.join(path, 'groundtruth.json')
+            with open(groundtruth_path, "w", encoding="utf-8") as f:
+                json.dump(temp_dict, f, indent=4, ensure_ascii=False)
+            cnt_dict += 1
+            
+        cnt += 1
+        if cnt >= nums:
+            break
+        
+    print(f'Number of appending dicts: {cnt_dict}')
+    return entries, refs, groundtruth_dict
