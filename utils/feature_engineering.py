@@ -27,29 +27,31 @@ def khong_biet_dat_ten_gi(entry_array: list[list[object]], reference_array: list
         file_path = None
         object_entry = {}
         for entry in entry_array[i]:
+            if not isinstance(entry, dict):
+                print(f'Error: "{entry}"')
             entry_name = entry['cite_key']
-            entry_array = []
+            entry_arr = []
             for reference in reference_array[i]:
                 #Used for prediction
-                arkiv_id = reference['arkiv_id']
+                arxiv_id = reference['arxiv_id']
                 vector = convert_to_vector(entry, reference)
 
                 if file_path is None:
                     file_path = entry['path']
-                entry_array.append({
-                    "arkiv_id": arkiv_id,
+                entry_arr.append({
+                    "arxiv_id": arxiv_id,
                     "vector": vector
                 })
 
                 vector_train.append(vector)
                 if entry['cite_key'] in cite_to_arkiv:
-                    if cite_to_arkiv[entry['cite_key']] == reference['arkiv_id']:
+                    if cite_to_arkiv[entry['cite_key']] == reference['arxiv_id']:
                         ground_truth.append(1)
                     else:
                         ground_truth.append(0)
                 else:
                     ground_truth.append(0)
-            object_entry[entry_name] = entry_array
+            object_entry[entry_name] = entry_arr
         object_file[file_path] = object_entry
     return vector_train, ground_truth, object_file
 
@@ -96,15 +98,15 @@ def khong_biet_dat_ten_gi(entry_array: list[list[object]], reference_array: list
 # ]]
 
 # reference_array = [[
-#     {"arkiv_id": "2012-08351", "title": "Fundamental theorem of asset pricing with acceptable risk in markets with frictions", "authors": "Maria Arduca and Cosimo Munari", "year": 2023},
-#     {"arkiv_id": "1204.2458", "title": "Comparative and qualitative robustness for law-invariant risk measures", "authors": "Volker Krätschmer and Alexander Schied and Henryk Zähle", "year": 2014},
-#     {"arkiv_id": "1702-08901", "title": "Solvency II, or How to Sweep the Downside Risk Under the Carpet", "authors": "Stefan Weber", "year": 2018},
-#     {"arkiv_id": "2009-05498", "title": "Mean-ρ portfolio selection and ρ-arbitrage for coherent risk measures", "authors": "Martin Herdegen and Nazem Khan", "year": 2022},
-#     {"arkiv_id": "1303.1690", "title": "Coherence and elicitability", "authors": "Johanna F. Ziegel", "year": 2016},
-#     {"arkiv_id": "1307.0684", "title": "Assessing Financial Model Risk", "authors": "Pauline Barrieu and Giacomo Scandolo", "year": 2015},
-#     {"arkiv_id": "2007-08829", "title": "Adjusted Expected Shortfall", "authors": "Matteo Burzoni and Cosimo Munari and Ruodu Wang", "year": 2022},
-#     {"arkiv_id": "2107-10635", "title": "Capital Requirements and Claims Recovery: A New Perspective on Solvency Regulation", "authors": "Cosimo Munari and Lutz Wilhelmy and Stefan Weber", "year": 2022},
-#     {"arkiv_id": "math/0605049", "title": "Pricing with coherent risk", "authors": "Alexander S. Cherny", "year": 2008}
+#     {"arxiv_id": "2012-08351", "title": "Fundamental theorem of asset pricing with acceptable risk in markets with frictions", "authors": "Maria Arduca and Cosimo Munari", "year": 2023},
+#     {"arxiv_id": "1204.2458", "title": "Comparative and qualitative robustness for law-invariant risk measures", "authors": "Volker Krätschmer and Alexander Schied and Henryk Zähle", "year": 2014},
+#     {"arxiv_id": "1702-08901", "title": "Solvency II, or How to Sweep the Downside Risk Under the Carpet", "authors": "Stefan Weber", "year": 2018},
+#     {"arxiv_id": "2009-05498", "title": "Mean-ρ portfolio selection and ρ-arbitrage for coherent risk measures", "authors": "Martin Herdegen and Nazem Khan", "year": 2022},
+#     {"arxiv_id": "1303.1690", "title": "Coherence and elicitability", "authors": "Johanna F. Ziegel", "year": 2016},
+#     {"arxiv_id": "1307.0684", "title": "Assessing Financial Model Risk", "authors": "Pauline Barrieu and Giacomo Scandolo", "year": 2015},
+#     {"arxiv_id": "2007-08829", "title": "Adjusted Expected Shortfall", "authors": "Matteo Burzoni and Cosimo Munari and Ruodu Wang", "year": 2022},
+#     {"arxiv_id": "2107-10635", "title": "Capital Requirements and Claims Recovery: A New Perspective on Solvency Regulation", "authors": "Cosimo Munari and Lutz Wilhelmy and Stefan Weber", "year": 2022},
+#     {"arxiv_id": "math/0605049", "title": "Pricing with coherent risk", "authors": "Alexander S. Cherny", "year": 2008}
 # ]]
 # cite_to_arkiv = {
 #     "ArducaMunari2023": "2012-08351",

@@ -2,8 +2,10 @@ import re
 import os
 from utils.utils import find_root_file, get_paper_content
 import bibtexparser
+from bibtexparser.bparser import BibTexParser
 import json
 import Levenshtein
+from tqdm import tqdm
 
 def clean_text(text):
     if not text: return ""
@@ -49,7 +51,10 @@ def parse_bbl(bbl_content):
         
         raw_body_flat = raw_body.replace('\n', ' ').replace('\r', ' ')
         blocks = re.split(r'\\newblock', raw_body_flat)
+        if not blocks:
+            continue
         blocks = [b.strip() for b in blocks if b.strip()]
+        if len(blocks) == 0: continue
         
         fields = {}
         info_text = ""
@@ -144,14 +149,21 @@ def read_bibs_in_dir(dir_path: str):
     if not bib_files:
         return None
 
+    BLACK_LISTS = ['ref_camembert-bio.bib', 'anthology.bib']
+
     references = []
     for bib_file in bib_files:
+        if bib_file in BLACK_LISTS:
+            continue
         bib_path = os.path.join(dir_path, bib_file)
         with open(bib_path, "r", encoding="utf-8", errors="ignore") as f:
             content = f.read()
             content = content.replace('cvpr', '{cvpr}')
             
-            refs_parsed = bibtexparser.loads(content)
+            parser = BibTexParser()
+            parser.interpolate_strings = False
+            
+            refs_parsed = bibtexparser.loads(content, parser=parser)
             references.extend(refs_parsed.entries)
 
     return references
@@ -199,7 +211,7 @@ def deduplicate_reference(results: list[str], folder_path:str) -> list[dict]:
             year = 0
         
         temp_dict = {
-            'cite-key': fields['ID'].lower(),
+            'cite_key': fields['ID'].lower(),
             'authors': fields['author'].lower().strip(),
             'title': fields['title'].lower().strip(),
             'year': int(year),
@@ -226,6 +238,7 @@ def extract_references(folder_path: str) -> None:
         ref_dicts = read_bibs_in_dir(full_path)
         if ref_dicts is None:
             root_path = find_root_file(full_path)
+            if not root_path: continue
             content = get_paper_content(root_path)
             ref_dicts = parse_bbl(content)
         
@@ -244,7 +257,11 @@ def extract_references(folder_path: str) -> None:
     if references:
         # print(references)
         result = deduplicate_reference(references, folder_path)
-            
+        
+    # for r in result:
+    #     if not isinstance(r, dict):
+    #         print(f'Error: "{r}"')
+    
     return result
 
 def convert_references_to_objects(folder_path: str):
@@ -255,7 +272,7 @@ def convert_references_to_objects(folder_path: str):
     ref_list = []
     for key, value in ref_dict.items():
         temp_dict = {
-            'arxiv-id': key.lower().strip(),
+            'arxiv_id': key.lower().strip(),
             'title': value['paper_title'].lower().strip(),
             'authors': ' and '.join(value['authors']).lower().strip(),
             'year': int(value['submission_date'][:4])
@@ -268,14 +285,14 @@ def get_reference_objects(folder_path: str):
     extracted_refs = extract_references(folder_path)
     converted_refs = convert_references_to_objects(folder_path)
     
-    extracted_path = os.path.join(folder_path, 'extracted.json')
-    converted_path = os.path.join(folder_path, 'converted.json')
+    # extracted_path = os.path.join(folder_path, 'extracted.json')
+    # converted_path = os.path.join(folder_path, 'converted.json')
     
-    with open(extracted_path, "w", encoding="utf-8") as f:
-        json.dump(extracted_refs, f, indent=4, ensure_ascii=False)
+    # with open(extracted_path, "w", encoding="utf-8") as f:
+    #     json.dump(extracted_refs, f, indent=4, ensure_ascii=False)
         
-    with open(converted_path, "w", encoding="utf-8") as f:
-        json.dump(converted_refs, f, indent=4, ensure_ascii=False)
+    # with open(converted_path, "w", encoding="utf-8") as f:
+    #     json.dump(converted_refs, f, indent=4, ensure_ascii=False)
         
     return converted_refs, extracted_refs
 
@@ -294,10 +311,10 @@ def get_ground_truth(converted_refs, extract_refs, threshold):
             if ratio >= threshold:
                 if ratio > best_ratio:
                     best_ratio = ratio
-                    arxiv_id = candidate['arxiv-id']
+                    arxiv_id = candidate['arxiv_id']
                     
         if best_ratio > 0:
-            groundtruth_dicts[f'{item['cite-key']}'] = arxiv_id
+            groundtruth_dicts[f'{item['cite_key']}'] = arxiv_id
             
     return groundtruth_dicts
     
@@ -309,16 +326,21 @@ def get_dataset(folder_path, threshold=0.9, nums=1500):
     cnt = 0
     cnt_dict = 0
 
-    for dir in dirs:
+    for dir in tqdm(dirs):
         path = os.path.join(folder_path, dir)
-    
+        
         if not os.path.isfile(os.path.join(path, 'references.json')):
             # print(f'[ERROR][prepare_dataset]: {os.path.join(path, 'references.json')} Not Existed')
             continue
         
+        print(path)
+        
         converted_refs, extract_refs = get_reference_objects(path)
         
         if not extract_refs or not converted_refs:
+            continue
+        
+        if len(converted_refs) < 5:
             continue
         
         entries.append(extract_refs)

@@ -259,7 +259,7 @@ def parse_paper(folder_path):
         full_path = tex_path + folder
         
         root_path = find_root_file(full_path)
-        if not root_path: return
+        if not root_path: continue
         content = get_paper_content(root_path)
         
         cleaned_content = clean_tex(content)
