@@ -1,0 +1,40 @@
+\section{Related Work}
+\textbf{Transient Execution Defense Mechanisms}
+Many academic works \cite{ainsworth2020muontrap, cheang2019formal, canella2019systematic, barber2019specshield, fustos2019spectreguard, yan2018invisispec, yu2019speculative, saileshwar2019cleanupspec, weisse2019nda, khasawneh2019safespec, loughlin2021dolma, ainsworth2021ghostminion} present hardware mechanisms or hardware-software co-design to defend against these attacks.
+They usually aim for a stronger security property than us (speculative constant time or speculative non-interference) but do so within threat models that restrict adversarial power to control or observe only a subset of microarchitectural state (e.g. only consider cache side channels) and only consider specific forms of speculation (e.g. branch predictors cannot be updated speculatively).
+These threat models often indirectly build assumptions on the microarchitectural isolation and the speculation model, and could only be seen as add-ons to Citadel that satisfies the isolation requirements.
+As a result, we see our work as complementary. We note that very few of these mechanisms have been implemented in hardware, i.e., FPGAs or silicon.
+Many attacks that break these defense mechanisms rely on exploiting implementation details that are often glossed over in simulation (like not faithfully simulating the memory hierarchy, for instance).
+
+\noindent\textbf{Enclave Platforms}
+Sanctum \cite{costan2016sanctum} introduces the concept of a privileged security monitor by decoupling enclave management functionalities from hardware mechanisms. 
+Our platform draws many concepts from Sanctum such as the dual page table or the memory isolation mechanism. Sanctum also considers some cache side channels in its threat model.
+Nonetheless, Sanctum is not concerned with speculative side channels and no functioning enclave system were ever built.
+Komodo \cite{ferraiuolo2017komodo} builds an enclave platform on top of ARM TrustZone \cite{trustzone04} using a privileged security monitor.
+It does not address side channel attacks and only runs on in-order single-core machines.
+Keystone \cite{lee2020keystone} mimics Sanctum's security monitor, while running on a RISC-V processor without hardware modifications, by leveraging RISCV's PMP mechanism.
+Keystone addresses some cache side channels but doesn't provide security in the presence of speculative attacks as stated by the authors.
+CURE \cite{bahmani2021cure} is another enclave platform built on top of RISC-V. 
+CURE proposes new hardware mechanisms to address side channels, but only considers in-order processors and doesn't protect against speculative side-channel attacks.
+Many other academic platforms exist \cite{feng2021scalable, weiser2019timber, mccune2008flicker, azab2011sice, xia2013architecture, deng2014equalvisor, brasser2019sanctuary, sun2015trustice, koeberl2014trustlite, aegis, xom} but none of them consider speculative side channels or transient execution attacks to the extent of Citadel. 
+
+We note \cite{enclavecaches} that proposes a flexible soft-partitioning of caches, aims at mitigating cache side-channels in trusted execution environment. Contrary to Citadel, the approach is only targeting the mitigation of the cache side-channels.
+
+\noindent\textbf{MI6}
+Citadel builds on the open-source code provided in MI6 \cite{bourgeat2019mi6} and reuses many of its hardware mechanisms.
+The MI6 paper focused on evaluating the \emph{performance} of these mechanisms on an FPGA
+by running SPEC benchmarks directly on top of (insecure) Linux and using Linux system calls as hooks to project the cost of potential context switch to the SM.
+The platform (likely missing the necessary software) did not evaluate a full enclave scenario (neither did it guarantee any security when running SPEC).
+In this paper, on top of implementating secure shared-memory and several mechanisms to improve performance and configurability, we have built and evaluated an end-to-end hardware-software platform, focusing on enclaves that run security-aware workloads and uncovering practical insights for enclave platforms.
+Note that Citadel's performance number for SPEC would be similar to MI6's evaluation as Citadel's LLC can be configured to match the partition size used in \cite{bourgeat2019mi6}.
+
+\noindent\textbf{Enclave Execution Models}
+Recent works have tried to make memory sharing and enclave execution more extensible and configurable \cite{van2023cheri, li2021confidential, lee2022cerberus, park2020nested, steinegger2021servas}.
+Those works are focusing on architectural capabilities and isolation and ignore security challenges introduced by microarchitectural side-channels and transient execution attacks.
+When considering those challenges, even basic communication primitives like Citadel-like public shared memory with the operating system are not straightforward to implement efficiently and securely.
+Elasticlave\cite{yu2022elasticlave} introduces a new memory model for enclaves and focuses on \emph{private} shared memory with exclusive access rights but only between enclaves (where the overhead of encryption can be avoided).
+It is unclear how to efficiently adapt Elasticlave to protect against transient execution attacks; changing access right to a memory region would require to flush the LLC which could be prohibitive. Maybe, flush costs could be reduced with a reconfigurable partitioned Citadel-like LLC that supports partial flushing.
+
+\noindent\textbf{Set Partitioning for the LLC}
+Composable Cachelets\cite{townley2022composable} and Bespoke Cache Enclave\cite{saileshwar2021bespoke} explore set partitioning for the LLC. We note several differences with our scheme. First, these works do not support shared regions between different security domains, hence could not be used for our platform. Second, these works are only implemented and evaluated in a simulator (gem5 or pintool). Consequently, these works ignore a few hardware implementation constraints (similarly to  DAWG\cite{kiriansky2018dawg}): such as how to pass the security DomainID down from the processor to the LLC. This problem cannot be easily ignored when considering shared memory regions between security domains. We suspect this would require extending all data structures and buses, including the ones in the L1 caches, to support the DomainID (up to 10 bits for ECB). 
+This is significantly more intrusive than our proposed scheme where memory regions can be infer from physical addresses.

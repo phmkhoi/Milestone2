@@ -1,0 +1,164 @@
+\section{A Data-Driven Approach}\label{sec:data-driven}
+
+
+
+
+
+
+In this section, we present the main contribution of this work which provides a data-driven approach to calibrating \POFUL{}. Note that $\iota_t$ and $\tau_t$ are parameters of \POFUL{} that can be controlled by a decision-maker, the essential point is to find a computable, non-trivial upper bound $\hat{\alpha}_t$ for the uncertainty ratio $\alpha_t$, which turns into an upper bound $\hat{\mu}_t$ for the regret proxy $\mu_t$ that's deeply related to the frequentist regret of \POFUL{}. 
+
+
+
+
+% \blue{Typically, we can check that $\hat{\alpha}_t$ is no less than one because when $ \tilde{x}_t = x_t^\star$, we have $\alpha_t = \left\|x_t^{\star}\right\|_{V_t^{-1}} /\left\|\widetilde{x}_t\right\|_{V_t^{-1}} = 1$ and $\hat{\alpha}_t$ is an upper bound for $\alpha_t$. As a result, it holds that $\hat{\mu}_t = (1+\hat{\alpha}_t)(1+\iota_t) +  (1-\hat{\alpha}_t) \tau_t \leq  (1+\hat{\alpha}_t)(1+\iota_t) $, i.e., setting $\tau_t  = 0$ yields a valid upper bound for   $\hat{\mu}_t$. Given this observation, \blue{we will} focus on scenarios where $\tau_t = 0$ for all $t\in [T]$.}  
+
+We focus on scenarios where $\tau_t = 0$ for all $t\in [T]$. These include LinTS and variants such as TS-Freq, as well as Greedy - standard algorithms still lacking theoretical regret guarantees. Below, we construct upper bounds $\{\hat{\alpha}_t\}_{t\in[T]}$ for the continuous-action scenario. Bounds for discrete-action scenarios appear in Appendix \ref{sec:discrete_actions}.
+ 
+ 
+ 
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\subsection{Continuous action space}
+\label{sec:bound_sst_ratio}  
+
+%When it comes to the generic settings where the number of actions is large or when the set of actions is a continuous set in $\RR^d$, the upper bound above is inefficient or even infeasible to compute. In this section, we tackle this issue. 
+
+Our strategy capitalizes on geometric insights related to the properties of the confidence ellipsoids, providing upper bounds that can be computed efficiently.  For the sake of a better illustration, we consider 
+ $\cX_t = \cS_{d-1}$ for all $t\in[T]$ for this scenario, where $\cS_{d-1} =\left\{x \in \mathbb{R}^d:\|x\|=1\right\}$ is the unit hypersphere in $\mathbb{R}^d$. This is a standard example of continuous action space, and is the same as the setting considered in \cite{abeille2017linear}. We remark that for this specific setting, the problem is still hard. This is because we don't have a closed-form solution for the set of potentially optimal actions.
+ 
+ In this setting, the optimal action $x_t^\star(\theta )  \coloneqq \argmax_{x\in \cX_t} \dotp{x}{\theta}$ takes the form $ x^\star_t(\theta ) = \theta/\|\theta\|$. To upper bound $\alpha_t$, we consider respectively the smallest and largest value of $\|x^\star_t(\theta)\|_{V_t^{-1}}$ for $\theta$ in the confidence ellipsoids of $\theta$, namely, $\cE^{\RLS}_{t,\delta^\prime, \lambdareg}$ and $\cE^{\PVT}_{t,\delta^\prime, \lambdareg}$. Specifically, we have 
+  \# \label{eq:alpha_hat_raw}
+ \alpha_t \leq \frac{\sup _{\theta \in \cE_{t,\delta^\prime, \lambdareg}^{\RLS}}\|x^\star_t(\theta)\|_{V_t^{-1}}}{ \inf _{\theta \in \cE_{t,\delta^\prime, \lambdareg}^{\PVT}}\|x^\star_t(\theta)\|_{V_t^{-1}}}.
+ \#
+ 
+
+ 
+As is illustrated in Figure~\ref{fig:ellipsoid1}, the set of potentially optimal actions $\cC_t$ is the projection of the confidence ellipsoid $\cE_t$  onto $\cS_{d-1}$. It's hard to get a closed-form expression for $\cC_t$, so we cannot directly calculate the range of $V_t^{-1}$-norm of actions in $\cC_t$. Nevertheless, when \POFUL{} has implemented sufficient exploration so that $\cE_t$ is small enough, $\cC_t$ concentrates accordingly to a small cap on $\cS_{d-1}$. Therefore, it is possible to estimate the range of the $V_t$-norm by employing geometric reasoning. Subsequently, this estimated range will be utilized to ascertain the range of the $V_t^{-1}$-norm.
+
+% All actions within $\cC_t$  point to similar directions and thus have similar $V_t$-norm. (Note that for a unit vector $x$, we have that $\|x\|_{V_t}$ can be written as a weighted summation of the eigenvalues of $V_t$, where the weights are determined by the direction of $x$.) 
+
+
+
+
+% Hence we can bound the range of $V_t$-norm by investigating the concentration of  $\cC_t$, and we'll use it to determine the range of $V_t^{-1}$-norm.
+ 
+ 
+  
+
+ 
+
+ \begin{figure}[htp]
+	\centering
+	\begin{subfigure}[b]{0.45\textwidth}
+	\includegraphics[width=0.9\textwidth]{figures/ellipsoid_8} 
+		\caption{}
+	\end{subfigure}
+ %\hfill
+\begin{subfigure}[b]{0.45\textwidth}
+	\includegraphics[width=0.9\textwidth]{figures/ellipsoid_4} 
+		\caption{}
+	\end{subfigure}
+	\caption{Illustration of potentially optimal actions set $\cC_t$ in $\RR^2$. (a): $\cC_t$ is $\cE_t$'s projection onto $\cS_{d-1}$. (b): As more data is collected, $\cE_t$ shrinks (colors show exploration levels). Potentially optimal actions point in similar directions, determining their $V_t$-norm. This suggests their $V_t$-norm range could be estimated geometrically. }
+	\label{fig:ellipsoid1}
+\end{figure}
+%
+The main theorem (proved in Section \ref{sec:proof_sketch_alpha}) derives an upper bound for $\alpha_t$ based on this idea.
+
+
+
+
+\begin{theorem}\label{thm:alpha}
+
+
+Suppose $\cX_t = \cS_{d-1}$ for all $t \in [T]$. Define $m_t = (\|\hat{\theta}_t\|_{V_t}^2  - (\beta^{RLS}_{t,\delta^\prime, \lambdareg})^2)/(\|\hat{\theta}_t\| +  \beta^{RLS}_{t,\delta^\prime, \lambdareg}/\lambda_d(V_t) )^2$, $ M_t = \|\hparam_t\|_{V_t^2}^2/(\|\hat{\theta}_t\|_{V_t}^2  - (\beta^{\PVT}_{t,\delta^\prime, \lambdareg})^2)$. Let  $k\in[d]$ be the integer that satisfies $\lambda_{k}(V) \leq M_t \leq \lambda_{k+1}(V) $.
+ Define $\beta^{\PVT}_{t,\delta^\prime, \lambdareg} \coloneqq \iota_t \beta^{RLS}_{t,\delta^\prime, \lambdareg}$ and
+					\$
+	\Phi_t &=   \begin{cases}
+				( \lambda_{1}^{-1}(V_t) + \lambda_{d}^{-1}(V_t)   - m_t\lambda_{1}^{-1}(V_t)\lambda_{d}^{-1} (V_t))^{\frac{1}{2}}, &\ \ \ \ \textit{if}\  \|\hat{\theta}_t\|_{V_t} \geq \beta^{RLS}_{t,\delta^\prime, \lambdareg}	\\
+				\lambda_d^{-\frac{1}{2}}(V_t), & \ \ \ \ \textit{if}\  \|\hat{\theta}_t\|_{V_t} <  \beta^{RLS}_{t,\delta^\prime, \lambdareg} \end{cases},\\
+	\Psi_t &=   \begin{cases}
+				(\lambda_{k}^{-1}(V_t) +  \lambda_{k+1}^{-1}(V_t)   - M_t\lambda_{k}^{-1}(V_t)\lambda_{k+1}^{-1} (V_t))^{\frac{1}{2}}, &\textit{if}\  \|\hat{\theta}_t\|_{V_t} \geq \beta^{\PVT}_{t,\delta^\prime, \lambdareg}	\\
+				\lambda_1^{-\frac{1}{2}}(V_t), & \textit{if}\  \|\hat{\theta}_t\|_{V_t} <  \beta^{\PVT}_{t,\delta^\prime, \lambdareg}\end{cases}.
+				\$			
+
+	Then for all $t \in [T]$, conditioned on $\hat{\cA}_t \cap \tilde{\cA}_t$, it holds for all $s \leq t$ that $\alpha_s\leq \halpha_s\coloneqq \Phi_s/\Psi_s$.
+ 
+ 
+ % \$
+	% \inf _{\theta \in \cE_s^{\PVT}}\|x^\star_s(\theta)\|_{V_s^{-1}} \geq \Psi_s,  \quad   \sup _{\theta \in \cE_s^{RLS}}\|x^\star_s(\theta)\|_{V_s^{-1}} \leq \Phi_s , \quad \alpha_s\leq \halpha_s\coloneqq \Phi_s/\Psi_s.\$
+
+ 
+\end{theorem}
+To better understand what Theorem~\ref{thm:alpha} implies, we discuss some special cases in Appendix~\ref{sec:Cases} and provide empirical validations for them. 
+
+
+
+% \begin{remark}
+
+% Clearly, one can further improve the bound in Equation \eqref{eq:alpha_hat_raw} by plugging in the selected action $\tilde{x}_t$. This is true for standard algorithms such as OFUL, LinTS, and Greedy. Explicitly, the uncertainty ratio can be bounded using $\tilde{x}_t$ and Theorem~\ref{thm:alpha} as 
+% \#
+% \alpha_t \leq \frac{\sup _{\theta \in \cE_t^{\RLS}}\|x^\star_t(\theta)\|_{V_t^{-1}}}{\|\tilde{x}_t\|_{V_t^{-1}}}\leq \frac{\Phi_t}{\|\tilde{x}_t\|_{V_t^{-1}}}.
+% \#
+
+
+% However, for the variants of \POFUL{} that we are going to propose in the Section~\ref{sec:meta}, it is necessary to calculate the bound \emph{before} selecting the action $\tilde{x}_t$. Therefore, the bound shouldn't depend on $\tilde{x}_t$. 
+
+
+
+% \end{remark}
+
+\section{A Meta-Algorithm for Course-Correction}
+\label{sec:meta}
+
+
+This section demonstrates how the data-driven regret bound can enhance standard bandit algorithms. We propose a meta-algorithm that creates course-corrected variants of base algorithms, achieving minimax-optimal frequentist regret guarantees while preserving most original characteristics, including computational efficiency and typically low regret.
+
+
+We take LinTS as an example of the base algorithm, and propose the algorithm Linear Thompson Sampling with Maximum Regret (Proxy) (TS-MR). The idea is to measure the performance of LinTS using $\hat{\mu}_t$ and avoid bad LinTS actions by switching to OFUL actions. Specifically, at each time $t$, TS-MR calculates the upper bound $\hat{\mu}_t$ and compares it with a preset threshold $\mu$. If  $\hat{\mu}_t > \mu$, LinTS might be problematic and  TS-MR takes an OFUL action to ensure a low instantaneous regret; if $\hat{\mu}_t\leq \mu$, TS-MR  takes the LinTS action. We remark that setting $\iota_t = 0$ for all $t\in [T]$ yields the corresponding Greedy-MR algorithm. The pseudocode is presented in Algorithm~\ref{alg:TS-MR} in Appendix~\ref{sec:TS-MR}. 
+
+\begin{remark}
+Computing $\hat{\mu}_t$ primarily requires SVD decomposition of the sample covariance matrix $V_t$. Since $V_t=\lambda_{\text{reg}} I_d+\sum_{s=1}^t x_s x_s^{\top}$ is updated via rank-one matrices, its SVD can be efficiently updated \citep{gandhi2017updating}, preventing computational bottlenecks.
+\end{remark}
+
+
+By design, course-corrected algorithms ensure that $\mu_t \leq \max\{\mu,2\}$ for all $t \in [T]$. Substituting this upper bound into Theorem~\ref{thm:oracle_regret} establishes that these algorithms achieve optimal frequentist regret, up to a constant factor.
+\begin{corollary} TS-MR and Greedy-MR achieve a frequentist regret of
+$\tilde{\cO}( \max\{\mu,2\} d \sqrt{T})$.
+\end{corollary}
+
+% \blue{
+% \proof{} Note that $\mu_t \leq \max\{\mu,2\}$, by Theorem ~\ref{thm:oracle_regret}, we have 
+% \#
+% \cR(T) \leq   \sqrt{2 d  T(\max\{\mu,2\})^2\log \left(1+\frac{T}{\lambdareg}\right) 
+%  }\beta_{T,\delta^\prime,\lambdareg}^{RLS} = \tilde{\cO}( \max\{\mu,2\} d \sqrt{T}).\nonumber
+% \#
+%  \endproof
+%  }
+
+In high-risk settings where LinTS and Greedy may fail, a small $\mu$ ensures TS-MR and Greedy-MR select more OFUL actions, promoting sufficient exploration. Conversely, in low-risk settings where the original algorithms perform well, a large $\mu$ favors TS and greedy actions, minimizing unnecessary exploration and reducing computational cost. In Appendix~\ref{sec:tune_mu}, we show how $\mu$ impacts the fraction of OFUL actions in TS-MR and Greedy-MR and their performance. Results indicate that course-corrected algorithms maintain robustness across a range of moderate $\mu$ values, suggesting that the precise selection of $\mu$ is unlikely to present a significant practical concern.
+
+% In high-risk settings where LinTS and Greedy may fail, a small $\mu$ ensures TS-MR and Greedy-MR select more OFUL actions, promoting sufficient exploration. Conversely, in low-risk settings where the original algorithms perform well, a large $\mu$ favors TS and greedy actions, minimizing unnecessary exploration and reducing computational cost. In Appendix~\ref{sec:tune_mu}, we illustrate the impact of $\mu$ on the fraction of OFUL actions invoked in TS-MR and Greedy-MR and the performance of these two algorithms. The simulation results demonstrate that the performance of the course-corrected algorithms remains relatively robust to the choice of $\mu$. Nevertheless, a recommended heuristic for selecting $\mu$ is to ensure adequate exploration through OFUL actions during the initial stages.
+
+
+% In practice, the choice of the threshold $\mu$ depends on the problem settings. In high-risk settings where LinTS and Greedy fail with high probability, one can set a small $\mu$ so that  TS-MR and Greedy-MR select more OFUL actions, guaranteeing the necessary amount of exploration. In low-risk settings where original LinTS and Greedy algorithms work well,  a large $\mu$ allows TS-MR and Greedy-MR to favor TS and greedy actions, avoiding unnecessary exploration and reducing computational cost. 
+
+
+
+
+
+
+

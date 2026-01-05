@@ -1,0 +1,691 @@
+\documentclass{article}
+\usepackage[letterpaper,margin=1.0in]{geometry}
+\input{math.tex}
+\usepackage{hyperref}
+\usepackage{enumitem}
+%\usepackage{natbib}
+\usepackage[utf8]{inputenc} % allow utf-8 input
+\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{hyperref}       % hyperlinks
+\usepackage{url}            % simple URL typesetting
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{amsfonts}       % blackboard math symbols
+\usepackage{nicefrac}       % compact symbols for 1/2, etc.
+\usepackage{microtype}      % microtypography
+%\usepackage{lipsum}
+%\usepackage{fancyhdr}       % header
+\usepackage{graphicx}       % graphics
+\usepackage[numbers,sort]{natbib}
+\usepackage{multirow}
+\usepackage{makecell}
+\usepackage{bbding}
+\usepackage{wrapfig}
+\graphicspath{{media/}}     % organize your images and
+
+%\pagestyle{fancy}
+%\thispagestyle{empty}
+%\rhead{ \textit{ }} 
+
+\usepackage{thmtools}
+\usepackage{thm-restate}
+
+\title{Near-Optimal Fully First-Order Algorithms \\for Finding  Stationary Points in Bilevel Optimization}
+
+\author{
+  Lesi Chen\textsuperscript{* \S}\\
+ { \small{\texttt{lschen19@fudan.edu.cn}}}
+  \and
+  Yaohua Ma\textsuperscript{* \dag}\\
+ { \small{\texttt{ma-yh21@mails.tsinghua.edu.cn}}}
+  \and 
+  Jingzhao Zhang\textsuperscript{ \dag}\\
+ { \small{\texttt{jingzhaoz@mail.tsinghua.edu.cn}}}
+}
+
+%  \author{Lesi Chen\thanks{School of Data Science, Fudan University; lschen19@fudan.edu.cn}
+% }
+
+\date{}
+      
+\begin{document}
+\maketitle
+\begingroup
+\begin{NoHyper}
+\renewcommand\thefootnote{*}
+\footnotetext{Equal contributions.}
+\renewcommand\thefootnote{\S}
+\footnotetext{
+School of Data Science, Fudan University, China.}
+\renewcommand\thefootnote{\dag}
+\footnotetext{Institute for Interdisciplinary Information Sciences, Tsinghua University, China.}
+\end{NoHyper}
+\endgroup
+\begin{abstract}
+Bilevel optimization has various applications such as hyper-parameter optimization and meta-learning.
+Designing theoretically efficient algorithms for bilevel optimization is more challenging than standard optimization because the lower-level problem defines the feasibility set implicitly via another optimization problem. 
+One tractable case is when the lower-level problem permits strong convexity. Recent works show that second-order methods can provably converge to
+an $\epsilon$-first-order stationary point of the problem 
+at a  rate of $\tilde{\mathcal{O}}(\epsilon^{-2})$, yet these algorithms require a Hessian-vector product oracle.
+\citet{kwon2023fully} resolved the problem by proposing a  first-order method that can achieve the same goal at a slower
+rate of $\tilde{\mathcal{O}}(\epsilon^{-3})$. 
+In this work, we provide an improved analysis demonstrating that the first-order method can also 
+find an $\epsilon$-first-order stationary point within $\tilde {\mathcal{O}}(\epsilon^{-2})$ oracle complexity, which matches
+the upper bounds for second-order methods in the dependency on $\epsilon$.
+Our analysis further leads to
+simple first-order algorithms that can achieve similar near-optimal rates in finding second-order stationary points and in distributed bilevel problems.
+\end{abstract}
+
+\section{Introduction}
+
+In this paper, we consider the following bilevel optimization problem:
+\begin{align} \label{hyper-refo}
+    \min_{x \in \BR^{d_x}} \varphi(x) := f(x,y^*(x)) , \quad {\rm where}~ y^*(x) = \arg \min_{y \in \BR^{d_y}} g(x,y).
+\end{align}
+This formulation covers a lot of applications, including but not limited to hyper-parameter optimization~\cite{franceschi2018bilevel,pedregosa2016hyperparameter,gao2022value,zhou2022model}, meta-learning~\cite{finn2017model,nichol2018first,andrychowicz2016learning}, adversarial training~\cite{zhang2022revisiting,bruckner2011stackelberg,wang2021fast,bishop2020optimal}.
+Since $\varphi(x)$ is usually a nonconvex objective, we aim to provide theoretical guarantees for finding stationary points of $\varphi(x)$. However, $\varphi(x)$ can be non-differentiable in general.
+A common assumption~\cite{dagreou2022framework,ji2021bilevel,yang2021provably,ji2022will,ji2021lower,chen2021closing,khanduri2021near,hong2023two} to ensures differentiability is the lower-level strong convexity, under which the hyper-gradient $\nabla \varphi(x)$~\cite{ji2021bilevel,ghadimi2018approximation,pedregosa2016hyperparameter,grazzi2020iteration} can be expressed by:
+\begin{align} \label{hyper-grad} 
+    \nabla \varphi(x) = \nabla_x f(x,y^*(x)) - \nabla_{xy}^2 g(x,y^*(x)) [ \nabla_{yy}^2 g(x,y^*(x))]^{-1} \nabla_y f(x,y^*(x)).
+\end{align}
+The above equation enables one to implement
+second-order methods for nonconvex-strongly-convex bilevel optimization. These methods~\cite{ji2021bilevel,yang2021provably,ji2022will,ji2021lower} use an inner loop to approximate $y^*(x)$ and an outer loop to 
+construct an estimation of $\nabla \varphi(x)$ via that of $y^*(x)$, and then
+perform inexact hyper-gradient descent on $\varphi(x)$. 
+By standard convergence result of gradient descent for nonconvex objectives, these methods can find an $\epsilon$-first-order stationary point of $\varphi(x)$ within $\tilde \fO(\epsilon^{-2})$ first-order oracle complexity of $f$ and $\tilde \fO(\epsilon^{-2})$ second-order oracle complexity of $g$. It is worth noticing that the $\tilde \fO(\epsilon^{-2})$ first-order oracle complexity matches the lower bound for smooth nonconvex optimization up to only logarithmic factors~\cite{carmon2020lower}.
+However, since the explicit expression of $\nabla \varphi(x)$ involves both the Jacobian $\nabla_{xy}^2 g(x,y^*(x))$ and Hessian inverse $[\nabla_{yy}^2 g(x,y^*(x))]^{-1} $,
+second-order information of $g$ is required for these methods. 
+
+Very recently,  \citet{kwon2023fully}  proposed a novel first-order algorithm that can find an $\epsilon$-first-order stationary point of $\varphi(x)$ without resorting either Hessian inverse or Hessian-vector products.  
+Their key idea is to exploit the following value-function reformulation~\cite{liu2021value,shen2023penalty,gao2022value,lu2023first,outrata1990numerical,dempe2020bilevel,lin2014solving}:
+\begin{align*} 
+    \min_{x \in \BR^{d_x}, y \in \BR^{d_y}} f(x,y) , \quad {\rm subject ~to}~~ g(x,y) - g^*(x).
+\end{align*}
+Here $g^*(x) = g(x,y^*(x))$ is usually called the value-function~\cite{ye1995optimality,ye2010new,dempe2002foundations,ye2023difference}. Given a multiplier $\lambda >0$, we can further define the following auxiliary function:
+\begin{align}\label{eq:L-lambda}
+    \fL_{\lambda}^*(x) := \fL_{\lambda}(x,y_{\lambda}^*(x)), \quad {\rm where }~ y_{\lambda}^*(x) = \arg \min_{y \in \BR^{d_y}} \left\{ \fL_{\lambda}(x,y):= f(x,y)+ \lambda ( g(x,y) - g^*(x)) \right\}.
+\end{align}
+\citet{kwon2023fully} showed in their Lemma 3.1 that $\fL_{\lambda}^*(x)$ is a good proxy of $\varphi(x)$ since 
+\begin{align*}
+    \Vert \nabla \fL_{\lambda}^*(x) - \nabla \varphi(x)  \Vert = \fO \left( \kappa^3 /\lambda \right).
+\end{align*}
+One important property of the proxy
+ $\fL_{\lambda}^*(x)$ is that its gradient only involves first-order information:
+ \begin{align} \label{eq:nabla-Lag}
+     \nabla \fL_{\lambda}^*(x) = \nabla_x f(x, y_{\lambda}^*(x)) + \lambda ( \nabla_x g(x,y_{\lambda}^*(x)) - \nabla_x g(x,y^*(x))).
+ \end{align}
+Applying inexact gradient descent on the proxy $\fL_{\lambda}^*(x)$ can reach an $\epsilon$-first-order stationary point of it. When we set $\lambda \asymp \epsilon^{-1}$, the output is also an $\fO(\epsilon)$-first-order stationary point of $\varphi(x)$. Direct analysis of gradient descent on $\fL_{\lambda}^*(x)$ shows that the proposed Fully First-order Bilevel Approximation (F${}^2$BA~\footnote{
+\citet{kwon2023fully} called  both their 
+stochastic and deterministic method the same name Fully First-order Stochastic Approximation
+(F${}^2$SA). Here we 
+call the deterministic method Fully First-order Bilevel Approximation (F${}^2$BA) for ease of distinction.}, see also Algorithm \ref{alg:F2BA}) in \cite{kwon2023fully}  requires a first-order oracle complexity of $\tilde \fO(\lambda \epsilon^{-2}) = \tilde \fO(\epsilon^{-3} )$, which is slower than the $\tilde \fO(\epsilon^{-2})$ complexity of second-order methods. Then the authors in \cite{kwon2023fully} conjectured that there may exist a fundamental gap between first-order and second-order methods.
+
+However, contrary to their conjecture, this paper shows that first-order methods can also achieve the near-optimal rate of $\tilde \fO(\epsilon^{-2})$ as second-order methods, even though less information is used.
+We prove that for a sufficiently large $\lambda$, the proxy $\fL_{\lambda}^*(x)$ not only has the same approximate stationary point of $\varphi(x)$ , but also has almost the same gradient Lipschitz coefficient of $\varphi(x)$ given by:
+\begin{align*}
+    \Vert \nabla^2 \fL_{\lambda}^*(x) \Vert \asymp \Vert \nabla^2 \varphi(x) \Vert \asymp \kappa^3,
+\end{align*}
+where $\kappa$ is the condition number that will be formally defined in the subsequent section. This improved analysis indicates that although $\lambda$ is large, the gradient Lipschitz coefficient of $\fL_{\lambda}^*(x)$ would still remain constant which does not depend on $\epsilon$. As a consequence, we demonstrate that the complexity of F${}^2$BA can be essentially improved to $\tilde \fO(\epsilon^{-2})$, instead of the $\tilde \fO(\epsilon^{-3})$ complexity provided by \citet{kwon2023fully}.
+
+Our analysis technique is general and it can simplify algorithms in multiple setups.
+If additionally assuming the third-order derivative Lipschitz continuity of $g$, we can show that
+\begin{align*}
+    \Vert \nabla^2 \fL_{\lambda}^*(x) - \nabla^2 \varphi(x) \Vert = \fO(\kappa^6 /\lambda) ~~{\rm and}~~  \Vert \nabla^3 \fL_{\lambda}^*(x) \Vert \asymp \Vert \nabla^3 \varphi(x) \Vert \asymp \kappa^5.
+\end{align*}
+This implies that we can find an approximate second-order stationary point of $\fL_{\lambda}^*(x)$ and thus that of $\varphi(x)$ by simply setting $\lambda \asymp \epsilon^{-1}$ and adding a perturbation step in each iteration of gradient descent motivated by 
+\citet{jin2017escape}. Based on this observation, we propose the perturbed F${}^2$BA (Algorithm \ref{alg:PF2BA}) that can find an $(\epsilon,\sqrt{\epsilon})$-second-order stationary point of $\varphi(x)$ within $\tilde \fO(\epsilon^{-2})$ first-order oracle complexity, matching the complexity of F${}^2$BA for finding an $\epsilon$-first-order stationary point, up to logarithmic factors.
+Prior to this, the best-known convergence result under this setting is given by second-order methods \cite{huang2022efficiently} using the approximate implicit differentiation method.
+
+Another application of our analysis is to implement simple first-order algorithms in a distributed fashion when both the upper and lower-level functions adopt the following finite-sum structure:
+\begin{align}  \label{prob:fn}
+    f(x,y) := \frac{1}{m} \sum_{i=1}^m f_i(x,y), \quad g(x,y) := \frac{1}{m} \sum_{i=1}^m g_i(x,y),
+\end{align}
+where $f_i$ and $g_i$ denote the local function on the $i$-th agent. 
+One of the primal challenges for second-order methods in distributed bilevel optimization arises from the Hessian inverse in the expression of hyper-gradient since directly aggregating the Hessian matrix requires an expensive $\fO(d_{y}^2)$ communication complexity per round~\cite{yangdecentralized,lu2022stochastic}. To address this issue, existing works reformulate the Hessian inverse as a sub-problem and solve it with distributed algorithms that only require communicating Hessian-vectors~\cite{tarzanagh2022fednest,chen2022decentralized,xiao2023communication}.
+In contrast to this, the extension of first-order method F${}^2$BA to the distributed setting is much more straightforward and naturally avoids the additional sub-solver for distributed matrix inverse, 
+as illustrated in Algorithm \ref{alg:CF2BA}. And we can also show that the proposed method achieves the near-optimal first-order oracle complexity and communication complexity simultaneously.
+
+% Under the decentralized setting when the agents are only allowed to communicate with their neighbors, we also proposed the decentralized  F${}^2$BA (Algorithm \ref{alg:DF2BA}).
+% The proposed distributed algorithms also achieve near-optimal first-order oracle and communication complexities.
+
+We summarize the main results of this paper in Table \ref{tab:res}.
+
+\begin{table}[t]
+    \centering
+    \begin{tabular}{c c c c c }
+    \hline 
+    Oracle     & Method   & Oracle Calls & Escape Saddle Points* & Distributed   \\
+    \hline \hline 
+    \addlinespace
+    \multirow{2}{*}{1st+2nd}     & 
+    AID \cite{ji2021bilevel} & $\fO (\kappa^4 \epsilon^{-2}  )$ 
+    & \cite{huang2022efficiently} & \cite{tarzanagh2022fednest,chen2022decentralized} 
+    \\ \addlinespace
+    & ITD \cite{ji2021bilevel} & $\tilde \fO (\kappa^4 \epsilon^{-2} )$ & - & \cite{xiao2023communication} \\
+    \addlinespace
+    \hline
+    \addlinespace
+    \multirow{4}{*}{1st} & BOME \cite{liu2022bome} & $ \tilde \fO( {\rm poly}(\kappa) \epsilon^{-6} )$ & - & -  \\
+    \addlinespace
+    & F${}^2$BA \cite{kwon2023fully} & $ \tilde \fO( {\rm poly}(\kappa) \epsilon^{-3} )$ & - & -  \\
+    \addlinespace
+     & 
+F${}^2$BA (Ours)
+      & $ \tilde \fO( \kappa^4 \epsilon^{-2} )$ & Alg. \ref{alg:PF2BA} & Alg. \ref{alg:CF2BA} \\ 
+     \addlinespace
+     \hline
+    \end{tabular}
+    \caption{
+    We present the oracle complexities of different methods for finding approximate stationary points.
+    We remark for ``*'' that additional logarithmic factors are required for escaping saddle points.}
+    \label{tab:res}
+\end{table}
+
+
+\paragraph{Notations.}
+Given two sequences of positive scalars $p_n$ and $q_n$, we denote $p_n = \fO(q_n)$ if there exists an absolute constant $C>0$ such that $p_n \le Cq_n$. 
+We denote $p_n= \tilde \fO(q_n)$ if there exists an absolute constant $\tilde C>0$ which hides logarithmic factors such that $p_n \le \tilde Cq_n$.
+We denote $p_n = \Omega(q_n)$ if there exists an absolute constant $c>0$ such that $p_n \ge cq_n$, and denote $p_n \asymp q_n$ if we both have $p_n = \fO(q_n)$ and $p_n = \Omega(q_n)$.
+
+We use $\otimes$ to denote the Kronecker product of two matrices.
+We use $I_d \in \BR^{d\times d}$ to denote the identity matrix. For two symmetric matrices $A$ and $B$, we use $A \succeq B$ to indicate that $A-B$ is positive semidefinite.
+We use $\sB(r)$ to denote the Euclidean ball centered at the origin and radius $r$.
+For a function $h: \BR^d \rightarrow \BR$, we use $\nabla h \in \BR^d, \nabla^2 h \in \BR^{d \times d},  \nabla^3 h \in \BR^{d \times d \times d}$ to denote its gradient, Hessian, and third-order derivative, and use $h^*$ to denote the global minimum of $h(\,\cdot\,)$. We
+denote $\Vert \,\cdot\,\Vert$ to be the operator norm of a tensor and more details about the notations of tensors can be found in Appendix \ref{apx:tensor}.
+
+\section{Related Work}
+
+% Non-asymptotic analysis of second-order methods for nonconvex-strongly-convex bilevel optimization problems has been established by many works, but finite-time convergence of first-order methods has not been studied until recently.
+
+\paragraph{Second-Order Methods for Bilevel Optimization.
+} 
+
+Most existing second-order methods for nonconvex-strongly-convex bilevel optimization can be categorized into
+the approximate implicit differentiation (AID) methods  and the iterative differentiation
+(ITD) methods. The AID approach~\cite{liao2018reviving,ji2021bilevel,ghadimi2018approximation,lorraine2020optimizing} constructs hyper-gradients explicitly according to the equation $\nabla \varphi(x) = \nabla_x f(x,y^*(x)) - \nabla_{xy}^2 g(x,y^*(x)) v^*$, where $v^* $ is the solution to the linear system $\nabla_{yy}^2 g(x,y^*(x)) v^* =\nabla_y f(x,y^*(x)) $. Then one can use
+iterative algorithms such as fix point iteration or conjugate gradient method to solve this linear system, and avoid the computation of the Hessian inverse \cite{grazzi2020iteration,ji2021bilevel,hong2023two}. 
+%For the stochastic setting, the Neumann series is often used to approximate the Hessian inverse (ref...). 
+Compared with the AID approach, the ITD approach~\cite{maclaurin2015gradient,shaban2019truncated,domke2012generic,franceschi2017forward,franceschi2018bilevel}  takes advantage of the fact that backpropagation can be efficiently implemented via modern
+automatic differentiation frameworks such as PyTorch~\cite{paszke2019pytorch}. These methods approximate hyper-gradients by $\partial f(x,y^K(x)) / \partial x $, where $y^K(x)$  approximates $y^*(x)$ via iterative algorithms such as gradient descent. Although ITD approaches do not query second-order information explicitly, the analytical form of $\partial f(x,y^K(x)) / \partial x $ involves second-order derivatives (Proposition 2 in \cite{ji2021bilevel}), so they also belong to second-order methods. Both AID and ITD methods require $\tilde \fO(\epsilon^{-2})$ first-order and second-order oracle complexities to find an $\epsilon$-first-order stationary point of $\varphi(x)$. Recently, \citet{huang2022efficiently} proposed the perturbed AID to find an $(\epsilon,\sqrt{\epsilon})$-second-order stationary point within $\tilde \fO(\epsilon^{-2})$ complexity. 
+%Additionally, they also use the inexact NEgative-curvature-Originated-from-Noise (NEON) algorithm~\cite{xu2018first,allen2018neon2} to extend their result to the stochastic setting.
+
+\paragraph{First-Order Methods for Bilevel Optimization.}
+
+A line of works approximates hyper-gradients with only gradient information.
+\citet{giovannelli2021bilevel} uses 
+the Gauss–Newton type approximation with $ \nabla \varphi(x) \approx \nabla_x f(x,y^*(x)) - \nabla_y f(x,y^*(x))^\top \nabla_y g(x,y^*(x)) [\nabla_y g(x,y^*(x))^\top \nabla_y g(x,y^*(x)) ]^{-1} \nabla_y f(x,y^*(x)) $, but such rank-1 approximation lacks a rigorous error guarantee. 
+\citet{sow2022convergence} approximated the Hessian via the differences of gradients, and hence their complexity has a polynomial 
+dependency on the dimension of the problem~\cite{duchi2015optimal}. Another line of works (including this paper) reformulates the bilevel problem (\ref{hyper-refo}) into a value-function constrained problem. \citet{liu2021value} proposed 
+the Bi-level Value-Function-based Interior-point Method (BVFIM) but analyzes only the asymptotic convergence of the algorithm. 
+Bilevel Optimization Made Easy (BOME) proposed by
+\citet{liu2022bome} is very similar to our method, but their paper did not provide any convergence of $\varphi(x)$. Remarkably, \citet{kwon2023fully}
+established
+the relationship between the Lagrangian of value-function reformulation and the original bilevel problem in their Lemma 3.1, and proposed the Fully First-order Bilevel Approximation (F${}^2$BA) that can provably find an $\epsilon$-first-order stationary point of $\varphi(x)$ within $\tilde \fO(\epsilon^{-3})$ oracle complexity. As a by-product of their analysis, one can also show that BOME~\cite{liu2022bome} also converges within $\tilde \fO(\epsilon^{-6})$ first-order oracle complexity. 
+However, before our work, we did not know whether first-order methods could have comparable theoretical guarantees to second-order methods.
+%In addition, \citet{kwon2023fully}proposed theFully First-order Stochastic Approximation (F${}^2$SA) with a rate of $\tilde \fO(\epsilon^{-7})$ under the stochastic case.  
+
+\paragraph{Distributed Bilevel Optimization.}
+
+Distributed optimization uses 
+several agents to
+train a large model in parallel \cite{boyd2011distributed,boyd2011convex,mcmahan2017communication,mishchenko2022proxskip,lian2017can,scaman2017optimal}. 
+Despite the popularity of distributed first-order methods~\cite{liconvergence,recht2011hogwild,lin2019don,gu2023and,lu2021optimal,kovalev2020optimal,song2021optimal,jordan2018communication}, the design of distributed second-order methods~\cite{reddi2016aide,wang2018giant,safaryan2022fednl,islamov2021distributed,crane2019dingo,shamir2014communication,uribe2020distributed} is more challenging since it is inefficient to communicate a Hessian matrix across the agents.
+This also becomes the main obstacle for second-order methods in distributed bilevel optimization~\cite{yangdecentralized,huang2023achieving,tarzanagh2022fednest,lu2022decentralized}. \citet{tarzanagh2022fednest} and \citet{chen2022decentralized} propose independent sub-solvers that only require communicating Hessian-vectors 
+to serve as the Hessian-Inverse-Gradient-Product (HIGD) oracle for the AID method. \citet{xiao2023communication} proposed aggregated iterative differentiation (AggITD) to conduct the hyper-gradient
+estimation and the lower-level optimization in a simultaneous way. Note that all these methods are more complicated than their single-machine counterparts since $\frac{1}{m} \sum_{i=1}^m  \nabla_{xy}^2 g_i(x,y) [ \nabla_{yy}^2 g_i(x,y) ]^{-1} \nabla_y f_i(x,y) \ne \nabla_{xy}^2 g(x,y) [\nabla_{yy}^2 g(x,y)]^{-1} \nabla_y g(x,y) $ indicates that aggregating the local hyper-gradients on all agents can not give the correct form of $\nabla \varphi(x)$ in \eqref{hyper-grad}. 
+
+\section{Preliminaries}
+
+We introduce the backgrounds for different setups studied in this work.
+\paragraph{First-Order Stationary Points.} We first make the following assumptions that are commonly adopted for non-asymptotic analysis for bilevel optimization under lower-level strong convexity~\cite{dagreou2022framework,ji2021bilevel,yang2021provably,ji2022will,ji2021lower,chen2022single,hong2023two}. 
+
+\begin{asm} \label{asm:sc}
+Suppose that
+\begin{enumerate}
+    \item $g(x,y)$ is $\mu$-strongly convex in $y$;
+     \item $g(x,y)$ is $L_g$-gradient Lipschitz;
+    \item $g(x,y)$ is $\rho_g$-Hessian Lipschitz;
+     \item $f(x,y)$ is $C_f$-Lipschitz;
+    \item $f(x,y)$ is $L_f$-gradient Lipschitz;
+    \item  $f(x,y)$ is twice continuously differentiable.
+    \item $\varphi(x)$ is lower bounded, \emph{i.e.} $\inf_{x \in \BR^{d_x}} \varphi(x) > - \infty$;
+\end{enumerate}
+\end{asm}
+
+Under Assumption \ref{asm:sc}, we define the condition number 
+   $\kappa:= \max \{ C_f,L_f,L_g,\rho_g  \} / \mu$ .
+A key result from the above assumptions is that the gradient is Lipschitz continuous for the hyper-objective, stated as follows.
+
+\begin{restatable}[Lemma 2.2 in \cite{ghadimi2018approximation}]{prop}{propFsmooth}
+    \label{prop:F-smooth}
+Under Assumption \ref{asm:sc}, the hyper-objective $\varphi(x)$ is $L_\varphi$-gradient Lipschitz, where $L_\varphi = \fO(\kappa^3)$.
+% \begin{align*}
+%     L_F := \left( 1 + \frac{L_g}{\mu} \right) \left( L_f + \frac{C_f \rho_g}{\mu} + \frac{L_f L_g}{\mu} + \frac{C_f L_g \rho_g}{\mu^2} \right) = \fO(\kappa^3).
+% \end{align*}
+ \end{restatable}
+
+The continuity hence enables us to define the approximate first-order stationary points as follows.
+\begin{dfn} \label{dfn:sta-hyper}
+We call $\hat x$ an $\epsilon$-first-order stationary point of $\varphi(x)$ if $ \Vert \nabla \varphi(\hat x) \Vert \le \epsilon$.
+\end{dfn}
+\paragraph{Second-Order Stationary Points. }In many scenarios, it is not enough to merely find a first-order stationary point~\cite{goodfellow2014qualitatively,dauphin2014identifying,choromanska2015loss}. This motivates us to pursue higher-order stationary points.
+When pursuing second-order stationarity of bilevel optimization, we additionally require the following assumptions \cite{huang2022efficiently}. 
+\begin{asm} \label{asm:third}
+Suppose that
+\begin{enumerate}
+    \item $f(x,y)$ is $\rho_f$-Hessian Lipschitz;
+    \item $f(x,y)$ is third-order  continuously differentiable;
+    \item  $ g(x,y)$ is $\nu_g$-third-order derivative Lipschitz.
+\end{enumerate}
+\end{asm}
+The above assumption ensures the Hessian Lipschitz continuity of the hyper-objective.
+\begin{prop}[Lemma 3.4 in \cite{huang2022efficiently}]
+    Under Assumption \ref{asm:sc} and \ref{asm:third}, the hyper-objective $\varphi(x)$ is $\rho_\varphi$-Hessian Lipschitz, where $\rho_\varphi = \fO(\kappa^5)$.
+\end{prop}
+
+We can then formally define the
+ approximate second-order stationary point as follows.
+\begin{dfn} \label{dfn:sta-hyper-second}
+We call $\hat x$ an $(\epsilon,\delta)$-second-order stationary point of $\varphi(x)$ if 
+\begin{align*}
+    \Vert \nabla \varphi(\hat x) \Vert \le \epsilon,\quad  \nabla^2 \varphi(\hat x)  \succeq -\delta I_{d_x}.
+\end{align*}
+\end{dfn}
+
+The goal of finding approximate second-order stationary points is also usually called ``escaping saddle points'' in the literature~\cite{jin2017escape,ge2015escaping,li2022restarted,fang2019sharp,nesterov2006cubic,tripuraneni2018stochastic,agarwal2017finding,lee2016gradient,allen2018neon2,carmon2017convex,zhou2020stochastic,allen2018natasha,xu2018first}.
+\paragraph{Distributed Bilevel Problems.} For the convenience of presenting a distributed algorithm, we define the aggregate variables for all agents as
+\begin{align*}
+X=\begin{bmatrix}
+X(1)^\top \\ \vdots \\ X(m)^\top
+\end{bmatrix}&\in\BR^{m\times d_x},
+\quad
+Y=\begin{bmatrix}
+Y(1)^\top \\ \vdots \\ Y(m)^\top
+\end{bmatrix}\in\BR^{m\times d_y}
+\quad \text{and} \quad
+Z=\begin{bmatrix}
+Z(1)^\top \\ \vdots \\ Z(m)^\top
+\end{bmatrix}\in\BR^{m\times d_y},
+\end{align*}
+where $X(i) \in \BR^{d_x}, ~ Y(i) \in \BR^{d_y},~Z(i) \in \BR^{d_y}$ are local variables on the $i$-th agent; 
+We denote~$\vone = [1,\cdots,1]^\top \in \BR^m$ and use the lowercase with the bar to represent the mean vector, such as $\bar x = \frac{1}{m} \vone^\top X$.
+Let $d = d_x+d_y$. We further define the aggregate gradient as 
+\begin{align*}
+\nabla f(X,Y)=\begin{bmatrix}
+\nabla f_1(X(1),Y(1))^\top \\ \vdots \\ \nabla f_m(X(m),Y(m))^\top
+\end{bmatrix}
+\in\BR^{m\times d}, ~~\nabla g(X,Y)=\begin{bmatrix}
+\nabla g_1(X(1),Y(1))^\top \\ \vdots \\ \nabla g_m(X(m),Y(m))^\top
+\end{bmatrix}
+\in\BR^{m\times d}.    
+\end{align*}
+% For the decentralized setting when a central server is absent, we suppose the agents are connected in a network and their communication can be realized through a gossip matrix $W$ associated with the network, which satisfies the following properties.
+
+% \begin{asm}\label{asm:W}
+% We suppose the gossip matrix $W\in\BR^{m\times m}$ has the following properties:
+% (a) The matrix $W$ is symmetric with $W_{i,j}\neq 0$ if and only if $i$ and $j$ are connected;
+% (b) It holds that~$\vzero \preceq W \preceq I$, $W\vone = \vone$ and ${\rm null}(I-W)={\rm span}(\vone)$.
+% \end{asm}
+
+% We can define the characteristic number of the network by $\chi \triangleq 1 /(1 -\theta)$, where $\theta \in (0,1)$ is the second largest eigenvalue of the gossip matrix $W$.
+
+\section{Finding First-Order Stationarity} \label{sec:first}
+
+\begin{wrapfigure}{R}{0.48\textwidth}
+\begin{minipage}{0.48\textwidth}
+\vskip -0.4cm
+\begin{algorithm}[H]  
+\caption{F${}^2$BA $\left(x_0,y_0, \eta,\tau,\alpha, \lambda, T,\{K_t\}_{t=0}^{T-1}\right)$} \label{alg:F2BA}
+\begin{algorithmic}[1] 
+\STATE $ z_0 = y_0$ \\[1mm]
+\STATE \textbf{for} $ t =0,1,\cdots,T-1 $ \\[1mm]
+\STATE \quad $ y_t^0 =  y_{t}, ~ z_t^0 = z_{t}$ \\[1mm]
+\STATE \quad \textbf{for} $ k =0,1,\cdots,K_t-1$ \\[1mm]
+\STATE \quad \quad $ z_t^{k+1} = z_t^{k}- \alpha \nabla_y g(x_t, z_t^k)   $ \\[1mm]
+\STATE \quad \quad $ y_t^{k+1} = y_t^k - \tau \left( \nabla_y f(x_t,y_t^k) +  \lambda  \nabla_y g(x_t,y_t^k) \right)$ \\[1mm]
+\STATE \quad \textbf{end for} \\[1mm]
+\STATE \quad $z_{t+1} = z_t^K,~ y_{t+1} = y_t^K $ \\[1mm]
+\STATE \quad $ \hat \nabla \fL_{\lambda}^*(x_t)= \nabla_x f(x_t,y_{t+1}) + \lambda ( \nabla_x g(x_t,y_{t+1}) - \nabla_x g(x_t,z_{t+1}) )$ \\[1mm]
+\STATE \quad $x_{t+1} = x_t -  \eta  \hat \nabla \fL_{\lambda}^*(x_t)$ \\[1mm]
+\STATE \textbf{end for} \\[1mm]
+\end{algorithmic}
+\end{algorithm}
+\end{minipage}
+\vskip -0.6cm
+\end{wrapfigure}
+
+
+
+The key observation from F${}^2$BA is the following lemma, which characterizes the relationship between the hyper-objective $\varphi(x)$ defined in \eqref{hyper-refo} and the proxy $\fL_{\lambda}^*(x)$ defined in \eqref{eq:L-lambda}.
+
+\begin{lem} \label{lem:1st}
+Under Assumption \ref{asm:sc}, let $\lambda \ge 2L_f /\mu $, for $\fL_{\lambda}^*(x)$ defined in \eqref{eq:L-lambda}, it holds that 
+\begin{align*}
+    &{\rm(a)}~ \vert \fL_{\lambda}^*(x) - \varphi(x) \vert =\fO(\kappa^2/ \lambda), ~~{\rm (b)}~ \Vert \nabla \fL_{\lambda}^*(x) - \nabla \varphi(x) \Vert = \fO(\kappa^3 /\lambda),~~{\rm (c)}~ \Vert \nabla^2 \fL_{\lambda}^*(x) \Vert = \fO(\kappa^3).
+\end{align*}
+\end{lem}
+We prove (a)  in Lemma \ref{lem:F-Lag-close} in the appendix; (b) is first proved in \cite{kwon2023fully} and we contain its proof in Lemma \ref{lem:key-fully} for completeness; and the formal version of (c) can be found in Lemma \ref{lem:nabla2-bound}. 
+
+With the above lemma, we are ready to give an improved analysis for F${}^2$BA. Algorithm \ref{alg:F2BA} applies gradient descent to generate linearly convergent sequences $ \{y_t^k \}_{k=0}^{K-1}$ to $y_{\lambda}^*(x_t)$ and $ \{ z_t^k\}_{k=0}^{K-1}$ to $y^*(x_t)$ in the inner loop. Then in the outer loop, we can approximate $\nabla \fL_{\lambda}^*(x)$ by \eqref{eq:nabla-Lag}  and perform a gradient step on $\fL_{\lambda}^*(x)$, which has the following theoretical guarantee, proved in Appendix \ref{apx:pf-alg}.
+
+\begin{restatable}{prop}{propGD} \label{prop:iGD}
+    Given $\lambda >0$. Suppose $\fL_{\lambda}^*(x)$ is $L$-gradient Lipschitz.  Set $\eta = 1/L$. As long as the following inequality holds in each
+iteration:
+\begin{align} \label{cond:F2BA}
+    \Vert \hat \nabla \fL_{\lambda}^*(x_t) - \nabla \fL_{\lambda}^*(x_t) \Vert \le \frac{1}{2} \epsilon,
+\end{align} 
+then Algorithm \ref{alg:F2BA} can find a point 
+$x_t$
+satisfying $ \Vert \nabla \fL_{\lambda}^*(x_t) \Vert \le \epsilon$ within $T = \fO(\tilde \Delta L \epsilon^{-2})$ iterations, where $\tilde \Delta = \fL_{\lambda}^*(x_0) - \inf_{x \in \BR^{d_x}} \fL_{\lambda}^*(x)$.
+\end{restatable}
+
+
+Since both $g(x,y)$ and $\fL_{\lambda}(x,y)$ are strongly convex in $y$, (\ref{cond:F2BA})  can be achieved within $\fO( \log (\nicefrac{\kappa}{\epsilon}) )$ first-order oracle complexity. 
+Formally, we have the following result, which is also proved in Appendix \ref{apx:pf-alg}.
+
+\begin{restatable}{prop}{properror} \label{prop:error}
+Given $\lambda \ge 2L_f / \mu$. Suppose Assumption \ref{asm:sc} holds, running Algorithm \ref{alg:F2BA} with a given outer-loop stepsize $\eta$ and 
+\begin{align*}
+    \alpha = \frac{1}{L_g}, \quad \tau = \frac{1}{L_f + \lambda L_g}, \quad K_t = \frac{4 L_g}{\mu} \log \left( 
+    \frac{4 \lambda L_g R_t}{\zeta}
+    \right), ~{\rm and} \\
+R_t =
+\begin{cases}
+    \Vert y_0 - y^*(x_0) \Vert + \dfrac{C_f}{\lambda \mu}, & t=0; \\
+    \dfrac{\zeta}{4 \lambda L_g} + \dfrac{4 L_g \eta }{\mu} \left( \zeta +   \left( 1 + \dfrac{L_g}{\mu}\right) C_f\right), & t \ge 1;
+\end{cases}
+\end{align*}
+fulfills the goal of $ \Vert \hat \nabla \fL_{\lambda}^*(x_t) - \nabla \fL_{\lambda}^*(x_t) \Vert \le \zeta $ for all $0 \le t \le T-1$.
+\end{restatable}
+
+By combing both the outer and inner iteration bounds, we know that the algorithm can output an $\epsilon$-first-order stationary point of the proxy $\fL_{\lambda}^*(x)$ within $\sum_{t=0}^{T-1} K_t= \fO\left(\tilde \Delta \kappa L \epsilon^{-2} \log(\nicefrac{\kappa}{\epsilon})\right)$ first-order oracle complexity, where $L$ is the gradient Lipschitz coefficient of $\fL_{\lambda}^*(x)$.
+According to Lemma \ref{lem:1st} (a),
+setting $\lambda = \Omega(\kappa^2 / \Delta)$ leads to $\tilde \Delta \asymp \Delta $. According to Lemma \ref{lem:1st} (b), if we further set $\lambda = \Omega( \kappa^3 / \epsilon )$, then an $\epsilon$-stationary point of $\fL_{\lambda}^*(x)$ is also an $\epsilon$-first-order stationary point of $\varphi(x)$. According to Lemma \ref{lem:1st} (c), for $\lambda = \Omega(\kappa)$ we have $L = \fO(\kappa^3)$. Together, they mean that we can find an $\epsilon$-first-order stationary point of $\varphi(x)$ within $ \fO( \Delta \kappa^4 \epsilon^{-2} \log(\nicefrac{\kappa}{\epsilon}))$ first-order oracle complexity, stated as follows.
+
+\begin{restatable}{thm}{thmFBA}\label{thm:F2BA}
+Let $\lambda \asymp \max\left\{ \kappa^2/ \Delta, ~ \kappa^3 / \epsilon \right\} $
+and set other parameters as in Proposition \ref{prop:iGD} and
+ \ref{prop:error} with $L = \fO(\kappa^3)$, then
+Algorithm \ref{alg:F2BA} can find a point  $x_t$ satisfying $ \Vert \nabla \varphi(x_t) \Vert \le \epsilon $ within $ \fO( \Delta \kappa^4 \epsilon^{-2} \log(\nicefrac{\kappa}{\epsilon})) $ first-order oracle complexity, where $\Delta = \varphi(x_0) - \inf_{x \in \BR^{d_x}} \varphi(x)$.
+\end{restatable}
+
+Compared with the $\fO( {\rm poly}(\kappa) \epsilon^{-6} \log(\nicefrac{1}{\epsilon}))$ complexity provided in \cite{liu2022bome} and the $\fO( {\rm poly}(\kappa) \epsilon^{-3} \log(\nicefrac{1}{\epsilon}))$ complexity provided in \cite{kwon2023fully}, our $\fO(  \kappa^4 \epsilon^{-2} \log(\nicefrac{\kappa}{\epsilon}))$ upper bound for F${}^2$BA strictly improves previous results for first-order methods. It also matches the $\fO(  \kappa^4 \epsilon^{-2} \log(\nicefrac{1}{\epsilon}))$ complexity of second-order methods AID/ITD~\cite{ji2021bilevel} except an additional $\log(\kappa)$ factor.  
+The key to our improved analysis is 
+leveraging the hidden smoothness of $\fL_{\lambda}^*(x)$ given by Lemma 3.1 (c). 
+Without observing this, the upper bound would be $\tilde \fO(\lambda \epsilon^{-2}) = \tilde \fO(\epsilon^{-3})$~\cite{kwon2023fully} since we know the Lagrangian $\fL(x,y)$ is $\fO(\lambda)$-gradient Lipschitz. However, Lemma \ref{lem:1st} (c) shows that along the trajectory $y = y_{\lambda}^*(x)$, the Lagrangian  $\fL(x,y)$ is $\fO(1)$-gradient Lipschitz in $x$.
+The underlying intuition lies in: Proposition \ref{prop:F-smooth} shows that $\varphi(x)$ is $\fO(1)$-gradient Lipschitz, and thus
+we can expect $\fL_{\lambda}^*(x)$ is also $\fO(1)$-gradient Lipschitz since 
+$\fL_{\lambda}^*(x)$ approximates $\varphi(x)$ when $\lambda$ is large. 
+This enables us to show an upper complexity bound of $\tilde \fO(\epsilon^{-2})$ rather than $\tilde \fO(\epsilon^{-3})$.
+
+We remark that the dependency in $\kappa$ can be further improved to $\tilde \fO(\kappa^{3.5} \epsilon^{-2})$ if we use Nesterov's accelerated gradient descent~\cite{nesterov2018lectures} to replace gradient descent in the inner loop iteration. However, here we do not use accelerated gradient descent
+to have a fair comparison with previous algorithms~\cite{kwon2023fully,ji2021bilevel,liu2022bome}.
+
+%We highlight that we use no additional technique in our algorithmcompared to these existing methods~\cite{liu2022bome,kwon2023fully}. The only difference between previous methods~\cite{liu2022bome,kwon2023fully} and ours is that they use a carefully-designed rule to decide the multiplier sequence $\{ \lambda_t\}_{t=0}^{T-1}$ but we use fixed $\lambda_t \equiv \lambda$ to simplified analysis. 
+\section{Finding Second-Order Stationarity} \label{sec:second}
+
+\begin{wrapfigure}{R}{0.48\textwidth}
+\begin{minipage}{0.48\textwidth}
+\vskip -0.8cm
+\begin{algorithm}[H]  
+\caption{Perturbed F${}^2$BA \\ $\left(x_0,y_0, \eta,\tau,\alpha, \lambda, T,\{K_t\}_{t=0}^{T-1}, \epsilon,r ,\fT \right)$} \label{alg:PF2BA}
+\begin{algorithmic}[1] 
+\STATE $ z_0 = y_0$ \\[1mm]
+\STATE \textbf{for} $ t =0,1,\cdots,T-1 $ \\[1mm]
+\STATE \quad $ y_t^0 =  y_{t}, ~ z_t^0 = z_{t}$ \\[1mm]
+\STATE \quad \textbf{for} $ k =0,1,\cdots,K_t-1$ \\[1mm]
+\STATE \quad \quad $ z_t^{k+1} = z_t^{k}- \alpha \nabla_y g(x_t, z_t^k)   $ \\[1mm]
+\STATE \quad \quad $ y_t^{k+1} = y_t^k - \tau \left( \nabla_y f(x_t,y_t^k) +  \lambda  \nabla_y g(x_t,y_t^k) \right)$ \\[1mm]
+\STATE \quad \textbf{end for} \\[1mm]
+\STATE \quad $z_{t+1} = z_t^K,~ y_{t+1} = y_t^K $ \\[1mm]
+\STATE \quad $ \hat \nabla \fL_{\lambda}^*(x_t)= \nabla_x f(x_t,y_{t+1}) + \lambda ( \nabla_x g(x_t,y_{t+1}) - \nabla_x g(x_t,z_{t+1}) )$ \\[1mm]
+\STATE \quad \textbf{if} $ \Vert \hat \nabla \fL_{\lambda}^*(x_t) \Vert \le \frac{4}{5} \epsilon$ \textbf{and} $t - t' > \fT  $ \\[1mm]
+\STATE \quad \quad sample $\xi_t \sim \sB(r)$ \\[1mm]
+\STATE \quad \quad $x_{t} = x_t - \eta \xi_t $ \\[1mm]
+\STATE \quad \textbf{end if} \\[1mm]
+\STATE \quad $x_{t+1} = x_t -  \eta  \hat \nabla \fL_{\lambda}^*(x_t)$ \\[1mm]
+\STATE \textbf{end for} \\[1mm]
+\end{algorithmic}
+\end{algorithm}
+\end{minipage}
+\vskip -0.8cm
+\end{wrapfigure}
+
+The analysis in the previous section can be readily extended to higher-order derivatives.
+In this section, we show that if the third-order derivative of the lower-level function is also Lipschitz continuous, the perturbed F${}^2$BA  can provably find an approximate second-order stationary point of $\varphi(x)$. Our analysis relies on the following lemma, which characterizes a higher-order connection between  $\fL_{\lambda}^*(x)$ and $\varphi(x)$ than Lemma \ref{lem:1st}.
+
+\begin{lem} \label{lem:2rd}
+    Under Assumption \ref{asm:sc} and \ref{asm:third}, let $\lambda  \ge  2L_f /\mu$, for $\fL_{\lambda}^*(x)$ defined in \eqref{eq:L-lambda}, it holds that
+\begin{align*}
+    &{\rm (a)}~ \Vert \nabla^2 \fL_{\lambda}^*(x) - \nabla^2 \varphi(x) \Vert = \fO(\kappa^6 /\lambda),\\
+    & {\rm (b)}~ \Vert \nabla^3 \fL_{\lambda}^*(x) \Vert = \fO(\kappa^5).
+\end{align*}
+\end{lem}
+We prove (a) in Lemma \ref{lem:nabla2-phi} in the appendix and (b) in Lemma \ref{lem:nabla3-bound}. Recall that the perturbed gradient descent can provably find an $(\epsilon,\sqrt{\epsilon})$-second-order stationary point of a  Hessian Lipschitz function~\cite{jin2017escape}.
+It
+motivates us to propose Algorithm \ref{alg:PF2BA}, which applies 
+the inexact perturbed gradient descent on $\fL_{\lambda}^*(x)$, and gives the following guarantee~\cite{huang2022efficiently}.
+
+\begin{restatable}{prop}{propPGD} \label{prop:iPGD}
+Given $\lambda >0$.
+Suppose $\fL_{\lambda}^*(x)$ is $L$-gradient Lipschitz and $\rho$-Hessian Lipschitz. Set the parameters in Algorithm \ref{alg:PF2BA} as 
+\begin{align} \label{cond:iota}
+    \eta = \frac{1}{L}, \quad r = \frac{\epsilon}{400 \iota^3}, \quad \fT = \frac{L}{\sqrt{\rho \epsilon}} \cdot \iota ~~{\rm with }~~ \iota \ge 1 ~~ {\rm and} ~~ \delta \ge  \frac{L \sqrt{d}}{\sqrt{\rho \epsilon}} \iota^2 2^{8-\iota}.
+\end{align}
+Once the following inequality holds in each
+iteration:
+\begin{align} \label{cond:PF2BA}
+    \Vert \hat \nabla \fL_{\lambda}^*(x_t) - \nabla \fL_{\lambda}^*(x_t) \Vert \le \min \left\{ 
+    \frac{1}{20 \iota^2},  \frac{1}{16 \iota^2 2^{\iota}} \right\} \epsilon,
+\end{align}
+then Algorithm \ref{alg:PF2BA} can find a point $x_t$ satisfying
+\begin{align*}
+    \Vert \nabla \fL_{\lambda}^*(x_t) \Vert \le \epsilon, \quad  \nabla^2 \fL_{\lambda}^*(x_t)  \succeq - \sqrt{\rho \epsilon}~ I_{d_x}
+\end{align*}
+within $T= \fO \left( {\iota^4 \tilde \Delta L}{\epsilon^{-2}}   \right)$ iterations with probability at least $1-\delta$, where
+$\tilde \Delta = \fL_{\lambda}^*(x_0) - \inf_{x \in \BR^{d_x}} \fL_{\lambda}^*(x)$.    
+\end{restatable} 
+
+Note that (\ref{cond:iota}) can be satisfied by letting
+$ \iota = \fO\left( \log \left(\nicefrac{L\sqrt{d}}{\sqrt{\rho \epsilon}\delta}\right)\right)$ and 
+(\ref{cond:PF2BA}) can be fulfilled within $\fO(\log(\nicefrac{\kappa}{\epsilon}))$ oracle complexity by Proposition \ref{prop:error}.
+Therefore, Algorithm \ref{alg:PF2BA} can provably find an $(\epsilon,\sqrt{ \epsilon})$-second-order stationary point of $\fL_{\lambda}^*(x)$ within $\fO\left(\tilde \Delta \kappa L \epsilon^{-2} \log^5(\nicefrac{\kappa}{\epsilon})\right)$ first-order oracle complexity.
+According to Lemma \ref{lem:1st} and Lemma \ref{lem:2rd}, for a sufficiently large $\lambda$, we have $\tilde \Delta \asymp \Delta$, $L= \fO(\kappa^3)$, $\rho = \fO(\kappa^5) $ and the output is also an $(\epsilon,\sqrt{\epsilon})$-second-order stationary point of $\varphi(x)$, formally stated as follows. 
+
+\begin{restatable}{thm}{thmPFBA}\label{thm:PF2BA}
+Let $\lambda \asymp \max\left\{ \kappa^2/ \Delta, ~ \kappa^3 / \epsilon,~\kappa^6 / \sqrt{\epsilon} \right\} $
+and set other parameters as in Proposition \ref{prop:iPGD} and
+ \ref{prop:error} with $L = \fO(\kappa^3),~\rho = \fO(\kappa^5)$, then 
+Algorithm \ref{alg:PF2BA} can find a point  $x_t$ satisfying 
+\begin{align*}
+    \Vert \nabla \varphi(x_t) \Vert \le \epsilon~{\rm and}~  \nabla^2 \varphi(x_t) \succeq \sqrt{\rho_\varphi \epsilon }~ I_{d_x}
+\end{align*}
+within $ \fO\left(\Delta \kappa^4 \epsilon^{-2} \log^5(\nicefrac{\kappa}{\epsilon})\right) $ first-order oracle complexity, where $\Delta =\varphi(x_0)-\inf_{x \in \BR^{d_x} } \varphi(x) $.
+\end{restatable}
+The above complexity matches that of F${}^2$BA for finding first-order stationary points by Theorem \ref{thm:F2BA}, up to only logarithmic factors. Therefore, the perturbed F${}^2$ BA 
+can escape saddle points almost for free.
+
+\section{Extension to the Distributed Scenario} \label{sec:distributed}
+
+\begin{wrapfigure}{R}{0.43\textwidth}
+\begin{minipage}{0.43\textwidth}
+\vskip -0.72cm
+\begin{algorithm}[H]  
+\caption{Distributed F${}^2$BA \\ $\left(\bar x_0,\bar y_0, \eta,\tau,\alpha, \lambda, T,\{K_t\}_{t=0}^{T-1}\right)$} \label{alg:CF2BA}
+\begin{algorithmic}[1] 
+\STATE $ X_0 = \vone \otimes \bar x_0, ~ Y_0 = \vone \otimes \bar y_0,~ Z_0 = \vone \otimes \bar y_0$ \\[1mm]
+\STATE \textbf{for} $ t =0,1,\cdots,T-1 $ \\[1mm]
+\STATE \quad $ Y_t^0 =  Y_{t}, ~ Z_t^0(i) = Z_{t}$ \\[1mm]
+\STATE \quad \textbf{for} $ k =0,1,\cdots,K_t-1$ \\[1mm]
+\STATE \quad \quad  $ V_t^{k} = \nabla_y g(X_t, Z_t^k)   $ \\[1mm]
+\STATE \quad \quad  $ U_t^{k} =  \nabla_y f(X_t,Y_t^k) +  \lambda  \nabla_y g(X_t,Y_t^k) $ \\[1mm]
+\STATE \quad \quad Aggregate and broadcast \\ $\bar v_t^{k} = \frac{1}{m} \vone \vone^\top V_t^k, $~ $\bar u_t^{k} = \frac{1}{m} \vone   \vone^\top U_t^k$ \\[1mm]
+\STATE \quad \quad  $ Z_t^{k+1} = Z_t^k - \alpha \vone \otimes  \bar v_t^k   $ \\[1mm]
+\STATE \quad \quad  $ Y_t^{k+1} = Y_t^k - \tau \vone \otimes  \bar u_t^k   $ \\[1mm]
+\STATE \quad \textbf{end for} \\[1mm]
+\STATE \quad $Z_{t+1} = Z_t^K,~ Y_{t+1} = Y_t^K $ \\[1mm]
+\STATE \quad $ H_t= \nabla_x f(X_t,Y_{t+1}) + \lambda ( \nabla_x g(X_t,Y_{t+1}) - \nabla_x g(X_t,Z_{t+1}) )$ \\[1mm]
+\STATE \quad Aggregate and broadcast $\bar h_t = \frac{1}{m} \vone   \vone^\top H_t$ \\[1mm]
+\STATE \quad $X_{t+1} = X_t -  \eta  \vone  \otimes \bar h_t$ \\[1mm]
+\STATE \textbf{end for} \\[1mm]
+\end{algorithmic}
+\end{algorithm}
+\end{minipage}
+\vskip -0.6cm
+\end{wrapfigure}
+
+In this section, we consider F${}^2$BA under the distributed setting, where both the upper and lower-level functions can be written as the averages of the local functions on all agents as \eqref{prob:fn}. 
+We propose Algorithm \ref{alg:CF2BA}, which can be verified to be a distributed version of Algorithm \ref{alg:F2BA}.
+\begin{prop} 
+Running Algorithm \ref{alg:CF2BA} is equivalent to running  Algorithm \ref{alg:F2BA}  on the mean variables
+\begin{align*}
+    \bar x = \frac{1}{m} \vone^\top X,~ \bar y = \frac{1}{m} \vone^\top Y ~{\rm and}~ \bar z = \frac{1}{m} \vone^\top Z.
+\end{align*}
+\end{prop}
+Then the convergence directly follows that of F${}^2$BA. 
+\begin{cor} \label{cor:CF2BA}
+Algorithm \ref{alg:CF2BA} with the same parameters defined in Theorem \ref{thm:F2BA} can find  $X_t$ satisfying $ \Vert \nabla \varphi(\bar x_t) \Vert \le \epsilon $ within $\fO(\Delta \kappa^4 \epsilon^{-2} \log(\nicefrac{\kappa}{\epsilon})) $ first-order oracle complexity and  $\fO( \Delta \kappa^4 \epsilon^{-2} \log(\nicefrac{\kappa}{\epsilon})) $ communication complexity, where $\Delta = \varphi(x_0) - \inf_{x \in \BR^{d_x}} \varphi(x)$.
+\end{cor}
+
+Therefore, we conclude that Algorithm \ref{alg:CF2BA} is also near-optimal since both the computation complexity and communication complexity match the $\Omega(\epsilon^{-2})$ lower bounds up to logarithmic factors by Theorem 1 in \cite{lu2021optimal}.
+Compared with the second-order methods, the distributed F${}^2$BA is more
+simple and practical since it
+neither requires a $\fO(d_y^2)$ communication complexity per iteration~\cite{yangdecentralized} nor an additional sub-solver for distributed matrix inverse~\cite{tarzanagh2022fednest,chen2022decentralized}. 
+
+% \begin{algorithm*}[t]  
+% \caption{Decentralized F${}^2$BA $\left(\bar x_0, \bar y_0, \eta,\tau,\alpha, \lambda, T,\{K_t\}_{t=0}^{T-1}, S_{\rm in}, S_{\rm out} \right)$} \label{alg:DF2BA}
+% \begin{algorithmic}[1] 
+% \STATE $ X_0 = \vone \bar x_0,~ Y_0 = \vone \bar y_0,~ Z_0 = \vone \bar y_0$\\[1mm]
+% \STATE $H_{-1} = \vzero, ~ \nabla \fL_{\lambda}^*(X_{-1})= \vzero$ \\[1mm]
+% \STATE \textbf{for} $ t =0,1,\cdots,T-1 $ \\[1mm]
+% \STATE \quad $ Z_t^0 =  Z_{t},~ V_t^{-1}= \vzero,~ \nabla_y g(X_t,Z_t^{-1}) = \vzero $ \\[1mm]
+% \STATE \quad $ Y_t^0 =  Y_{t},~ U_t^{-1}= \vzero,~ \nabla_y g(X_t,Y_t^{-1}) = \vzero $
+% \STATE \quad \textbf{for} $ k =0,1,\cdots,K_t-1$ \\[1mm]
+% \STATE \quad \quad $V_t^{k} =
+% W^{S_{\rm in}} \cdot \left(
+% V_t^{k-1} + \nabla_y g(X_t,Z_t^{k}) - \nabla_y g(X_t,Z_t^{k-1}) \right)$ \\[1mm]
+% \STATE \quad \quad $ U_t^{k} ~=
+% W^{S_{\rm in}} \cdot  \left(U_t^{k-1} + \nabla_y f(X_t,Y_{t}^{k}) - \nabla_y f(X_t, Y_t^{k-1}) + \lambda \left(  \nabla_y g(X_t,Y_{t}^{k}) - \nabla_y g(X_t, Y_t^{k-1}) \right) \right)$ \\[1mm]
+% \STATE \quad \quad $ Z_t^{k+1} = W^{S_{\rm in}} \cdot \left(Z_t^{k}- \alpha V_t^k \right)  $ \\[1mm]
+% \STATE \quad \quad $Y_{t}^{k+1} = W^{S_{\rm in}} \cdot \left(Y_t^k - \tau U_t^k\right)$ \\[1mm]
+% \STATE \quad \textbf{end for} \\[1mm]
+% \STATE \quad $Z_{t+1} = Z_t^K,~ Y_{t+1} = Y_t^K $ \\[1mm]
+% \STATE \quad $ \hat \nabla \fL_{\lambda}^*(X_t)= \nabla_x f(X_t,Y_{t+1}) + \lambda ( \nabla_x g(X_t,Y_{t+1}) - \nabla_x g(X_t,Z_{t+1}) )$ \\[1mm]
+% \STATE \quad $H_t = W^{S_{\rm out}} \cdot \left(H_{t-1} + \hat \fL_{\lambda}^*(X_t) - \hat \fL_{\lambda}^*(X_{t-1})  \right)$ \\[1mm]
+% \STATE \quad $X_{t+1} = 
+% W^{S_{\rm out}} \cdot \left(
+% X_t -  \eta  H_t\right)$ \\[1mm]
+% \STATE \textbf{end for} \\[1mm]
+% \end{algorithmic}
+% \end{algorithm*}
+
+
+% When the central server is absent, we apply the standard gradient tracking technique~\cite{qu2017harnessing,xu2015augmented,di2016next,nedic2017achieving}
+% to achieve the same convergence rate as the centralized setting. The proposed decentralized F${}^2$BA are (Algorithm \ref{alg:DF2BA}) can be viewed as performing an inexact gradient descent with gradient tracking on $\fL_{\lambda}^*(x)$, which has the following convergence result.
+
+% \begin{restatable}{prop}{propGTGD}
+%     Given $\lambda >0$. Suppose $\fL_{\lambda}^*(x)$ is $L$-gradient Lipschitz.  Set $\eta = 1/(2L)$. As long as the following inequality holds in each
+% iteration:
+% \begin{align} \label{cond:DF2BA}
+%     \Vert \hat \nabla \fL_{\lambda}^*(X_t) - \nabla \fL_{\lambda}^*(X_t) \Vert_F \le xxx,
+% \end{align} 
+% Algorithm \ref{alg:DF2BA} can find a point 
+% $x_t$
+% satisfying $ \Vert \nabla \fL_{\lambda}^*(\bar x_t) \Vert \le \epsilon$ within $T = \fO(\Delta L \epsilon^{-2})$ iterations, where $\Delta = \fL_{\lambda}^*(x_0) - \inf_{x \in \BR^{d_x}} \fL_{\lambda}^*(x)$.
+% \end{restatable}
+
+% Analogous to Proposition \ref{prop:error}, Condition (\ref{cond:DF2BA}) can also be achieved within $\fO(\nicefrac{1}{\epsilon})$ complexity.
+
+% \begin{restatable}{prop}{propDerror} \label{prop:Derror}
+% Given $\lambda \ge 2L_f / \mu$. Suppose Assumption \ref{asm:sc} and \ref{asm:W} holds, running Algorithm \ref{alg:DF2BA} with a given outer-loop stepsize $\eta$ and 
+% \begin{align*}
+%     xxx, ~{\rm and} \\
+% R_t =
+% \begin{cases}
+%     \Vert y_0 - y^*(x_0) \Vert + \dfrac{C_f}{\lambda \mu}, & t=0; \\
+%     \dfrac{\zeta}{2 \lambda L_g} + \dfrac{4 L_g \eta }{\mu} \left( \zeta +   \left( 1 + \dfrac{L_g}{\mu}\right) C_f\right), & t \ge 1;
+% \end{cases}
+% \end{align*}
+% fulfills the goal of $ \Vert \hat \nabla \fL_{\lambda}^*(x_t) - \nabla \fL_{\lambda}^*(x_t) \Vert \le \zeta $ for all $t$.
+% \end{restatable}
+
+% By combing Lemma \ref{lem:1st} and the above two propositions, we have the following result.
+
+% \begin{cor}
+% Algorithm \ref{alg:DF2BA} with appropriate parameters can find  $X_t$ satisfying $ \Vert \nabla F(\bar x_t) \Vert \le \epsilon $ within $\tilde \fO( \kappa^4 \epsilon^{-2}) $ first-order oracle complexity and  $\tilde \fO( \chi \kappa^4 \epsilon^{-2}) $ communication complexity.
+% \end{cor}
+
+% We remark that the communication complexity can be further improved by applying the Chebyshev acceleration~\cite{scaman2017optimal,alghunaim2020decentralized}, which constructs $p(W)$ that is a polynomial of $W$ with degree $\fO(\sqrt{\chi})$. The constructed $p(W)$ has $\fO(1)$ characteristic number and thus replacing it with the original $W$ in Algorithm \ref{alg:DF2BA} leads to the optimal $\fO(\sqrt{\chi} \epsilon^{-2})$ communication complexity~\cite{lu2021optimal}.
+ 
+\section{Numerical Experiments}
+
+We conduct experiments to compare the proposed first-order method F${}^2$BA with existing second-order methods under both the single-machine and distributed settings.
+We implement all the algorithms with PyTorch and conduct the experiments on a single NVIDIA A40 GPU.
+
+\subsection{Single-Machine Data Hyper-Cleaning}
+
+The task of data hyper-cleaning~\cite{franceschi2018bilevel,shaban2019truncated} considers finding the optimal weight of samples on a corrupted training set $\fD^{\rm train}$, such that models trained on the weighted training set have good performances on the testing set $\fD^{\rm test}$. 
+It is also called sample reweighting for out-of-distribution generalization~\cite{zhou2022model}. 
+Let $(a_i,b_i)$ be the $i$-th sample in the dataset, where $a_i$ denotes the feature and $b_i$ denotes its corresponding label. And let $\sigma(\,\cdot\,)$ be the function that clips a scalar to the interval $[0,1]$.
+The problem can be formulated as the following bilevel problem, whose upper and lower-level functions are given by:
+\begin{align*}
+    f(x,y) := \frac{1}{\vert \fD^{\rm test} \vert} \sum_{(a_i,b_i) \in \fD^{\rm test}} \ell(\, \langle a_i,y \rangle\,,b_i), \quad g(x,y) := \frac{1}{\vert \fD^{\rm train} \vert} \sum_{(a_i,b_i) \in \fD^{\rm train}} 
+\sigma(x_i) ~\ell \left( \,\langle a_i,y \rangle\,,b_i \right) + c \Vert y \Vert^2,
+\end{align*}
+where $\ell(\,\cdot\,, \,\cdot\,)$ is the cross-entropy loss. We set  $c = 10^{-3}$ by following \cite{shaban2019truncated,ji2021bilevel,liu2022bome}. We corrupt $50\%$ of the training set by setting their labels as random classes by following \cite{liu2022bome}. We compare F${}^2$BA (Algorithm \ref{alg:F2BA}) with the ITD method~\cite{ji2021bilevel} and the AID method implemented by conjugate gradient~\cite{grazzi2020iteration,ji2021bilevel} on datasets MNIST and Fashion-MNIST. Since the algorithms can access the testing set, we remain an independent validation set to evaluate their performance. For all the algorithms, we set the number of inner loops as 10 and tune the learning rates in $ \{1000,100,10,1,0.1,0.01,0.001 \}$. For F${}^2$BA, we additionally tune the multiplier $\lambda$ in $\{10,100,1000\}$. We present the results in Figure \ref{fig:cleaning}, by showing the comparison on
+the computational time (seconds) against
+the function value gap $ f(x_t,y^*(x_t)) - \hat f^*$ in the logarithmic scale, where $\hat f^*$ is the lowest loss on the validation set obtained by running all the algorithms for 50,000 epochs.
+
+\begin{figure*}[t]
+    \centering
+    \includegraphics[scale= 0.3]{fig/data_cleaning.eps} 
+    \caption{
+    \textbf{Experiments of data hyper-cleaning on MNIST (left) and Fashion-MNIST (right).} 
+    }
+    \label{fig:cleaning}
+\end{figure*}
+
+\begin{figure*}[t]
+    \centering
+    \includegraphics[scale= 0.3]{fig/l2reg.eps} 
+    \caption{ \textbf{Experiments of distributed learnable regularization on twenty newsgroup.
+    }
+    }
+    \label{fig:l2reg}
+\end{figure*}
+
+\subsection{Distributed Learnable Regularization}
+
+We also use bilevel optimization to find the optimal regularization coefficient on the twenty newsgroup dataset as previous works~\cite{ji2021bilevel,liu2022bome}. In this formulation, the upper and lower-level functions take the form of:
+\begin{align*}
+    f(x,y) := \frac{1}{\vert \fD^{\rm test} \vert} \sum_{(a_i,b_i) \in \fD^{\rm test}} \ell(\, \langle a_i,y \rangle\,,b_i), \quad g(x,y) := \frac{1}{\vert \fD^{\rm train} \vert} \sum_{(a_i,b_i) \in \fD^{\rm train}} 
+\ell \left( \,\langle a_i,y \rangle\,,b_i \right) + y^\top \Sigma(x) \,y,
+\end{align*}
+where $\ell(\,\cdot\,, \,\cdot\,)$ is the cross-entropy loss and $\Sigma(x) := {\rm diag}(\exp(x))$ determines the weights of features. We evenly distribute the datasets 
+on four agents and use the Gloo backend to implement parallel computing. We compare the distributed F${}^2$BA (Algorithm \ref{alg:CF2BA}) with AggITD~\cite{xiao2023communication} and the AID method implemented by the HIGD oracle in~\cite{chen2022decentralized}. For all the algorithms, we set the number of inner loops as  10 and tune the learning rates in $ \{1000,100,10,1,0.1,0.01,0.001 \}$.  For F${}^2$BA, we additionally tune the multiplier$\lambda$ in $\{10,100,1000\}$.
+We run all the algorithms for 5,000 epochs and present the results in Figure \ref{fig:l2reg}, where the loss is also evaluated on a pre-reserved validation set. It can be seen that the proposed first-order algorithm is more computation and communication efficient than second-order methods.
+
+
+
+\section{Conclusions and Future Directions}
+
+This paper proposes near-optimal fully first-order algorithms for finding approximate stationary points for bilevel optimization. 
+Our results close the gap between first-order and second-order methods for bilevel optimization under various setups.
+There are a few future directions:
+\begin{enumerate}
+\item  The complexity of the proposed method has additional logarithmic factors compared with the lower bound. 
+Although these logarithmic factors can be shaved for second-order methods~\cite{ji2021bilevel},
+it is unknown whether they are unavoidable for first-order methods.
+\item This paper only considers the deterministic case.  It is of great significance to study first-order methods using stochastic oracles~\cite{khanduri2021near,ji2021bilevel,kwon2023fully} in future works.
+\item Our method adopts a double-loop structure. Designing single-loop methods would be more efficient under certain settings but the analysis would be much more challenging~\cite{lin2020gradient,hong2023two,khanduri2021near,chen2022single,kwon2023fully,chen2021closing,chen2023optimal}.
+\item We believe that the distributed first-order methods would have broader application prospects and anticipate our algorithm could be applied to more distributed scenarios~\cite{lian2017can,alistarh2018byzantine,bernstein2018signsgd,yuan2022decentralized,wang2022fine,gandikota2021vqsgd,alistarh2018convergence,ye2018communication}.
+\item Studying the convergence of first-order algorithms for bilevel problems under more relaxed assumptions, such as nonsmooth bilevel optimization~\cite{lu2023first} and bilevel optimization without lower-level strong convexity~\cite{sow2022constrained,liu2021towards,liu2021value,liu2020generic}, would be very interesting and important.
+\end{enumerate}
+
+\bibliographystyle{plainnat}
+\bibliography{sample}
+
+\clearpage
+\appendix
+\input{apx}
+
+\end{document}

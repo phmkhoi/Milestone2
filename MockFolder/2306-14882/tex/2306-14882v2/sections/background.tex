@@ -1,0 +1,31 @@
+\section{Background}
+
+\subsection{Security Monitor}
+In many enclave platforms including Citadel, the Security Monitor (SM) \cite{costan2016sanctum} \cite{lebedev2019sanctorum} is a small (9K LOC), trusted piece of software running at a higher privilege mode than the hypervisor or the OS.
+Its role is to link low-level invariants exposed by the hardware (e.g., if a specific memory access is authorized), and the high-level security policies defined by the platform (e.g., which enclave is currently executing on which core and which memory region does it own).
+
+
+\subsection{Microarchitectural Timing Side Channels}
+Microarchitectural side channels allow for information to be leaked from one security domain to another.
+These attacks exploit microarchitectural structures shared between different security domains, such as memory caches \cite{gotzfried2017cache, brasser2017software}, translation look-aside buffers (TLBs) \cite{gras2018translation}, branch predictors \cite{evtyushkin2018branchscope, aciiccmez2006predicting}, DRAM controllers \cite{wang2014timing}, etc., to transmit a signal.
+Because microarchitectural state cannot be directly observed through the Instruction Set Architecture (ISA), an attacker will often rely on timing of events to observe the microarchitectural state.
+For instance, if a piece of data has been loaded in the cache, accessing it will be faster than if it is only stored in main memory.
+Using various methods to prepare the shared microarchitectural state and observe the state changes due to the victim's activity, the attacker is able to recover sensitive information regarding the victim's execution, for example, which addresses have been accessed, which branches were taken in which directions, and/or information about victim program's inputs.
+
+
+\subsection{Transient Execution Attacks}
+\label{sec:specandside}
+
+Speculative or transient execution is one of the key performance features of modern processors.
+Unfortunately, it can make reasoning about security boundaries more difficult.
+Some microarchitectural data structures that orchestrate speculation (e.g., branch predictors) can be trained to execute snippets of existing code speculatively, in ways that are incorrect or on data that should not be accessed during normal execution.
+An example is the execution of code speculatively before the resolution of a preceding security check such as a memory access bound.
+These erroneous executions happen speculatively and these instructions will end up being squashed by the processor.
+Nonetheless, they will still leave traces in the microarchitectural state of the machine.
+For example, a speculative load to some data will not affect the values of the architectural registers but will load the data in the memory hierarchy and possibly change the state of caches.
+The changes in the microarchitectural state are not directly observable by the attacker but can be extracted using a microarchitectural timing side channel.
+This means that a program that manages sensitive data can be coerced into leaking private data speculatively through a microarchitectural side channel.
+More importantly, once some specific code snippet, or gadget, has been identified, these attacks can be used to leak virtually any data located in the victim's address space.
+This type of attack was first introduced in \cite{Kocher2018spectre}, and called Spectre, and many variants have since been demonstrated.
+For instance, different microarchitectural structures can be trained to influence speculative execution (like the branch predictor or the return stack buffer); these attacks can be mounted on the same core or across cores and they can also use different microarchitectural side channels to exfiltrate the secret.
+Cache side channels are the easiest ones to exploit and have been extensively studied but any piece of shared microarchitectural state can theoretically be used.

@@ -1,0 +1,76 @@
+
+\section{Introduction}
+% thought 1: When we refer to imitation learning, people would just regard it as learn from perfect offline demonstrations.
+% thought 2: It doesn't have to be related to RL except when you try to learn from offline suboptimal demos. So it is not natural to mention RL here. 
+Imitation learning~(IL) allows agents to learn from expert demonstrations. 
+% Essentially, IL reformulates the standard reinforcement learning objective (maximizing the expected return) into an 
+Initially developed with a supervised learning paradigm~\citep{pomerleau1991efficient, schaal1996learning}, IL can be extended and reformulated with a general {expert matching objective}, which aims to generate policies that produce trajectories with low distributional distances to expert demonstrations~\citep{ho2016generative}.
+%
+This formulation allows IL to be extended to various new settings: 1)~online IL where interactions with the environment are allowed, 2)~{learning from observations~(LfO)} where expert actions are absent, 3)~{offline IL where agents learn from limited expert data and a fixed dataset of {sub-optimal and reward-free} experience}, 4)~{cross-domain IL} where the expert demonstrations come from another domain (\ie environment) that has different transition dynamics, and 5)~one-shot IL which expects to recover the expert behaviors when only one expert trajectory is observed for a new IL task.
+
+
+Modern IL algorithms introduce various designs or mathematical principles to cater to the expert matching objective in a specific scenario. 
+%
+% Focusing on a particular IL setting, the corresponding design requirements are handled via  a well-calibrated IL solution. 
+For example, the LfO setting requires particular considerations regarding the absent expert actions, \eg learning an inverse dynamics function~\citep{baker2022video, torabi2018behavioral}.
+%
+Besides, out-of-distribution issues in offline IL require specialized modifications to the learning objective, such as introducing additional policy/value regularization~\citep{jarboui2021offline, yue2023clare}.  
+%
+However, such a methodology, designing an individual formulation for each IL setting, makes it difficult to scale up a specific IL algorithm to more complex tasks beyond its original IL setting, \eg online IL methods often suffer severe performance degradation in offline IL settings. 
+Furthermore, realistic IL tasks are often not subject to a particular IL setting but consist of a mixture of them. For example, we may have access to both demonstrations and observation-only data in offline robot tasks; however, it could require significant effort to adapt several specialized methods to leverage such mixed/hybrid data. Hence, a problem naturally arises: \textit{How can we accommodate various design requirements of different IL settings with a general and practically ready-to-deploy IL formulation?} 
+
+%limiting its applicability and generality
+
+
+
+
+%Thus, in this work, we aim to overcome these limitations and design a general IL formulation that can naturally accommodate various IL design requirements. 
+
+
+
+
+Hindsight information matching, a task-relabeling paradigm in reinforcement learning~(RL), views control tasks as analogous to a general sequence modeling problem, with the goal to produce a sequence of actions that induces high returns~\citep{chen2021decision}. Its generality and simplicity enable it to be extended to both online and offline settings~\citep{emmons2021rvs, kumar2019reward}. In its original RL context, an agent directly uses known extrinsic rewards to bias the hindsight information towards task-related behaviors. However, %due to the lack of rewards, how to bias the hindsight towards the expert behaviors remains a significant barrier to applying such a paradigm to general IL tasks, particularly to the hard cross-domain setting. 
+when we attempt to retain its generality in IL tasks, how to bias the hindsight towards expert behaviors remains a significant barrier as the extrinsic rewards are missing. 
+
+
+
+
+
+
+% Further, even if one can characterize such a biasing procedure (towards the expert behaviors) by pre-training a reward function, the biasing progress is brittle and prone to failure. The main reason is that the over-exploited reward function usually drives the biased hindsight information towards out-of-distribution (OOD) areas, thus causing the learned model to be vulnerable to misspecified and inaccurate priors\footnote{Such a phenomenon also exists in the hindsight-based RL methods. For example, Decision Transformer~\citep{chen2021decision} bypasses this issue by querying a human expert and manually specifying a target return (biased hindsight information) at testing.}. 
+% Thus, when we seek to inherit\textcolor{red}{we are inspired, not inherited..} the hindsight information matching, additional design choices are also required for a general IL formulation purpose. 
+%such a hindsight information matching objective is also not suitable for the potential domain shift problems (\eg out-of-distribution issues between the hindsight information used for training and the biased that used for testing in offline IL), because the hindsight information between the two domains may not be aligned, leaving the learned model vulnerable to overfitting. 
+
+
+
+
+
+
+
+To design a general IL formulation and tackle the above problems, we propose \textbf{C}ont\textbf{E}xtual \textbf{I}mitation \textbf{L}earning~(CEIL), which readily incorporates the hindsight information matching principle within a bi-level expert matching objective. 
+In the inner-level optimization, we explicitly learn a hindsight embedding function to deal with the challenges of unknown rewards. 
+In the outer-level optimization, we perform IL expert matching via inferring an optimal embedding (\ie hindsight embedding biasing), replacing the naive reward biasing in hindsight. 
+% the reward biasing (in hindsight) into an optimal embedding biasing. 
+Intuitively, we find that such a bi-level objective results in a spectrum of expert matching objectives from the embedding space to the trajectory space. 
+% and potential OOD hindsight, we explicitly learn a hindsight embedding function and design a support regularization in the inner-level optimization. 
+% % over which we design a regularized trajectory self-consistency loss, and circumvent the OOD issues by explicitly design a support constrain. 
+% In the outer-level optimization, we perform IL expert matching via inferring an optimal embedding, which we show results in a spectrum of expert matching objectives from the embedding space to the trajectory space. 
+To shed light on the applicability and generality of CEIL, we instantiate CEIL to various IL settings, including online/offline IL, LfD/LfO, cross-domain IL, and one-shot IL settings. 
+
+In summary, this paper makes the following contributions: 
+1)~We propose a bi-level expert matching objective ContExtual Imitation Learning~(CEIL), inheriting the spirit of hindsight information matching, which decouples the learning policy into a contextual policy and an optimal embedding.  
+2)~CEIL exhibits high generality and adaptability and can be instantiated over a range of IL tasks. 
+% including online/offline IL, LfD/LfO, cross-domain IL, and one-shot IL tasks.
+3)~Empirically, we conduct extensive empirical analyses showing that CEIL is more sample-efficient in online IL and achieves better or competitive results in offline IL tasks. 
+
+
+
+
+%To the best of our knowledge, this is first general IL formulation that allows one to characterize multiple IL tasks consistently (Table~\ref{tab:ceil-on-various-IL-settings}).  
+
+%We use this idea to reinterpret a prior RL method as performing contrastive learning, and 
+%then use the idea to propose a much simpler method that achieves similar performance. Across …
+
+
+
+

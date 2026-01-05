@@ -1,0 +1,45 @@
+\section{Intrusion detection in cloud containers}\label{sec:model}
+\subsection{Problem statement}
+We consider a scenario in which a cloud service provider offers resources as containerized services. In a given hosting server there might be running multiple containers belonging to different customers and sharing the kernel of the hosting operating system. A monitoring application running on the hosting machine analyzes the samples of sequences of system calls for each hosted container and the extracted features are given as input to the intrusion detection algorithm. The machine learning models were earlier trained with clear traces corresponding to the workloads running on the server. The monitoring system should be able to (i) recognize that a workload effectively running in a specific container corresponds to the workload for the expected assigned application, and (ii) identify any anomalous/malicious behavior within the container. If an anomaly or workload mismatch is detect, the monitoring system will raise an alert and eventually may trigger resource preserving actions.
+
+\subsection{Model description}
+
+Since features resulting from the BoSC do not take into account the dependencies among adjacent system calls in a sequence, we  exploit a graph-based representation which is able to incorporate those dependencies while preserving the information in the frequency of occurrences; in addition graph theory offers some mechanisms to obtain a compact feature set.
+
+Our intrusion detection system works in three main stages. During the first stage, the system calls collected at the hosting machine are processed and transformed into a graph representation based on anonymous walks.
+
+The data representation resulting from the first stage is embedded into an RF classifier which is trained with normal behavior classes only; each class includes instances collected for a specific containerized workload running in regular setting with no compromise. Let $N$ be the number of containerized applications in the training set, in the last stage of the algorithm, the output of the RF classifier is given to $N$ independent IF instances each of them separately trained with a dataset made of samples belonging to one normal behavior class and contaminated with anomalies randomly extracted from the remaining normal classes. We selected random and isolation forests in our system since they run efficiently on large datasets and offer high accuracy in many classification problems.
+
+The three stages of our algorithm are depicted in Figure \ref{fig:algo}. Details of the three stages are provided in the next subsections.
+
+\begin{figure}
+\centering
+	\includegraphics[width=0.4\columnwidth, trim=0cm 0cm 0cm 0cm, clip]{model-eps-converted-to.pdf}
+	\caption{Block diagram of the proposed model.}
+	\label{fig:algo}
+\end{figure}
+
+
+
+\subsubsection{First Stage: Graph representation of System calls}
+We introduce a representation of the sequence of system calls based on graph structures. Starting from a time period of duration $T$, we first extract the sequence $\mathcal{S}$ of system call's IDs observed during the period. Let $C_{IDs}$ be the set of the system call's IDs \cite{syscall-table}, we generate a graph $G_\mathcal{S}=(V_\mathcal{S},E_\mathcal{S},X_\mathcal{S})$ for the sequence of system calls where $V_\mathcal{S} = \{ v_i\}_{i\in C_{IDs}}$, $E_\mathcal{S}=\{(v_i,v_j)\}_{i,j\in V_\mathcal{S}}$, and $X_\mathcal{S}$ is the weight matrix where the $(i,j)$-th value is the weight for edge $(v_i,v_j)$ and is computed as number of times the bi-gram $(v_i,v_j)$ occurs in the sequence $\mathcal{S}$.
+Given the graph $G_\mathcal{S}$, we compute its representation vector $W_\mathcal{S}=[w_1, w_2, \dots, w_L]$ based on the random walk embedding process introduced in Section \ref{subsec:anonwalks}.
+
+\subsubsection{Second Stage: Random Forest Classifier}
+
+The representation vector resulting from the first stage is given as input to the RF classifier. The classifier is trained against samples belonging to the $N$ normal classes. The training dataset is provided to the classifier with its labels. The model in the testing phase outputs two pieces of information: (i) a set of probabilities that the input sample belongs to each class in the training set, and (ii) the decision about the class for the input sample. The set of probabilities is passed to the next stage. The decision about the class is passed to the monitoring system, and might be used to trigger any decision about the container, if for example the class of the workload running in the container does not match the expected class.
+
+
+\subsubsection{Third Stage: Isolation Forest}
+
+The probabilities given by the second stage are imputed to an ensemble of $N$ IF modules for generating $N$ anomaly scores. Each IF is trained from a dataset made of samples processed by the first two stages and belonging to one normal class only and contaminated with samples resulting from the other normal classes. The output of the $n$-th IF module trained on the $n$-th class outputs an anomaly score for that specific class.
+
+
+\subsubsection{Final Decision}
+The $N$ anomaly scores from the ensembles of IFs are combined to make a decision of classification based on the following rules:
+\begin{itemize}
+  \item if all anomaly scores are below the threshold but the $n$-th one, the instance is classified as belonging to class $n$;
+  \item if all anomaly scores are below the threshold, the instance is classified as anomaly;
+  \item if more than one score are above the threshold, the instance is classified as anomaly.
+\end{itemize}
+

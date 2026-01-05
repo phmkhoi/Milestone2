@@ -1,0 +1,396 @@
+\appendix
+\part*{Appendix}
+
+
+
+\section{\ModelName Model Architecture}
+\label{sec:app:architecture}
+
+Table~\ref{tab:app:model_arch} shows the \ModelName model architecture in detail. We use all 18 layers of the EfficientNet-B0 convolutional encoder \cite{tan2020efficientnet}, initialized from scratch, to tokenize the observation and subgoal images into $512$-dimensional embeddings each.
+We utilize an observation encoder to tokenize the past and current observation images and a joint observation and goal encoder to tokenize the subgoal image fused with the current observation image channel-wise. For tokenizing the joint observation and subgoal token, images $o_t$ and $o_s$ are concatenated along their channel dimension, yielding a $6\times 85 \times 64$ tensor per training data point. 
+
+\begin{table}[ht]
+\centering
+{\footnotesize
+\begin{tabular}{llll}
+\toprule
+Layer & Input [Dimensions] & Output [Dimensions] & Layer Details \\ 
+\midrule
+1 & $o_t$, $o_s$ [64, 85, 3] & $I_t^g$ [64, 85, 6] & Concatenate observations and goal \\
+2 & $I_t^s$ [64, 85, 6] & $E_t^s$ [1, 1000] & Goal EfficientNet encoder \\
+3 & $o_{t:t-P}$ [P+1, 64, 85, 3]& $E_{t:t-P}$ [P+1, 1000] & Context EfficientNet encoder \\
+4 & $E_t^s$ [1, 1000] & $E_t^{s'}$ [1, 512] & Goal embedding compression \\
+5 & $E_{t:t-P}$ [P+1, 1000] & $E_{t:t-P}^{'}$ [P+1, 512] & Context embedding compression \\
+6 & $E_{t:t-P}^{'}$ [P+1, 512], $E_t^{s'}$ [1, 512] & $S$ [P+2, 512] & Concatenate \\
+7 & $S$ [P+2, 512] & $\tilde{S}$ [1, 32] & Feed into Transformer $f$ \\
+8 & $\tilde{S}$ [1, 32] & $d$ & Predict temporal distance $d$ \\
+9 & $\tilde{S}$ [1, 32] & $\hat{a}$, [1, T, 4] & Predict future actions $\hat{a}$ \\
+\bottomrule \\
+\end{tabular}}
+\caption{\textbf{Architectural Details of \ModelName} The inputs to the model are RGB images $o_{t:t-P} \in [0, 1]^{P \times 3\times 85 \times 64}$ and $o_s\in [0, 1]^{3\times 85 \times 64}$, representing the current, past, and goal images. We seek to predict a $H$ future actions $\hat{a}$ and the temporal distance $d$. }\label{tab:app:model_arch}
+\end{table}
+
+\subsection{Goal-Conditioning Architectures}
+
+We considered different mechanisms for conditioning \ModelName with features from the subgoal image, as illustrated in Figure~\ref{fig:fusion_architectures}. %
+
+\begin{enumerate}
+    \item \textbf{Late Fusion:} Extract the observation and goal features independently and fuse them in the multi-head attention layers. To achieve this effect, we avoid any channel-wise concatenation between any of the observation and goal images before inputting them into the model.
+    \item \textbf{Early Fusion:} Jointly extract observation (context) and goal features and fuse the observation and goal features before we tokenize them. We achieve this by concatenating the goal image with every observation image along the channel dimension. We remove the goal token in this setup since information about the goal is already in every observation token.
+    \item \textbf{FiLM (RT-1):} Following the FiLM+EfficientNet encoder (\citet{brohan2022rt1}), encode each observation image separately. For conditioning on visual goals, we replace the ``Universal Sentence Encoder'' with an EfficientNet encoder. We remove the goal token in this setup since information about the goal is already in every observation token.
+\end{enumerate}
+
+Our observations are summarized in Table~\ref{tab:app:fusion_architectures}.
+While FiLM works well for language, we found that training was unstable for image-based navigation tasks. Instead, we directly encode each observation independently and pass them to a Transformer. Ideally, the goal would be encoded separately and then combined with the observations in the Transformer layers, allowing the entire goal encoder to later be swapped out for different goal modalities. Unfortunately, we found that this approach (which we term ``late fusion'', as the goal and observations are not fused until \emph{after} encoding them) performs poorly: in image-based navigation, it is the \emph{relative} features between the observation and goal images that are important, rather than \emph{absolute} goal features.
+An ``early fusion'' architecture would fuse the goal image with all the past and current observation images immediately, which allows for learning joint features between the goal image and current state. However, this architecture is inflexible as the observation encoder would have to be learned entirely from scratch when adapting to a new goal modality. \ModelName avoids this issue by using two distinct types of encoders: an observation-only encoder used to tokenize each observation image, and a joint observation and goal encoder that should extract relative goal features. This latter encoder can be replaced to allow alternative goal specifications in downstream tasks, as described in Appendix~\ref{sec:app:implementation_finetuning}. Specifically, we adapt to new tasks by learning the final token conditioned on the new task goal information in place of the joint observation/goal encoder.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{figures/fusion.jpg}
+    \caption{Different goal-conditioning architectures considered for \ModelName.}
+    \label{fig:fusion_architectures}
+\end{figure}
+
+\begin{table}
+    \centering
+    \footnotesize
+    \begin{tabular}{lcc}
+        \toprule
+        Method & Performance & Adaptation \\
+        \midrule
+        Late Fusion & \xmark & \cmark\\
+        Early Fusion & \cmark & \xmark \\
+        FiLM (RT-1)~\cite{brohan2022rt1} & \xmark & \cmark\\
+        \ours \ModelName & \cmark & \cmark\\
+        \bottomrule \\
+    \end{tabular}
+    \caption{Comparing merits (\cmark) and demerits (\xmark) of different goal-conditioning architectures. While ``Early Fusion'' works the best for the core navigation task, it does not support downstream adaptation (Section~\ref{sec:method_finetuning}). ``Late Fusion'' is ideal for adaptation, but does not perform well for our tasks. Our goal fusion architecture is able to closely match the performance of early fusion, while also supporting adaptation.}
+    \label{tab:app:fusion_architectures}
+\end{table}
+
+\section{Implementation Details}
+\label{sec:app:implementation}
+
+\subsection{Training \ModelName}
+\label{sec:app:implementation_model}
+
+See Table~\ref{tab:app:hparams} for a detailed list of hyperparameters for training the \ModelName \basement model.\footnote{We used a variety of workstations equipped with different GPU configurations over the course of this research, including $2\times$4090, $3\times$Titan Xp,  $4\times$P100, $8\times$1080Ti, $8\times$V100, and $8\times$A100. With the model architecture fixed, the batch size and training time varies significantly across these devices, and the entry in Table~\ref{tab:app:hparams} is representative of our most common training configuration.\label{foot:gpu}}
+
+
+\begin{table}[ht]
+    \centering
+    {\footnotesize
+    \begin{minipage}[t]{0.48\textwidth}
+        \begin{tabular}[t]{llc}
+            \toprule
+            \multicolumn{2}{l}{{Hyperparameter}} & {Value} \\
+            \midrule
+            \multicolumn{2}{l}{\textbf{\ModelName Model}} & \\
+            & \# Parameters & 31M \\
+            & RGB Resolution & $85 \times 64$ \\
+            & Encoder & EfficientNet-B0  \\
+            & Token Dimension & 512 \\
+            & Attn. hidden dim. & 2048 \\
+            & \# Attention Layers $n_L$ & 4 \\
+            & \# Attention Heads $n_H$ & 4 \\
+            & Temporal Context $P$ & 5 \\
+            & Prediction Horizon $H$ & 5 \\
+            & MLP layers & (256, 128, 64, 32) \\
+            \multicolumn{2}{l}{\textbf{\ModelName Training}} & \\
+            & \# Epochs $n_\text{ep}$ & 30 \\
+            & Batch Size & 300~\textsuperscript{\ref{foot:gpu}} \\
+            & Learning Rate & $5\times 10^{-4}$ \\
+            & Optimizer & AdamW~\cite{loshchilov2018decoupled} \\
+            & Warmup Epochs & 4 \\
+            & LR Schedule & Cosine \\
+            & Scheduler Period & 10 \\
+            & Compute Resources & $8\times$V100~\textsuperscript{\ref{foot:gpu}} \\ 
+            & Training Time & 30 hours~\textsuperscript{\ref{foot:gpu}} \\
+            & Fine-tuning LR & $1\times 10^{-4}$ \\
+            \multicolumn{2}{l}{\textbf{Diffusion Model}} & \\
+            & \# Parameters & 318M \\
+            & Resolution & 128$\times$128 \\
+            & \# Up/Down Blocks & 4 \\
+            & Attn. Resolutions & 32, 16, 8 \\
+            & Layers per Block & 2 \\
+            & Attn. Head Dim & 8 \\
+            & Channels & (128, 128, 256, 512, 640) \\
+            & Diffusion Type & continuous time \\
+            & Noise Schedule & linear \\
+            \bottomrule \\
+        \end{tabular}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.48\textwidth}
+        \begin{tabular}[t]{llc}
+            \toprule
+            \multicolumn{2}{l}{{Hyperparameter}} & {Value} \\
+            \midrule
+            \multicolumn{2}{l}{\textbf{Diffusion Training}} & \\
+            & Dropout & 0.1 \\
+            & Batch Size & 128 \\
+            & Optimizer & AdamW \\
+            & Warmup Steps & 1000 \\
+            & Learning Rate & 1e-4 \\
+            & LR Schedule & Cosine \\
+            & Adam $\beta_1$ & 0.95 \\
+            & Adam $\beta_2$ & 0.999 \\
+            & Adam $\epsilon$ & 1e-8 \\
+            & Weight Decay & 0.001 \\
+            & EMA Inv. Gamma & 1.0 \\
+            & EMA Power & 0.75 \\
+            & EMA Max Decay & 0.9999 \\
+            & CFG Mask Proportion & 0.2 \\
+            & Train Steps & 250,000 \\
+            & Training Time & 30 hours \\
+            & Compute Resources & v4-8 TPU board \\
+            \multicolumn{2}{l}{\textbf{Diffusion Sampling}} & \\
+            & Sampler & DDIM \cite{song2020denoising} \\
+            & DDIM $\eta$ & 0.0 \\
+            & Sampling Steps & 200 \\
+            & Guidance Weight & 1.0 \\
+            \multicolumn{2}{l}{\textbf{Other}} & \\
+            & Maximum distance & 20 \\
+            & Distance tradeoff $\lambda$ & 0.01 \\
+            \bottomrule \\
+        \end{tabular}
+    \end{minipage}
+    \caption{Hyperparameters for training \ModelName and the diffusion model.}
+    \label{tab:app:hparams}
+    }
+\end{table}
+
+\subsection{Subgoal Diffusion}
+\label{sec:app:implementation_diffusion}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/gnm-unet.pdf}
+    \caption{Subgoal diffusion model U-Net architecture. Each ResNet consists of 2 residual blocks. Downsampling and upsampling is done with strided convolutions.}
+    \label{fig:gnm-unet}
+\end{figure}
+
+For generating subgoals, we use an image-to-image diffusion model. It takes an image $o_t$ as input and produces samples from $g(o_{s_i} \mid o_t)$, where $o_{s_i}$ are candidate subgoal images reachable from $o_t$. To produce training pairs for the diffusion model, we first select $o_t$ uniformly at random from the training data and then select $o_{s_i}$ to fall between 5 and 20 timesteps in the future from $o_t$.
+
+Following \citet{saharia2022palette}, we implement image conditioning as simple channel-wise concatenation to the U-Net input. We use the Flax U-Net implementation from the diffusers library \cite{von-platen-etal-2022-diffusers} with textual cross-attention removed since we do not condition on text inputs.
+
+We use the continuous-time diffusion formulation from \citet{kingma2021variational} with a fixed linear noise schedule rather than a learned one. Also unlike \citet{kingma2021variational}, we use the unweighted training objective, called $L_\text{simple}$ in \citet[][Equation 14]{ho2020denoising} and \citet[][Appendix K]{ kingma2021variational}. We employ classifier-free guidance \cite{ho2022classifier} and find that it helps produce subgoals with better visual fidelity, which is consistent with prior work \cite{saharia2022photorealistic}.
+
+\subsection{Long-Horizon Physical Search via Topological Graphs}
+\label{sec:app:implementation_graph}
+
+As in \citet{shah2022viking}, we implement physical search similarly to a standard \Astar algorithm, by keeping track of an open set $\Omega$ of possible unvisited subgoals (generated by our diffusion model) and following Alg.~\ref{alg:topo_search}.
+
+\begin{algorithm}
+\caption{Long-Horizon Navigation via Topological Graph}\label{alg:topo_search}
+\begin{algorithmic}[1]
+\WHILE{goal $G$ not reached}
+    \STATE $s \gets \min_f(\Omega)$;
+    \STATE $P \gets$ ShortestPath($\gM$, $o_t$, $s^-$)
+    \FOR{$(s, s')$ in $P$}
+        \STATE \ModelName.GoToGoal($s'$);
+    \ENDFOR
+    \STATE \ModelName.GoToGoal($s$)
+    \STATE $o_t \gets$ Observe();
+    \STATE AddNode($\gM$, $o_t$, parent: $s^-$);
+    \STATE Sample $s_i \sim g(s_i|o_t)$;
+    \STATE Add($\Omega$, $s_i$);
+\ENDWHILE
+\end{algorithmic}
+\end{algorithm}
+
+Nodes are visited according to a costing function $f(s)$ that depends on the distance from the current state $o_t$ to the parent node $s^-$ (measured along the graph), the predicted distance from $s^-$ to $s$, and a heuristic function $h$ (similar to that of \Astar) providing long-horizon navigation hints:
+\[f(s) = d_\gM(o_t, s^-) + d_\text{pred}(s^-, s) + h(s, G, C)\]
+In general, the heuristic can be any function providing a notion of distance between a subgoal $s$ and the long-horizon goal $G$, optionally with some context $C$. For our experiments, we considered three heuristics to demonstrate the flexibility of our approach:
+\begin{itemize}
+    \item \textbf{Coverage exploration:} We have no long-horizon guidance for coverage exploration, and thus, use $h(s) = 0$.
+    \item \textbf{Position-guided:} For long-horizon GPS goals (outdoors) and 2D position goals (indoors), we use Euclidean distance $h(s) = \lVert s - G \rVert$.
+    \item \textbf{Satellite-guided:} In the context-guided experiments, we train a learned heuristic function that uses the satellite image as an input to learn a a heuristic for ``good'' subgoals. We train a convolutional neural network on the overhead image to predict the probability that the subgoal $s$ is included on a trajectory from $o_t$ to $G$, trained using a contrastive objective~\cite{oord2019representation}. Additional information can be found in \citet{shah2022viking}.
+\end{itemize}
+
+
+\subsection{Fine-tuning \ModelName}
+\label{sec:app:implementation_finetuning}
+In all CARLA fine-tuning experiments, on-task data was collected using a rule-based oracle agent, with start and end locations sampled randomly up to 900 meters apart. We collect 181 training trajectories (roughly 4 hours) in CARLA's Town 01 environment, and a further 52 trajectories (1 hour) in the held-out Town 02 environment. Inspired by \citet{Codevilla2017CIL}, we further augment this dataset by allowing the rule-based agent to correct its position and re-center to the lane after a perturbation.
+
+\MyPara{Image Fine-tuning:}
+\begin{itemize}
+    \item \textbf{Architecture:} We utilize the exact same architecture as \ModelName with no changes. 
+    \item \textbf{Training:} For fine-tuning the image-goal directed model, we utilize the same training process for \ModelName with a learning rate of 0.0001, AdamW optimizer, but no warmup or cosine scheduler. We do not mix any prior data for fine-tuned training.
+\end{itemize}
+
+\MyPara{GPS-Adaptation:}
+\begin{itemize}
+    \item \textbf{Architecture:} To adapt to GPS-style goals, we cut off the goal encoder block from \ModelName. We then learn a fixed tensor of size 3000 and concatenate it to the GPS-command goal in ego-centric coordinates. We then pass this into a 2-layer MLP which outputs the prediction of the final token for the transformer. The architecture is shown in Figure \ref{fig:app:adaptation_architectures}.
+    \item \textbf{Training:} During training, instead of randomly sampling future images to serve as goals, we sample goals from future odometry information. Once we have a future goal coordinate for self-supervision, we convert to local coordinates and pass into our architecture, fine-tuning with the same objective as \ModelName.  We use a cosine scheduler with a learning rate warmup to 0.0001 for 4 epochs. We also sample goal points from between 1.25s and 1.75s rather than from 0.5s to 2.5s.
+\end{itemize}
+
+\MyPara{Command-Adaptation:}
+\begin{itemize}
+    \item \textbf{Architecture:} For discrete command goals, we adopt a similar approach for GPS-style goals. We learn a fixed tensor for each discrete command and use the command index to select the corresponding latent to pass into a 2-layer MLP for predicting the final token. In this way, we learn a dictionary of latents, each corresponding to a distinct command. This architecture is illustrated in Figure \ref{fig:app:adaptation_architectures}.
+    \item \textbf{Training:} For our experiments, we use ``left'', ``right'', and ``straight'' as our discrete commands. We assume training data is not labelled with the discrete command, so we label dataset trajectories with the corresponding commands retroactively by sampling a future position (as in GPS-Adaptation) and then selecting a command based on its lateral deviation. For our experiments we bin samples with lateral coordinate greater than 0.05 as ``left'' or ``right'' and label the remaining samples as "straight". We again use a cosine scheduler with a learning rate warmup to 0.0001 for 4 epochs. 
+\end{itemize}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.5\linewidth]{figures/gps-command-arch.png}
+    \caption{Adaptation architectures for \ModelName. Left: GPS-adaptation architecture. The local coordinates of the goal are concatenated to the fixed latent $z$. Right: command-adaptation architecture, using latent $z_i$ selected by command label index $i$.}
+    \label{fig:app:adaptation_architectures}
+\end{figure}
+
+
+\section{Training Dataset}
+\label{sec:app:dataset}
+
+The \ModelName training dataset contains over 100 hours of real-world navigation trajectories, sourced entirely from existing datasets. The dataset consists of a combination of tele-operated and autonomous navigation behaviors collected across 8 distinct robotic platforms, including 4 commercially available platforms (TurtleBot, Clearpath Jackal, Warthog and Spot) and several custom platforms (Yamaha Viking ATV, RC Car, passenger automobiles). The trajectories contain widely varying robot dynamics and top speeds, ranging between 0.2 and 10m/s, operating in a diverse set of environments (e.g., office buildings, hallways, suburban, off-road trails, university campuses, etc.). All data is either publicly available, or collected by \emph{other} researchers for past projects; \emph{no additional training data was collected specifically for training \ModelName}.
+
+Remember to mention: total size, number of robots, conversion to number of frames and so on.
+
+\begin{table}
+    \centering
+    {\footnotesize
+    \begin{tabular}{cllcccl}
+    \toprule
+    & Dataset & Platform & Speed & Total Hrs. & Hrs. Used & Environment \\ \midrule
+    1 & GoStanford~\cite{hirose2019deep} & TurtleBot2 & 0.5m/s & 17h & 14h & office \\
+    2 & RECON~\cite{shah2021rapid}  & Jackal & 1m/s & 25h & 25h & off-road \\
+    3 & CoryHall~\cite{kahn2018gcg} & RC Car & 1.2m/s & 2h & 2h & hallways \\
+    4 & Berkeley~\cite{shah2022viking}  & Jackal & 2m/s & 4h & 4h & suburban \\
+    5 & SCAND-S~\cite{karnan2022scand} & Spot & 1.5m/s & 8h & 4h & sidewalks \\
+    6 & SCAND-J~\cite{karnan2022scand} & Jackal & 2m/s & 1h & 1h & sidewalks \\
+    7 & Seattle~\cite{shaban2021semantic} & Warthog & 5m/s & 1h & 1h & off-road \\
+    8 & TartanDrive~\cite{triest2022tartan} & ATV & 10m/s & 7h & 5h & off-road \\
+    9 & NeBula~\cite{agha2021nebula} & ATV & 10m/s & 10h & 10h & off-road \\
+    10 & SACSoN~\cite{hirose2023sacson} & TurtleBot2 & 0.5m/s & 75h & 10h & office \\
+    11 & BDD~\cite{Yu2020bdd100k} & Car(s) & 20m/s & 10h & 4h & on-road \\
+    \midrule
+    & Total & & & 160h & 80h & \\
+    \bottomrule \\
+    \end{tabular}}
+    \caption{\textbf{The \ModelName training dataset} contains over 150 hours of navigation data in challenging indoor, outdoor, and off-road environments across 8 different robots of varying sizes, speeds, and capabilities.}
+    \label{tab:dataset}
+    \vspace*{-1.8em}
+\end{table}
+
+
+\section{Robotic Platforms for Evaluating \ModelName}
+\label{sec:app:robots}
+
+\vspace{1mm}
+\MyPara{Vizbot:} A custom-built robot platform inspired by the design of \citet{niwa2022spatio}, based on a Roomba. It is equipped with an off-the-shelf PCB-mounted fisheye camera.%
+
+
+\vspace{1mm}
+\MyPara{Unitree Go 1:} A commercially available quadruped robot equipped with the original forward-facing camera. \emph{There is no training data from a Go 1 in the training dataset}. Athough SCAND includes data collected on a Boston Dynamics Spot, which is also a quadrupedal robot, the two platforms practically have very different characteristics.
+
+\vspace{1mm}
+\MyPara{Clearpath Jackal UGV:} A commercially available off-road platform equipped with an off-the-shelf PCB-mounted fisheye camera. \emph{This system resembles the data collection platform used for the RECON, Berkeley, and SCAND-J datasets}, but has a different camera and mounting height.
+
+\vspace{1mm}
+\MyPara{LoCoBot:} A popular open-source platform based on a Kobuki equipped with an off-the-shelf PCB-mounted fisheye camera. \emph{This robot is not present in the training dataset}, although GS was collected on a similar TurtleBot2 with a different spherical camera at a lower height.
+
+
+
+\section{Evaluation Setup and Details}
+\label{sec:app:evaluation}
+
+\subsection{Navigation Performance}
+\label{sec:app:evaluation_real}
+
+
+
+
+\subsubsection{Indoor Experiments}
+
+For setting up the indoor coverage exploration experiments, we use the LoCoBot and Vizbot robotic platforms. We choose a random starting point and goal in an enclosed environment, and keep these locations consistent across all baselines we test. For the coverage exploration task, we ensure that the environments are ``enclosed'' and block any glass walls and stairwells, which are beyond the capabilities of the robots. Experiments are terminated when either (i) the robot is unable to reach the goal within a pre-specified time limit of 10 minutes, or (ii) the robot becomes physically stuck (e.g., collides and is unable to recover).
+
+For setting up the indoor guidance exploration experiments on the LoCoBot, we mark the start and goal locations in a large office building and note their 2D positions. The goal location is conveyed to the robot as the context, and is available to the search algorithm. The system uses the robot's onboard wheel odometry to track position.
+
+\subsubsection{Outdoor Experiments}
+
+For the coverage exploration experiments, we follow the setup of \citet{shah2021rapid} and use the Clearpath Jackal UGV. We choose a random start and goal location in confined outdoor environments and obtain a goal image observation for the robot to seek. Experiments are terminated either when (i) the robot is unable to reach the goal within a pre-specified time limit of 20 minutes, or (ii) the robot collides with an obstacle in the environment.
+
+For the guided exploration experiments, we closely follow the setup of \citet{shah2022viking}. For the GPS guided experiments, the robot has access to the GPS location of the goal, in addition to a goal image. For the satellite-guided experments, the robot further has access to an overhead satellite image centered at its current location and a learned heuristic funtion $h$.
+
+\subsubsection{Baselines}
+
+For experiments presented in Section~\ref{sec:exploration-results}, we evaluate 4 baselines against our method.
+\begin{enumerate}
+    \item \textbf{End-to-End BC:} A modified \ModelName model with no goal token, trained end-to-end for the task of only predicting future actions. This represents a typical undirected BC baseline with similar model capacity as the other baselines.
+    \item \textbf{End-to-End GCG:} A model-based algorithm that uses a predictive model to plan a sequence of actions that reach the goal without causing collisions~\cite{kahn2018gcg}. Since this model requires collision labels for training, it is only trained on a subset of the training data (RECON, CoryHall, Berkeley) that has these labels; hence, this baseline is only evaluated outdoors.
+    \item \textbf{RECON:} A variant of the physical search algorithm RECON~\cite{shah2021rapid}, which uses a latent goal model to represent reachable goals and plans over sampled subgoals to explore the environment in a similar manner to ours. This baseline uses a variational information bottleneck to sample latent subgoals, rather than a diffusion model sampling subgoal images.
+    \item \textbf{ViNT-R:} An ablation of our method that uses subgoals randomly sampled from the training data, instead of samples from a conditional diffusion model, as subgoal candidates.
+\end{enumerate}
+
+\subsection{Multi-robot Generalization Experiments}
+
+The setup for the multi-robot generalization experiment is same as the coverage exploration experiments. The only differences are the baselines we evaluate.
+
+
+\subsubsection{Baselines}
+For experiments presented in Section~\ref{sec:multirobot-results}, we test three baseline low-level policies on each robot. Each baseline uses the graph-based exploration scheme described in Section~\ref{sec:method_graph}. We use the following baselines:
+\begin{enumerate}
+    \item \textbf{Single-Robot:} We train a single-dataset policy model (\ModelName architecture) and diffusion model on the two largest datasets (RECON for outdoor, and SACSoN for indoor), and evaluate them on each of our robots to identify the best single-dataset model for each robot. Note that we do not have comparable magnitudes of training data of visual locomotion on the Go 1.
+    \item \textbf{GNM:} We use the pre-trained model checkpoint from the authors of GNM~\cite{shah2022gnm} coupled with \emph{our} diffusion model (since GNM is not compatible with the exploration task) to evaluate each robot.
+    \item \textbf{\ModelName:} We use our pre-trained \ModelName policy and image diffusion model (no fine-tuning) to evaluate each robot.
+\end{enumerate}
+
+
+\subsection{Fine-tuning and Adaptation}
+\label{sec:app:evaluation_carla}
+
+This section describes the setup and implementation details for \ModelName fine-tuning and adaptation experiments in the CARLA autonomous driving simulator, as presented in Sections~\ref{sec:ood-results} and~\ref{sec:adaptation-results}.
+
+\subsubsection{CARLA Data Collection} 
+We collect expert trajectories with an oracle rule-based self-driving agent and gather odometry and RGB information across the trajectory at 4 Hz. These trajectories have random spawn points and random destination points up to to 900 meters in length. We collect 52 trajectories in the CARLA Town 02 for held-out testing, and collect 181 trajectories in Town 01 for training. This makes for a dataset size of 5 hours for the autopilot control data. Inspired by \cite{Codevilla2017CIL}, we also collect short trajectories of the agent correcting back onto the right lane after drifting off course in Town 01 and Town 02 for training and testing, respectively. This data is 4 hours long, and we add it to the autopilot data for training.
+
+\subsubsection{Fine-tuning Experiments} 
+
+To test the fine-tuning system which trains \ModelName with the same goal specification but in new domains, we utilize the collected test trajectories as sequences of goal images to follow. Each Town 02 test trajectory creates a graph in which every node is a timestamped odometry point corresponding to an image. To evaluate a model on a test trajectory, we spawn it at the same start point and localize it on the trajectory's map. We then query the image for the goal node which corresponds to node 1.5s after the current node. This goal image is sent to \ModelName along with the 4Hz image context  to compute a short-range trajectory. This is tracked by a simple PID controller. The average progress towards the goal before collision is collected and reported across all trials. Table~\ref{tab:carla-finetuning} summarizes the results of these experiments with multiple baselines and data sizes.
+
+\subsubsection{Adaptation Experiments} 
+
+To test the new tasks, we adopt a similar evaluation setup to the fine-tuning experiments, but rely on the odometry position for the selected goal node rather than the image. For positional-adaptation, we move the goal coordinates into a local frame and send it to \ModelName. For routing-adaptation, we determine the difference in lateral coordinates between the current node and the goal node. We choose the current node as reference to ensure an open-loop experiment and to allow for pre-computation of the command signals to be sent. We then apply the same binning strategy during training using a 0.05 normalized distance as the boundary between ``left'', ``right'', and ``straight''. The control system downstream of this is identical to image fine-tuning and the experiment terminates when at the goal or when colliding. The progress towards the goal before collision is collected and averaged across all trials in Table~\ref{tab:carla-finetuning}.
+
+
+\subsubsection{Baselines}
+We have the following baselines for the CARLA experiments:
+
+\begin{enumerate}
+    \item \textbf{Scratch}: \ModelName trained from scratch on the CARLA on-task dataset.
+    \item \textbf{Pre-trained Visual Representations}
+    \begin{enumerate}
+        \item \textbf{ImageNet}: \ModelName initialized with the EfficientNet-B0 weights pre-trained on ImageNet, other parameters initialized from scratch, and fine-tuned with the CARLA on-task dataset.
+        \item \textbf{SimCLR}: \ModelName initialized with the EfficientNet-B0 weights pre-trained with SimCLR~\cite{chen2020simple} on the training data described in Section~\ref{sec:app:dataset}, other parameters initialized from scratch, and fine-tuned with the CARLA on-task dataset.
+        \item \textbf{VC-1}: \ModelName initialized with a pre-trained ViT-B model checkpoint from the authors of VC-1~\cite{majumdar2023vc1} \emph{and frozen}, other parameters initialized from scratch, and fine-tuned with the CARLA on-task dataset. The VC-1 encoder is pre-trained on a combination of Ego4D, manipulation, navigation, and ImageNet images using Masked Auto-Encoding~\cite{he2022mae,radosavovic2022realworld}.
+    \end{enumerate}
+    \item \textbf{GNM}: The pre-trained embodiment-agnostic model checkpoint from the authors of GNM~\cite{shah2022gnm}, fine-tuned with the CARLA on-task dataset. Note that GNM has 8.7M trainable parameters, compared to \ModelName's 31M.
+\end{enumerate}
+
+
+\begin{wrapfigure}[12]{r}{0.5\textwidth}
+    \vspace{-1em}
+    \centering
+    \footnotesize
+    \begin{tabular}{lcc}
+         \toprule
+         Method & Images & Positions \\
+         \midrule
+         VC-1~\cite{majumdar2023vc1} & 0.19 & 0.49  \\
+         \ours \ModelName-FE & 0.32 & 0.78 \\
+         \ours \ModelName & 0.82 & 0.89 \\
+         \bottomrule \\
+    \end{tabular}
+    \captionof{table}{Evaluation of \ModelName fine-tuning with and without a frozen encoder, as compared to a general-purpose visual encoder. Even when frozen, \ModelName's navigation-relevant features appear to transfer more readily to out-of-distribution inputs than general-purpose features.}
+    \label{tab:app:evaluation_adaptation_frozen}
+\end{wrapfigure}
+
+We note that the VC-1 baseline's weak performance in Section~\ref{sec:adaptation-results} may be explained by the fact that it is \emph{frozen}, while all other visual encoders were free to fine-tune. This is representative of typical downstream usage \cite{majumdar2023vc1}. Despite training on multiple, diverse datasets, the visual representation's general-purpose features are not optimized for the navigation task, hampering zero-shot transfer to out-of-domain tasks. To provide a fair comparison of the quality of pre-trained visual features, we compare this performance to \ModelName-FE (a pre-trained \ModelName model that has it's visual encoder frozen). \ModelName-FE has an equal number of trainable parameters to the VC-1 baseline, and frozen visual representations (see Table~\ref{tab:app:evaluation_adaptation_frozen}).
+
+
+
+
+
+
+
+

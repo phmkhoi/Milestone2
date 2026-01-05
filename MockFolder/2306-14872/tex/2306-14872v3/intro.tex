@@ -1,0 +1,57 @@
+\section{Introduction}
+
+Multi-armed bandits (MABs) have garnered significant attention as they provide well-defined framework and techniques for investigating the exploration-exploitation trade-off in sequential decision-making problems. In the context of MAB problems, a decision-maker sequentially selects actions from a given set and observes corresponding rewards. 
+
+This paper focuses on the stochastic linear bandit (LB) model, which encompasses MAB and contextual bandit problems as special cases. In this model, the problem parameter $\param$ represents an unknown vector in $\RR^d$, while the actions, also vectors in $\RR^d$, yield noisy rewards with mean equal to the inner product of $\param$ and the chosen action. The objective of a policy is to maximize the cumulative reward based on the observed data up to the decision time. The policy's performance is measured by the cumulative regret, which quantifies the difference between the total expected rewards achieved by the policy and the maximum achievable expected reward. 
+
+Achieving this objective necessitates striking a balance between exploration and exploitation. In the context of LB, this entails selecting actions that aid in estimating the true parameter $\param$ accurately while obtaining optimal rewards. Various algorithms based on the Optimism in the Face of Uncertainty (OFU) principle have been developed to address this challenge, wherein the optimal action is chosen based on the upper confidence bound (UCB) \citep{lai1985asymptotically, auer2002using, dani2008stochastic, rusmevichientong2010linearly}. Another  popular strategy is Thompson sampling (TS), a Bayesian heuristic introduced by \cite{thompson1933likelihood} that employs randomization to select actions according to the posterior distribution of reward functions. Additionally, the Greedy policy that selects the myopically best action is shown to be effective in contextual bandits \citep{kannan2018smoothed,raghavan2018externalities,hao2020adaptive, bastani2021mostly}.
+
+In the linear bandit setting, two types of regret are considered. The Bayesian regret is applicable when the parameter $\param$ is random, and the regret is averaged over three sources of randomness: the observation noise, the randomized algorithm, and the random parameter $\param$. \cite{russo2014learning} and \cite{dong2018information} establish an $\tilde{\cO}(d \sqrt{T})$ upper bound for the Bayesian regret of the TS heuristic referred to as LinTS, which matches the minimax optimal bound shown by \cite{dani2008stochastic}, where $\tilde{\cO}$ refers to asymptotic order, up to polylogarithmic factors. 
+
+On the other hand, the frequentist regret corresponds to scenarios where the underlying parameter $\param$ is fixed, and the expectation is taken only with respect to the randomness of the noise and the algorithm. In this frequentist setting, the optimism-based algorithm proposed by \cite{abbasi2011improved}, known as Optimism in the Face of Uncertainty Linear Bandit Algorithm (OFUL), achieves a $\tilde{\cO}(d\sqrt{T})$ frequentist regret bound, which matches the minimax optimal Bayesian bound. However, for a frequentist variant of LinTS referred to as TS-Freq, which inflates the posterior distribution, \cite{agrawal2013thompson} and \cite{abeille2017linear} provide a $\tilde{\cO}(d\sqrt{dT})$ upper bound for the frequentist regret. This regret bound falls short of the optimal rate by a factor of $\sqrt{d}$. Recent work by \citet{hamidi2020frequentist} confirms that this inflation is necessary, and thus, the frequentist regret of LinTS cannot be improved. For the Greedy algorithm in linear bandit problems,  no general theoretical guarantee exists. Moreover, it is known that both LinTS and Greedy might perform suboptimally in the asymptotic regime \citep{lattimore2017end}.
+
+Despite the theoretical gaps in performance, LinTS has shown strong empirical performance \citep{russo2018tutorial}, indicating that the inflation of the posterior distribution may be unnecessary in most problem instances, and unfavorable instances are unlikely to occur frequently. Similarly, the Greedy algorithm works well in typical instances 
+\citep{bietti2021contextual}. Additionally, while OFU-based algorithms are computationally expensive (generally NP-hard as discussed by \cite{dani2008stochastic,russo2014learning,agrawal2019recent}), LinTS and Greedy are known for their computational efficiency. This unsettling disparity between theoretical, computational, and empirical performance has motivated our investigation into the following two questions:  Is it possible to identify, in a data-driven fashion,  problematic instances where LinTS and Greedy could potentially fail and apply a ``course-correction'' to ensure competitive frequentist regret bounds? And can this be achieved without compromising their impressive empirical performance and computational efficiency?
+%
+In this paper, we provide positive answers to both questions. Specifically, we make the following \emph{contributions}. 
+
+    \begin{itemize}
+    \item We develop a real-time geometric analysis technique for the $d$-dimensional confidence ellipsoid surrounding $\param$. This method is crucial for maximizing the use of historical data, advancing beyond methods that capture only limited information from the confidence ellipsoid, such as a single numerical value. Consequently, this facilitates a more precise ``course-correction''.
+
+    \item We introduce a comprehensive family of algorithms, termed \emph{POFUL} (encompassing OFUL, LinTS, TS-Freq, and Greedy as specific instances), and derive a general, instance-dependent frequentist regret bound for them. This bound is efficiently computable using data observed from previous decision epochs.
+
+    \item  We introduce course-corrected variants of LinTS and Greedy that achieve minimax optimal frequentist regret. These adaptations maintain most of the desirable characteristics of the original algorithms.
+    \end{itemize}
+
+%\begin{itemize}
+%	\item We propose a generalized version of  OFUL that we call POFUL (Pivot OFUL), which includes OFUL, LinTS, TS-Freq, and Greedy as special cases.
+%	\item We derive an instance-dependent frequentist regret bound for POFUL that can be efficiently calculated in a data-driven manner based on the observation history.
+%	\item We propose variants of LinTS and Greedy that enjoy matching frequentist regret as the Bayesian minimax regret of order $d\sqrt{T}$ up to logarithmic factors. 
+%\end{itemize}
+
+
+The distinguishing feature of our study from the existing literature is the geometric analysis of the $d$-dimensional confidence ellipsoid. 	This is in contrast to techniques outlined in previous studies that may inadvertently discard valuable information as a consequence of their focus on summary statistics.
+
+\subsection{Other Related literature} 
+
+%\paragraph{Stochastic Linear Bandits.}
+%Our work follows the previous studies of LB. \cite{abbasi2011improved} proposes the OFUL algorithm that achieves to optimal $\cO(d\sqrt{T})$  frequentist regret guarantee. Moreover, its concentration results for the regularized least-squares (RLS) estimates serve as a standard frequentist tool for analyzing LB problems. The Bayesian Regret of Thompson sampling methods for LB has been studied in \cite{russo2014learning, osband2015bootstrapped,dong2018information}. In the frequentist 
+%setting, \cite{agrawal2013thompson} and \cite{abeille2017linear}  establish a $\cO(d\sqrt{dT})$  regret guarantee for frequentist variants of TS. 
+
+%\paragraph{Spetral Bandits.} 
+
+
+ 
+
+We note that \cite{valko2014spectral, kocak2014Spectral, kocak2020spectral, kocak2020Best} consider the spectral of graphs and study \emph{Spectral Bandits}. In their work, the rewards of arms are represented as smooth functions on a graph, allowing the exploitation of a low-rank structure for improved algorithmic performance and a regret guarantee that is independent of the original number of actions. In contrast, our approach leverages the spectral properties of the sample covariance of actions, which is distinct from graph spectral analysis. Additionally, our research addresses the broader context of stochastic linear bandit problems without presupposing any low-rank structure.
+
+%Moreover, our methods are applicable to a wider spectrum of algorithms, including OFUL, LinTS, TS-Freq, and Greedy.
+
+The concepts in this paper bear similarities to existing research that investigates various exploration strategies \citep{russo2016information, kirschner2018heteroscedastic}, as well as recent studies by \citep{bastani2021mostly, pacchiano2020regret, hamidi2020frequentist, hamidi2020general} that focus on using observed data for reducing exploration. Nonetheless, our methodology and the specific use of data markedly differ. For example, \cite{bastani2021mostly} emphasizes the minimum eigenvalue of the sample covariance matrix, essentially a single-parameter summary of the observed data. On the other hand, \cite{hamidi2020general} uses information from the one-dimensional confidence intervals surrounding the reward values.  A more closely related paper,  \cite{hamidi2020frequentist}, uses spectral information to enhance the performance of TS in LB problems. They look at a single summary statistics of the confidence set that they call \emph{thinness coefficient}, to decide if the posterior of TS should be inflated.  In contrast, with these studies, our approach capitalizes on the full geometric details of the $d$-dimensional confidence ellipsoid, utilizing richer geometric information.
+
+\subsection{Organization}
+
+The structure of this paper is as follows: Section \ref{sec:setting} introduces the notations and problem formulation. In Section \ref{sec:POFUL}-\ref{sec:regret}, we present the POFUL family of algorithms and analyze their frequentist regret. 
+Sections \ref{sec:data-driven}-\ref{sec:meta} detail our data-driven approach and meta-algorithm for course-correction. Section  \ref{sec:simulation} discusses simulations using synthetic and real-world datasets. The paper concludes in Section \ref{sec:conclusion} with a summary of findings. All technical proofs, further discussions, and supplementary materials are provided in the appendices.
+ 
+  end{comment}

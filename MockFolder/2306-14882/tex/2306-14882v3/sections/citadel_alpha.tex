@@ -1,0 +1,121 @@
+\section{Citadel 1.0: A Secure Baseline}
+
+Even though defense mechanisms often propose to "not speculate" when executing some instructions that can dirty the microarchitectural state,
+implementing such policies is not completely straightforward.
+In this section, we describe how to securely enable shared memory for our specific out-of-order open-source design while disabling speculative shared accesses.
+We also make sure to not enable any new speculative transmitters by bypassing the L1 D cache, and to not break address translation by tagging the TLB's and the Address Translation Cache's entries.
+Finally, we give a brief overview of the software infrastructure we have implemented in order to boot Linux and run enclaves from user programs.
+
+\subsection{Hardware Isolation}
+
+\textbf{Memory Isolation}
+Sanctum \cite{costan2016sanctum} already presents hardware mechanisms for memory isolation in the context of an untrusted OS.
+Like RISC-V Physical Memory Protection (PMP) \cite{waterman2015risc}, Sanctum introduces a mechanism to partition physical memory and prevent a malicious OS from accessing another security domain's private memory regions, or different enclaves from accessing each other's private memory.
+At its core, the mechanism uses two 64-bit registers per core (one for trusted memory and one for untrusted/shared memory) as memory bitmaps.
+Each bit represents a fixed-size physical memory region (typically 32MB) and functions as an access-rights flag for the currently-running program.
+Citadel borrows this mechanism for its simplicity and enforces these checks on every memory access, including speculative accesses and for accesses performed during page walks.
+
+\noindent\textbf{Microarchitectural Isolation}
+Following MI6 \cite{bourgeat2019mi6} methodology we partition all spatially shared microarchitectural state (LLC, MSHRs...) and flush temporally shared state on context switch (all cores' pipeline state, L1 caches, TLBs...).
+We are not vulnerable the DRAM controller side channels as we inherit MI6's constant time DRAM padding mechanism. Finally, our processor does not support hyper-threading and we are not vulnerable to related side channels such as port contention.
+
+\subsection{Enabling Shared Memory}
+\label{sec:vmanddualpt}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/dual_page_table.png}
+\caption{The Dual Page Table Mechanism}
+\label{fig:dual_pt}
+\end{figure}
+
+
+Sanctum also uses a dual-page-table mechanism (see Figure \ref{fig:dual_pt}) to differentiate between trusted and untrusted memory based on virtual addresses, which we also borrow in Citadel. 
+Two new registers (equivalent to base and bounds) are used to define the trusted virtual memory range (i.e. the enclave's virtual memory).
+The SM enforces the invariant that the physical memory mapped as trusted is owned by the corresponding enclave.
+When a memory access to a virtual address is performed by a program, one of the two page tables needs to be picked to translate the virtual address.
+If the virtual address falls within the trusted range, the translation is performed using the \emph{enclave page table}.
+Another important invariant enforced by the SM is that the enclave page table is always stored within enclave private memory.
+If the virtual address falls outside the trusted range, it corresponds to an untrusted or shared memory access and the translation is performed using the \emph{OS page table}.
+The OS page table is untrusted and stored in OS memory.
+Note that for every physical address used during address translation, additional bound checks are performed to ensure they belong to the same security domain (enclave or OS memory) as the translated address.
+This mechanism is especially handy to eliminate speculative transmitters,
+as there is no need to perform any speculative address translation (which could leak information) to know whether a memory access is trusted or not.
+
+
+\subsection{Restricting Speculative Access to Shared Memory}
+
+In the baseline out-of-order processor we are hardening, memory instructions are decoded, renamed and then simultaneously queued in the reorder buffer (ROB) and the memory reservation station (\MemRS{}).
+When an instruction's operands are ready, it is dispatched to the memory execution pipeline (\MemExePipeline{}).
+Our approach identifies instructions that access untrusted memory early in the \MemExePipeline{} and delay the translation and processing of the memory accesses until the instruction is no longer speculative, i.e.,  when it reaches the head of the ROB.
+These changes require the modification of \MemRS{} and \MemExePipeline{}. 
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/MemExePipeline.png}
+\caption{Changes to Memory Execution Pipeline. New elements are shown in blue.}
+\label{fig:MemExe}
+\end{figure}
+
+\noindent\textbf{Modifying the Memory Execution Pipeline}
+Upon entry into the \MemExePipeline{}, checks are performed on memory instructions to decide if the memory operation is safe to translate and then issue, or not.
+It is important to perform these checks very early as 
+the next steps in the \MemExePipeline{} touch shared microarchitecture (through address translation and cache hierarchy for instance) potentially transmitting information to an attacker.
+A memory access is deemed safe if it accesses trusted memory OR if it is non-speculative.
+Because the enclave trusted memory range is defined in virtual memory, this check can be performed as soon as operands (i.e. virtual address) are available.
+If an instruction tries to access untrusted or shared memory, we check that it is non-speculative by conservatively checking if it has reached the head of the ROB.
+If the instruction is safe, it is dispatched to the next stage of the \MemExePipeline{}.
+If it is not safe, the instruction is squashed and a signal is sent to the \MemRS{} indicating that it should re-dispatch it once it reaches the head of the ROB.
+
+\noindent\textbf{Modifying the Memory Reservation Station}
+Our mechanism requires \MemRS{} being able to re-dispatch some instructions once they become non-speculative: untrusted memory loads will indeed typically need to get dispatched twice.
+
+\noindent\textbf{Disabling the Mechanism for the OS}
+Blocking speculation on memory access can have a significant performance impact.
+The SM makes sure that nonenclave programs (typically the OS and standard usermode programs) are still allowed to speculate for their memory accesses by disabling the trusted memory mechanism.
+
+\subsection{Speculative Transmitters in the L1 D Cache}
+
+The core-private part of the memory system, including the L1 D cache, is now shared between trusted memory accesses and untrusted or shared memory accesses.
+While shared memory cannot be accessed speculatively, trusted memory can.
+It means that shared memory can be \emph{speculatively evicted} by a speculative trusted memory access.
+Furthermore, this eviction will be observable to an attacker.
+The cache coherency protocol is such that writing to a memory location that is cached by another core will take more time than writing to a memory location that is not cached by another core.
+As a result, a shared L1 D can be leveraged by an attacker to create a speculative transmitter and mount a spectre-style attack.
+To our knowledge, we are the first to identify this subtle attack vector.
+Note that this doesn't only apply to shared cache sets, but it also applies to contention over other shared resources in the L1 D cache (including the pipeline to access the SRAM).
+Partitioning the L1 D cache would be too costly, instead we bypass the L1 D cache for untrusted or shared accesses and directly send the requests to the LLC.
+
+\subsection{Tagged TLB for Correct Address Translations} 
+
+When using the dual page table mechanism, the core-private part of the memory system is shared between trusted memory accesses and untrusted memory accesses.
+For functional correctness, we need to make sure that addresses are translated correctly for each domain.
+This small microarchitectural structure accelerates address translation by caching intermediate results used by the page walker.
+Unfortunately, only a few upper bits of the virtual address are used at the beginning of a page walk, easily resulting in aliasing across the two domains.
+We tag the Address Translation Cache by adding a bit to each entry indicating if the cached information applies to the trusted or untrusted memory address translations.
+Aliasing can also occur in the TLB if the trusted virtual memory range is smaller than the granularity of a virtual memory page (which can be if we use Mega or Giga Pages). 
+We also tag the TLB entries to avoid address mistranslations.
+
+\subsection{Miscellaneous}
+
+We statically partition MSHRs between two cores and place a fair round-robin arbiter at the entry of the LLC.
+Because these two mechanisms only marginally affect the latency of the LLC for a 2-core design, we observe negligible ($\approx$ 0.1\%) performance impact.
+
+We also expose controls for speculation and predictors to the software through Control Status Registers (CSRs).
+Specifically, a program is able to deactivate speculation all together (every instruction waits to reach the head of the ROB), delay the issuing of shared memory accesses to the head of the ROB, deactivate the training of predictors (branch predictors and return address stack) and/or their use (and then it falls back to the predictor $pc + 4$).
+
+\subsection{Building the Software Infrastructure}
+
+We are interested in evaluating our platform on a Linux-ready system and for programs that one would be interested in putting in an enclave (e.g. cryptographic libraries).
+This means a lot of software needs to be developed to be able to launch enclaves from a Linux user mode process.
+
+First we implement the SM at the most privilege level of RISC-V using a mix of assembler and C and add the necessary pieces of a micro-kernel required to boot Linux on top of it.
+We also implement what we call a \emph{Mini-SM} which is a downsized copy of the SM private to each enclave. 
+This avoids contention over most SM resources between enclaves and untrusted programs.
+To protect the SM against transient execution attacks, we disable speculation during SM execution.
+Second, 
+we develop a Linux Kernel module that allows user programs to request SM calls and set up enclaves, keeping Linux responsible for the resource management.
+Finally, we implement a Secure Bootloader and an end-to-end attestation mechanism that makes it possible to uniquely identify an enclave, establish a shared secret with it and exchange encrypted private data.
+Our attestation mechanism makes it possible for an enclave to be placed anywhere in physical memory and still have consistent identity through the measurement of the direct mapping between virtual addresses and memory content without measuring physical addresses. 
+The unique mapping is attested and enforced by the SM during enclave setup.
+More implementation details can be found in the evaluation section (see section \ref{sec:eval}).

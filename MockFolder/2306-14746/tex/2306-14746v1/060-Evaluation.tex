@@ -1,0 +1,102 @@
+\section{Evaluation}
+\label{sec:evaluation}
+
+We evaluate the proposal on three grounds. First, we implement and benchmark MFDPG in a typical use case. Next, we systematically verify its compatibility with a large number of line services. Finally, we present semi-formal security arguments to demonstrate that our scheme should, in theory, satisfy the desired security properties of \S\ref{sec:problem}.
+
+\subsection{Implementation}
+
+To demonstrate the immediate practical utility of MFDPG and provide a blueprint for its deployment, we implemented a fully-featured open-source MFDPG JavaScript library, which is offered under a BSD license. Our implementation supports all of the previously discussed features, including multi-factor authentication, portability, revocation, and password generation based on regular expressions. During our evaluation, we interacted with MFDPG using a simple command-line interface. However, the library could also readily be used to produce a website, browser extension, mobile application, desktop program, or other means of accessing MFDPG.
+
+\subsection{Performance}
+To evaluate the performance of MFDPG in a practical setting, we benchmarked our JavaScript implementation using Node.js v16.15.0 on Windows 10 v21H2.
+
+We used Argon2id as the underlying KDF, with p=1, t=2, and m=24576.
+Our test device contains an AMD Ryzen 9 5950X (16-core, 3.4 GHz) processor and 128 GB of system memory.
+However, only single-thread performance is relevant with the chosen KDF parameters, and significantly less than 1~GB of system memory is ever utilized.
+
+We chose to set the maximum allowed revocations (labeled $\mathsf{N}$ in Alg. \ref{alg:revocation}) to 4096, and configured the underlying Cuckoo filter to have a false positive rate of 0.0001.
+
+\eject
+
+To benchmark the performance of MFDPG, we performed the following operations, in sequence:
+
+\begin{enumerate}[leftmargin=*]
+    \item Create a new MFDPG instance with three factors.
+    \item Export the public parameters as a string.
+    \item Reload the MFDPG instance using the same three factors.
+    \item Generate a password for a service using a regular policy.
+    \item Revoke the newly generated password.
+\end{enumerate}
+
+This process was then repeated 100 times. The time taken to perform each step is shown as a box plot in Fig. \ref{fig:performance}. The results show that no individual operation took more than 100~ms on average. Thus, the latency of MFDPG is well within the bounds that most users will comfortably tolerate \cite{arapakis_impact_2021}.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{061-FIG-Performance.pdf}
+\caption{Benchmarking results of each tested MFDPG feature (box plot).}
+\label{fig:performance}
+\end{figure}
+
+\subsection{Compatibility}
+
+Next, we evaluated our MFDPG implementation from the perspective of compatibility with popular websites and their respective password policies.
+As the additional flexibility granted by support for all regular password policies is amongst our claimed contributions, we felt it necessary to demonstrate that this approach does indeed enhance the practicality of the resulting DPG. Thus, we tested the process of creating an account for each of the 100 most popular websites on the internet, according to their Alexa rank as of Feb 1, 2023 \cite{noauthor_alexa_nodate}. 
+
+We found that MFDPG was indeed flexible enough to support the password policies of all 100 evaluated services. For instance, Apple's password policy does not allow three or more consecutive identical characters \cite{noauthor_apple_nodate}, a constraint that MFDPG readily handled but that no existing DPG of the 45 surveyed in \S\ref{sec:survey} could correctly enforce.
+
+The ease of representing all encountered password policies as regular expressions suggests that a practical deployment of MFDPG could simply utilize a central database of password policies to ensure that generated passwords are automatically compliant with all popular services without requiring any manual intervention of the end user.
+
+\eject
+
+\subsection{Security Arguments}
+
+We conclude our evaluation with brief arguments for why the MFDPG scheme of \S\ref{sec:approach}, as implemented herein, satisfies our original security goals in \S\ref{sec:goals}.
+While a formal proof framework for multi-factor key derivation exists \cite{krawczyk, mfkdf}, there is no clear equivalent for deterministic password generation. As such, our arguments are instead based on a semi-formal reduction to the security properties of the underlying cryptographic primitives, such as MFKDF and Argon2.
+
+
+\begin{enumerate}[leftmargin=*]
+    \itemsep 1em
+    \item \textbf{Correctness}. We first argue for the correctness (determinism) of the password generation algorithm.
+    The Thompson algorithm \cite{thompson1968programming} and subset construction algorithm \cite{rabin1959finite} are both completely deterministic, i.e., they will always generate the same DFA given the same regular expression. The Xeger algorithm \cite{team2009xeger} performs a walk of the DFA, with each decision made according to the output of a PRG.
+    When using HMAC-DRBG \cite{barker_recommendation_2015} as the underlying PRG, the output is deterministic when using a static HMAC key.
+    Thus, given the same HMAC key (preimage) as input, Xeger always performs the same traversal of the DFA and thus generates the same password as the output string.
+    
+    \medskip
+
+    Now, given the correctness of the password generation scheme, the correctness of MFDPG reduces to the ability to generate the same preimage for a given service using a fixed set of factors. This, in turn, is guaranteed by the ``correctness'' property of MFKDF and by the determinism of the underlying KDF such as Argon2.
+    
+    \item \textbf{Safety}. Similarly, we begin by arguing the safety (pseudorandomness) of the password generation algorithm. We note that HMAC-DBRG \cite{barker_recommendation_2015} is a cryptographically secure PRNG; it has been proven, with machine-checked proofs, that its output is indistinguishable from random \cite{ye2016notorious}. It follows that HMAC-DBRG inherits the avalanche property of HMAC: if the preimage is changed slightly (e.g, flipping a single bit), the generated bits change significantly (e.g., half the bits flip). Thus, any change to the preimage will result in a significantly different walk of the DFA, and will thus generate a significantly different password (except with negligible probability w.r.t. the policy search space).
+    
+    \medskip
+
+    Given the safety of the password generation scheme, the safety of MFDPG depends on generating a different preimage for a given service when using different factors. This, in turn, is guaranteed by the ``safety'' property of MFKDF to generate a different master key if the factors change, and by the ``collision resistance'' of the underlying KDF to generate a different preimage if the master key changes.
+
+    \item \textbf{Secretless}. We note that the MFDPG scheme does not store site-specific ciphertexts in any location. In fact, the scheme only suggests two persisted values: a Cuckoo filter for revocation, and the public parameters for dynamic MFKDF factors, such as HOTP, TOTP, and YubiKey.
+
+    \medskip
+
+    The former contains hashes of revoked credentials, but cannot easily be reversed to reveal the actual credentials due to the one-way nature of cryptographic hash functions. Even if somehow reversed, it would not be possible to test which service the credential belongs to without knowing the master key due to the one-way nature of the KDF used.
+
+    \medskip
+
+    The latter is trustless (and in fact, can be stored on a public \cite{mfkdf_wallet}), and in any case, is not site-specific.
+
+    \medskip
+    
+    In our construction, the cardinality of the Cuckoo filter is static regardless of the number of revoked credentials. Thus, there are no persisted ciphertexts or other values that reveal any information about the services utilized by the user or even the number of services ever utilized or revoked.
+
+    \item \textbf{Brute-Force Resistance}.
+    First, we note that adversaries cannot directly reverse a site-specific password to obtain the master key or authentication factors, due in part to the one-way nature of the KDF, such as Argon2 \cite{argon2}.
+
+    \medskip
+
+    Moreover, adversaries can no longer use a site-specific password to perform a brute-force attack on the master password. Due to the ``exponential security'' of MFKDF, attackers must now simultaneously guess every possible combination of input factors, and cannot attack any input factor individually (see Nair and Song Thm. 2 \cite{mfkdf}).
+    
+    \item \textbf{Compatibility}. Next, we argue that MFDPG is able to generate passwords compliant with any regular password policy. First, the Thompson algorithm \cite{thompson1968programming} can convert any regular expression to an NFA, and any NFA can be converted to its equivalent DFA \cite{rabin1959finite}.
+    When performing a random walk of that DFA, the Xeger \cite{team2009xeger} algorithm will always end on an ``accept'' state, and will thus always produce a string that matches the original regular expression.
+    
+    \item \textbf{Revocability}. When revoking a credential in MFDPG, the preimage corresponding to that credential is added to the Cuckoo filter. When generating that credential, the preimage will be found to be in the Cuckoo filter (with $p=1$), and a new preimage will be generated. As discussed in relation to the safety property, changing the preimage will result in a different password being generated (except with negligible probability).    
+    Thus, revoking a password guarantees that the next password generated will be different (except with negligible probability), and MFDPG achieves this without requiring users to change their input factors or manually remember a counter value.
+    
+    \item \textbf{Privacy}. In implementing the above properties, MFDPG does not store any site-specific values, as discussed in relation to the ``secretless'' property. Thus, MFDPG does not store site-specific values that allow any outside adversary to identify the services utilized by its user.
+\end{enumerate}

@@ -1,0 +1,248 @@
+\section{Loss function}
+\label{section:appendix-loss-func}
+\vspace{-1ex}
+As described in~\sref{sec:methods-algorithmic-details}, \model optimizes the following loss function:
+% \vspace{-2.5pt}
+\begin{equation}
+% \vspace{-3pt}
+\begin{aligned}
+    \text{MSE}(\gA(X,X_{true})) + \beta_1 D_{KL}(q_\phi(z | X, \gR)\parallel p_\psi(z|\gR)) + \beta_2 \frac{1}{|\gE^*|}\sum_{(i,j) \in\gE^*}||r_{ij} - r^{true}_{ij}||^2,
+\label{eq:loss}
+\end{aligned}
+\end{equation}
+where $\gA$ is the Kabsch alignment function~\citep{Kabsch}, $\gE^*$ are all the 1 and 2-hop edges in the molecular graph, with $r_{ij}$ corresponding to the distance between atoms $i$ and $j$. We note that both $\beta_1$ and $\beta_2$ play a crucial role in the optimization. $\beta_1$ has to be set low enough ($1e{-3}$) to allow the optimization to focus on the MSE when the differences between the model-based $X$ and the ground truth are very close, due to the RDKit distortion parameterization. 
+
+For the QM9 experiments, $\beta_1$ is annealed starting from $1e{-6}$ to $1e{-1}$, increasing by a factor of 10 each epoch. $\beta_2$ controls the distance auxiliary loss and also had to be similarly annealed. We found that when $\beta_2 = 0$, \model still learned to improve upon the aligned MSE loss by 50\%, as compared to RDKit. Our error analysis showed that the resulting molecules either had extremely low distance error with high MSE, or vice-versa. Therefore, when the learning objective is unconstrained, our model learns to violate distance constraints by placing atoms in low-error but unphysical positions.
+
+For QM9, by slowly annealing the distance loss, we allow our model to reach a metaphysical unstable transition state where distances are violated, but the aligned coordinate error is better. We then force the model to respect distance constraints. In the case of DRUGS, we found that this transition state was too difficult for the model to escape from, and we report the results using $\beta_2 = 0.5$ in \tref{tab:results_drugs}. In Appendix \sref{section:appendix-more-drugs}, we further explore this idea and experiment with different annealing schedules for DRUGS. 
+We note that as \model learns the optimal torsion angles in an unsupervised manner due to the chosen CG strategy; we leave explicit angle optimization to future work.
+
+\section{Coarse-graining}
+\label{section:appendix-CG}
+\vspace{-1ex}
+We elaborate on the coarse-graining procedure introduced in \sref{sec:methods-algorithmic-details}. Following \citet{CGVAE}, we represent fine-grained (FG) molecular conformers as $x = \{x_i\}_{i=1}^n \in \R^{n \times 3}$. Similarly, the coarse-grained (CG) conformers are represented by $X = \{X_I\}_{I=1}^N \in \R^{N \times 3}$ where $N < n$.
+Let $[n]$ and $[N]$ denote the set $\{1, 2, ..., n\}$ and $\{1, 2, ..., N\}$ respectively. 
+The CG operation can be defined as an assignment $\map: [n] \rightarrow [N]$, which maps each FG atom $i$ in  $[n]$ to CG bead $I \in [N]$, i.e., bead $I$ is composed of the set of atoms $C_{I} = (k \in n \mid \map(k) = I )$. 
+$X_I$ is initialized at the center of mass = $\frac{1}{|C_I|}\sum_{j \in C_I} x_j$.
+
+We note that \model coarsens input molecules by first severing all torsion angles $\tau_{abcd}$, with $k$ torsion angles resulting in $k+1$ connected components or CG beads. This allows us, on average, to represent QM9 molecules with three beads and large drug molecules $(n>100)$ with 29 beads. We opted for a torsion angle-based strategy as it allows for unsupervised control over torsion angles, as well as the ability to rotate each subgraph independently. The CG strategy can be altered for various applications going forward.
+
+\newpage
+\section{Encoder Equations}
+\vspace{-1ex}
+\begin{figure*}[h]
+\centering
+    \includegraphics[width=\textwidth]{figures/encoder.png}
+    \vspace{-10pt}
+    \caption{\textbf{Encoder module message passing structure.} \textbf{(I)} Fine-grained graph with auxiliary 4\AA\ distance cut off. \textbf{(II)} Pooling graph with nodes for each atom and coarse-grained bead. Each group of nodes represents the formation of a CG bead. There is a single directional edge from each atom to its corresponding bead. \textbf{(III)} Coarse-grained graph with auxiliary 4\AA\ distance cut off, using the learned representation from the pooling graph.
+    \model reduces the input from (I) to (III), drastically reducing the complexity of the problem.
+    }
+    \label{fig:encoder_graphs}
+    \vspace{-5pt}
+\end{figure*}
+\subsection{Fine-grain Module}
+\label{section:eqn-fine}
+\vspace{-1ex}
+We expand on the fine-grained (FG) module described in \sref{section:hierarchy}. The FG module is responsible for processing the FG atom coordinates and invariant features. More formally, the FG is defined as follows:
+\begin{equation}
+\begin{aligned}
+\bm{m}_{j\to i} &= \phi^e(\bm{h}_i^{(t)},\bm{h}_j^{(t)},\norm{\bm{x}_i^{(t)}-\bm{x}_j^{(t)}}^2,\bm{f}_{j\to i}),\forall (I,J)\in \gE\cup\gE', \\
+\bm{u}_{j'\to i} &= a_{j'\to i} \bm{W} \bm{h}_{j'}^{(t)},\forall i\in\gV,j'\in\gV', \\
+\bm{m}_i &= \frac{1}{|\gN(i)|} \sum_{j\in\gN(i)}\bm{m}_{j\to i},\forall i\in\gV\cup\gV', \\
+\bm{u}_{i} &=  \sum_{j'\in\gV'}\bm{u}_{j'\to i},\forall i \in\gV, \quad \text{and} \quad \bm{u}'_{i} =  0, \\
+\bm{x}_i^{(t+1)} &= \eta_x \cdot \bm{x}_i^{(0)} + (1 - \eta_x) \cdot \bm{x}_i^{(t)} + \sum_{j\in\gN(i)} (\bm{x}_i^{(t)}-\bm{x}_j^{(t)})\phi^x(\bm{m}_{j\to i}), \\
+% \bm{x}_i^{(t+1)} = \Psi\left(\bm{x}_i^{(t)} + \sum_{j\in\gN(i)}\frac{\bm{x}_i^{(t)}-\bm{x}_j^{(t)}}{\|\bm{x}_i^{(t)}-\bm{x}_j^{(t)} \|}\phi^x(\bm{m}_{j\to i})\right) \\
+\bm{h}_i^{(t+1)} &= (1 - \eta_h) \cdot \bm{h}_i^{(t)} + \eta_h \cdot \phi^h(\bm{h}_i^{(t)},\bm{m}_i,\bm{u}_{i}, \bm{f}_i),\forall i\in\gV\cup\gV',
+\end{aligned}
+\label{fine-grain-eqn}
+\end{equation}
+where $f$ represents the original invariant node features $h^{t=0}$, $a_{j\to i}$ are SE(3)-invariant attention coefficients derived from $h$ embeddings, $\gN(i)$ are the graph neighbors of node $i$, and $W$ is a parameter matrix. $(\gV, \gE)$ and $(\gV', \gE')$ refer to the low-energy and RDKit approximation molecular graphs, respectively. The various $\phi$ functions are modeled using shallow MLPs, with  $\phi^x$ outputting a scalar and $\phi^e$ and $\phi^h$ returning a D-dimensional vector. $\eta_x$ and $\eta_h$ are weighted update parameters for the FG coordinates $x$ and invariant features $h$ respectively. We note that attention flows in a single direction from the RDKit approximation to ground truth to prevent leakage in the parameterization of the learned prior distribution.  
+
+\subsection{Pooling Module}
+\label{section:eqn-pool}
+We expand on the pooling module described in \sref{section:hierarchy}. The pooling module is responsible for learning the coordinates and invariant features of each coarse-grained bead by pooling FG information in a graph-matching framework. More formally, the pooling module is defined as follows:
+\begin{equation}
+\begin{aligned}
+\bm{m}_{j\to I} &= \phi^e(\bm{H}_I^{(t)},\bm{h}_j^{(t)},\norm{\bm{X}_I^{(t)}-\bm{x}_j^{(t)}}^2,\bm{f}_{j\to I}),\forall (I,J)\in \gE\cup\gE', \\
+\bm{m}_I &= \frac{1}{|\gN(I)|} \sum_{j\in\gN(I)}\bm{m}_{j\to I},\forall I\in\gV\cup\gV', \\
+\bm{X}_I^{(t+1)} &= \eta_X \cdot \bm{X}_I^{(0)} + (1 - \eta_X) \cdot \bm{X}_I^{(t)} + \sum_{j\in\gN(I)} (\bm{X}_I^{(t)}-\bm{x}_j^{(t)})\phi^x(\bm{m}_{j\to I}), \\
+% \bm{x}_i^{(t+1)} = \Psi\left(\bm{x}_i^{(t)} + \sum_{j\in\gN(i)}\frac{\bm{x}_i^{(t)}-\bm{x}_j^{(t)}}{\|\bm{x}_i^{(t)}-\bm{x}_j^{(t)} \|}\phi^x(\bm{m}_{j\to i})\right) \\
+\bm{H}_I^{(t+1)} &= (1 - \eta_H) \cdot \bm{H}_I^{(t)} + \eta_H \cdot \phi^h(\bm{H}_I^{(t)},\bm{m}_I, \bm{f}_I),\forall I\in\gV\cup\gV',
+\end{aligned}
+\end{equation}
+where capital letters refer to the CG representation of the pooling graph.
+The pooling module mimics the FG module without attention on a pooling graph, as seen in \fref{fig:encoder_graphs}(II). The pooling graph contains a single node for each atom and CG bead, with a single edge from each FG atom to its corresponding bead. It is used to learn the appropriate representations of the CG information. As the pooling graph only contains edges from fine-to-coarse nodes, the fine-grain coordinates and features remain unchanged. The pooling graph at layer $t$ uses the invariant feature $H$ from the CG module of layer $t - 1$ to propagate information forward through the neural network. The main function of the pooling module is to act as a buffer between the FG and CG spaces. As a result, we found integrating the updated CG representation useful for building a better transition from FG to CG space.
+
+\subsection{Coarse-grain Module}
+\label{section:eqn-coarse}
+We expand on the coarse-grained (CG) module described in \sref{section:hierarchy}. The CG module is responsible for taking the pooled CG representation from the pooling module and learning a node-level equivariant latent representation.
+We note that we use simple scalar and vector operations to mix equivariant and invariant features without relying on computationally expensive higher-order tensor products.
+In the first step, invariant CG features $H$ and equivariant features $\bm{v}\in\mathbb{R}^{F\times 3}$ are transformed and mixed to construct new expressive intermediate features $H^{\prime}, H^{\prime\prime}, \bm{v}^{\prime}$ by,
+\begin{subequations}
+\begin{align}
+H^{\prime}_I &= \phi_{1}(h^{(t)}_I, \norm{\text{VN-MLP}_{1}(\bm{v^{(t)}_I})})\in\mathbb{R}^{D} \label{eqn-a},\\ 
+H^{\prime\prime}_I&=\phi_{2}(h^{(t)}_I, \norm{\text{VN-MLP}_{2}(\bm{v^{(t)}_I})})\in\mathbb{R}^{F}\label{eqn-b},\\
+\bm{v}^{\prime}_I &=\text{diag}\{\phi_{3}(H^{(t)}_I)\}\cdot\text{VN-MLP}_{3}(\bm{v^{(t)}_I})\in \mathbb{R}^{F\times 3}.\label{eqn-c}
+\end{align}
+\label{mixed features}
+\end{subequations}
+Next, a point convolution \citep{tensor-field-network, painn, 3dlinker} is applied to linearly transform the mixed features $H^{\prime},H^{\prime\prime},\bm{v}^{\prime}$ into messages:
+\begin{subequations}
+\begin{align}
+\bm{m^H}_{I\leftarrow J} &= \text{Ker}_{1}(\norm{\bm{r}_{I,J}})\odot H^{\prime}_J\label{eqn-d}, \\
+\bm{m^v}_{I\leftarrow J}&=  \text{diag}\left\{\text{Ker}_{2}(\norm{\bm{r}_{I,J}})\right\} \cdot \bm{v}^{\prime}_J  +\big(\text{Ker}_{3}(\norm{\bm{r}_{I,J}})\odot H^{\prime\prime}_{J}\big)\cdot\bm{r}^{\top}_{I,J}\label{eqn-e}, \\
+\bm{u}_{J'\to I} &= a_{J'\to I} \bm{W} \bm{H}_{J'}^{(t)},\forall I\in\gV,J'\in\gV', \\
+\bm{u}_{I} &=  \sum_{J'\in\gV'}\bm{u}_{J'\to I},\forall I \in\gV, \quad \text{and} \quad \bm{u}'_{I} =  0, \\
+\bm{H}^{t+1}_{I}& = (1 - \eta_H) \cdot H^{\ell}_I+ \eta_H \cdot\text{MLP}(H^{\ell}_I, \sum_{J\in N(I)}m^H_{I\leftarrow J}, u_{I}),\forall I\in\gV\cup\gV' \label{agg-h},\\
+\bm{v}^{t+1}_{I} &= (1 - \eta_v) \cdot v^{\ell}_I + \eta_v \cdot \text{VN-MLP}_{4}(\bm{v}^{\ell}_I, \sum_{J\in N(I)}\bm{m^v}_{I\leftarrow J}),\forall I\in\gV\cup\gV'\label{agg-v},
+\end{align}
+\label{message function}
+\end{subequations}
+where each Ker refers to a learned RBF kernel, $r_{IJ}$ is the difference between $X_I$ and $X_J$, and $a_{J\to I}$ are SE(3)-invariant attention coefficients derived from the learned invariant features $H$. $\eta_H$ and $\eta_v$ control the mixing of the learned invariant and equivariant representations.
+
+We note that for $t > 0$, the $H_I$ from the CG module are used in the next layer's pooling module, creating a cyclic dependency to learn an information-rich CG representation. This is shown by the dashed lines in~\fref{fig:schematic}(I). The cyclic flow of information grounds the learned CG representation to the innate FG structure. All equivariant CG features $v$ are initialized as zero and are slowly built up through each message passing layer. As point convolutions and VN operations are strictly SO(3)-equivariant, we subtract the molecule’s centroid from the atomic coordinates prior to encoding, making it effectively SE(3)-equivariant.
+
+\section{Model Configuration}
+\label{section:appendix-breakdown}
+\vspace{-1ex}
+\paragraph{Model.} We present the model configuration that was used to generate the results in \sref{section:results}.
+Overall, the default model has 1.9M parameters: 1.6M for the encoder and 300K for the decoder. We note that as \model uses graph matching, half the encoder parameters are used for each of the two inputs representing the same molecule in different spatial orientations. For both the encoder and decoder, we use five message-passing layers, a learning rate of $1e{-3}$ with an 80\% step reduction after each epoch, and a latent space channel dimension ($F$) of 32. All other architectural parameters, such as feature mixing ratios or nonlinearities, were set following similar architectures~\citep{3dlinker, vn-mlp, equibind}. We present further ablations in Appendix \sref{section:appendix-more-drugs}. We note that the ability to share weights between the inputs as well as between each layer in the encoder is left as a hyperparameter. This could allow the encoder to see a 2x or 5x reduction in model size, respectively.
+
+\paragraph{Compute.}
+The QM9 model was trained and validated for five epochs in 15 hours using a single 40GB A100 GPU. We used a batch size of 600, where a single input refers to two graphs: the ground truth and RDKit approximate conformer. The DRUGs model was trained and validated for five epochs in 50 hours using distributed data parallel (DDP) with 4 40GB A100 GPUs with a batch size of 300 on each GPU. For DRUGs, the GPU utilization was, on average, 66\% as few batches contain very large molecules. In the future, lower run times can be achieved if the large molecules are more intuitively spaced out in each batch. 
+
+We note DDP has a negative effect on overall model benchmark performance due to the gradient synchronization but was used due to compute constraints. Without DDP, we expect the training time to take around 7 days, which is on par with Torsional Diffusion (4-11 days). 
+We demonstrated that \model achieves as good or better results than prior methods with less data and time, and these results can be further optimized in future work. We provide evidence of the negative effects of DDP in Appendix \sref{section:appendix-more-drugs}.
+
+\section{QM9 Experimental Details}
+\label{section:appendix-qm9}
+\vspace{-1ex}
+The QM9 test set was normalized to ensure all methods were evaluated on the exact same molecules due to a small number of preprocessing failures. These issues were tied to RDKit failures and the use of different definitions of torsion angles. The normalization enforces an equal success rate and results in only an overall dataset reduction of 3\%. We note for QM9 specifically, RDKit without MMFF achieves better recall than with MMFF but worse precision. We leave it to future work to explore the implications of this and how to best take advantage of built-in optimization methods.
+
+\section{DRUGS Extended Benchmarks}
+\label{section:appendix-more-drugs}
+\vspace{-1ex}
+\begin{table}[H]
+\begin{center}
+\caption{Quality of generated conformer ensembles for the GEOM-DRUGS test set ($\delta=0.75$\AA) in terms of Coverage (\%) and Average RMSD (\AA). \model was trained for 5 epochs unless specified. \model$\dagger$ refers to training for 0.2 epochs on a single GPU with 5 conformers per training molecule and no DDP. We provide GeoDiff results using the same generated molecules as in \citet{torsional-diffusion}. We provide GeoMol results using its published weights and code \citep{GeoMol}. 
+% In terms of maintaining equivariance, all \model runs use scalar and vector operations, which is analogous to $\ell = 1$. 
+% In terms of maintaining equivariance, both \model and TD ($\ell=1$) use scalars and vectors to create their respective equivariant bases.
+Both \model and TD ($\ell$ = 1) use scalar and vector operations to maintain equivariance. 
+TD ($\ell=2$) additionally uses higher-order tensor products (see Appendix \sref{section:appendix-limits} for more details).}
+\label{tab:results_drugs_app}
+\begin{tabular}{lc|cccc|cccc} \toprule
+               & \multicolumn{1}{l|}{} & \multicolumn{4}{c|}{Recall} & \multicolumn{4}{c}{Precision}  \\
+                 & \multicolumn{1}{l|}{} & \multicolumn{2}{c}{Coverage $\uparrow$} & \multicolumn{2}{c|}{AR $\downarrow$} & \multicolumn{2}{c}{Coverage $\uparrow$} & \multicolumn{2}{c}{AR $\downarrow$} \\
+Method  & Metric & Mean & Med & Mean & Med & Mean & Med & Mean & Med \\ \midrule
+\multicolumn{1}{l|}{RDKit} & min  & 39.7 & 28.9 & 1.052 & 0.989 & 41.9 & 32.9 & 0.988 & 0.878 \\
+\multicolumn{1}{l|}{RDKit + MMFF} & min  & 49.0 & 46.2 & 0.896 & 0.825 & 55.3 & 55.1 & 0.840 & \textbf{0.715} \\
+\multicolumn{1}{l|}{GeoMol} & min  & 45.3 & 42.8 & 0.866 & 0.826 & 43.4 & 42.8 & 0.919 & 0.842 \\
+% \multicolumn{1}{l|}{GeoDiff} & min  & 32.0 & 18.0 & 0.805 & 0.786 & 20.4 & 6.89 & 1.067 & 1.016 \\
+\multicolumn{1}{l|}{GeoDiff} & min  & 43.1 & 39.3 & 0.828 & 0.806 & 25.5 & 15.2 & 1.131 & 1.083 \\
+\multicolumn{1}{l|}{Torsional Diffusion ($\ell = 1$)} & min & 71.8 & \textbf{80.8} & 0.591 & 0.568 & 52.5 & 52.7 & 0.804 & 0.758 \\
+\multicolumn{1}{l|}{Torsional Diffusion ($\ell = 2$)} & min & \textbf{73.5} & 80.6 & \textbf{0.574} & \textbf{0.552} & \textbf{55.9} & \textbf{57.6} & \textbf{0.770} & 0.720 \\
+\multicolumn{1}{l|}{\model (2 conf)} & min & 45.7 & 42.4 & 0.888 & 0.848 & 47.0 & 41.8 & 0.915 & 0.823 \\
+\multicolumn{1}{l|}{\model (5 conf)} & min & 43.2 & 39.2 & 0.907 & 0.868 & 42.9 & 42.7 & 0.970 & 0.909 \\
+\multicolumn{1}{l|}{\model$\dagger$} & min & 16.4 & 0.00 & 1.147 & 1.123 & 14.2 & 0.00 & 1.252 & 1.212 \\
+\midrule
+\multicolumn{1}{l|}{RDKit} & mean  & 8.07 & 0.00 & 1.960 & 1.912 & 7.18 & 0.00 & 1.960 & 1.912 \\
+\multicolumn{1}{l|}{RDKit + MMFF} & mean & \textbf{8.87} & 0.00& 1.903 & 1.887 & \textbf{8.34} & 0.00& 1.903 & 1.887 \\
+\multicolumn{1}{l|}{GeoMol} & mean  & 7.27 & 0.00 & 1.847 & 1.892 & 6.89 & 0.00 & 1.847 & 1.892 \\
+% \multicolumn{1}{l|}{GeoDiff} & mean  & 3.46 & 0.00 & 1.906 & 1.968 & 3.65 & 0.00 & 1.906 & 1.968 \\
+\multicolumn{1}{l|}{GeoDiff} & mean  & 3.64 & 0.00 & 1.985 & 2.033 & 4.02 & 0.00 & 1.985 & 2.033 \\
+\multicolumn{1}{l|}{Torsional Diffusion ($\ell = 1$)} & mean & 7.16 & 0.00 & 1.804 & 1.873 & 7.48 & 0.00 & 1.804 & 1.873 \\
+\multicolumn{1}{l|}{Torsional Diffusion ($\ell = 2$)} & mean & 7.19 & 0.00 & 1.793 & 1.864 & 7.90 & 0.00 & 1.793 & 1.864\\
+\multicolumn{1}{l|}{\model (2 conf)} & mean & 8.51 & 0.00 & 1.791 & 1.825 & 7.83 & 0.00& 1.791 & 1.825 \\
+\multicolumn{1}{l|}{\model (5 conf)} & mean & 8.29 & 0.00 & 1.778 & 1.815 & 7.81 & 0.00 & 1.778 & 1.815 \\
+\multicolumn{1}{l|}{\model$\dagger$} & mean & 5.00 & 0.00 & \textbf{1.777} & \textbf{1.786} & 4.81 & 0.00 & \textbf{1.777} & \textbf{1.786} \\
+\midrule
+\multicolumn{1}{l|}{RDKit} & max  & 3.62 & 0.00 & 2.603 & 2.580 & 3.56 & 0.00 & 2.777 & 2.804 \\
+\multicolumn{1}{l|}{RDKit + MMFF} & max & \textbf{4.16} & 0.00& 2.589 & 2.551 & 3.95 & 0.00& 2.734 & 2.774 \\
+% \multicolumn{1}{l|}{GeoDiff} & max  & 1.60 & 0.00 & 2.837 & 2.938 & 2.11 & 0.00 & 2.615 & 2.733 \\
+\multicolumn{1}{l|}{GeoMol} & max  & 3.23 & 0.00 & 2.739 & 2.804 & 3.73 & 0.00 & 2.633 & 2.727 \\
+\multicolumn{1}{l|}{GeoDiff} & max  & 1.66 & 0.00 & 2.946 & 3.062 & 2.28 & 0.00 & 2.711 & 2.806 \\
+\multicolumn{1}{l|}{Torsional Diffusion ($\ell = 1$)} & max & 2.97 & 0.00 & 2.840 & 2.947 & 3.81 & 0.00 & 2.617 & 2.717 \\
+\multicolumn{1}{l|}{Torsional Diffusion ($\ell = 2$)} & max & 3.44 & 0.00 & 2.813 & 2.930 & \textbf{3.96} & 0.00 & 2.615 & 2.726 \\
+\multicolumn{1}{l|}{\model (2 conf)} & max & 3.97 & 0.00 & 2.481 & 2.505 & 3.85 & 0.00 & 2.521 & 2.602 \\
+\multicolumn{1}{l|}{\model (5 conf)} & max & 4.07 & 0.00 & 2.471 & 2.495 & 3.87 & 0.00 & 2.474 & 2.578 \\
+\multicolumn{1}{l|}{\model$\dagger$} & max & 2.50 & 0.00 & \textbf{2.403} & \textbf{2.411} & 2.80 & 0.00 & \textbf{2.347} & \textbf{2.404} \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{table}
+We report ablation results for the DRUGS dataset in \tref{tab:results_drugs_app}\footnote{GeoMol failed on 0.1\% more molecules than \model and Torsional Diffusion.}.
+We provide RDKit with and without MMFF, GeoMol, GeoDiff, Torsional Diffusion (TD) ($\ell=1$ and $\ell = 2$), and \model trained on 2 and 5 conformers per training molecule, as well as without DDP. We see that for the chosen threshold $\delta = 0.75$, the addition of MMFF to RDKit results in minor improvements across all metrics. Further coverage results for all tested thresholds can be seen in \fref{fig:one}-\fref{fig:three}.
+
+We copy the TD $\ell = 2$ results from \tref{tab:results_drugs} and additionally provide results for rotation order $\ell = 1$. This allows for a closer comparison to the scalar and vector operations that \model employs to maintain equivariance. Using a lower rotation order results in slightly worse results in nearly all categories. We further discuss the implications of the choice in equivariant representation in Appendix \sref{section:appendix-limits}.
+
+We provide several different \model runs with different hyperparameters.
+We see that with constant training iterations, by increasing the dataset from 2 to 5 conformers per molecule, we get improved mean and max average RMSD (AR) with slight decreases in the min results and mean coverage. 
+We hypothesize that by increasing the data by 2.5X, more epochs of training are necessary to increase the coverage, but we show improved error and generalization with more data. 
+We note all \model models were trained with the exact same hyperparameters and faced the observed DDP issues as discussed in Appendix \sref{section:appendix-breakdown}. 
+The no DDP result with only 0.2 of an epoch of training with 5 conformers shows how gradient synchronization of distributed training really hurt performance. We see that for mean, and max AR, the no DDP model achieves the best results, albeit with low coverage. 
+Training longer with more data will likely improve the coverage values. 
+This example yields an interesting perspective on the \model learning framework as a whole. 
+These results demonstrate that the absence of gradient synchronization helps greatly. In this case, the lowest error is achieved with very little data and training iterations
+
+% TODO explore differences between kabsch and getbestRMS
+%Furthermore, we found that by replacing RDKit's GetBestRMS function, which is used in the benchmarking procedure~\citep{torsional-diffusion} to calculate the lowest RMSD for all possible alignments between the reference and generated conformer\footnote{Hydrogen atoms are removed before applying the GetBestRMS function} with the Kabsch alignment (used in Appendix \sref{section:appendix-loss-func}), the AR error for the min, mean, and max metrics increases  by 0.6-1.0. This is significant as \modelns's loss function is not capturing what we intend the model to be used for. We leave to future work to explore this difference and bridge the gap between RDKit's expensive alignment function and differentiable loss functions.#Note BestRMS uses K^2 SVD operations
+
+Additionally, we experimented with increasing the latent channels ($F$) from 32 to 64 and 128 and introducing a step-wise distance loss and KL regularization annealing schedule, as done in the QM9 experiments. Both these experiments resulted in slightly worse performance when limited to 2 conformers per training molecule. We hypothesize that due to the DRUGs molecules being much larger than those in QM9, more training may be necessary, and a more sensitive annealing schedule may be required.
+We note that the number of latent channels directly impacts the dimensionality of the aggregated attention operation (\fref{fig:attention}). A larger latent space may have more information, but may make the variable length coarse-to-fine translation more difficult.
+
+\fref{fig:one} - \fref{fig:three} demonstrate the ensemble coverage for recall and precision for all tested thresholds ($\delta$) for the minimum, mean, and maximum metrics. Here, \model (both 2 and 5 conformers per molecule in the training dataset) achieves superior mean and max coverage across all thresholds. 
+We also see that by learning the optimal distortion between low-energy and RDKit approximations, \modelns's mean and max coverage is lower bounded by RDKit for all tested thresholds.
+This is important as though Torsional Diffusion also depends on RDKit approximations and does well on the minimum metric (\fref{fig:one}), it does not do as well against the other tested methods, and especially the maximum metric (\fref{fig:three}). 
+We note that coverage is the percentage of molecules with the min, mean, or max RMSD of the $2L$ generated conformers that fall within a desired threshold. 
+Simply put, coverage measures the spread of the AR.
+
+\begin{figure}[b]
+    \centering
+    \subfigure[]{\includegraphics[width=0.32\textwidth]{figures/1r.png}} 
+    \subfigure[]{\includegraphics[width=0.32\textwidth]{figures/1p.png}}
+    \caption{Mean coverage for recall (a) and precision (b) on the minimum metric when varying the threshold value $\delta$ on GEOM-DRUGS.}
+    \label{fig:one}
+\end{figure}
+% \vspace{-1ex}
+\begin{figure}[ht]
+    \centering
+    \subfigure[]{\includegraphics[width=0.32\textwidth]{figures/2r1.png}} 
+    \subfigure[]{\includegraphics[width=0.32\textwidth]{figures/2r2.png}} 
+    \subfigure[]{\includegraphics[width=0.32\textwidth]{figures/2r3.png}}
+    \subfigure[]{\includegraphics[width=0.32\textwidth]{figures/2p1.png}} 
+    \subfigure[]{\includegraphics[width=0.32\textwidth]{figures/2p2.png}} 
+    \subfigure[]{\includegraphics[width=0.32\textwidth]{figures/2p3.png}}
+    \caption{Mean coverage for recall (top) and precision (bottom) on the mean metric when varying the threshold value $\delta$ on GEOM-DRUGS.}
+    \label{fig:two}
+\end{figure}
+\begin{figure}[H]
+    \centering
+    \subfigure[]{\includegraphics[width=0.32\textwidth]{figures/3r1.png}} 
+    \subfigure[]{\includegraphics[width=0.32\textwidth]{figures/3r2.png}} 
+    \subfigure[]{\includegraphics[width=0.32\textwidth]{figures/3r3.png}}
+    \subfigure[]{\includegraphics[width=0.32\textwidth]{figures/3p1.png}} 
+    \subfigure[]{\includegraphics[width=0.32\textwidth]{figures/3p2.png}} 
+    \subfigure[]{\includegraphics[width=0.32\textwidth]{figures/3p3.png}}
+    \caption{Mean coverage for recall (top) and precision (bottom) on the max metric when varying the threshold value $\delta$ on GEOM-DRUGS.}
+    \label{fig:three}
+\end{figure}
+
+\section{Limitations}
+\label{section:appendix-limits}
+\vspace{-1ex}
+As demonstrated in \sref{section:results}, \model significantly improves the accuracy and reduces
+the overall data usage and runtime for conformer generation. However, \model also has some limitations that we will discuss in this section.
+
+\paragraph{Autoregressive generation.} While \model improves accuracy with reduced training time and overall data, autoregressive generation is the main bottleneck in inference time. We linearize the input molecule based on spatially significant subgraphs and then process each one autoregressively. For a model with k torsion angles, we need $k+1$ passes through our decoder. 
+Coarse-graining is an effective strategy to reduce the number of decoder passes, compared to traditional atom-wise autoregressive modeling. For example, for a given molecule, the number of torsion angles (which we use to coarse-grain) is significantly less than the number of atoms.
+Our choice of coarse-graining strategy allows us to break the problem into more manageable subunits, making autoregressive modeling a useful strategy, as it provides greater flexibility and control by allowing conditional dependence.
+\model is a good example of the trade-offs that exist between generative flexibility and speed.
+
+\paragraph{Approximate structure error.} 
+The success of learning the optimal distortion between low-energy and RDKit approximate structure depends on having reasonable approximations.
+While \model relaxes the rigid local structure assumption of Torsional Diffusion in a way that leverages the torsional flexibility in molecular structures, it still depends on an approximate structure. This is a non-issue in some instances, as RDKit does well. In more experimental cases for larger systems, the RDKit errors may be too significant to overcome. 
+We emphasize that the underlying framework of \model is adjustable and can learn from scratch, not just the distortion from approximate RDKit structures. In some cases, this may be more appropriate if the approximations have particularly high error. 
+We leave to future work to explore the balance between the approximation error and the inductive bias of learning from approximate structures, as well as methods to maintain flexibility while avoiding the issues of conditioning on out-of-distribution poor approximations.
+
+\paragraph{Equivariance.} As \model uses the EGNN~\citep{EGNN} framework as its equivariant backbone and thus only scalar and vector operations, there is no simple way to incorporate higher-order tensors. As the value of using higher-order tensors is still actively being explored, and in some cases, the costs outweigh the benefits, we used simple scalar and vector operations and avoided expensive tensor products.
+We leave exploring the use of using higher-order equivariant representations to future work, as it is still an ongoing research effort~\citep{equivariance-survey}.

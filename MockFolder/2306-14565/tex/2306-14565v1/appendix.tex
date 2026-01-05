@@ -1,0 +1,343 @@
+\subsection{Prompt Design}
+\subsubsection{Positive Instance Generation}
+We show two full examples of our input prompts in (i) Fig. \ref{fig:prompt_pos11}, \ref{fig:prompt_pos12}, \ref{fig:prompt_pos13} and (ii) Fig. \ref{fig:prompt_pos21}, \ref{fig:prompt_pos22}, \ref{fig:prompt_pos23}. In Fig. \ref{fig:prompt_pos11} and Fig. \ref{fig:prompt_pos21}, we first present the images for the two examples but they are not included in the text prompt for GPT4. As for the text input, we leverage the groundtruth bounding boxes and dense captions to represent the visual content as if GPT4 can see the image. After that, we randomly select 10 tasks from the 16 seeds and ask GPT4 to generate 20 instances for these tasks. Additionally, there can be more than one caption describing the same object with different attributes such as "\textit{woman wearing a long dress}" and "\textit{woman wearing a yellow dress}" in Fig. \ref{fig:prompt_pos11}. Although we present the bounding box coordinates of each caption to GPT4, it can be easily confused, treating them as two instances, one in a long dress and the other in a yellow dress. To mitigate this issue, we add "\textit{highly overlapping bounding boxes may refer to the same object}" into the prompt to help GPT4 understand the "visual" input better. To enrich the instructions, we ask GPT4 to generate instances in both declarative and interrogative formats. We also explicitly instruct GPT4 with \textit{"The answers should be less than 30 words"} as a requirement to reduce the chance of generating extra unrelated information in the training data. In order to make the output of GPT4 in a good format, we also ask GPT4 to generate an instruction, an answer, and a task name in order at the end of the prompt (Fig. \ref{fig:prompt_pos11} and Fig. \ref{fig:prompt_pos21}). The full output of instructions and answers are shown in Fig. \ref{fig:prompt_pos12}, \ref{fig:prompt_pos13} and Fig. \ref{fig:prompt_pos22}, \ref{fig:prompt_pos23}. We also present more positive instances with the output from different LMMs in Fig. \ref{fig:demo_pos1}, \ref{fig:demo_pos2}, \ref{fig:demo_pos3}.
+
+
+
+
+\subsubsection{Negative Instance Generation}
+We show two full examples of our input prompts in (i) Fig. \ref{fig:prompt_neg11}, \ref{fig:prompt_neg12} and (ii) Fig. \ref{fig:prompt_neg21}, \ref{fig:prompt_neg22}. In Fig. \ref{fig:prompt_neg11} and Fig. \ref{fig:prompt_neg21}, we present the images to help readers understand dense captions better but they are not included in the text prompt for GPT4. We leverage the bounding boxes and dense captions as the "visual" input. As for  \textit{Nonexistent Element Manipulation} in \ref{fig:prompt_neg11}, we ask GPT4 to generate 6 instructions with nonexistent elements (nonexistent objects, nonexistent activities, nonexistent attributes, nonexistent interactions). As for  \textit{Existent Element Manipulation} in \ref{fig:prompt_neg21}, we ask GPT4 to generate 6 instructions of existing objects with wrong attributes. At the end of the text prompt, we ask GPT4 to generate an instruction and a reason to explain why the instruction is inconsistent with the image in order. The reason is regarded as the answer for the instruction in our training data. Fig. \ref{fig:prompt_neg12} and Fig. \ref{fig:prompt_neg22} show the full output from GPT4. We also present more negative instances with the output from different LMMs in Fig. \ref{fig:demo_neg1}, \ref{fig:demo_neg2}.
+.
+\subsubsection{GAVIE Evaluation}
+We show two full examples of the text prompt for GAVIE in (i) Fig. \ref{fig:prompt_neg31}, \ref{fig:prompt_neg32}, \ref{fig:prompt_neg33} and (ii) Fig. \ref{fig:prompt_neg41}, \ref{fig:prompt_neg42}, \ref{fig:prompt_neg43}. We first leverage the bounding boxes and dense captions as the "visual" input. We provide the human instructions and responses from different models in Fig. \ref{fig:prompt_neg32} and Fig. \ref{fig:prompt_neg42}. Furthermore, we ask GPT4 to pretend as a smart teacher and score (0-10) the answers according to the image content and instructions. There are two criteria. \textit{(1) Accuracy: whether the response is accurate concerning the image content}. \textit{(2) Relevancy: whether the response directly follows the instruction}. After that, GPT4 is required to generate a score and a reason in order. Fig. \ref{fig:prompt_neg33}  and Fig. \ref{fig:prompt_neg43} show the full evaluation output from GAVIE.
+
+
+% \section{LRV-Instruction with Pseudo Dense Captions}
+% % \linjie{This could be a standalone section, should not be under assessment of GAVIE. The purpose is to show that our data generation pipeline can be extensible to arbitrary images with pseudo dense caption and bb annotation, for further scaling up. It is not for proving the robustness of GAVIE.....} \kevin{Agree. I have similar comments}
+% % As \textit{GAVIE} takes the groundtruth dense caption annotations as inputs for evaluation, one may wonder whether \textit{GAVIE} can be applied to other datasets that do not have dense caption annotations.
+% % To showcase the versatility of our proposed evaluation method, \textit{GAVIE}, we demonstrate its applicability to datasets that lack groundtruth dense caption annotations.
+% To showcase the potential of scaling up LRV-Instruction to more images, especially the ones without dense caption annotations, we explore a pseudo labeling pipeline with 
+% % To demonstrate the flexibility of the proposed \textit{GAVIE}, 
+% % In the experiment, we employ
+% a state-of-art model GRiT \cite{wu2022grit} to generate dense captions for the given images. % which are used as the pseudo groundtruths during evaluation. % the image content in the input prompt.
+% These generated annotations can be directly used as the image content in the input prompt to GPT4.
+% % the pseudo groundtruths during the evaluation process.
+% As shown in Tab. \ref{tab:appendix_grit}, we compare the results obtained when using groundtruth dense captions from human annotation with those obtained when using % model-generated captions 
+% the generated pseudo dense captions %as the image content 
+% to evaluate the large multi-modal models (LMM) on our evaluation set. Remarkably, we observe that using the pseudo dense captions %model-generated image content 
+% from GRiT yields similar results to using groundtruth dense captions. % as the image content.
+% This serves as evidence of the extensibility of LRV-Instruction to images without dense caption annotations. 
+% % the efficacy of utilizing \textit{GAVIE} for datasets that lack groundtruth dense caption annotations.
+% % This demonstrates the effectiveness of using \textit{GAVIE} %model-generated content 
+% % for datasets that lack groundtruth dense caption annotations. % This is because GRiT can generate high-quality bounding boxes and dense captions on average in the evaluation set, which can provide enough image information. This experiment demonstrates that \textit{GAVIE} can be potentially applied to other datasets without the groundtruth dense caption annotations.
+
+% \begin{table}[h]
+% \setlength\tabcolsep{3pt}
+% \centering
+% \small
+% \begin{tabular}{lcccccc}
+% \toprule[1.5pt]
+% Image Content & Metric&Ours & MiniGPT4 & LLaVA & InstructBLIP & MMGPT\\
+% \midrule
+% GT Dense Captions &\textsc{Accuracy(GPT4)} & 6.58 & 4.14 & 4.36 & 5.93 & 0.91\\
+% GT Dense Captions &\textsc{Relevancy(GPT4)} & 8.46 & 5.81 & 6.11 & 7.34 & 1.79\\
+% \midrule
+% Pseudo Dense Captions &\textsc{Accuracy(GPT4)} & 6.45 & 4.73 & 4.25 & 5.82 & 1.10\\
+% Pseudo Dense Captions &\textsc{Relevancy(GPT4)} & 8.95 & 6.04 & 6.31 & 7.77 & 1.86\\
+% \bottomrule
+% \end{tabular}
+% \vspace{0.06in}
+% \caption{Comparison between using groundtruth (GT) and pseudo dense captions as the image content for LRV-Instruction data generation. The metric scores
+% of \textsc{Accuracy(GPT4)} and \textsc{Relevancy(GPT4)} from our proposed GAVIE are in the scale of 0 to 10.
+% }
+% \label{tab:appendix_grit}
+% \vspace{-0.2in}
+% \end{table}
+
+
+\subsection{\textit{GPT4-Assisted Visual Instruction Evaluation (GAVIE)} vs. Human Evaluation}
+% \subsubsection{Replace Groundtruth Dense Captions with Model-Generated Dense Captions}
+
+% \subsection{Human Evaluation}
+In this section, we gain insights into the \textit{GAVIE} via human evaluation. Here, we randomly select 40 image-instruction instances from the evaluation set. The human evaluation is carried out by three experts specializing in the field of NLP. The questionnaire consists of 40 questions, which are randomly shuffled for each expert. The questionnaire takes about 20 minutes to complete on average. Each question includes an instruction, an image, and responses from 4 different LMMs. We provide instructions for experts as follows: 
+
+\textit{"As for each question, there are an instruction, an image, and several answers. Suppose you are a smart teacher, please score the answers according to the two criteria. (1) Accuracy: whether the response is accurate concerning the image content. (2) Relevancy: whether the response directly follows the instruction without unrelated answers. There are four options for the scores (1) Very Poor, (2) Poor, (3) Good, (4) Excellent."}
+
+\begin{table}[h]
+\setlength\tabcolsep{3pt}
+\centering
+\small
+\begin{tabular}{lccccc}
+\toprule[1.5pt]
+Evaluator& Ours & MiniGPT4 & LLaVA & InstructBLIP & MMGPT\\
+\midrule
+\textit{Expert1(1-4)}& \textcolor{red}{3.48} & \textcolor{blue}{2.61} & \textcolor{green}{2.87} & \textcolor{orange}{3.00} & \textcolor{magenta}{1.90}\\
+\textit{Expert2(1-4)} &\textcolor{red}{3.58}& \textcolor{green}{2.23}& \textcolor{blue}{2.07}& \textcolor{orange}{2.48}& \textcolor{magenta}{1.05}\\
+\textit{Expert3(1-4)} & \textcolor{red}{3.33} & \textcolor{blue}{2.58} & \textcolor{green}{2.92} & \textcolor{orange}{2.89} & \textcolor{magenta}{1.38}\\
+\midrule
+\textit{GAVIE-Accuracy (0-10)} & \textcolor{red}{6.58} & \textcolor{blue}{4.14} & \textcolor{green}{4.36} & \textcolor{orange}{5.93} & \textcolor{magenta}{0.91}\\
+\textit{GAVIE-Relevancy (0-10)}  & \textcolor{red}{8.46} & \textcolor{blue}{5.81} & \textcolor{green}{6.11} & \textcolor{orange}{7.34} & \textcolor{magenta}{1.79}\\
+\bottomrule
+\end{tabular}
+\vspace{0.06in}
+\caption{GAVIE vs. Human Evaluation. GAVIE scores roughly align with the expert ratings. Numbers highlighted with \textcolor{red}{red}, \textcolor{orange}{orange}, \textcolor{green}{green}, \textcolor{blue}{blue}, and \textcolor{magenta}{magenta} indicate rank 1 to 5.
+% \linjie{please include the GAVIE accuracy/relevancy score for all these models on the 40 examples, to show that GAVIE score roughly aligns with expert rating.}
+}
+\label{tab:appendix_human}
+\vspace{-0.2in}
+\end{table}
+
+A questionnaire sample can be found in this \href{https://forms.office.com/r/uFSJTPCfH3}{link}. To evaluate the results quantitatively, we assign different scores for the options: \textit{Very Poor=1, Poor=2, Good=3, Excellent=4}. From Tab. \ref{tab:appendix_human}, all experts agree that the output from our model is the best, followed by InstructBLIP in second place, and MMGPT performs the worst. % is the second and Multimodal GPT performs worst, which is the same as the observation in Tab. \ref{tab:appendix_grit}. 
+The observation is similar to that of \textit{GAVIE} evaluation results. % as shown in Tab. \ref{tab:appendix_grit}.
+Although the ranking orders of MiniGPT4 and LLaVA from experts are not always the same as that of \textit{GAVIE}, the scores assigned to them are fairly close. One possible reason is that the answers from MiniGPT4 and LLaVA % are generally long, 
+tend to be longer, % which is 
+making them more challenging for humans to evaluate. % In general, the GPT4-Assisted evaluation approach can achieve the same level of results as human experts.
+% Overall, 
+
+
+
+\begin{figure*}[h]
+    \centering
+    % \vspace{-20mm}
+      \centerline{\includegraphics[width=1\textwidth]{fuxiao-pos-example1.pdf}}
+    \caption{The first example for generating positive instruction and answers (Part1). The image is not included in the text prompt. }
+    \label{fig:prompt_pos11}
+\end{figure*}
+
+\begin{figure*}[h]
+    \centering
+      \includegraphics[width=1\textwidth]{fuxiao-pos-example1-result.pdf}
+    \caption{The first example for generating positive instruction and answers (Part2).}
+    \label{fig:prompt_pos12}
+\end{figure*}
+
+\begin{figure*}[h]
+    \centering
+      \includegraphics[width=1\textwidth]{fuxiao-pos-example1-result2.pdf}
+    \caption{The first example for generating positive instruction and answers (Part3).}
+    \label{fig:prompt_pos13}
+\end{figure*}
+
+\begin{figure*}[h]
+    \centering
+      \includegraphics[width=1\textwidth]{fuxiao-pos-example2.pdf}
+    \caption{The second example for generating positive instruction and answers (Part1). The image is not included in the text prompt.}
+    \label{fig:prompt_pos21}
+\end{figure*}
+
+\begin{figure*}[h]
+    \centering
+      \includegraphics[width=1\textwidth]{fuxiao-pos-example2-result.pdf}
+    \caption{The second example for generating positive instruction and answers (Part2).}
+    \label{fig:prompt_pos22}
+\end{figure*}
+
+\begin{figure*}[h]
+    \centering
+      \includegraphics[width=1\textwidth]{fuxiao-pos-example2-result2.pdf}
+    \caption{The second example for generating positive instruction and answers (Part3).}
+    \label{fig:prompt_pos23}
+\end{figure*}
+
+\begin{figure*}[h]
+    \centering
+      \includegraphics[width=1\textwidth]{fuxiao-neg1-example1.pdf}
+    \caption{The example for generating negative instruction and answers by nonexistent element manipulation (Part1). The image is not included in the text prompt.}
+    \label{fig:prompt_neg11}
+\end{figure*}
+
+\begin{figure*}[h]
+    \centering
+      \includegraphics[width=1\textwidth]{fuxiao-neg1-example-result.pdf}
+    \caption{The example for generating negative instruction and answers by nonexistent element manipulation (Part2).}
+    \label{fig:prompt_neg12}
+\end{figure*}
+
+\begin{figure*}[h]
+    \centering
+      \includegraphics[width=1\textwidth]{fuxiao-neg2-example1.pdf}
+    \caption{The example for generating negative instruction and answers by existent element manipulation (Part1). The image is not included in the text prompt.}
+    \label{fig:prompt_neg21}
+\end{figure*}
+
+\begin{figure*}[h]
+    \centering
+      \includegraphics[width=1\textwidth]{fuxiao-neg2-example-result2.pdf}
+    \caption{The first example for generating negative instruction and answers by existent element manipulation (Part2).}
+    \label{fig:prompt_neg22}
+\end{figure*}
+
+\begin{figure*}[h]
+    \centering
+      \includegraphics[width=1\textwidth]{fuxiao-eval1-example1.pdf}
+    \caption{The first example for the GPT4-Assisted Visual Instruction Evaluation (Part1). The image is not included in the text prompt.}
+    \label{fig:prompt_neg31}
+\end{figure*}
+
+\begin{figure*}[h]
+    \centering
+      \includegraphics[width=1\textwidth]{fuxiao-eval1-example1-xia.pdf}
+    \caption{The first example for the GPT4-Assisted Visual Instruction Evaluation (Part2).}
+    \label{fig:prompt_neg32}
+\end{figure*}
+
+\begin{figure*}[h]
+    \centering
+      \includegraphics[width=1\textwidth]{fuxiao-eval1-example1-result.pdf}
+    \caption{The first example for the GPT4-Assisted Visual Instruction Evaluation (Part3).}
+    \label{fig:prompt_neg33}
+\end{figure*}
+
+\begin{figure*}[h]
+    \centering
+      \includegraphics[width=1\textwidth]{fuxiao-eval2-example1.pdf}
+    \caption{The second example for the GPT4-Assisted Visual Instruction Evaluation (Part1). The image is not included in the text prompt.}
+    \label{fig:prompt_neg41}
+\end{figure*}
+
+\begin{figure*}[h]
+    \centering
+      \includegraphics[width=1\textwidth]{fuxiao-eval2-example2.pdf}
+    \caption{The second example for the GPT4-Assisted Visual Instruction Evaluation (Part2).}
+    \label{fig:prompt_neg42}
+\end{figure*}
+
+\begin{figure*}[h]
+    \centering
+      \includegraphics[width=1\textwidth]{fuxiao-eval2-example-result.pdf}
+    \caption{The second example for the GPT4-Assisted Visual Instruction Evaluation (Part3).}
+    \label{fig:prompt_neg43}
+\end{figure*}
+
+
+\begin{figure}
+     \centering
+     \begin{subfigure}[b]{\textwidth}
+         \centering
+         \includegraphics[width=0.8\textwidth]{neg11.pdf}
+         \caption{All LMMs except ours produce inconsistent descriptions with the images. MiniGPT4 also has repetitive sentences.}
+         \label{fig:NEG11}
+     \end{subfigure}
+     \par\bigskip
+     \begin{subfigure}[b]{\textwidth}
+         \centering
+         \includegraphics[width=0.8\textwidth]{neg12.pdf}
+         \caption{MiniGPT4, LLaVA, and InstructBLIP respond with long descriptive answers about the "painting", which does not exist in the image. Multimodal-GPT produces a question about the "painting," but it does not address the instruction. }
+         \label{fig:NEG13}
+     \end{subfigure}
+     \par\bigskip
+     \begin{subfigure}[b]{\textwidth}
+         \centering
+         \includegraphics[width=0.8\textwidth]{neg13.pdf}
+         \caption{MiniGPT4, LLaVA, and Multimodal-GPT respond with a long descriptive answer about the "pink flowers", which do not exist in the image. Although InstructBLIP's answer is brief, it's still false.}
+         \label{fig:NEG12}
+     \end{subfigure}
+        \caption{Model predictions on negative instruction examples of Neg1:\textit{"Nonexistent Element Manipulation"}. \textcolor{red}{RED} represents the nonexistent elements in the images.}
+        \label{fig:demo_neg1}
+\end{figure}
+\begin{figure}
+     \centering
+     \begin{subfigure}[b]{\textwidth}
+         \centering
+         \includegraphics[width=0.9\textwidth]{neg21.pdf}
+         \caption{All LMMs except ours produce inconsistent descriptions with the images. Our model can point out that the loose strands do not form a butterfly pattern. }
+         \label{fig:NEG21}
+     \end{subfigure}
+     \par\bigskip
+     \begin{subfigure}[b]{\textwidth}
+         \centering
+         \includegraphics[width=0.9\textwidth]{neg22.pdf}
+         \caption{All LMMs except ours produce false attributes of windows in the images. Our model can point out that the windows are white instead of red. }
+         \label{fig:NEG22}
+     \end{subfigure}
+     \par\bigskip
+     \begin{subfigure}[b]{\textwidth}
+         \centering
+         \includegraphics[width=0.9\textwidth]{neg23.pdf}
+         \caption{All LMMs except ours produce inconsistent descriptions with the images. Our model can point out that the woman with green hair doesn't have a black backpack on her shoulder. }
+         \label{fig:NEG23}
+     \end{subfigure}
+        \caption{Model predictions on negative instruction examples of Neg2:\textit{"Existent Element Manipulation"}. \textcolor{red}{RED} represents the wrong attributes of existent objects in the images.}
+        \label{fig:demo_neg2}
+        
+\end{figure}
+
+\begin{figure}
+     \centering
+     \begin{subfigure}[b]{\textwidth}
+         \centering
+         \includegraphics[width=0.9\textwidth]{pos1.pdf}
+         \caption{Object Detection Task. MiniGPT4, LLaVa, and MMGPT can't locate the objects correctly.}
+         \label{fig:pos1}
+     \end{subfigure}
+     \par\bigskip
+     \begin{subfigure}[b]{\textwidth}
+         \centering
+         \includegraphics[width=0.9\textwidth]{pos2.pdf}
+         \caption{Multi-choice VQA Task. InstructBLIP can't follow the instruction well by generating anything. LLaVA's answer seems reasonable, but it incorrectly detects the clouds in the image. }
+         \label{fig:pos2}
+     \end{subfigure}
+     \par\bigskip
+     \begin{subfigure}[b]{\textwidth}
+         \centering
+         \includegraphics[width=0.9\textwidth]{pos3.pdf}
+         \caption{Referential Expression Grounding Task. Other LMMs can't directly address the instruction by giving a general answer, "kitchen," while our model can clearly predict the "floor". }
+         \label{fig:pos3}
+     \end{subfigure}
+        \caption{Positive instruction demos with different tasks and predictions from different models.}
+        \label{fig:demo_pos1}
+\end{figure}
+
+
+\begin{figure}
+     \centering
+     \begin{subfigure}[b]{\textwidth}
+         \centering
+         \includegraphics[width=0.9\textwidth]{pos4.pdf}
+         \caption{Image Anomaly Detection Task. Our model and LLaVA point out there is a normal image without unusual elements, while MiniGPT4, InstructBLIP, and MMGPT describe the image instead of addressing the instruction.}
+         \label{fig:demo2_pos1}
+     \end{subfigure}
+     \par\bigskip
+     \begin{subfigure}[b]{\textwidth}
+         \centering
+         \includegraphics[width=0.9\textwidth]{pos5.pdf}
+         \caption{Visual Entailment Task. }
+         \label{fig:demo2_pos2}
+     \end{subfigure}
+     \par\bigskip
+     \begin{subfigure}[b]{\textwidth}
+         \centering
+         \includegraphics[width=0.9\textwidth]{pos6.pdf}
+         \caption{Object Interaction Analysis Task. All LMMs except ours describe the wrong location of the book. LLaVA generates long text with unrelated information to address the instruction.}
+         \label{fig:demo2_pos3}
+     \end{subfigure}
+        \caption{Positive instruction demos with different tasks and predictions from different models. }
+        \label{fig:demo_pos2}
+\end{figure}
+
+
+\begin{figure}
+     \centering
+     \begin{subfigure}[b]{\textwidth}
+         \centering
+         \includegraphics[width=0.9\textwidth]{pos7.pdf}
+         \caption{Dense Description Task. All LMMs except ours incorrectly recognize the color of the bridle. InstructBLIP also fails to answer the "state of the horse's bridle" in the instruction.}
+         \label{fig:demo3_pos1}
+     \end{subfigure}
+     \par\bigskip
+     \begin{subfigure}[b]{\textwidth}
+         \centering
+         \includegraphics[width=0.9\textwidth]{pos8.pdf}
+         \caption{Image Caption Task. LLaVA and InstructBLP fail to follow the instruction for generating one caption. Instead, they generate long text with several sentences.}
+         \label{fig:demo3_pos2}
+     \end{subfigure}
+     \par\bigskip
+     \begin{subfigure}[b]{\textwidth}
+         \centering
+         \includegraphics[width=0.9\textwidth]{pos9.pdf}
+         \caption{Activity Recognition Task.}
+         \label{fig:demo3_pos3}
+     \end{subfigure}
+        \caption{Positive instruction demos with different tasks and predictions from different models. }
+        \label{fig:demo_pos3}
+\end{figure}

@@ -1,0 +1,127 @@
+%======================================================================
+% CONTEXT, MODEL, EQUATION, CAT
+%
+\section{Governing equations} \label{sec:equations}
+
+\subsection{1D linear and non-linear scalar conservation laws}
+To simplify the description of the numerical methods we also consider the non-linear scalar conservation law on the $Oxt$-Cartesian frame
+\begin{equation}
+    \label{sec:CAT_gov_equ}
+    u_t + \partial_x f(u) = 0,
+\end{equation} 
+where $u=u(x,t):\mathbb{R}\times\mathbb{R}^+\rightarrow\mathbb{R}$ denotes the scalar variable, and $f(u)=f(u(x,t))$ the non-linear flux depending on $u$.
+$u(x,0)=u_0(x)$ denotes the IC, while BC are prescribed depending on the test case; for instance periodic ones, Dirichlet or Neumann ones. 
+
+~(\ref{sec:CAT_gov_equ}) represents the generic model of non-linear scalar equation, the simplest one being probably Burgers' equation for which the flux is given by: $f(u)=u^2/2$.
+~(\ref{sec:CAT_gov_equ}) also represents the generic model of linear scalar advection equation if $f(u)=a u$ with $a\in \mathbb{R}$ being the advection velocity. \\ 
+In the following we denote the partial derivative in time and space with under-script letters as 
+$u_t \equiv \partial_t u$ and $u_x \equiv \partial_x u$.
+
+\subsection{2D gas-dynamics system of conservation laws}
+In this paper we focus on hyperbolic systems of conservation laws (Partial Differential Equations, PDEs) in 1D and 2D of the form
+\bea \label{eq:systemPDEs}
+    \partial_t \U + \nabla \cdot \mathbb{F}(\U) = 0,
+\eea
+where $t\in \mathbb{R}^+$ represents the time variable, $\x=(x,y)\in \mathbb{R}^2$ the space variable in $2$ dimensions.
+$\U=\U(\x,t)$ is the vector of conserved variables while 
+$\mathbb{F}(\U)=(\mathbf{F}(\U(\x,t)),\mathbf{G}(\U(\x,t)) )^t$ is the flux vector.
+$\nabla\cdot$ is the divergence operator which allows us to rewrite
+(\ref{eq:systemPDEs}) as
+\bea \label{eq:systemPDEs_bis}
+    \partial_t \U + \partial_x \mathbf{F}(\U) + \partial_y \mathbf{G}(\U) = \mathbf{0}.
+\eea
+In this work we mainly focus on the gas-dynamics system of PDEs (Euler equations) where $\U=(\rho, \rho u, \rho v, \rho e)^\top$ with $\rho$ the density, $\u=(u,v)$ the velocity vector, $e=\varepsilon + \frac12 \| \u \|^2$ the total energy per unit mass, and $\varepsilon$ the internal one. 
+The flux tensor is given by 
+\bea
+\mathbb{F}(\U)=\left( \begin{array}{cc} \mathbf{F}(\U) & \mathbf{G}(\U) \end{array} \right), 
+\quad \text{with} \quad
+\mathbf{F}(\U)= \left( \begin{array}{c}
+\rho u \\
+\rho u^2 +p  \\
+\rho uv  \\
+(\rho e +p )u  \\
+\end{array} \right), 
+\quad 
+\mathbf{G}(\U)= \left( \begin{array}{c}
+\rho v \\
+\rho u v \\
+ \rho v^2  +p  \\
+(\rho e +p )v \\
+\end{array} \right).
+\eea
+The system is closed by an Equation Of State (EOS) which specifies the value of the pressure $p$ as a function of two thermodynamics variables, for instance of the form $p=p(\rho,\varepsilon)$. For a polytropic gas we have $p=(\gamma-1)\rho \varepsilon$ with $\gamma$ the polytropic constant characterizing the type of gas considered. The sound-speed is given by $a^2=\gamma p /\rho$.
+The equations in (\ref{eq:systemPDEs}) express the conservation of mass, momentum and total energy.
+An entropy inequality is supplemented to the system of PDEs to ensure that the weak solutions are the entropic ones.
+This system is hyperbolic with eigenvalues $\lambda^-=\u\cdot\n - a$, $\lambda^0=a$ (multiplicity 2), $\lambda^+=\u\cdot\n + a$ where $\n$ is a generic unit vector indicating a direction in 2D. 
+It is well known that the physical states all belong to 
+\bea \label{eq:physical_states}
+    \mathcal{A} = \left\{ \U\in \mathbb{R}^4, \; \text{such that} \; \rho>0, \; p>0 \right\}.
+\eea
+The primitive variables are the components of vector $\W=( \rho, u,v, p )^\top$ and are computed from the conservative ones as 
+\bea
+    u = (\rho u)/\rho, \qquad
+    v = (\rho v)/\rho, \qquad
+    p = (\gamma - 1)\left( (\rho E) - \frac12 \left((\rho u)^2+(\rho v)^2 \right)/\rho \right).
+\eea
+System (\ref{eq:systemPDEs}) is further equipped with Initial Conditions (IC) and Boundary Conditions (BC). 
+This system of PDEs is the target one, but a simpler one is also considered in the next section for the sake of simplicity.
+
+
+\subsection{Mesh}
+In this article we consider logical rectangular meshes in 1D and 2D. 
+The time domain $\mathcal{T}=[0,T]$ with final time $T>0$ is split into time intervals $[t^n,t^{n+1}]$, $n\in \mathbb{N}$, and time-steps $\Delta t=t^{n+1}-t^n$ subject to a CFL (Courant-Friedrichs-Lewy) condition. 
+The computational domain denoted $\Omega$ is a segment/rectangle in 1D/2D. 
+In 1D,  $\Omega$ is paved with $N_x$ cells. The generic cell is denoted $\omega_i$ and indexed by a unique label $1\leq i \leq N_x$. Classically we identify the cell end-points by half indexes so that $\omega_i=[x_{i-1/2},x_{i+1/2}]$ and the cell center is given by $x_i=\frac12(x_{i+1/2}+x_{i-1/2})$.
+The size of a cell is given by $\Delta x_i = x_{i+1/2}-x_{i-1/2}$, that we simply denote as $\Delta x$, since we assume, for simplicity, that the grid is uniform.
+In 2D, $\Omega$ is paved with $N_x \times N_y$ cells. The generic cell is denoted $\omega_{i,j}$ and indexed by a double label $1\leq i \leq N_x$ and $1\leq j \leq N_y$. 
+The four vertices of any cell $\omega_{i,j}$ are $\bm{x}_{i\pm 1/2,j\pm 1/2}=( x_{i\pm 1/2}, y_{j\pm 1/2})$. $x_{i+1/2}$ represents a vertical mesh line, while $y_{j+1/2}$ a horizontal one. 
+Accordingly, $\omega_{i,j}=[x_{i-1/2},x_{i+1/2}]\times [y_{j-1/2},y_{j+1/2}]$, and, the cell center is given by $\bm{x}_{i,j}=(x_i,y_j)= \left( \frac{x_{i+1/2}+x_{i-1/2}}{2},\frac{y_{j+1/2}+y_{j-1/2}}{2}\right)$.
+The size of a cell is given by $\Delta x_i\times \Delta y_j$ with $\Delta y_j = y_{j+1/2}-y_{j-1/2}$, that we simply denote as $\Delta x$ and $\Delta y$, since we shall adopt a uniform mesh throughout the paper.
+We call an interface or face, the intersection between two neighbor cells, that is a point in 1D and a segment in 2D.
+The neighbor cells of a generic one are those with a non-empty intersection. A generic cell has two/eight neighbors in 1D/2D on logical rectangular grids. In 2D we make the difference between the four face-neighbors and the four corner-neighbors.
+A "stencil" in 1D is a collection of $K>0$ cells surrounding and including the current one, onto which derivatives are approximated.
+% --- FIG ---
+\begin{figure}[!h]
+\centering
+\includegraphics[width=0.4\textwidth]{FIG/grid.pdf}
+\includegraphics[width=0.59\textwidth]{FIG/stencil.pdf}
+ \caption{Left: Logical rectangular grid and notation used in this paper.
+ Right: illustration of spatial stencil in 1D around cell $i$ with stencils $i,j$ with $-P+1\leq j \leq P$.}
+ \label{fig:grid}
+\end{figure}
+% --- FIG ---
+
+
+
+\subsection{Notation}
+In this article the scheme description is made mostly in 1D for the sake of clarity.
+%RAPH
+The following notations refer to
+the different type of derivatives or approximations.
+\begin{itemize}
+    \item $u_{i,j}^{(k)}$ is the $k$-th time derivative of $u$ at time $t^n$ in position $x_{i+j},$ where $i$ refers to the cell and $j$ to the position in the stencil. In general, for a scheme of order $2P,$ $k = 1,\ldots,2P-1$ and $j = -P+1,\ldots,P.$
+
+    \item $f_{i,j}^{(k)}$ is the $k$-th time derivative of $f(u)$ at time $t^n$ in position $x_{i+j}$, likewise for $u$. %where $i$ refers to the cell and $j$ to the position of the stencil. 
+    In general, for a scheme of order $2P,$ $k = 0,\ldots,2P-1$ and $j = -P+1,\ldots,P,$ under the assumption that $f_{i,j}^{(0)} = f(u_{i+j}^{n})$.
+
+    \item $u_{i,j}^{k,n+r}$ is the explicit Taylor expansion of function $u$ in time truncated to order $k$,  centered at time $t^n$ at distance $r\Delta t$ in time and at spatial location $x_{i+j}$. Again $i$ refers to the cell and $j$ to the position in the stencil. In general, for a scheme of order $2P,$ $k = 1,\ldots,2P-1,$ while $j,r = -P+1,\ldots,P.$
+
+    \item $f_{i,j}^{k,n+r}$ refers to $f\Bigl(u_{i,j}^{k,n+r}\Bigr).$
+
+    \item The symbol $*$ will be used to indicate to which index (space or time) the differentiation is applied as illustrated in the equations below for the approximation of space and time derivatives, respectively (see also ~\eqref{eq:interpolA})
+    %in \eqref{not_1} and \eqref{not_2} respectively 
+    %\begin{itemize}
+    %    \item for the space 
+    %    \begin{equation}
+    \begin{eqnarray}
+            \label{not_1}
+            \partial_x^kf(x_i+q\Delta x,t^n) &\approx& A^{k,q}_{p}(f_{i,*}^n, \Delta x)   =   \frac{1}{\Delta x^k} \sum_{j=-p+1}^{p} \gamma^{k,q}_{p,j} f^n_{i+j}, \\
+    %    \end{equation}  
+    %    \item for the time 
+    %    \begin{equation}
+            \label{not_2}
+            \partial_t^kf(x_i,t^n) &\approx& A^{k,0}_{p}(f^{n,*}_i, \Delta t)   =   \frac{1}{\Delta t^k} \sum_{r=-p+1}^{p} \gamma^{k,q}_{p,r} f^{n,r}_{i}.
+        \end{eqnarray}
+    %\end{itemize}}
+\end{itemize}
+From now on, since all the formulas are computed at time $t=t^n$, we avoid the extra index $n$ on equations like \eqref{not_1} and \eqref{not_2}.

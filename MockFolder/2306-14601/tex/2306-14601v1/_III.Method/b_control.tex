@@ -1,0 +1,17 @@
+We aim to learn a vehicle dynamics model, $\vF$, which can minimize uncertainty using active exploration. The system dynamics can be defined as ${\vx}_{t+1} = \vF(\vx_t, \vu_t)$ where $\vF$ is a nonlinear function, $\vx_t \in \mathbb{R}^{n}$ and $\vu_t \in \mathbb{R}^{m}$ are the observed state vector and applied action input at time~$t$, respectively. Following our previous work~\cite{kim2023bridging}, we employ Probabilistic Ensemble Neural Network~(PENN) to approximate the vehicle dynamics ~$\vF$~\cite{chua_deep_2018, buckman_sample-efficient_2018}.
+
+The disagreement between the ensemble model of a state-action pair~$D(\vx_t, \vu_t)$ can be utilized to encourage active exploration in order to collect additional training data. Using a closed-form Jensen-Rényi Divergence~\cite{renyi_measures_1961, wang_closed-form_2009, shyam_model-based_2019} that can be calculated in real-time, our previous method~\cite{kim2023bridging} demonstrated that the epistemic uncertainty of a given state action pair can be effectively quantified. During the training phase, the vehicle is instructed to collect data with high disagreement so as to accumulate data with high epistemic uncertainty. As additional training data are collected, ensemble models will gradually converge toward increasingly similar predictions, resulting in an eventual reduction in model uncertainty.
+
+
+For active exploration, Model Predictive Path Integral (MPPI)~\cite{williams_information_2017} control is utilized. MPPI is the state-of-the-art sampling-based MPC whose parallelizable structure enables real-time implementation using Graphic Processing Units (GPUs)~\cite{williams_information-theoretic_2018}. Denoting by $U = \{\vu_0, \dots, \vu_{T-1}\}$ with a fixed time horizon~$T$, the MPPI algorithm seeks an optimal control sequence~$U^{*}$ such that:
+\begin{equation}
+    U^{*} = \underset{U}{\operatorname{argmin}} \, \mathbb{E} \left[\phi(\vx_{T})+\sum_{t=0}^{T-1} \mathcal{L}\left(\vx_t, \vu_t\right) \right] ,
+\end{equation}
+where $\phi\left( \cdot \right)$ is a state-dependent terminal cost. 
+
+For the active exploration, the model disagreement is added to the controller's objective in order to jointly achieve task-dependent cost optimization and active exploration:
+\begin{equation}
+    \mathcal{L}^{\text{active}}\left(\vx_t, \vu_t\right) = q \left( \vx_{t} \right) + \frac{1}{2} \vu_{t}^{\top} \vR \vu_{t} - w_{D} \, D(\vx_t, \vu_t) \,,
+    \label{eq:jrd_cost}
+\end{equation}
+, where $w_{D} > 0$ is a weighting constant and $q \left( \vx_{t} \right)$ is an arbitrary state-dependent running cost function . The vehicle is encouraged to select behaviors that result in the exploration of ambiguous state-action spaces of the dynamic model.

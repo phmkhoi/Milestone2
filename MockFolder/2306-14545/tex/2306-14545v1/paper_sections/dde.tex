@@ -1,0 +1,116 @@
+In this section, we present the Neural State-Dependent DDE (SDDDE) model, which can handle multiple types of delays. It is important to note that this approach is not capable of handling delays that are continuous in the sense of delays that are expressed with integrals as can be found in integro-differential equations. The types of delays that can be handled are listed in Table \ref{table_delays}. We add that $f$ defined in Table \ref{table_delays} must be a scalar valued function.
+
+
+\subsection{Definition}
+We now formally introduce the family of Neural SDDDEs. Such a system is defined as
+%
+\begin{equation}
+\begin{aligned}
+ & \dot{\mathbf{x}}(t) = \mathbf{f}_{\theta}(t, \mathbf{x}(t), \mathbf{x}(t-\tau_1), \dots, \mathbf{x}(t-\tau_k)) \\
+& \tau_i = \tau_i(t, \mathbf{x}(t)), \quad \forall i \in [1, 2, \ldots,  k] \\
+&  \mathbf{x}(t<0) = \mathbf{\phi}(t),
+\end{aligned}
+\label{eqn:dde}
+\end{equation}
+%
+where $\mathbf{\phi}: \mathbb{R}^- \rightarrow \mathbb{R}^d$ is the history function, $\tau_i: \mathbb{R} \times \mathbb{R}^d \rightarrow \mathbb{R}$ a delay function and $\mathbf{f}_{\theta}:[0, T]^{k} \times \mathbb{R}^d \rightarrow \mathbb{R}^d$ a parameterized network. Most of the time, $\mathbf{f}_{\theta}$, $\tau_i$ and $\mathbf{\phi}$ have additional properties like smoothness. By \textit{differential order} of an equation we mean the order of the highest derivative and by \textit{difference order} we mean one less than the number of distinct arguments involved \citep{Cook_book_ref_dde}. Hence, Eq.~\eqref{eqn:dde} is of first differential order and $k$ difference order. For a complete overview of DDE theory we refer the reader to \citet{numerical_ddebook} and \citet{Cook_book_ref_dde}. 
+
+\subsection{Challenges with DDE integration}
+\label{sec:challenges}
+
+Three problems arise in DDEs that can cause numerical difficulties. First, discontinuities may occur in various derivatives of the solution. This is due to the presence of delayed terms. In general, there is a derivative jump (or breaking point) at the initial time point $t=0$ since
+%
+\begin{equation*}
+\begin{aligned}
+    \dot{\mathbf{\phi}}(t=0^{-}) \neq  \dot{\mathbf{x}}(t=0^{+}) \; .
+\end{aligned}
+\end{equation*}
+%
+Moreover, the history function $\phi$ may also have discontinuities. Discontinuities can then arise and propagate from the history function and initial point (by a discontinuity, we mean a jump in $\boldsymbol{\mathbf{x}}$ or one of its derivatives).
+Second, a delay may vanish wtih time, i.e., $\tau_i \rightarrow 0$. This issue may force the solver to take too many small steps. Authors from \citet{numerical_dde} transform the DDE problem into a discontinuous initial value problem (IVP). This enables the problem to transfer ODE properties like uniqueness, existence, stiffness and bounds to DDEs.
+Third, a delay can be negative and make the integration scheme implicit. % For sake of simplicity, we leave the second and third issue for future investigation.
+
+As seen above DDEs can yield discontinuities because of the nature of the history function $\phi$ and the initial time point $t=0$. This shows that DDEs possess a richer dynamical structure than ODEs. The presence of delayed terms may drastically change the qualitative behavior of the solution and act as a stabilizer as well as a destabilizer for models governed by ODEs, linking DDEs to control theory \citep{mg_control}. 
+
+\subsection{Uniqueness and existence of solutions to DDEs}
+For clarity, we now state Bellman's theorem proving existence and uniqueness of solution to DDEs with constant delays. This result can be adapted to time-dependent delays \citep{existence_general_delay} and to the more general case of state-dependent delays \citep{Driver1962}.
+
+\begin{theorem} \label{the:local_exist}
+\citet{Cook_book_ref_dde} --- Local existence\\
+Suppose that $\phi(t)$ is continuous for $0 \leq t \leq \omega$, with $m_{\phi} = \max_{0 \leq t \leq \omega} \left| \phi(t) \right|$, and that $f(u,v)$ satisfies a Lipschitz condition
+\begin{equation}
+\begin{aligned}
+  \left| f(u_1,v_1) \right| + \left| f(u_2,v_2) \right| < c_4 ( \left| u_1 -u_2 \right| + \left| v_1 -v_2 \right|) \\
+\end{aligned}
+\end{equation}
+for $(u_1,v_1)$ and $(u_2,v_2)$ in a region $N$ such that
+\begin{equation*}
+\begin{aligned}
+  N :   \left| u \right| +   \left| v \right| \leq c_1 \; .
+\end{aligned}
+\end{equation*}
+ Let $c_2$ denote the maximum of the (continuous) function $ \left| f(u,v) \right|$ for $(u,v)$ in $N$. Then if $2m_{\phi} < c_1$, there exists a unique continuous solution $x(t)$ of 
+ \begin{equation}
+\begin{aligned}
+ & \dot{x}(t) = f(x(t), x(t-\omega)), \quad t > \omega \\
+& x(t) = \phi(t), \quad 0 \leq t \leq \omega
+\label{eqn:equationtheorem}
+\end{aligned}
+\end{equation}
+for $0 \leq t \leq \omega + c_3$, where $c_3 < (c_1 - 2m_{\phi})/2c_2$.
+\end{theorem}
+
+Proof of such a theorem can be found in the book of \cite{Cook_book_ref_dde}. The richer structure of DDEs comes with the price of not having a global existence theorem like ODEs, unless requiring certain additional hypotheses.
+
+\subsection{Pseudo code for DDE solver}
+The pseudo code of the DDE solver implemented by  \citet{numerical_dde} is detailed in Algorithm \ref{al:agl1}, where the general outline of one integration step of a DDE is shown; the DDE solver is illustrated in Algorithm \ref{al:agl2}. For sake of simplicity, we suppose for the pseudo code a single time delay DDE since the general case does not differ from it.
+
+\subsection{Reverse-mode automatic differentiation of DDE solutions}
+Backpropagation remains the most challenging technicality when training continuous-depth networks. Authors of \citet{numerical_dde} model DDEs as a discontinuous initial value problem (IVP). This approach is also followed in Julia's implementation \citep{julia_dde}. We follow the same idea of seeing DDEs as several different ODEs defined on specific time intervals that follow one another. This way of thinking allows us to use off-the-shelf ODE solvers as long as discontinuity points are consistently detected during integration. Finally, writing the DDE solver within an auto-differentiable framework allows to train neural networks via gradient descent.
+
+\begin{algorithm}[H]
+   \caption{Pseudo code for one DDE numerical integration step}
+   \label{alg:one_step}
+\begin{algorithmic}
+   \STATE {\bfseries Input:} \\ Vector field $\mathbf{f}(t,\mathbf{x}, \mathbf{x}(t-\tau))$ \\ Integration bound $t_n$, $t_{n+1}$ \\ Interpolated estimated solution $\hat{\mathbf{x}}(t)$ in $[t_0;t_{n}]$ \\ Set of detected discontinuities $\Lambda = \{\lambda_{-m}, \dots, \lambda_0 , \dots, \lambda_r \}$. 
+   \IF{$t_{n+1} - t_n > \min(\Lambda) $}
+    \STATE{Declare the interpolant $\Pi_n = \hat{\mathbf{x}}$ of $\mathbf{x}(t-\tau)$ in $[t_n;t_{n+1}]$}
+   \WHILE{the interpolant $\Pi_n$ has not converged}
+    \STATE{Define $\mathbf{f}_{\rm ODE}(t,\mathbf{x}) = \mathbf{f}(t, \mathbf{x}, \Pi_n(t))$}
+    \STATE{Step the solver $\mathbf{x}(t_{n+1}) = ODESolve(\hat{\mathbf{x}}(t_n), \mathbf{f}_{\rm ODE}, t_n, t_{n+1})$}
+    \STATE{Update $\Pi_n$ using the computed solution $\mathbf{x}(t_{n+1})$.}
+    \ENDWHILE
+   \ELSE 
+    \STATE{Define $\mathbf{f}_{\rm ODE}(t,\mathbf{x}) = \mathbf{f}(t, \mathbf{x}, \hat{\mathbf{x}}(t-\tau))$}
+    \STATE{Step the solver $\mathbf{x}(t_{n+1}) = ODESolve(\hat{\mathbf{x}}(t_n), \mathbf{f}_{\rm ODE}, t_n, t_{n+1})$}
+   \ENDIF 
+   \STATE{Determine next time step $t_{\text{next}}$ from solver}
+   \IF{step is accepted}
+   \STATE{Return updated $\hat{\mathbf{x}}(t)$, next integration bounds $t_{n+1}, t_{\text{next}}$} and $\Lambda$.
+   \ELSE 
+   \STATE{Check for discontinuities in $[t_n;t_{n+1}]$} 
+   \IF{a discontinuity is found, $\lambda_{r+1}$}
+    \STATE{Return same $\hat{\mathbf{x}}(t)$, next integration bounds $t_{n}, \lambda_{r+1}$ and $\Lambda \cup \{\lambda_r \}$ .} 
+    \ELSE
+    \STATE{Return same $\hat{\mathbf{x}}(t)$, next integration bounds $t_{n}$, $t_{next}$ and $\Lambda$.} 
+   \ENDIF
+   \ENDIF
+   \STATE {\bfseries Output:} \\ Interpolated estimated solution \\ Next integration bounds \\ Updated set of discontinuities
+\end{algorithmic}
+\label{al:agl1}
+\end{algorithm}
+
+\begin{algorithm}[H]
+  \caption{Pseudo code for DDE solver}
+  \label{alg:error_est}
+\begin{algorithmic}
+  \STATE {\bfseries Input:} \\ Vector field $\mathbf{f}(t,\mathbf{x}, \mathbf{x}(t-\tau))$ \\ Integration bound $t_0$, $t_{F}$ \\ History function $\phi(t)$ \\ Set of initial discontinuities $\Lambda = \{\lambda_{-m}, \dots, \lambda_0 \}$.
+  \STATE{Choose an initial $dt$}
+  \STATE{Declare $t_{n}=t_0, t_{n+1}= t_0 + dt$}
+  \STATE{Declare interpolated estimated solution $\hat{\mathbf{x}}(t)= \phi(t)$ in $[t_n;t_{n+1}]$}
+  \REPEAT
+  \STATE{Algorithm 1}
+  \UNTIL{$t_{n+1}=t_F$}
+\end{algorithmic}
+\label{al:agl2}
+\end{algorithm}

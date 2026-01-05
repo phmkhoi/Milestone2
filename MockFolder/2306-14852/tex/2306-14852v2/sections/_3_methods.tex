@@ -1,0 +1,95 @@
+\section{Methods}
+\label{sec:methods-algorithmic-details}
+%\vspace{-1ex}
+
+\begin{figure*}[t]
+\centering
+    \includegraphics[width=\textwidth]{figures/schematic_big2.pdf}
+    % %\vspace{-10pt}
+    %\vspace{-3ex}
+    \caption{\textbf{CoarsenConf architecture.} \textbf{(I)} The encoder $q_\phi(z| X, \gR)$ takes fine-grained (FG) ground truth conformer $X$, RDKit approximate conformer $\gR$, and coarse-grained (CG) conformer $\gC$ as inputs (derived from $X$ and the predefined CG strategy), and outputs a variable-length equivariant CG representation via equivariant message passing and point convolutions. 
+    \textbf{(II)} Equivariant MLPs are applied to learn the mean and log variance of both the posterior and prior distributions. 
+    \textbf{(III)} The posterior (training) or prior (inference) is sampled and fed into the Channel Selection module, where an attention layer is used to learn the optimal mapping from CG to FG structure. 
+    \textbf{(IV)} Given the FG latent vector and the RDKit approximation, the decoder $p_\theta(X |\gR,z)$ learns to recover the low-energy FG structure through autoregressive equivariant message passing. 
+    The entire model can be trained end-to-end by optimizing the KL divergence of latent distributions and reconstruction error.
+    }
+    \label{fig:schematic}
+    % %\vspace{-5pt}
+    % %\vspace{-3ex}
+\end{figure*}
+% \subsection{Algorithmic Details}
+% \label{sec:methods-algorithmic-details}
+
+%\vspace{-1ex}
+\paragraph{Coarse-graining Procedure.}
+We first define a rotatable bond as any single bond between two non-terminal atoms, excluding amides and conjugated double bonds, where the torsion angle is the angle of rotation around the central bond. Formally, the torsion angle $\tau_{abcd}$ is defined about bond $(b, c) \in \gE$ where (a, b) are a choice of reference neighbors $\text{s.t } a \in \mathcal{N}(b)\setminus c \text{ and } d \in \mathcal{N}(c)\setminus b$. 
+
+We coarsen molecules into a single fragment or bead for each connected component, resulting from severing all rotatable bonds.
+This choice in CG procedure implicitly forces the model to learn over torsion angles, as well as atomic coordinates and inter-atomic distances.
+We found that using a more physically constrained definition of torsional angles, as defined by \citet{GeoMol}, in the CG procedure led to a significant increase in performance compared to that used in \citet{torsional-diffusion}. This is because the latter allows rotations around double and triple bonds, while the former does not. 
+An example of the coarse-graining procedure is in~\fref{fig:variable_legnth}. For formal definitions, see Appendix \sref{section:appendix-CG}.
+
+%\vspace{-1ex}
+\paragraph{Learning Framework.} \model is a conditional generative model that learns $p(X | \gR)$ where $X$ is the low-energy 3D conformation, and $\gR$ is the RDKit approximate conformation. Specifically, we optimize $p(X | \gR)$ by maximizing its variational lower bound with an approximate conditional posterior distribution $q_\phi(z |X, \gR)$ and learned conditional prior $p_\psi(z | \gR)$:
+\begin{equation}
+\begin{aligned}
+    \log p(X|\gR) \geq & \underbrace{\E_{q_\phi(z | X, \gR)} \log p_\theta(X | \gR, z)}_{\gL_{\text{reconstruction}}} + \underbrace{\E_{q_\phi(z | X, \gR)} \log \frac{ p_\psi(z|\gR) }{q_\phi(z| X, \gR)}}_{\gL_{\text{latent regularization}}}  + \gL_{\text{auxiliary}}, %:= \gL_{\text{ELBO}},
+\label{eq:elbo}
+\end{aligned}
+\end{equation}
+where $q_\phi(z|X,\gR)$ is the hierarchical equivariant encoder model, $p_\theta(X|\gR,z)$ is the equivariant decoder model to recover $X$ from $\gR$ and $z$, and $p_\psi(z|\gR)$ is the learned prior distribution. The reconstruction loss, $\gL_{\text{recon.}}$, is implemented as $\text{MSE}(\gA(X_{true}, X_{model}), X_{model})$, where $\gA$ is the Kabsch alignment function that provides an optimal rotation matrix and translation vector to minimize the mean squared error (MSE) \citep{Kabsch}. The second term, $\gL_{\text{reg.}}$, can be viewed as a regularization over the latent space and is implemented as $\beta D_{KL}(q_\phi(z | X, \gR)\parallel p_\psi(z|\gR))$ \citep{beta-vae}. 
+% In practice, we add an auxiliary loss function that measures the distance error between the coordinates of all 2-hop neighbors in the molecular graph.
+More details on the geometric auxiliary loss function are in Appendix~\sref{section:appendix-loss-func}.
+
+%\vspace{-1ex}
+\paragraph{Encoder Architecture.}
+\modelns's encoder, shown in~\fref{fig:schematic}(I), operates over SE(3)-invariant atom features $h \in R^{n\times D}$, and SE(3)-equivariant atomistic coordinates $x \in R^{n\times3}$. A single encoder layer is composed of three modules: fine-grained, pooling, and coarse-grained. Full equations for each module can be found in Appendix \sref{section:eqn-fine}, \sref{section:eqn-pool}, \sref{section:eqn-coarse}, respectively. 
+The encoder module takes in $x$ and $h$ from the ground truth and RDKit conformer and creates coarse-grained latent representations for each, $Z$ and $\Tilde{Z} \in R^{N\times F \times3}$, where $N$ is the number of CG beads, and $F$ is the latent dimensions.
+%is a hyperparameter for% latent dimensions, which we set to 32.
+
+%\vspace{-1ex}
+\paragraph{Equivariant Latent Space.} As $Z$ holds a mixture of equivariant spatial information, we maintain equivariance through the reparametrization trick of the VAE (\fref{fig:schematic}(II)). Specifically, we define the posterior and prior means ($\bm{\mu}_\phi$, $\bm{\mu}_\psi$) and standard deviations ($\bm{\sigma}_\phi$, $\bm{\sigma}_\psi$), as follows:
+\begin{equation} 
+\begin{aligned}
+\text{Posterior}: \bm{\mu}_\phi &= \text{VN-MLP}(Z, \Tilde{Z}), \\
+\text{Prior}: \bm{\mu}_\psi &= \text{VN-MLP}(\Tilde{Z}), \\
+\end{aligned}
+\quad
+\begin{aligned}
+\bm{\text{log}(\sigma^2}_\phi) &= \text{MLP}(Z, \Tilde{Z}), \\
+\bm{\text{log}(\sigma^2}_\psi) &= \text{MLP}(\Tilde{Z}).
+\end{aligned}
+\end{equation}
+We use an invariant MLP to learn the variance and apply it to the x, y, and z directions to enforce equivariance.
+% We found that setting $\sigma_\psi = 1$ results in smoother optimization, rather than requiring an additional latent regularization to the standard normal as was previously observed in \citet{CVGAE}.
+We note that the conditional posterior is parameterized with both the ground truth and RDKit approximation, whereas the learned conditional prior only uses the RDKit.% ($\Tilde{Z}$). Adding thins pushes the whole thing over
+%\vspace{-1ex}
+\paragraph{Decoder Architecture: Channel Selection.}
+We sample from the learned posterior (training) and learned prior (inference) to get $Z = \mu + \eps \sigma$, where $\eps$ is noise sampled from a standard Gaussian distribution as the input to the decoder. Given $Z$ is still in CG space, we need to perform variable-length backmapping to convert back to FG space so that we can further refine the atom coordinates to generate the low energy conformer.
+The variable-length aspect is crucial because every molecule can be coarsened into a different number of beads, and there is no explicit limit to the number of atoms a single bead can represent. Unlike CGVAE~\citep{CGVAE}, which requires training a separate model for each choice in CG granularity $N$, \model is capable of reconstructing FG coordinates from any $N$ (illustrated in \fref{fig:schematic}(III) and~\fref{fig:variable_legnth}). 
+
+CGVAE defines the process of channel selection (CS) as selecting the top-$k$ latent channels, where $k$ is the number of atoms in a CG bead of interest. Instead of discarding all learned information in the remaining $F-k$ channels in the latent representation, we use a novel aggregated attention mechanism. This mechanism learns the optimal mixing of channels to reconstruct the FG coordinates, and is illustrated in~\fref{fig:attention}.
+The attention operation allows us to actively query our latent representation for the number of atoms we need, and draw upon similarities to the learned RDKit approximation that has been distilled into the latent space through the hierarchical encoding process.
+Channel selection translates the CG latent tensor $Z \in R^{N\times F \times 3}$ into FG coordinates $x_{CS} \in R^{n\times 3}$.
+
+\begin{figure}[t]
+\centering
+    \includegraphics[width=\textwidth]{figures/attention25-2.png}
+    % %\vspace{-10pt}
+    %\vspace{-4ex}
+    \caption{\textbf{Variable-length coarse-to-fine backmapping via Aggregated Attention.} The highlighted latent beads of two independent molecules are attended to by the respective fine-grained queries in a batched manner (see red and blue), to generate FG coordinates in the desired shape (matching input queries on right). The single-head attention operation uses the latent vectors of each CG bead $Z_{k}$ $\in R^{F \times 3}$ for each molecule as the keys and values, with an embedding dimension of 3 to match the x, y, z coordinates. The query vectors are the FG subset of the respective RDKit conformers, corresponding to each CG bead $\in R^{n_{k} \times 3}$. We know a priori how many FG atoms correspond to a certain CG bead ($n_k$). 
+    Aggregated Attention learns the optimal blending of CG features for FG reconstruction by aggregating 3D segments of FG information to form our latent query.}
+    \label{fig:attention}
+    % %\vspace{-5pt}
+    % %\vspace{-3ex}
+\end{figure}
+%\vspace{-1ex}
+\paragraph{Decoder Architecture: Coordinate Refinement.}
+Once channel selection is complete, we have effectively translated the variable-length CG representation back into the desired FG form. From here, we explore two methods of decoding that use the same underlying architecture. $x_{CS}$ can be passed in a single step through the decoder or can be grouped into its corresponding CG beads, but left in FG coordinates to do a bead-wise autoregressive (AR) generation of final coordinates (\fref{fig:schematic}(IV)). \model is the first MCG method to explore AR generation. Unlike prior 3D AR methods, \model does not use a pre-calculated molecular fragment vocabulary, and instead conditions directly on a learned mixture of previously generated 3D coordinates and invariant atom features. 
+
+The decoder architecture is similar to the EGNN-based FG module in the encoder, but has one key difference. 
+Instead of learning raw atom coordinates, we learn to predict the difference between the RDKit reference and ground truth conformations.  As the goal of MCG is to model the conditional distribution $p(X | \gR)$, we simplify the learning objective by setting $X = \gR + \Delta X$, and learn the optimal distortion $\Delta X$ from the RDKit approximation. 
+The simplification follows, as we have ensured $\gL_{\text{recon.}}$ is no worse than that of the RDKit approximation, which is trivial to obtain, compared to the cost of model training and inference.
+
+See Appendix~\sref{section:decoder} for formal discussions of the decoder architecture and message-passing equations.
+%\vspace{-2ex}

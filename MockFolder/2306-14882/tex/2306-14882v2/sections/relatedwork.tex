@@ -1,0 +1,28 @@
+\section{Related Work}
+\textbf{Transient Execution Defense Mechanisms}
+It is still an open problem to effectively protect arbitrary software from transient speculative attacks.
+Many academic works offer to modify processor microarchitecture and thwart these attacks by using hardware mechanisms or hardware-software co-design \cite{ainsworth2020muontrap, cheang2019formal, canella2019systematic, barber2019specshield, fustos2019spectreguard, yan2018invisispec, yu2019speculative, saileshwar2019cleanupspec, weisse2019nda, khasawneh2019safespec}.
+Unfortunately, very few of these mechanisms have been implemented in hardware, i.e., FPGAs or silicon.
+Many attacks that break proposed defense mechanisms rely on exploiting implementation details that are often glossed over in simulation (like not faithfully simulating the memory hierarchy, for instance).
+
+\textbf{Enclave Platforms}
+Sanctum \cite{costan2016sanctum} introduces the concept of a privileged security monitor by decoupling enclave management functionalities from hardware mechanisms. Our platform draws many concepts from Sanctum  such as the dual page table mechanism and the original attestation mechanism. Sanctum also considers some cache side channels in its threat model.
+Nonetheless, Sanctum is not concerned with speculative side channels and no end-to-end enclave system was built.
+Komodo \cite{ferraiuolo2017komodo} builds an enclave platform on top of ARM TrustZone \cite{trustzone04} using a privileged security monitor.
+It does not address side channel attacks and only runs on in-order single-core machines.
+Keystone \cite{lee2020keystone} mimics Sanctum's security monitor, while running on a RISC-V processor without hardware modifications, by leveraging RISCV's PMP mechanism.
+Keystone addresses some cache side channels but doesn't provide security in the presence of speculative attacks.
+CURE \cite{bahmani2021cure} is another enclave platform built on top of RISC-V. 
+CURE proposes new hardware mechanisms to address side channels, but only considers in-order processors and doesn't protect against speculative side-channel attacks.
+
+\textbf{MI6}
+Citadel builds on top of MI6 \cite{bourgeat2019mi6} and reuses many of its hardware mechanisms. 
+The MI6 paper focused on evaluating the \emph{performance} of these mechanisms on an FPGA
+by running SPEC benchmarks directly on top of (insecure) Linux and using Linux system calls as hooks to project the cost of potential SM calls and the associated context switch cost.
+The platform (likely missing the necessary software) did not evaluate a full enclave scenario (neither did it guarantee security when running SPEC).
+In this paper, on top of adding secure shared-memory and finer-grain isolation strategies, we have built and evaluated the end-to-end platform, focusing on enclaves that run meaningful security-oriented workloads.
+Citadel performance number for SPEC would be similar as MI6 L2 matches the maximum L2 partition size, MI6 did not use real SM calls nor SPEC would use shared memory.
+
+\textbf{Enclave Memory Models}
+Elasticlave\cite{yu2022elasticlave} introduces a new memory model for enclaves to avoid secure drawer performance issue while enforcing access rights on shared memory.
+It considers side channels out of scope. It is unclear how Elasticlave could be modified to enforce strong microarchitectural isolation efficiently. For instance, changing access right would require to flush the shared L2 partition which is the  main cost of secure drawers. Secure shared memory with copy for fine-grained access control should be more efficient.

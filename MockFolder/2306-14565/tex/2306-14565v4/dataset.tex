@@ -1,0 +1,69 @@
+\vspace{-0.1in}
+Annotating large-scale visual instruction data can be challenging and time-consuming \citep{wang2022self}. 
+ It involves expertly written detailed instructions and specific labels for different tasks. Inspired by the success of GPT4 in text-annotation tasks \citep{gilardi2023chatgpt}, we leverage GPT4, instead of human workers, to build \textit{LRV-Instruction}. \textit{LRV-Instruction} is designed to cover a variety of VL tasks, with open-ended positive and negative instructions (Fig. \ref{fig:neg_example}) in different linguistic styles.
+
+\textbf{Positive Visual Instruction Generation}. Inspired by \citep{wang2022self}, we use the in-context few-shot learning ability of GPT4 to generate instruction data for various VL tasks automatically. We filter the output tasks manually and select 16 tasks (Tab. \ref{tab:stat1}) with text answers.  In contrast with  \citep{liu2023visual} using a few scene captions to represent an image as input to the text-only GPT4, we take advantage of the Visual Genome dataset \citep{krishna2017visual}, which has detailed visual information like image size, bounding boxes, and dense captions. Specifically, each image typically has 21 object regions and their corresponding captions. We leverage GPT4 % as the teacher 
+to create the instruction-following data with the image size, bounding boxes, and dense captions as the "visual" input as if it can "see" the image. An example is shown in Fig. \ref{fig:prompt1}. For each image, we randomly select 10 tasks. 
+%In order to enhance the diversity of our dataset,
+To enrich the instructions, we ask GPT4 to generate instances in both declarative and interrogative formats. The limitation of \citep{liu2023visual, zhu2023minigpt} is that synthetic visual instructions are generally longer and may involve unexpected descriptive information inconsistent with the image. Therefore, we explicitly instruct GPT4 with \textit{"The answers should be less than 30 words"} to reduce the chance of generating extra unrelated information in the training data.
+
+To improve the diversity of images, we collect chart images from \citep{tang2023vistext}, which has human-annotated captions describing the construction and patterns of charts. We also select news images from \citep{liu2020visual} with many named entities in the captions. We ask GPT4 to generate question-answers pairs with captions as visual input. The last two images in Fig. \ref{fig:neg_example} are examples. More examples and the general prompt we use are shown in the Appendix (Fig. \ref{fig:chart_prompt1}, \ref{fig:demo_chart_example1}). 
+
+\textbf{Negative Visual Instruction Generation}. As shown in \citep{li2023evaluating}, current LMMs tend to answer \textit{“Yes”} by following any instruction presented to the model rather than predicting a faithful answer. 
+% honestly saying \textit{"no"}. 
+To teach LMMs \citep{zhu2023minigpt, liu2023visual, gong2023multimodal, dai2023instructblip} to answer questions in instructions faithfully, we introduce three categories of negative instructions based on Visual Genome dataset: \textit{(1) Neg1: "Nonexistent Object Manipulation"} by introducing nonexistent objects, activities, attributes and interactions to the "visual" input as described above.
+% the image. 
+\textit{(2) Neg2: "Existent Object Manipulation"} by manipulating existent objects with inconsistent attributes (Fig. \ref{fig:neg_example}). \textit{(3) Neg3: "Knowledge Manipulation"} by manipulating knowledge in instructions (Fig. \ref{fig:neg_example}).
+As for the detailed prompt of \textit{Neg1}, we leverage the same format of the "visual" input as shown in Fig. \ref{fig:prompt1}. Additionally, we provide the following instructions to GPT4: 
+
+\textit{"Come up with 6 misleading instructions with \underline{nonexistent elements (nonexistent objects, nonexistent} \underline{activities, nonexistent attributes, nonexistent interactions)} in the images with different language styles. The instructions should contain interrogative and declarative sentences. Please also explain the reason."}
+
+\begin{table}[t]
+\setlength\tabcolsep{4.3pt}
+\centering
+\small
+\begin{tabular}{lcccccc}
+\toprule[1.5pt]
+ & Ours & MiniGPT4 & LLaVA & InstructBLIP & MMGPT & mPLUG-Owl\\
+\midrule
+Hard Negative Instructions?      &  \textcolor{green}{\ding{52}} &  \textcolor{red}{\ding{56}} &  \textcolor{red}{\ding{56}} &  \textcolor{red}{\ding{56}} &  \textcolor{red}{\ding{56}}&  \textcolor{red}{\ding{56}}\\
+Self Generated Instruction?      &  \textcolor{green}{\ding{52}} &  \textcolor{red}{\ding{56}} &  \textcolor{green}{\ding{52}} &  \textcolor{red}{\ding{56}} &  \textcolor{red}{\ding{56}}&  \textcolor{red}{\ding{56}}\\
+Address Hallucination?      &  \textcolor{green}{\ding{52}} &  \textcolor{red}{\ding{56}} &  \textcolor{red}{\ding{56}}&  \textcolor{red}{\ding{56}} &  \textcolor{red}{\ding{56}} &  \textcolor{red}{\ding{56}}\\
+NOT Template Instruction?    &  \textcolor{green}{\ding{52}} &  \textcolor{red}{\ding{56}} &  \textcolor{green}{\ding{52}} &  \textcolor{red}{\ding{56}} &  \textcolor{red}{\ding{56}}&   \textcolor{green}{\ding{52}}\\
+\# of Self-Generated Instances      &  400k &  3k &  150k &  \textcolor{red}{\ding{56}} & \textcolor{red}{\ding{56}}&  \textcolor{red}{\ding{56}}\\
+\# of VL Tasks      &  16 &  1 &  3 &  11 &  5&  3\\
+\bottomrule[1.5pt]
+\end{tabular}
+% \vspace{0.05in}
+\vspace{-2mm}
+\caption{
+A comparison of \textit{LRV-Instruction} with datasets used by current LMMs.}
+\label{tab:comparison}
+\vspace{-0.08in}
+\end{table}
+
+\begin{figure*}[t]
+    \centering
+      \includegraphics[width=1
+\textwidth]{prompt11.pdf}
+\vspace{-4mm}
+    \caption{One example to illustrate the prompt we use to generate the visual instruction data by GPT4. We use the bounding box coordinates and dense captions to represent image content.}
+    \label{fig:prompt1}
+\vspace{-4mm}
+\end{figure*}
+
+
+We replace the underlined text with \textit{"existing objects but wrong attributes"} for the prompt of \textit{Neg2}. As for the \textit{Neg3: knowledge manipulation}, we use GPT4 to manipulate the knowledge in the captions, including named entities, events or keywords. After that, GPT4 is instructed to generate questions and answers indicating correct knowledge. More examples are shown in the Appendix (Fig. \ref{fig:chart_neg1_prompt}, \ref{fig:demo_chart_example1}). 
+
+\textbf{Quality Control. }We first remove instances with answers longer than 30 words. We remove the instances mentioning unneeded content like  "bounding box description", "given caption", and "existing descriptions". Additionally, GPT4 will output the task name for each instruction. However, we found that GPT4 sometimes assigns inaccurate task names for the instructions. As a result, we exclude the task name in our release data. Furthermore, we removed the instructions asking about facial expressions. This is because the Visual Genome dataset doesn’t include facial expression attributes in the ground truth-dense captions. To examine the quality of our dataset, we randomly sample 500 instances and ask ten expert annotators to determine whether the output answers from GPT4 are correct or not, with regard to the instruction and the image content. We found 91\% of the instructions are appropriate for the image inputs.
+Furthermore, 85\% of outputs are acceptable responses to the instructions. Even though some responses may contain errors, most generations conform to the correct structure, serving as applicable visual instruction tuning guidelines. We created a total of over 400k visual instructions after filtering. 
+
+
+\textbf{Evaluation Set. }After the processing above, we randomly select 1000 instances as our evaluation set. Furthermore, we manually check the quality of all instances and see whether the instruction describes a valid task. If it’s not, we edit the instruction to make it clearer for LMMs. For example,  we edit the instruction ‘Observe the beautiful rainbow-colored sign that says 'Le Louvre'. You won't miss it!’ to "Are you able to observe the beautiful rainbow-colored sign that says 'Le Louvre' in the image?"
+
+
+
+\subsection{Data Statistics}
+Tab. \ref{tab:comparison} shows a comparison of \textit{LRV-Instruction} and other datasets used by current LMMs. \textit{LRV-Instruction} covers much more VL tasks than existing visual instruction tuning datasets. Instead of only using positive instructions, \textit{LRV-Instruction} also includes negative instructions at different semantic levels. In addition, employing the GPT4-assisted generation, \textit{LRV-Instruction} has more open-ended instructions instead of following a few templates. From Fig. \ref{fig:LRV_stat} (b), we observe that instructions with non-existing objects generated by GPT4 are diverse and physically plausible in the image, including “birds in the sky” or replacing ‘elephant’ with ‘zebra’. Fig. \ref{fig:know_dis} in the appendix shows the diverse distribution of knowledge manipulation, including event, number, date, persons, place, and others.
+
+

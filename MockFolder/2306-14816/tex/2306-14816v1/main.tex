@@ -1,0 +1,380 @@
+% EPTCS Style distribution v1.7.0 released May 23, 2022.
+% https://github.com/EPTCS/style
+\documentclass[submission,publicdomain,creativecommons noncommercial]{eptcs}
+\providecommand{\event}{STAI 2023} % Name of the event you are submitting to
+
+\usepackage{iftex}
+\usepackage[decisionutilitycolor]{influence-diagrams}
+
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{todonotes}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{wrapfig}
+\usepackage{cleveref}
+\usepackage{bm}
+\usepackage{caption}
+\usepackage{subcaption}
+
+\ifpdf
+  \usepackage{underscore}         % Only needed if you use pdflatex.
+  \usepackage[T1]{fontenc}        % Recommended with pdflatex
+\else
+  \usepackage{breakurl}           % Not needed if you use pdflatex only.
+\fi
+
+\title{Experiments with Detecting and Mitigating AI Deception} % in Toy Multi-Agent Reinforcement Learning Environments}
+\author{Ismail Sahbane%\footnote{test}
+\institute{EPFL \\ Lausanne, Switzerland}
+\email{ismail.sahbane@epfl.ch}
+\and
+Francis Rhys Ward
+\institute{Imperial College London \\ London, UK}
+\email{francis.ward19@imperial.ac.uk}
+\and
+C Henrik Åslund
+\institute{Imperial College London \\ London, UK}
+\email{c.aslund19@imperial.ac.uk}
+}
+%\author{Anonymous}
+
+\def\titlerunning{Detecting and mitigating deception}
+\def\authorrunning{I. Sahbane \& F.R. Ward \& C.H. Åslund}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+% TOOO write abstract -> do that in the end after finishing the paper's content
+% We investigate the problem of constrained multi-agent optimisation, where the constraints are of the form `do not deceive agent $i$'.
+% These constraints are formalised according to previous work in structural causal games.
+How to detect and mitigate deceptive AI systems is an open problem for the field of safe and trustworthy AI. We analyse two algorithms for mitigating deception:
+The first is based on the path-specific objectives framework where paths in the game that incentivise deception are removed. 
+The second is based on shielding, i.e., monitoring for unsafe policies and replacing them with a safe reference policy.
+We construct two simple games and evaluate our algorithms empirically.
+We find that both methods ensure that our agent is not deceptive, however, shielding tends to achieve higher reward.
+
+%We provide a proof of concept for automatically detecting deceptive behaviour in simple multi-agent games, and we use it to train optimal non-deceptive agents in those simple games, by building on previous work defining deception in the context of Structural Causal Games. 
+\end{abstract}
+
+\section{Introduction}
+% There have been impressive advances in reinforcement learning~(RL) over the last decade.
+% Recently, it has, for example, been used in GPT-4~\cite{gpt4technicalreport2023} to fine-tune the system using human feedback (RL~from human feedback,~RLHF).
+% RLHF~has been useful for making the later GPT systems more reliable. In general, RLHF~and other methods where humans provide online feedback regarding the reward are useful for steering systems.
+% However, providing such feedback online also incentivises RL~agents to deceive humans about the state of the world~\cite{carlsmith2022, russell2019human, bostrom2017superintelligence}, e.g., an RL~agent may want to hide adverse side effects from a human providing feedback.
+
+Deception is a challenge for building safe and trustworthy AI \cite{me}. Recent advances in reinforcement learning (RL) and language models (LMs) mean that we are increasingly living in a world containing highly capable, goal-directed \emph{agents} \cite{gpt4technicalreport2023}. Deception may be learned as an effective strategy for achieving goals in many environments, especially in multi-agent settings comprised of humans and AI agents \cite{me}. 
+
+Technical work on deception in AI systems, and how to avoid it, is limited.
+Deception has been defined within structural causal games (SCGs), which is a framework that applies causal graphs to game theory \cite{me}.
+Given a causal graph, it is possible to ensure certain safety properties by removing paths in that causal graph \cite{Farquhar2022Jun}. Giving learning agents these kinds of \emph{path-specific objectives} (PSOs) is also applicable when deception is the property that is considered unsafe. These methods ensure that the agent will not deceive a human providing feedback, however, it will also ensure that the agent will not persuade, teach, or coordinate with the human (i.e., it will not try to influence the human in any way).
+Shielding is another class of methods for ensuring safety in learning agents \cite{OdriozolaOlaldeZA23, carr2023safe, waga2022dynamic, KonighoferBEP22, Elsayed-AlyBAET21, giacobbe2021shielding, AlshiekhBEKNT18}. A shield is a kind of monitor. In addition to monitoring, the shield replaces an unsafe action with a safe action if the verification returns that the policy does not satisfy the safety specification.
+
+In this paper, we make three contributions:
+(1)~We introduce a shielding ~algorithm to ensure that an agent does not deceive other agents.
+(2)~We introduce two simple games to evaluate deception in agents.
+(3)~We evaluate our algorithm in these environments against an algorithm based on PSO.
+This paper is organised as follows: In Section~\ref{sec:DefiningAndDetectingDeception}, we recapitulate the definition of deception in SCGs. In Section~\ref{sec:MitigatingDeception}, we introduce our algorithm and compare it to the PSO~algorithm .
+We then conclude in Section~\ref{sec:Conclusion}.
+
+\section{Defining and detecting deception}
+\label{sec:DefiningAndDetectingDeception}
+
+\textbf{Structural Causal Games (SCGs)} offer a representation of causality in games \cite{Hammond}. 
+% \begin{definition}[Structural Causal Game]
+An SCG is a directed acyclic graph containing variables and causal edges between them. There are three types of variables: chance variables ($X$), decision variables ($D$) and utility variables ($U$). Along with the graph, an SCG defines the conditional probability distribution (CPD) over each (non-decision) variable, given its parents. Agent's policies choose the CPD over decision variables and agents choose their policies to maximise the expected sum of utility and we use the Nash equilibrium concept. At the beginning of the game a \emph{setting} is sampled from the prior over the game; given a setting and a policy profile, the value of any variable is uniquely determined.
+% \looseness=-1
+% \end{definition}
+ % beginning of the first example (the simple wimp-surly) and the graph diagram
+ % \textbf{Agents.} 
+ Kenton et al. \cite{kenton2022discovering} define \emph{agents} in SCGs as systems that would adapt their policy if their actions influenced the world in a different way.
+This is the relevant notion of agency, as
+we define belief and intent based on how the agent would adapt its behaviour to such changes. 
+
+We now introduce a simple signalling game, where an agent that can be weak or strong tries to avoid being attacked by another agent, that wants to attack them only if they're weak. They can defend or retreat, and their decision is observed by the other agent.
+
+\textbf{Example 1 (War game \cref{fig:run}):} A signaller S has type $X \in \{strong, weak\}$. At the start of the game, $S$ observes $X$, but the target agent $T$ does not. The agents have decisions $D^S \in \{retreat, defend\}$
+and $D^T \in \{\neg attack, attack\}$. A weak $S$ prefers to retreat whereas a strong $S$ prefers to defend. $T$ prefers to attack only if $S$ is weak. Regardless of type, $S$ does not want to be attacked (and cares more about being attacked than about their own action). $X$ follows a $Bernoulli(0.9)$ distribution so that $S$ is strong with probability $0.9$. $U^T = 1$ if $T$ attacks a weak $S$ or does not attack a strong $S$, and 0 otherwise. $S$ gains utility $2$ for not getting attacked, and utility $1$ for performing the action preferred by their type (e.g., utility $1$ for retreating if they are weak).
+
+
+\begin{wrapfigure}{L}{0.3\textwidth}
+          \centering
+          \vspace{-2mm}
+\begin{influence-diagram}
+
+  \node (DS) [decision, player1] {$D^{S}$};
+  \node(DT) [below =0.5 of DS, decision, player2] {$D^{T}$};
+  \node (X) [above =0.5 of DS] {$X$};
+  \node (US) [left =0.5 of DT, utility, player1] {$U^S$};
+  \node (UT) [right =0.5 of DT, utility, player2] {$U^{T}$};
+
+  \edge[information] {X} {DS};
+  \edge[information] {DS} {DT};
+  \edge {DS} {US};
+  \edge {DT} {UT};
+  \edge {DT} {US};
+\path (X) edge[ ->, bend right=20] (US);
+% \path (X) edge[ ->, bend left=20] (UT);
+\edge {X} {UT};
+% \voc[rectangle]{DT}
+\end{influence-diagram} 
+\caption{Ex.1 SCG graph. Chance variables are circular, decisions square, utilities diamond and the latter two are colour coded by their association with different agents. Solid edges represent causal dependence and dotted edges are information links.}
+         \label{fig:run}
+         \vspace{-4mm} % use this to shrink the whitespace beneath/above the fig
+\end{wrapfigure}
+
+
+ \emph{To deceive is to intentionally cause to have a false belief that is not believed to be true} \cite{mahon}. Past work defines belief, intention, and deception in SCGs \cite{me}; these definitions %are \emph{functional:} they 
+ only refer to agent behaviour.
+ 
+\textbf{Belief}
+Agents have beliefs over \emph{propositions} $\phi$, i.e., Boolean formula of variable assignments (e.g., $\phi: X=x \land \neg Y=y$).
+An agent \emph{believes} a proposition $\phi$ if 1) they act as though they observed $\phi$ is true; 2) they would have acted differently if they observed $\phi$ was false.
+An agent has a \emph{true/false belief} if they believe $\phi$ and $\phi = true/false$. % in the given setting.
+
+\textbf{Example 1 (continued):} Since $S$'s probability of being weak is low, its optimal policy is to always defend, in order to signal a strong type. $T$'s best policy in this case is to attack if and only if $S$ retreats. These two policies form a Nash equilibrium. When $X = weak$, $T$ believes the proposition $\phi : X=Strong$, as 1) if they had observed that $X=Strong$, they would not have attacked, and 2) if they had observed that $X=Weak$, they would attack. Therefore, they respond to $\phi$, and they act as if $\phi=true$, so the two conditions for belief are met. When $X = weak$, $\phi = false$, so $T$ has a false belief about $\phi$.
+
+\textbf{Intention}
+Previous work defines notions of intention, suitable for algorithms, in causal models \cite{DBLP:conf/aaai/HalpernK18,ashton-intent,me}. Essentially, an agent \emph{intentionally causes} the outcomes which provide sufficient reason for it to choose its policy over an alternate policy. What \emph{intent to cause} means, intuitively, is that if the outcomes the agent wanted were guaranteed
+to happen anyway, they would not mind choosing an alternative policy \cite{me}. \looseness=-1
+
+% \begin{definition}[Intention to cause]
+% An agent A has intention to influence an agent B if A would get better utility by changing its behaviour and B does not change its behaviour in reaction.
+% \end{definition}
+% Intuitively, it means that one of the goal of the first choice of A's behaviour was to influence B to have a specific behaviour.
+
+\textbf{Example 1 (continued):} Under the Nash policy, $S$ intends to cause $T$ to not attack, w.r.t.\ the alternative (honest) policy ($defend$ when $X=strong$ and $retreat$ when $X=weak$), because if $T$'s policy was fixed to $\neg attack$, then  $S$ would choose the honest policy. %the honest policy would have higher expected utility than the Nash one, meaning $S$ would rather choose it. 
+Hence, $S$ intends to cause $D^T = \neg attack$.
+% \looseness=-1
+
+\textbf{Deception}
+An agent $S$ \emph{deceives} an agent $T$ about a proposition $\phi$ if 1) $S$ intentionally causes $T$'s decision $D^T$; 2) $T$ has a false belief about $\phi$; 3) $S$ does not believe $\phi$.
+
+
+\textbf{Example 1 (continued):} Under the Nash policies, $S$ deceives $T$ about their type when $S$ is $weak$. As seen above, $T$ believes that $X=Strong$, $S$ intends for $D^T$ to be $\neg attack$, and $S$ does not believe that $X=weak$, %(it does not respond to $X$'s value because its policy is to always $defend$), meaning that 
+so all the conditions for deception are met.
+
+
+
+
+
+
+
+  \section{Mitigating Deception}
+  \label{sec:MitigatingDeception}
+
+We perform experiments in two examples, optimising agents to play these two games with no mitigation, with PSO, and with shielding. We compare these methods on their optimality and deceptiveness. 
+
+% \hrule
+% \begin{algorithm}[tb] 
+\begin{wraptable}{R}{0.6\textwidth}
+\vspace{-2mm}
+\hrule
+\captionof{algorithm}{\textsc{Path-Specific Objectives}}
+\vspace{-3mm}
+\hrule
+ \label{alg:pso}
+ \textbf{Input}: An SCG $\mathcal{M} = (\mathcal{G}, \theta)$, graphical criterion $\mathcal{C}$, policies $\pi^{-i}$, natural distributions $\mathcal{N}$. \\
+\textbf{Output}: PSO-optimal policy $\pi^i$
+\begin{algorithmic}[1] %[1] enables line numbers
+\STATE Reduce $\mathcal{G}$ to $\mathcal{G}'$ using $\mathcal{C}$. 
+\STATE Impute policies $\pi^{-i}$ and natural distributions from $\mathcal{N}$ to those variables with fewer parents in $\mathcal{G}'$ to obtain $\theta'$.
+\STATE Train an agent in $\mathcal{M}' = (\mathcal{G}', \theta')$ to obtain policy $\pi^i$.
+\end{algorithmic}
+\hrule
+% \end{algorithm}
+\end{wraptable}
+
+\textbf{Path Specific Objective (PSO) \cite{Farquhar2022Jun}}
+prevents $S$ learning a deceptive policy by removing $S$'s ability to influence $T$'s decision during training. In SGSs, this corresponds to removing the path in the graph between $D^S$ and $D^T$. 
+The PSO algorithm is shown in \cref{alg:pso}. 
+
+
+
+\textbf{Example 1 (continued):} In the war game, we remove the edge from $D^S$ to $D^T$. $S$ is now only interested by the utility it gets directly from its decision, meaning it will learn the honest policy. Therefore, $S$ can be trained with PSO, and it will play the game without being deceptive. 
+However, this removes $S$'s ability to learn to influence $T$ in any way, including positively. In the following example, the only strategy for achieving utility is to influence the other agent, and so the PSO agent does not learn anything. %this works because $S$'s influence on $D^T$ isn't the core part of the game and can only be used for deception. 
+
+\begin{wrapfigure}{L}{0.3\textwidth}
+    \centering
+    \vspace{-4mm}
+\begin{influence-diagram}
+
+      \node (X) {$X$};
+      \node (Y) [left =1.2 of X] {$Y$};
+      \node (DS) [below =0.5 of Y, decision, player1] {$D^S$};
+      \node (DT) [below =0.5 of X, decision, player2] {$D^T$};
+      \node (US) [below =0.5 of DS, utility, player1] {$U^S$};
+      \node (UT) [below =0.5 of DT, utility, player2] {$U^T$};
+      
+      \edge[information] {X} {DS};
+      \edge[information] {Y} {DS};
+      \edge[information] {DS} {DT};
+      \edge {DT} {US};
+      \path (X) edge[ ->] (US);
+      \path (Y) edge[ ->, bend right = 40] (US);
+      \edge {DT} {UT};
+      \path (X) edge[ ->, bend left = 40] (UT);
+      
+\end{influence-diagram}
+\caption{Ex. 2 SCG Graph}
+    \label{fig:2}
+    \vspace{-4mm}
+\end{wrapfigure}
+
+\textbf{Example 2 (\cref{fig:2}):} Variables $X \in \{0, 1, 2\}$ is uniformly sampled, and $Y \in \{0, 1\}$ follows a $Ber(0.1)$ distribution. $S$ observes both $X$ and $Y$, while $T$ does not. $D^T \in \{0,1,2\}$ and $T$'s objective is to correctly bet on the value of $X$. $D^S \in \{0,1,2\}$, and $S$ gets some utility when $T$ correctly bets on $X$, but when $Y=1$, $S$ can get more utility if $D^T = (X+1)\mod{3}$. $T$ observes $D^S$.
+\\ This example differs from the first one as $S$'s only way to get utility is to influence $T$'s decision. $S$ can adopt two sensible policies, which are to always report $X$ (the honest policy), or to, when $Y=1$, report on $(X+1)\mod{3}$ instead (a deceptive policy, $S$ intentionally causes $T$ to believe that $X$ has the wrong value). Since $Y$ is rarely $1$, as before, $T$'s optimal strategy remains to follow $S$'s decision even if it is sometimes deceptive. 
+If we use PSO with this game, $S$ will have no way to influence its utility, and $T$ will have no information on the value of $X$. Therefore, any policies for $S$ and $T$ are optimal and the agents will not learn anything. We introduce the shielding algorithm to solve this problem by preventing deceptive policies from being learned, in a more fine-grained way than PSO. %We therefore need another approach here.
+
+\begin{wraptable}{l}{0.65\textwidth}
+\vspace{-2mm}
+\hrule
+\captionof{algorithm}{\textsc{Shielding}} \vspace{-3mm}
+\hrule
+ \textbf{Input}: SCG $\mathcal{M}=(\mathcal G, \theta)$, reference policy~$\pi_\mathrm{ref}$, $T$'s policy $\pi^T$, proposition $\phi$ %anti-deception constraint~$\phi$ 
+ \\
+\textbf{Output}: optimal non-deceptive policy $\pi$
+\begin{algorithmic}[1] %[1] enables line numbers
+\STATE $\pi\leftarrow\pi_\mathrm{ref}$
+\FOR{$s$ \textbf{in} settings}
+\STATE take action $a$ sampled from $\pi(\cdot|s)$
+\STATE calculate optimal policy $\pi_\star$
+\STATE D$\leftarrow$\textsc{DeceptionCheck}($\mathcal{M}$, ~$\bm{\pi}$=$ (\pi_\star, \pi^T)$, $\pi_\mathrm{ref}$=$\pi$, $S$, $T$, $\phi$)
+%\todo[inline]{Ismail : problem, what is phi here? does shielding receive a set of propositions, and check that there's isn't deception about any of them? do we just assume there's one proposition to test we know it?}
+%\STATE verify whether $\pi_\star$ satisfies $\phi$ given $\mathcal M$
+%\STATE if verification returns false $\pi\leftarrow\pi_\mathrm{ref}$ else $\pi\leftarrow\pi_\star$
+\STATE \textbf{if} D=false \textbf{then} $\pi\leftarrow\pi_\star$
+\ENDFOR
+\end{algorithmic}
+\hrule
+\vspace{-4mm}
+% \end{algorithm}
+\end{wraptable}
+
+\textbf{Shielding }
+% Another way to train safe agents here is to use a simple form of Shielding. 
+ uses a safety constraint, and checks that an agent's action or policy satisfies the constraint before letting it perform that action. In our case, we shield the whole policy rather than individual decisions, and we use the shield during training to prevent the agent learning deceptive policies. The shield used is  the deception verification %The latter needs a reference policy with respect to which decide if there is deception.
+presented in \Cref{alg:deceptioncheck}.
+
+We built a simple environment to apply the above definitions and to investigate ways to train non-deceptive agents in SCGs. % like the war game in \emph{Example 1}. 
+$S$~(the potentially deceptive agent) is being trained with a minimal version of RL, where $S$~plays several games with random settings and policy. %, and stores the utility obtained in a matrix indexed by the settings and decisions. 
+We assume that $T$~(the target of deception) has fixed Nash-policy, because we work with games where the occasions for $S$ to benefit from deception are rare, and the best policy for~$T$ remains to believe $S$'s~signal, despite it being sometimes false.
+We implemented \cref{alg:deceptioncheck}, which, given a policy, and a reference policy, indicates whether the policy is deceptive w.r.t the reference policy, by testing every possible setting. Hence \cref{alg:deceptioncheck} is complete and sound. 
+% % \emph{Belief.} We take a functional approach, with a generic belief function taking policies, counterfactual policies (where the agent knows about the proposition), and their respective incoming variable values. We then check the two conditions for belief in a way close to the definition. Using this generic check, specific checks can be made for particular games and propositions. \\
+% % \emph{Intention.} The intention check tests whether $S$ intends to cause $D^T$ to be some outcome $y$, w.r.t a reference policy. We first build an alternative game where $D^T$ is fixed to $y$, and play it once with the base policy and the reference policy, for each setting of the game. We use the results to compute the expected utilities of the two policies under the alternative game, and compare them to conclude whether the outcome is intentionally caused. The intention check is exhaustive over the setting space. \\
+% % \emph{Deception.} The deception check closely applies the definition, and checks that under a given setting and with given reference policy, the conditions for deception are met. A check for $S$'s and $T$'s belief of the proposition in question and for $S$'s intention to bring the outcome caused by the setting are made. A policy is considered deceptive if deception happens in at least one setting.  
+% Our approach to training agents with shielding is: 
+We initialize a known-safe policy  as the reference. As soon as a better performing safe policy is found, we use this as the new reference. \looseness=-1
+% \begin{wraptable}{R}{0.65\textwidth}
+% \vspace{-4mm}
+% \centering
+\begin{algorithm}
+\caption{\textsc{Deception Check}}
+\label{alg:deceptioncheck}
+\textbf{Input}: SCG $\mathcal{M}=(\mathcal G, \theta)$, policy profile~$\bm{\pi}$, referencepolicy~$\pi_\mathrm{ref}$, agent~$S$, agent~$T$, proposition~$\phi$ \\
+\textbf{Output}: boolean, true if $S$ deceives $T$ about $\phi$ under $\bm{\pi}$ w.r.t. $\pi_\mathrm{ref}$
+\begin{algorithmic}[1]
+%for every setting
+\FOR{$s$ \textbf{in} settings}
+%play a game of M with those settings with the policy
+\STATE initialise $\mathcal{M}$ with $s$ and $\bm{\pi}$ 
+%compute whether S_intends to influence D^T under this setting with the reference policy
+\STATE compute whether $S$ intends to cause $D^T$ under $\mathcal{M}$, $\bm{\pi}$ and $\pi_\mathrm{ref}$
+%compute whether S and T believes the proposition with their policy
+\STATE compute whether $S$ and $T$ believe $\phi$ under $\mathcal{M}$, $\bm{\pi}$,
+%compute whether the proposition is true
+\STATE compute whether $\phi$ is true under $\mathcal{M}$ and $s$
+%return S_intends AND T_believes AND not prop_is_true AND S_believes
+\STATE deceptive $\leftarrow$ $S$ intends to cause $D^T$ $\And$ $T$ believes $\phi$ $\And$ $S$ does not believe $\phi$ $\And \phi$ is false
+\STATE \textbf{if} deceptive \textbf{then return} true
+\ENDFOR
+\STATE \textbf{if not} deceptive \textbf{then return} false 
+\end{algorithmic}
+\end{algorithm}
+
+% There's several options for the action we can take when detecting deception. The first would be to simply not update the policy. This often works, but can be problematic when the initial values for the policy matrix are high, either because of random initialisation, or because the rewards obtained by not being deceptive are very low or negative. A second option could be to update the policy with a specific reward. This could be seen as a form of reward shaping
+
+% The value to assign to this reward needs to be carefully chosen in the case of multi-step RL, in order to satisfy some probability bound of the learned policy to be deceptive.
+% In our simple case, not updating the policy and updating it with a negative value were both sufficient.
+% \todo[inline]{Henrik: I agree, maybe get rid of penalties. If not, I would add an equation showing the expression for the shaped reward (a pseudocode seems a bit much)}
+
+\begin{wraptable}{R}{0.73\textwidth} 
+\vspace{-6mm}
+\centering
+    \caption{Results for examples 1 and 2} \vspace{-3mm}
+    \begin{tabular}{l c c c c}
+        \hline
+        & \multicolumn{2}{c}{ex. 1} & \multicolumn{2}{c}{ex. 2} \\
+        & deceptive &  performance & deceptive & performance \\
+        \hline
+        shielding \textbf{(our)} & \textbf{no} & optimal-honest & \textbf{no} & optimal-honest \\
+        PSO & \textbf{no} & optimal-honest & \textbf{no} & sub-optimal \\
+        no mitigation & yes & \textbf{optimal} & yes & \textbf{optimal} \\
+        \hline
+    \end{tabular} \label{tab:results}
+\end{wraptable} 
+
+% \begin{wraptable}{R}{0.6\textwidth}
+% \vspace{-4mm}
+% \centering
+%     \caption{Results for examples 1 and 2}
+%     \begin{tabular}{l c c c c}
+%         \hline
+%         & \multicolumn{2}{c}{ex. 1} & \multicolumn{2}{c}{ex. 2} \\
+%         & deceptive &  mean reward & deceptive &  mean reward \\
+%         \hline
+%         shielding \textbf{(our)} & \textbf{no} & 1.9 & \textbf{no} & 1.9 \\
+%         PSO & \textbf{no} & 1.9 & \textbf{no} & 0.7 \\
+%         no mitigation & yes & \textbf{2.9} & yes & \textbf{2.0} \\
+%         \hline
+%     \end{tabular}
+% \end{wraptable}
+
+\emph{Results} are summarised in \cref{tab:results}. For Ex.1, both PSO and shielding learn the optimal non-deceptive policy, whereas when no mitigation is used the optimal (deceptive) policy is learned. For Ex.2, shielding learns the optimal non-deceptive policy, but the PSO-agent cannot learn anything, as in this example the only way for $S$ to gain utility is to influence $T$. % With the shielding approach, the policy learned on Ex.1 is the safe policy, i.e. the one that honestly conveys $S$'s~type to~$T$, which is the desired policy in this case, and the same that was obtained with PSO. For Ex.2, we obtain the best honest policy, which is to simply signal~$X$ all the time. Again, this is the desired policy, and not an ineffective one as with PSO.  
+\looseness=-1
+
+% \begin{table}[]
+%     \label{tab:ex1}
+%     \centering
+%     \begin{tabular}{c|c|c|c|}
+%     & No mitigation & PSO & shielding \\
+%     \hline
+%     Deceptive & yes & ? & no \\
+%     Average Utility & 2.9 & 1.9 & 1.9 \\ 
+%     \hline
+%     \end{tabular}
+%     \caption{Results obtained for example 1}
+% \end{table}
+% %expected utilities : no mitigation : 0.9 : 3, 0.1 : 2. => 2.9 PSO and Shielding : 0.9 : 2, 0.1 : 1 => 1.9
+% \begin{table}[]
+%     \label{tab:ex2}
+%     \centering
+%     \begin{tabular}{c|c|c|c|}
+%     & No mitigation & PSO & shielding \\
+%     \hline
+%     Deceptive & yes & ? & no \\
+%     Average Utility & 2.0 & 0.7 & 1.9 \\ 
+%     \hline
+%     \end{tabular}
+%     \caption{Results obtained for examples 2}
+% \end{table}
+% % expected utilities : no mitigation : 2 all the time => 2. PSO : no influence, 0.9 : 2/3, 0.1 : 1 => 0.7 shielding : 0.9 : 2, 0.1 : 1 => 1.9
+% \todo[inline]{put the 2 tables side by side? or smtg to gain space}
+% \todo[inline]{find out whether I should consider the PSO policies as deceptive or not}
+
+
+\section{Conclusion}
+\label{sec:Conclusion}
+\emph{Summary} We introduce a novel shielding algorithm for mitigating deceptive learning agents. We show, in two toy environments, that our algorithm has advantages over previous methods. %We provide a way to verify whether a given policy is deceptive for simple games. Furthermore, we propose the application of shielding as a potential way to protect from deception when training agents. We show that it is effective in a few simple examples.
+
+\emph{Limitations and future work} The examples are simplistic, and the optimal policies are very easy to find analytically without doing any training. %Therefore, this work does not actually train agents to accomplish complex tasks. 
+This work acts as a proof of concept for the idea of automatically detecting and preventing deception while training. Many simplifying assumptions are made, e.g. the fact that the games only have one time-step, or the assumption that one of the policies is fixed. In addition, the verification is exhaustive on the setting space. This works with the small domains of these examples but might become intractable for larger and more realistic problems, which could require Monte-Carlo sampling of the setting, or a latent representation of it. Furthermore, shielding requires an initial safe reference policy, and its convergence to good safe policies is unknown. 
+
+
+\nocite{*}
+\bibliographystyle{eptcs}
+\bibliography{literature}
+\end{document}

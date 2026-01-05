@@ -1,0 +1,134 @@
+\begin{figure*}[t]
+\centering
+\includegraphics[scale=0.63]{overview_v3.png}
+\caption{Overview of \model. In the step of fine-grained component detection, we perform class extraction, relation extraction, entity linking, and logical skeleton parsing to obtain the most relevant components of the question. Then we utilize the KB-based constraint to obtain middle-grained component pairs that are connected in the KB. Finally, a T5-based seq-to-seq model encodes the reformulated fine-grained and middle-grained candidates (reformulation unit), and employs a controllable decoder with dynamic vocabulary (control unit) to generate the executable target logical expression.}
+\label{fig:over-view}
+\end{figure*}
+
+\subsection{Pilot Study}
+\label{sec:pre-experiment}
+As analyzed in Section~\ref{sec:introduction}, considering the logical expression as a unit will lead to entangled representations of fine-grained components and thus weakens generalization ability. Here we study the necessity of fine-grained modeling by testing how coarse-grained and fine-grained matching methods perform when selecting a question's logical expression from the corresponding candidate pool.
+
+\vpara{Dataset.}
+To simplify the experiment, we extract a toy dataset that only involves 1-hop logical expressions from GrailQA.
+%'s training data, compositional generalization test data, and zero-shot generalization test data. 
+Then, for the relation $r$ and the class $c$ in such logical expressions, we study the compositional generalization where the composition $(r,c)$ is unseen or zero-shot generalization where the individual $r$ or $c$ is unseen in the training data.
+For each question with its ground-truth logical expression, we select 100 logical expressions that share the same domain as the ground truth as the coarse-grained expression candidates. For fair comparison, we separate all of the relations, classes, and logical skeletons from the coarse-grained candidates as the fine-grained component candidates.
+
+\vpara{Methods.}
+We aim to find the target logical expression of a given question by a ranking model trained with a contrastive loss~\cite{chen2020simple}, which is also used by RNG-KBQA~\cite{ye2022rng}.
+The coarse-grained method concatenates a question and a candidate logical expression to feed into BERT, then the output embedding of [CLS] is fed into a linear layer to compute the similarity score.
+The fine-grained method follows the above pipeline, but the input is the concatenation of a question and a fine-grained candidate component, then scores each logical expression candidate by summing up the normalized question-component similarity scores. 
+For both methods, we compute accuracy by evaluating whether the ground-truth logical expression owns the highest score in the candidate pool.
+
+\vpara{Observation --- Fine-grained modeling can better solve the generalization problems on KBQA.} The matching accuracy is reported in Figure~\ref{fig:pre_experiment}. The fine-grained method outperforms the coarse-grained method in both composition generalization and zero-shot generalization tasks. 
+A possible explanation is the fine-grained matching focuses solely on each component and is simple to learn, which better capture the semantic information of each component and also well adaptable to express the various compositions of components. The coarse-grained matching, on the other hand,  attempts to describe all of the components as a whole composition, limiting the ability to express unseen compositions and components.
+Inspired by this, we propose \smodel in the next section.
+% In more specific, we fine-tune BERT-base-uncase with a linear layer, and utilize the embedding of  ``[CLS]'' to calculate the match score. In coarse-grained match, the model take ``[CLS] query [S] logical-expression [SEP]'' as input, where [S] denote special token. The coarse-grained match directly match the logical expression, for example, `` (AND boxer (JOIN people.weight)) ''. In the fine-grained match, the model take ``[CLS] query [S] component [SEP]'' as input, where component could be relation(i.e. ``weight''), class (i.e. ``boxer'')and logical function(i.e. ``AND''). In order to demonstrate the capacity of the models and make a objective comparison, we exploit a rank-loss with random negative sample for both strategy .
+
+% To compare two strategy intuitively, we extract a toy set from GrailQA. 
+% Our toy set only involves 1-hop logical expressions that is only comprised by a relation, a class and a function operator(i.e. COUNT, ARGMIN). For simplicity, we select two thousands qualified cases from GrailQA train set to construct the toy train set. We also construct test set follow GrailQA.
+% For the compositional test set, we select cases from the GrailQA test set, which contains unseen class-relation pair beyond the train set but ensure both singular relation and class appeared in the toy train set. For the zero-shot test set, we select cases that involved classes or relations not being appeared in the toy train set. 
+
+
+% We apply a BERT based model for both two strategy. In more specific, we fine-tune BERT-base-uncase with a linear layer, and utilize the embedding of  ``[CLS]'' to calculate the match score. In coarse-grained match, the model take ``[CLS] query [S] logical-expression [SEP]'' as input, where [S] denote special token. The coarse-grained match directly match the logical expression, for example, `` (AND boxer (JOIN people.weight)) ''. In the fine-grained match, the model take ``[CLS] query [S] component [SEP]'' as input, where component could be relation(i.e. ``weight''), class (i.e. ``boxer'')and logical function(i.e. ``AND''). In order to demonstrate the capacity of the models and make a objective comparison, we exploit a rank-loss with random negative sample for both strategy .
+
+% During the inference process, the coarse-grained match needs to enumerate all 1-hop logical forms to rank, which may be an extremely large amount for some cases. Therefore, we construct a small coarse-grained candidate pool with only 100 logical expressions for each case in our toy set. To maintain challenge, the logical expressions in the candidate pools either contain same entity with the ground truth or share the same domain with the ground truth. For the fine-grained match, we also construct a candidate pool to keep fair. We simply select all classes or relations involved in the coarse-grained candidate pool as candidates.
+
+
+
+
+\subsection{Model Overview}
+We propose a fine-to-coarse composition framework \smodel bridged by a middle-grained KB constraint. Figure~\ref{fig:over-view} illustrates the overall framework, which contains three parts:
+
+\vpara{Fine-grained Component Detection.} Given a question, we extract relation candidates and class candidates from the whole KB based on semantic similarity. Simultaneously, we adopt an entity linker to detect mentioned entities and use a seq-to-seq model to generate logical skeletons. 
+
+\vpara{Middle-grained Component Constraint.}
+Based on the detected components, we devise an efficient way to check the connectivity of component pairs on the KB, including class-relation pairs, relation-relation pairs, and relation-entity pairs. We only keep the executable component pairs to guarantee the executability of final logical expression. 
+%Moreover, the candidate components can be refined into a smaller set to boost the model's efficiency.
+% successfully utilize the KB connection to prune each other. 
+
+\vpara{Coarse-grained Component Composition.} 
+Finally, a seq-to-seq model takes the concatenation of the question and the reformulated components as input to generate the logical expression. In particular, the middel-grained components are injected into both the encoder and the decoder to ensure the executability of the final logical expressions.
+% we reformulate the pruned component pairs. The generation model takes the concatenation of the question and the reformulated components as input. Also,  the decoder of the generation model is employed with a control unit to ensure the model generates executable logical expressions.
+
+% As the fine-grained detection model and the coarse-grained generation model are light, and the middle-grained enumeration only considers the top-k candidate components, our framework keeps the efficiency.
+
+\subsection{Fine-grained Component Detection}
+\label{sec:fine_grained}
+\vpara{Relation and Class Extraction.}
+Taking the relation extractor as the example, given a question $q$, we aim to extract relations in $q$. First, we apply BM25~\cite{robertson2009probabilistic} to recall the relation candidates from the KB based on the surface overlaps between relations' names and $q$. 
+Then we apply BERT~\cite{devlin2018bert} as the cross-encoder to measure the semantic similarity between $q$ and each relation candidate $r$. 
+We describe $r$ using the relation domain, the relation name, and the relation range and let the BERT input be ``[CLS] q [D] domain(r) [N] name(r) [R] range(r) [SEP]'', where [CLS], [SEP], [D], [N], and [R] are the special tokens. 
+To better distinguish the spurious relations, we sample the relations that share the same domain as the ground-truth relation as the negatives for training.
+The trained model is used to retrieve the set of top-$k$ relations, denoted by $R_q$.
+
+The class extractor works in the same way as the relation extractor. We represent the class using its name and domain, and use other classes in the same domain as negatives. $C_q$ represents the set of the top-$k$ relevant classes.
+
+\vpara{Entity Linking.}
+A common paradigm of finding topic entities in KBQA methods is to first leverage a NER tool~\cite{finkel2005incorporating} to detect mentions and then apply an entity disambiguation model to link them to entities in KB. However, some noun-phrase mentions such as ``rich media'' are hard to be detected by the NER tool, and some ambiguous entities could not be distinguished by the pure entity names.  To address both issues, we equip the NER tool\footnote{We follow GrailQA which utilizes an open BERT-NER tool on GitHub (https://github.com/kamalkraj/BERT-NER).} with a trie tree-based mention detection method and propose a relation-aware pruning method to filter the mentions.
+
+Specifically, we build a trie tree~\cite{fredkin1960trie} with the surface names of all entities in the KB. Then we can search noun phrase mentions in the question efficiently and link them to the KB by BLINK~\cite{wu2019zero} to obtain the corresponding entities $E_q$. After that, we propose a relation awared pruning strategy to prune $E_q$ by removing the entities that could not link to any relations in $R_q$. Finally, following GrailQA~\cite{gu2021beyond}, we choose the entity with the highest popularity. 
+We define regular expressions to extract literals such as digits and years appearing in $q$.
+%  Most KBQA methods~\cite{gu2021beyond,ye2022rng} identify the topic entities from the given question by first leveraging a NER tool~\cite{finkel2005incorporating} to detect the named entities as the mentions and then apply an entity disambiguation model (ED)~\cite{wu2019zero} to link them to the corresponding entities in KBs. However, such NER+ED method leads to two main problems. 
+% First, some noun-phrase mentions such as \texttt{rich media} are hard to be detected by the NER tool. Second, some ambiguous entities could not be distinguished by the pure entity names. For example, \texttt{BATMAN} represents either a comic book or a comic movie. To solve the two problems, we replace the NER tool with a trie-tree-based mention detection method and propose a relation-aware pruning method to filter the results of ED.
+
+% To solve the first problem, we build a trie tree~\cite{fredkin1960trie} with the surface names (both the entity names and its alias names) of all the entities in the KB. With this trie tree, we can efficiently search a mention set $M_q$ that contains all the surface names mentioned in the question. For each mention in $M_q$, we link them to the KBs by BLINK~\cite{wu2019zero}, a state-of-the-art ED tool, to obtain the corresponding entities $E_q$. 
+% Following most of KBQA models including GrailQA and RNG-KBQA, we only choose the top-1 entity as candidate for each mention.   
+
+% To solve the second problem, we propose a relation-aware pruning strategy to prune $E_q$. Specifically, for each entity $e \in E_q$ and each relation $r \in R_q$, we check whether $e$ has the relation $r$ or not.  We remove the entities that could not link to any relations in $R_q$ and sort the remaining entities by their popularity. We follow GrailQA~\cite{gu2021beyond} for computing entities' popularity. Since we use the top-$k$ relations as the constraints, the pruned entities are more accurate, which could further improve the subsequent QA's performance. 
+
+% For literals especially digits and years appearing in $q$, we define regular expressions to extract them.
+
+\vpara{Logical Skeleton Parsing.}
+Logical skeleton parsing aims to transform a given question $q$ into a logical skeleton $l$. Because the logical skeleton is domain-independent, the parsing process could be generalized across domains. We adopt T5~\cite{raffel2020exploring}, a state-of-the-art generation model to parse logical skeletons. Since many entity names contain tokens such as ``and'' and
+``of'' that may cause the logical skeleton to be incorrectly determined, we mask each mention $m \in M_q$ with the special token ``<entity0>'', ``<entity1>'', ..., in order of appearance. For example, we change ``Thomas was the designer of what ship?'' to ``<entity0> was the designer of what ship?''. We notice that a common error is parsing out logical skeleton with wrong relation numbers, for example ``<rel>'' instead of ``<rel><rel>''. Instead of increasing beam numbers, we manually add grammar rules, such as add ``<rel><rel>'' as the second candidate when ``<rel>'' is T5's top-1 prediction. The set of the top-2 logical skeleton candidates is denoted as $L_q$.
+
+
+% For example, the semantic 1-hop relation “radio program producer” is represented by 2-hop relations``'' and ``'' in Freebase. Our model will miss learning of this specific composition 
+
+% tv.tv_producer.programs_produced
+
+\subsection{Middle-grained Component Constrain}
+
+% Although the above components are extracted separately, some of them are constrained in KB-grained. For example, in query ``which version of game BATMAN:Arkham Knight sold in 2015 ?'', both relation \texttt{computergame.version} and \texttt{game.version} have the semantic meaning ``version of game'', yet only relation \texttt{game.version} could connect to entity \texttt{BATMAN} in KB.  To utilize the KB constraint, a straightforward idea is to fill knowledge(relation, class, entity) candidates into the logical skeleton candidates and then execute them one by one to get the executable logical expressions. Such enumeration only involves top-k candidates which are relatively few compared to the enumeration in RNG-KBQA, which consider all logical expressions in a 2-hop sub-graph.  However, the enumeration still needs to execute all the combinations of candidate components thus not efficient enough. Therefore, we devise the middle-grained executable pairs which not only retain the executability information but also could enumerate efficiently by an ontology-guide strategy.
+After deriving the candidate components according to Section~\ref{sec:fine_grained},
+the KB-based constraint is required to guarantee the composed logical expression is executable. 
+A straightforward idea is to fill the logical skeleton with candidate relations, classes, and entities, and execute them one by one to check executability.
+% which fill knowledge (relation, class, entity) candidates into the logical skeleton candidates and then execute them one by one to get the executable logical expressions. 
+However, such enumeration is inefficient, since all combinations of candidate components should be considered. Therefore, we incorporate the middle-grained component pairs which are connected in KB. Such pairs can be produced efficiently to keep the model's efficiency.
+
+The middle-grained component pairs include class-relation pairs, relation-relation pairs, and relation-entity pairs. For each class $c \in C_q$ and each relation $r \in R_q$, if $r$ is connected with the domain class $c$, we add $(c, r)$ into the class-relation pair set $P_{c-r}$. For example in Figure~\ref{fig:KB}, the class ``railway.railway'' is linked with the relation ``rail.railway.terminuses'', so the pair (railway.railway, rail.railway.terminuses) is executable and will be added into $P_{c-r}$. If the range class of $r$ is $c$, we add the pair of $c$ and the reverse relation of $r$. 
+We construct executable relation-relation pair set $P_{r-r}$ by checking each relation pair $(r_1\in R_q, r_2\in R_q)$. If $r_2$'s domain class does not match $r_1$'s range class, we directly remove this pair to maintain efficiency, otherwise, we reformulate $(r_1, r_2)$ to a logical expression and execute on KB to check its connectivity. 
+For each relation-entity pair $(r, e)$, we first check whether the logical skeleton candidates contain the <entity> placeholder or not. If not, we leave $P_{r-e}$ empty; otherwise we directly take the result of the relation-pruning strategy for entities in Section~\ref{sec:fine_grained}. 
+%We rank each pair by summing up the score of each component involved in the pair,  and take top-10 as candidates, denotes as ,, respectively.
+
+\subsection{Coarse-grained Component Composition}
+We apply a generation model based on T5 to compose all the above fine-grained and middle-grained component candidates and output an executable logical expression by a controlled decoder.
+
+% . First, we reformulate the candidates to a more orderly and compact format. Then, a  takes the query and reformulated components as input and  
+\vpara{Encoding Process.}
+Before feeding the fine-grained and middle-grained component candidates into the generator, we sort the middle-grained candidates according to their similarity scores to the question. By doing this, the order can reveal the pattern of which pair is more likely to appear in the ground-truth logical expression. In intuition, such a pattern will help to generate more accurate logical expressions.
+To accomplish this, we take the logits of the fine-grained component detection in section~\ref{sec:fine_grained} as the similarity score between the question and each class/relation component, and then calculate the similarity score between the question and a middle-grained component pair by summing the scores of contained single components. The encoding of such middle-grained component improves the generator's reasoning capacity in terms of capturing the knowledge constraints. 
+
+% For each relation component $r$ and class component $c$, we define $e_r, e_c$ as the score of them respectively, which comes from the logit of the extraction model. Then, the score of each middle-grained candidate is the summation of the score of contained singular components. For example, the score of relation-relation pair $(r_1, r_2)$ is $e_{r_1} + e_{r_2}$. We put relation-relation candidates and relation-class candidates together, sort by their scores, and take top-20 as the final component pair candidates.  The sorting process selects candidates that most likely cover the ground truth component which will help the decoder to generate the golden logical expressions. We connect query, entity, component pair, and logical skeleton candidates to construct the final input to the encoder.
+
+We use ``;'' to separate each element (a component or a component pair). To explicitly inform the model the type of each component, we place ``[REL]'', ``[CL]'', ``[ENT]'', and ``[LF]''  before each relation, class, entity, and logical skeleton respectively. For example, we organize the input of encoder as 
+``query;[CL]$c_1$[REL]$r_1$;[REL]$r_1$ [REL]$r_2$;[CL]$c_2$[REL]$r_3$;[ENT]$e_1$;[LF]$l_1$;[LF]$l_2$''.
+
+% We add special tokens before each component and use ``;'' to separate each pair 
+% To explicitly make the model aware of the type of each component, we add special tokens before each component and use ``;'' to separate each pair . More specifically, we add ``[REL]'', ``[CL]'', ``[ENT]'', and ``[LF]''  before each relation, class, entity, and logical skeleton respectively.
+
+\vpara{Decoding Process.}
+The middle-grained components are also used to produce a dynamic vocabulary to constrain the decoding process.
+The generated token $y_t$ is confined to the tokens involved in the dynamic vocabulary at each step $t$.
+We initialize the dynamic vocabulary with the union of tokens from the detected entities, tokens from the detected classes in $P_{c-r}$, i.e., usually the answer type, and the keywords such as ``JOIN'' in logical skeleton.
+Then we update the dynamic vocabulary by the relations paired with $r$ in $P_{r-r}$ if the last generated component is $r$ or by the relations paired with $c$ in $P_{c-r}$ if it is $c$.
+
+% \begin{equation}
+% y_t \in {\{token(logic\_operator)\} \land token(r_{next})} 
+% \label{decoder_rule}
+% \end{equation}
+
+% \noindent where $logic\_operator$ denotes a set of tokens involved in logical skeletons (i.e. ``('', ``JOIN'', ``ge'', ...), and $r_{next}$ denotes relations that could be paired with the generated relations or classes in the $g_{<t}$. More specifically, if $r$ is in $g_{<t}$, we add all relations that paired with $r$ in $P_{r-r}$ to $r_{next}$, and if $c$ is in $g_{<t}$, we add all relations that paired with $c$ in $P_{c-r}$ to $r_{next}$.
+   

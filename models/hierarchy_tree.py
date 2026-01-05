@@ -21,24 +21,32 @@ class HierarchyTree:
         self.root = Node('Document')
         self.stack = [(0, self.root)]
         
-    def add_node(self, content, tag=None):
-        if tag is None:
+    def add_node(self, node, tag=None):  
+        if tag == 'leaf':
             parent_node = self.stack[-1][1]
-            current_node = Node(content)
-            parent_node.add_child(current_node)
+            parent_node.add_child(node)
             return
             
-        current_level = self.levels.get(tag)
-        
+        if tag is None:
+            current_level = self.stack[-1][0] + 1
+            
+        if tag in self.levels.keys():
+            current_level = self.levels.get(tag)
+            
         if current_level is not None:
             while len(self.stack) > 1 and self.stack[-1][0] >= current_level:
                 self.stack.pop()
                 
             parent_node = self.stack[-1][1]
-            current_node = Node(content)
-            parent_node.add_child(current_node)
+            parent_node.add_child(node)
             
-            self.stack.append((current_level, current_node))
+            self.stack.append((current_level, node))
+            
+
+    def step_out(self):
+        if len(self.stack) > 1:
+            self.stack.pop()
+            
             
     def print(self, node=None, level=0):
         if node is None:

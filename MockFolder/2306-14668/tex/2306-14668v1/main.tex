@@ -1,0 +1,969 @@
+\documentclass{IEEEtran}
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{color}
+\usepackage{colortbl}
+
+\usepackage{stfloats}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\begin{document}
+
+\title{A Dual-Band 28/38-GHz Power Amplifier With Inter-Band Suppression in 22-nm FD-SOI CMOS for Multi-Standard mm-Wave 5G Communications}
+
+%\author{{Abbas Nasri, \IEEEmembership{Graduate Student Member, IEEE}, Alireza Yousefi, \IEEEmembership{Member, IEEE}, and \\Reza Nikandish, \IEEEmembership{Senior Member, IEEE}}
+\author{{Abbas Nasri, Alireza Yousefi, and Reza Nikandish$\rm ^*$}
+
+%\thanks{Manuscript received 26 June 2023. (\textit{Corresponding author: R. Nikandish.})}
+\thanks{$\rm ^*$ Corresponding author}
+\thanks{A. Nasri was with the School of Electrical and Electronic Engineering, University College Dublin, Dublin D04 V1W8, Ireland (e-mail: abbas.nasri@ieee.org).}
+\thanks{A. Yousefi is with the Syntiant Corporation, Irvine, CA 92618 USA.}
+\thanks{R. Nikandish is with the School of Electrical and Electronic Engineering, University College Dublin, Dublin D04 V1W8, Ireland (e-mail: reza.nikandish@ieee.org).}
+}
+
+\maketitle
+
+\begin{abstract}
+In this article, we present a dual-band 28/38-GHz power amplifier (PA) with inter-band suppression for millimeter-wave 5G communications. The dual-band operation is achieved using a center-tapped transformer network with an extra resonator which can provide optimum load impedance of the transistor in the two bands and synthesize a short-circuit between the two bands. This feature suppresses the PA signal emissions in the inter band, commonly allocated for other applications. A design procedure is developed for the proposed matching network including physical limits on the quality factor and the coupling coefficient of the transformer. The PA is designed using a 22-nm fully-depleted silicon-on-insulator (FD-SOI) CMOS process. The transistor stacking and a four-path transformer parallel-series power combining techniques are used to achieve high output power using the low-voltage process. The PA achieves simulated performance of 22.6/22.0\,dBm saturated output power, 19.8/20.0\,dBm output power at 1-dB gain compression, and 33/32\,\% maximum power-added efficiency (PAE) at 28/38\,GHz. The inter-band suppression is 6\,dB at 33\,GHz.
+\end{abstract}
+
+\begin{IEEEkeywords}
+CMOS, dual-band, fifth generation (5G), fully-depleted silicon-on-insulator (FD-SOI), millimeter-wave, multi-band, power amplifier (PA), transformer.
+\end{IEEEkeywords}
+
+\section{Introduction}
+ 
+\IEEEPARstart{M}{illimeter-Wave} (mm-wave) frequency bands are of paramount importance in the fifth generation (5G) and the future sixth generation (6G) networks where the broad spectrum availability can open up opportunities for new high-capacity communication applications \cite{rappaport-access2013, rappaport-access2019}. The development of innovative system and circuit architectures is essential to leverage exciting potentials of the mm-wave spectrum. A number of mm-wave bands are allocated for mobile communications, e.g., 28\,GHz, 38\,GHz, 60\,GHz, 140\,GHz, and several radio transceivers \cite{pang-jssc2019, lokhandwala2020high, tang2021design, wang-tmtt2022, Karakuzulu2023} and circuit components \cite{camarchia2020review, daneshgar2020high, sarkar201728, mortazavi2016integrated, dasgupta201926, Pashaeifar2022, wang2021broadband, callender2019band} operating in these bands are presented. There is an increasing quest for the concurrent multi-band circuits to develop universal and multi-standard products in smaller chip area and with lower cost \cite{lee2021millimeter, hu201928, ding202228, xu202128, del2019multi, hashemi-tmtt2002, nikandish2014, wang-tmtt2022, nikandish2016, celik-jssc2021, vigilante-jssc2018, chappidi2017frequency, mayeda2020highly}. 
+
+There are three main approaches to realize the multi-band mm-wave circuits. In the most straightforward design method, multiple independent circuits each operating in one of the frequency band are used to realize the multi-band circuit. The operating band is selected by switches integrated in the circuits. This approach offers higher reliability and robustness and, as a result, is commonly used in commercial products. However, this leads to larger chip area, higher fabrication cost, and lower performance due to high insertion loss and low isolation of the switches in mm-wave bands. 
+
+Another approach to multi-band operation is through broadband circuits covering multiple bands \cite{celik-jssc2021, vigilante-jssc2018, chappidi2017frequency, mayeda2020highly}. Examples include a 29--57-GHz class-AB power amplifier (PA) using a fourth-order matching network in 28-nm CMOS \cite{vigilante-jssc2018}, a 0.4--31.6\,GHz distributed PA in 22-nm fully-depleted silicon-on-insulator (FD-SOI) CMOS \cite{celik-jssc2021}, and a frequency reconfigurable dual-path 40--65-GHz PA in 130-nm SiGe BiCMOS \cite{chappidi2017frequency}. This approach offers a lower sensitivity to modeling inaccuracies and process variations, but suffers from two major issues. First, a broadband circuit usually requires complicated impedance matching networks which their high insertion loss due to the low quality factor of on-chip passive components can degrade the circuit performance. Second, the broadband PAs can transmit spurious signals in undesired communication bands, i.e., out-of-band emissions, while the broadband low-noise amplifiers (LNAs) can receive blocker signals and noise present in unintended bands. It is, therefore, essential to use additional filtering with such broadband circuits which leads to extra loss and higher system cost. 
+
+In the third approach, the multi-band circuits are realized using dedicated multi-resonance circuit architectures \cite{hashemi-tmtt2002, nikandish2016, hu201928, ding202228, xu202128, lee2021millimeter, nikandish2014}. The design of these multi-band circuits requires special attention to the circuit functionality to develop impedance matching networks which can provide the required conditions at multiple frequencies. This approach has received increased interests recently, where a number of developments include a dual-band 28/38-GHz PA in 250-nm SiGe BiCMOS \cite{ding202228}, a tri-band 28/37/39-GHz Doherty PA with reconfigurable matching networks in 130-nm SiGe BiCMOS \cite{hu201928}, a dual-band 28/38-GHz PA in 22-nm FD-SOI CMOS \cite{xu202128}, and a dual-band 27/33-GHz amplifier with transformer-feedback neutralization of the gate-drain capacitance in 100-nm GaAs pHEMT \cite{nikandish2016}. The main challenge of this approach is the development of multi-band circuits which can provide a good performance in the presence of practical limitations of the process, e.g., low quality factor of passive elements, parasitic capacitances, modeling inaccuracies, and process variations. 
+
+
+In this article, we present a dual-band 28/38-GHz PA using a transformer-based impedance matching network. The transformer network, which provides the impedance matching and differential-to-single ended transformation, is \textit{center-tapped with an extra resonator}. This resonator enables the transformer network to operate at two frequency bands and provide the \textit{inter-band suppression}. This attenuates the PA out-of-band emissions in the frequency bands allocated for other communication applications. 
+
+The article is organized as follows. In Section II, we present the dual-band matching network architecture, principles of operation, and a detailed analysis of the impacts of circuit imperfections on its performance. In Section III, we discuss the circuit design of a dual-band PA using the developed transformer network realized in 22-nm FD-SOI CMOS process. The post-layout simulation results of the PA are presented in Section IV and the conclusions are discussed in Section V. 
+
+%***********************
+%***********************
+\section{Dual-Band Transformer Network}\label{MN_DB}
+
+
+
+\subsection{Proposed Network}
+The proposed transformer network for dual-band impedance matching and inter-band suppression is shown in Fig. \ref{MN_Proposed}(a). The secondary winding of the transformer is center-tapped with a reactive resonator network. We will discuss the selection criteria for this resonator circuit later. 
+The source impedance of the transformer network is modeled by the optimum load resistance of the transistor $R_{opt}$ in parallel with a capacitance $C_p$ which should be absorbed into the transformer network. The capacitance $C_p$ comprises the output-referred parasitic capacitance of the transistor and the primary parasitic capacitance of the transformer. 
+ The load impedance of the network includes the load resistance $R_L$ in parallel with a capacitance $C_s$, which comprises secondary parasitic capacitance of the transformer and parasitic capacitance of the output signal pad. 
+ 
+ The transformer turn ratio is selected such that it transforms the load impedance $R_L$ to the optimum resistance $R_{opt}$, while the transformer inductances absorb the parasitic capacitances $C_p$ and $C_s$. These conditions should be concurrently satisfied at the lower and upper frequencies, $\omega_L$ and $\omega_H$, to realize a dual-band impedance matching network
+
+\begin{figure*}[!t]
+  \begin{center}
+  \includegraphics[width=1.9\columnwidth]{figs/dual_band_XFMR}
+  \caption{(a) Dual-band transformer network with center-tap resonator. (b) Four possible three-element circuits as the resonator.}\label{MN_Proposed}
+  \end{center}
+\end{figure*}
+
+\begin{equation}
+    \label{Zin}
+    Z_{in}(j \omega_L) = Z_{in}(j \omega_H) = R_{opt}.
+\end{equation}
+It should be noted that the resistive part of the input impedance can be set to the optimum resistance by the proper selection of the transformer turns ratio as 
+\begin{equation}
+    \label{turn_ratio}
+    n \approx \sqrt{\frac{R_{opt}}{R_L}}.
+\end{equation}
+However, it is challenging to satisfy the reactive part conditions. \textit{A conventional transformer cannot absorb the parasitic capacitances in two frequency bands}. A double-tuned transformer network which can provide two peaks in its frequency response is useful as interstage network of broadband amplifiers and resonator of oscillators \cite{vigilante-jssc2018, mazzanti2018second, bevilacqua2020doubly}. This network has disadvantages of loss, imbalanced magnitudes in the two peaks, and tuning complexity as the ratio of the two peak frequencies is mainly controlled by the transformer coupling coefficient. 
+Therefore, we propose the transformer network of Fig. \ref{MN_Proposed}(a) with the center-tap impedance of $Z_T(j\omega)$ which should provide three conditions: 
+\begin{enumerate}
+    \item At the lower frequency $\omega_L$, the resonator should operate as an open-circuit. The transformer's primary and secondary inductances are $L_p = L_{p1} + L_{p2}$ and $L_s = L_{s1} + L_{s2}$, and resonate with the parasitic capacitances.
+    \item At the higher frequency $\omega_H$, the resonator should be equivalent with a short-circuit to effectively decrease the inductances of the transformer to $L_{p1}$ and $L_{s1}$. This enables the transformer to absorb the parasitic capacitances at the higher frequency. 
+    \item At the inter-band frequency $\omega_{SC}$, it should provide a proper reactance which, along with the transformer, creates a short-circuit at \textit{output port of the transformer}. This realizes the expected inter-band suppression. 
+\end{enumerate}
+
+The discussed conditions can be summarized as follows.
+\begin{equation}\label{Z_T}
+ \begin{cases}
+ Z_{T}(j\omega_{L})=\infty \ \\ Z_{T}(j\omega_{H})=0 \ \\ Z_{out}(j\omega_{SC})=0 
+ \end{cases}
+\end{equation}
+The first two conditions are only dependent on the resonator network's elements, while the third condition is also related to the transformer's elements. We develop a design approach for the dual-band matching network. 
+
+%Fig.~\ref{MN_Proposed} (a) shows the dual-band transformer circuit. In the center of the secondary part, a resonator network has been added which can be the networks of Fig.~\ref{MN_Proposed} (b-e). In Fig.~\ref{MN_Proposed} (b and c), the pole is formed first and then zero, but in Fig.~\ref{MN_Proposed} (d-e), zero is formed first and then pole. In order to have a notch between two frequency bands, it is better to satisfy all the conditions 1 to 3, so first a pole and then a zero should be created, which Fig.~\ref{MN_Proposed}\,(b and c) does this situation. However, these networks have two inductors that occupy a lot of areas. All the conditions 1 to 3 can be set with the resonance networks of Fig.~\ref{MN_Proposed}\,(d and e), but zero is before pole in these networks, the value of $Z_{T}$ at $\omega_{H}$ can be considered after the pole.Therefore, a value of capacitor appear at $\omega_{H}$ from resonator network, which is small and can be ignored.These networks reduce the occupied space because an inductor is used. In this work, the structure of Fig.~\ref{MN_Proposed} (d) is used to create Dual-band PA, which helps us to have a low occupied area. 
+
+In the dual-band transformer circuit of Fig. \ref{MN_Proposed}(a), several circuit structures can be envisioned as the resonator network. We consider the four resonator circuits shown in Fig. \ref{MN_Proposed}(b) as the possible realizable circuits using three reactive elements. These circuits have a zero and a pole in their impedance frequency response. The requirements of the resonator network given in (\ref{Z_T}) indicate that the circuit should ideally have a pole at $\omega_L$ and a zero at $\omega_H$. This condition suggests to use the network I or II with $\omega_z > \omega_p$. However, these networks include two inductors which can lead to higher loss and larger chip area compared to the networks III and IV with only one inductor. We can use the network III or IV which their pole is set at $\omega_L$ and the impedance at $\omega_H$ is practically small enough such that it can be approximated by zero. This condition can be considered as $|Z_T(j\omega_H)| \ll R_L$ or, for the sake of future derivations, as follows
+%Furthermore, the inter-band suppression theoretical condition, $Z_{out}(j\omega_{SC}) = 0$, can be approximated by the practical condition $|Z_{out}(j\omega_{SC}| \ll R_L$. These conditions can be considered as follows
+\begin{equation}
+    \label{ZT_wh}
+    |Z_T(j\omega_H)| = {\delta} R_L,
+\end{equation}
+%\begin{equation}
+%    \label{Zout_wsc}
+%    |Z_{out}(j\omega_{SC}| = {\delta_2} R_L,
+%\end{equation}
+where $\delta$ is a constant which can be set in the typical range of 0.01--0.1 depending on the required accuracy and circuit element values. For the resonator network, we select the network III and derive the design criteria. 
+
+
+
+\subsection{Design Approach}
+The impedance of the resonator network III in Fig. \ref{MN_Proposed}(b) can be derived as
+\begin{equation}\label{Zins}
+ Z_{T}(j\omega)= \frac{1-\omega^2 L_{ts}(C_{ts}+C_{t1s})}{1-\omega^2 L_{ts}C_{ts}} \frac{1}{j \omega C_{ts1}}.
+\end{equation}
+The resonator network should have a pole at $\omega_L$, leading to
+\begin{equation}
+    \label{wL_condition}
+    \omega_L^2 L_{ts} C_{ts} = 1.
+\end{equation}
+The resonator network should meet the condition (\ref{ZT_wh}) at $\omega_H$ which using (\ref{Zins}) and (\ref{wL_condition}) can be derived as
+\begin{equation}
+    \label{wH_condition}
+    \frac{\left( 1 + \frac{C_{ts1}}{C_{ts}} \right) \omega_H^2 - \omega_L^2}{\omega_H^2 - \omega_L^2}  \frac{1}{\omega_H C_{ts1} R_L} = \delta.
+\end{equation}
+This can be solved for $C_{ts1}$ as follows
+\begin{equation}
+    \label{whH_condition2}
+    C_{ts1} = \frac{C_{ts}}{{\delta} \omega_HC_{ts}R_L - \alpha},
+\end{equation}
+where $\alpha = \omega_H^2/(\omega_H^2 - \omega_L^2)$. This indicates that the parameter $\delta$ should satisfy the condition $\delta > \alpha/(\omega_H C_{ts} R_L)$ and cannot be selected arbitrarily small. Therefore, the minimum theoretical impedance of the resonator in (\ref{ZT_wh}) is derived as 
+\begin{equation}
+    \label{ZT_wh_min}
+    |Z_T(j\omega_H)|_{\rm min} = \frac{\omega_H^2}{\omega_H^2 - \omega_L^2} \frac{1}{\omega_H C_{ts}}.
+\end{equation}
+
+
+%\begin{equation}
+%    \label{wH_condition}
+%C_{t1s}=\frac{C_{ts}(\omega_{L}^2 - \omega^2_{H)}}{\omega^2_{H}-X_{H}C_{ts}\omega_{H}(\omega_{H}^2-\omega^2_{L})}
+%\end{equation}
+%\begin{equation}
+%    \label{wH_condition}
+%    \omega_H^2 L_{ts} (C_{ts} + C_{t1s}) = 1.
+%\end{equation}
+
+
+%According to equation~\ref{wH_condition}, the value of capacitor at $\omega_{H}$ must be:
+
+%\begin{equation}\label{XH}
+%\frac{\omega_{H}}{(\omega^2_{H}-\omega^2_{L})C_{ts}}<X_{H}.     
+%\end{equation}
+
+The short-circuit frequency of the transformer network should meet the condition $\omega_L < \omega_{SC} < \omega_H$. We can consider it as the mid logarithmic distance between the lower and higher frequencies, leading to
+\begin{equation}
+    \label{SC_freq}
+    \frac{\omega_{SC}}{\omega_L} = \frac{\omega_H}{\omega_{SC}} \Rightarrow  \omega_{SC}= \sqrt{\omega_{L} \omega_{H}}. 
+\end{equation}
+%\begin{equation}\label{Lts}
+%	L_{ts}=\frac{1}{C_{ts}\omega^2_{L}}
+%\end{equation}
+%\begin{equation}\label{Ct1s}
+%	C_{t1s}=  \left[1-\left(\frac{\omega_{L}}{\omega_{H}} \right)^2 \right] C_{ts}
+%\end{equation}
+The impedance of the resonator network at the short-circuit frequency can be derived using (\ref{Zins}), (\ref{wL_condition}), and (\ref{SC_freq}) as
+\begin{equation}
+    \label{ZT_sc}
+    Z_{T}(j\omega_{SC}) = \frac{\left( 1 + \frac{C_{ts1}}{C_{ts}} \right) \omega_H - \omega_L}{\omega_H - \omega_L}  \frac{1}{j\omega_{SC} C_{ts1} },
+\end{equation}
+which is equivalent with a capacitance given by
+\begin{equation}
+    \label{Csc}
+    C_{sc} = \frac{(\omega_H - \omega_L)C_{ts1}} {\left( 1 + \frac{C_{ts1}}{C_{ts}} \right) \omega_H - \omega_L}.
+\end{equation}
+This capacitance can generate a resonance with the transformer to produce a short-circuit under certain conditions. The output impedance of the transformer network should be derived to apply the inter-band suppression condition, $Z_{out}(j\omega_{SC}) = 0$. Using the circuit of Fig. \ref{MN_Proposed} with the resonator network III, assuming $L_{p1} = L_{p2} = \frac{1}{2} L_p$ and $L_{s1} = L_{s2} = \frac{1}{2} L_s$, and setting $Z_{out}(j\omega_{SC}) = 0$, it can be shown that the following condition should be satisfied
+\begin{equation}
+    \label{ZSC_condition}
+    Z_{T}(j\omega_{SC}) + \frac{1}{4} j\omega_{SC} L_s = 0. 
+\end{equation}
+Using (\ref{ZT_sc}) and (\ref{Csc}), this condition can be derived as
+\begin{equation}
+    \label{wsc_resonance}
+    \frac{1}{4} \omega_{SC}^2 L_{s} C_{sc} = 1.
+\end{equation}
+
+The resonator network can be designed using the conditions given by (\ref{wL_condition}), (\ref{ZT_wh_min}), and (\ref{wsc_resonance}). There are extra degrees of freedom in this system of equations which provide more design flexibility. The transformer network can be designed using the approximate input-referred equivalent circuit of the transformer (assuming $K_m \approx 1$) comprising a parallel RLC circuit with the elements
+\begin{equation}
+    \label{Lin}
+    L_{in} \approx L_p 
+\end{equation}
+\begin{equation}
+    \label{Cin}
+    C_{in} \approx C_p + \frac{1}{n^2}C_s
+\end{equation}
+\begin{equation}
+    \label{Rin}
+    R_{in} \approx n^2 R_L.
+\end{equation}
+The network is designed such that $ L_{in}$ and $C_{in}$ resonate at the lower frequency $\omega_L$, while $R_{in}=R_{opt}$. The resonator network effectively reduces the inductances to $L_{p1}$ and $L_{s1}$ at the higher frequency $\omega_H$, enabling the network to resonate at both $\omega_L$ and $\omega_H$. An important advantage of this network is that the transformer coupling coefficient is not a design parameter and the transformer layout can be optimized for the maximum coupling. This is in contrary with the conventional double-tuned transform network which usually should be designed with a low coupling coefficient to achieve broadband response at the cost of a lower gain \cite{vigilante-jssc2018, mazzanti2018second, bevilacqua2020doubly}.
+
+
+%the output impedance of the transformer network should be zero at $\omega_{SC}$. we assume the value of $Z_{T}$ is $1/j\omega C_{t1s}$ at $\omega=\omega_{sc}$. This leads to:   
+%Therefore, the effect of $C_p$ can be ignored at this frequency. This leads to: 
+
+%\begin{figure*}[b]
+%\begin{equation}\label{Zout}
+%	Z_{out}=j\omega L_{s1}+j\frac{\omega L_{s2}[1-\omega^2 L_{ts}(C_{ts}+C_{t1s})]}{-2\omega^2 L_{s2}C_{t1s}(1-L_{ts}C_{ts}\omega^2)-\omega^2 L_{ts} (C_{ts}+C_{t1s})+1}
+%\end{equation}
+%\end{figure*}
+
+%\begin{equation}\label{Zout}
+%	Z_{out}=j\omega L_{s1}+j\frac{\omega L_{s2}[a]}{b-d}
+%\end{equation}
+
+%\begin{equation}\label{Zout}
+%    Z_{out}=\frac{L_{s}\omega(\omega^2 C_{t1s}L_{s}-2)Z_{1}}{R_{o}Z_{2}+jL_{p}\omega Z_{3} }
+%\end{equation}
+
+%where:
+%\begin{equation*}\label{Zout_Pram1}
+%    Z_{1}=2(1-K_{m}^2L_{p}\omega+jjR_{o}(2C_{p}(1-K_{m}^2)L_{p}\omega^2-1))
+%\end{equation*}
+
+%\begin{equation*}\label{Zout_Pram2}
+%    Z_{2}=1-C_{t1s}L_{s}\omega^2+C_{p}L_{p}\omega^2(C_{t1s}(2-K_{m}^2)L_{s}\omega^2-2)
+%\end{equation*}
+
+%\begin{equation*}\label{Zout_Pram1}
+%    Z_{3}=2-C_{t1s}(2-K_{m}^2)L_{s}\omega^2
+%\end{equation*}
+
+%and $L_{s}$ can be derived as:
+%\begin{equation}\label{Ls}
+%    L_{s}=\frac{2}{C_{t1s}\omega^2_{sc}}
+%\end{equation}
+%\begin{equation*}\label{Zout_Pram1}
+%a= 1-\omega^2 L_{ts}(C_{ts}+C_{t1s})
+%\end{equation*}
+%\begin{equation*}\label{Zout_Pram2}
+%b=-2\omega^2 L_{s2}C_{t1s}(1-%L_{ts}C_{ts}\omega^2)
+%\end{equation*}
+%\begin{equation*}\label{Zout_Pram3}
+%d=\omega^2 L_{ts} (C_{ts}+C_{t1s})+1
+%\end{equation*}
+
+%and $L{s1}$ and $L_{s2}$ can be derived as:
+
+
+%\begin{equation}\label{Ls1}
+%	L_{s1}=\left(\frac{\omega_{L}}{\omega_{H}} \right)^2L_{s}
+%\end{equation}
+%\begin{equation}\label{Ls2}
+%	L_{s2}= \left[1-\left(\frac{\omega_{L}}{\omega_{H}} \right)^2 \right]L_{s}
+%\end{equation}
+
+
+
+%\begin{equation}\label{Ls}
+%	L_{s}=\frac{1}{\omega^2_{L}C_{tot}}
+%\end{equation}
+%where $C_{out}$ is total capacitance referred to secondary of the transformer, $C_{tot}=C_{s}+ n^2 C_{p}$.
+
+%\begin{equation}\label{Ctot}
+%	C_{tot}=C_{s}+ n^2 C_{p}
+%\end{equation}
+
+%By substitution (\ref{wL_condition}), (\ref{wH_condition}), (\ref{Ls1}), and (\ref{Ls2}) into (\ref{Zout}), the $C_{ts}$ can be derived as follows:
+%\begin{equation}\label{Cts}
+%	C_{ts}=C_{tot}\frac{\omega^4_{H}}{2(\omega^2_{H}-\omega^2_{L})^2}
+%\end{equation}
+
+
+%\begin{figure}[!t]\centering
+%\begin{minipage}{0.43\textwidth}\centering
+%  \includegraphics[width=\textwidth]{Fig_2.pdf}
+%  \caption{Proposed dual-band transformer circuit.}
+%    \label{MN_Proposed_Sch}
+%\end{minipage}
+%\begin{minipage}{0.43\textwidth}\centering
+%  \includegraphics[width=\textwidth]{Fig_3.pdf}
+%  \caption{ equivalent circuit for transformer function.}
+%   \label{MN_Proposed_TF}
+%\end{minipage}\label{MN_Proposed}
+%\end{figure}
+
+We use the transducer power gain as the performance metric for the transformer network such that the impact of losses can also be evaluated \cite{nikandish2021broadband}. This is defined as the ratio of the output power delivered to the load to the available source power and can be derived as
+\begin{equation}
+    \label{GT}
+    G_T(\omega) = \frac{4 R_{opt} R_L |Z_{21}|^2}{|(Z_{11} + R_{opt})(Z_{22} + R_L) - Z_{12}Z_{21}|^2},
+\end{equation}
+where $Z_{ij}$ denotes the impedance parameter of the transformer two-port network. 
+
+%\begin{equation}\label{GT}
+%	G_{T}(\omega) =\frac{P_{out}}{P_{avs}}=\frac{4R_{opt}}{R_{L}}|A_{v}(\omega)|^2,
+%\end{equation}
+%where $A_{v}(\omega)$ is the voltage transfer function given by 
+%\begin{equation}\label{Av}
+%	A_{v}(\omega)=\frac{Z_{out}R_{L}}{Z_{out}R_{L}+R_{opt}(Z_{out}+R_{L}+j Z_{out}R_{L}C_{tot}\omega)}.
+%\end{equation}
+
+In Fig. \ref{GT_IdealQ}, $G_{T}(\omega)$ of the dual-band transformer network is shown. The network is realized using ideal lossless elements and perfect transformer coupling ($K_m = 1$). The network is designed for the lower frequency of 28\,GHz, the upper frequency of 38\,GHz, and the short-circuit frequency of $f_{SC} = \sqrt{f_Lf_H} \approx$\,33\,GHz.
+\begin{figure}[!t]
+  \begin{center}
+  \includegraphics[width=0.9\columnwidth]{figs/GT_IdealQ.png}
+  \caption{Transfer function of the dual-band 28/38-GHz transformer network realized using ideal elements.}\label{GT_IdealQ}
+  \end{center}
+\end{figure}
+
+In Fig. \ref{GT_IdealQ_Cts}, the impact of changing the capacitance $C_{ts}$ on the frequency response is shown. This indicates that the short-circuit frequency can be controlled by using a digitally controlled or switched $C_{ts}$. The network has no notch for $C_{ts}=0$, while the notch is shifted toward the lower frequencies by increasing $C_{ts}$. 
+
+%The optimum load impedance of the transistor is determined using the load-pull simulations and is used to extract the optimum load resistance and output-referred parasitic capacitance of the transistor as $R_{opt}=50\,\Omega$, $C_{tot}=92\,fF$.   
+
+\begin{figure}[!t]
+  \begin{center}
+  \includegraphics[width=0.9\columnwidth]{figs/GT_IdealQ_Cts.png}
+  \caption{ Transfer function of the dual-band transformer with swept ${C_{ts}}$. The notch frequency can be controlled by ${C_{ts}}$.}\label{GT_IdealQ_Cts}
+  \end{center}
+\end{figure}
+
+\subsection{Impact of Transformer Loss}
+The transformer loss arises from the limited quality factor of inductors, due to metal and substrate losses, and the imperfect transformer coupling. It is assumed that the primary and secondary inductors of the transformer have the quality factor of $Q_{\rm XFMR}$. This can be modeled by resistances $r_p = \omega L_p/Q_{\rm XFMR}$ and $r_s = \omega L_s/Q_{\rm XFMR}$ in series with $L_p$ and $L_s$, respectively. For the inductor of the resonator network with a quality factor of $Q_{T}$, the loss can be similarly modeled as a resistance $r_{ts} = \omega L_{ts}/Q_{ T}$ in series with the inductor $L_{ts}$. 
+
+In Fig. \ref{GT_realQ_Trans}, the impact of transformer quality factor on the transfer function is illustrated. The insertion loss in the two pass bands increases by lowering $Q_{\rm XFMR}$. For high $Q_{\rm XFMR}$, the insertion loss is limited by the resonator network quality factor $Q_T$ which is assumed to be 30 in this simulation. A transformer coupling coefficient of 1 is used to focus on the effects of the transformer quality factor. As will be discussed in Section III, the transformer physical structure is an hexagonal spiral to comply with design rules of the process. This limits its quality factor to about 20--25. 
+
+In Fig. \ref{GT_RealQ_Tuning_Km}, the transfer function versus frequency is shown for different transformer coupling coefficients $K_{m}$. The insertion loss increase when $K_{m}$ is reduced from 0.8 to 0.5. The impact is more significant in the upper band. 
+
+\begin{figure}[!t]
+  \begin{center}
+  \includegraphics[width=0.9\columnwidth]{figs/GT_IdealQTun_realQtrans.png}
+  \caption{Transfer function of the dual-band transformer for different values of the transformer quality factor (assuming $K_m=1$ and $Q_T=30$).}\label{GT_realQ_Trans}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!t]
+  \begin{center}
+  \includegraphics[width=0.9\columnwidth]{figs/GT_RealQ_Tuning_Km.png}
+  \caption{Transfer function of the dual-band transformer with swept coupling coefficient $K_{m}$ (assuming $Q_T=30$). }\label{GT_RealQ_Tuning_Km}
+  \end{center}
+\end{figure}
+
+
+
+
+\subsection{Impact of Resonator Loss}
+
+The resonator loss is mainly caused by the limited quality factor of the inductor $L_{ts}$. This is modeled by a resistance $r_{ts} = \omega L_{ts}/Q_{ T}$ in series with the inductor $L_{ts}$ in the network III of Fig. \ref{MN_Proposed}(b). The effects of $Q_T$ on the transfer function of the transformer network are evaluated in Fig. \ref{GT_RealQ_Tuning}. The resonator quality factor has significant impact on the suppression at the notch frequency. For example, to achieve 10\,dB suppression, the quality factor of the resonator inductor should be at least 40 which is difficult to reach in this low-resistivity substrate process. Fortunately, the resonator inductor can be implemented as a straight transmission line, unlike the hexagonal spiral shape transformer, which features a higher quality factor compared to the transformer. 
+
+
+\begin{figure}[!t]
+  \begin{center}
+  \includegraphics[width=0.9\columnwidth]{figs/GT_RealQ_Tuning.png}
+  \caption{ Transfer function of the dual-band transformer network for different values of the inductor quality factor $Q_T$ in the resonator network.}\label{GT_RealQ_Tuning}
+  \end{center}
+\end{figure}
+
+
+%In the previous section, the proposed dual-band matching network with an ideal component ($Q= \infty$) was analyzed. In the real condition, the passive components have the limit quality factor ($Q \neq \infty$) that resistance can be considered for each component, as seen in Fig.~\ref{MN_Proposed} (b). So, the input impedance of the resonator network with the real component can be derived as:
+ 
+%\begin{figure*}[!t]
+%\begin{equation}\label{Zins_Real}
+%	Z_{ins}=\frac{1+jC_{t1s} R_{Ct1s}\omega}{jC_{t1s} \omega}+ \frac{R_{Lts}-L_{ts}R_{Cts}C_{ts}\omega^2+j\omega (L_{ts}+R_{Lts}R_{Cts}C_{ts})}{1-C_{ts}L_{ts}\omega^2 +j\omega C_{ts}(R_{Lts}+R_{Cts})}
+%\end{equation}
+%\end{figure*}
+
+
+%\begin{equation}\label{Zins_Real}
+%	Z_{T}=\frac{1+jC_{t1s} R_{Ct1s}\omega}{jC_{t1s} \omega}+ \frac{Z_{4}}{Z_{5}}
+%\end{equation}
+%where:
+%\begin{equation*}\label{Zins_Real_Pram1}
+%Z_{4}=R_{Lts}-L_{ts}R_{Cts}C_{ts}\omega^2+j\omega (L_{ts}+R_{Lts}R_{Cts}C_{ts})
+%\end{equation*}
+%\begin{equation*}\label{Zins_Real_Pram2}
+%Z_{5}=1-C_{ts}L_{ts}\omega^2 +j\omega C_{ts}(R_{Lts}+R_{Cts})
+%\end{equation*}
+%where $R_{L_{ts}}=j\omega L_{ts}/Q_{Lts}$, $R_{C_{ts}}=1/(j\omega C_{ts} Q_{Cts})$, and $R_{C_{t1s}}=1/(j\omega C_{t1s} Q_{Ct1s})$. In %Fig.~\ref{GT_RealQ_Tuning}, the effects of the quality factor of the resonator network ($Q_{T}$) are evaluated. As seen in Fig.~\ref{GT_RealQ_Tuning}, the notch between two frequency bands is dependent on $Q_{T}$. When $Q_{T}$ is reduced from 50 to 10, the notch is decreased. 
+
+
+
+
+\section{Power Amplifier Circuit Design}
+The dual-band PA architecture and circuit details are shown in Fig. \ref{PA_Proposed}. The PA comprises four power cells (PA1--4) combined in the parallel-series configuration. The power cells are matched to 50\,$\Omega$ using the dual-band transformer network center-tapped with the resonator ($\rm XFMR_o$). The parallel combining of output signals from two transformers $\rm XFMR_o$ also transforms the impedance level to 25\,$\Omega$ which is then returned to 50\,$\Omega$ through the series combining by the transformer $\rm XFMR_{out}$. The input power is divided between the power cells using the transformers $\rm XFMR_i$ and the transmission lines $\rm TL_{in}$. The power cells are realized using differential double-stacked structure shown in Fig. \ref{PA_Proposed}.  We discuss details of the PA circuit design. 
+
+%illustrates the dual-band PA topology. It is four-way PA and consists of the differential stacked configuration, two neutralized capacitors, an input matching transformer, and the proposed dual-band output matching combiner. The neutralization capacitor is used in all differential pairs to guarantee frequency stability. 
+
+\begin{figure*}[!t]
+  \begin{center}
+  \includegraphics[width=2.0\columnwidth]{figs/Fig_11_3.pdf}
+  \caption{Schematic of the dual-band power amplifier.}\label{PA_Proposed}
+  \end{center}
+\end{figure*}
+
+%***********************
+%***********************
+
+\subsection{FD-SOI CMOS Process}
+The PA is implemented in the Global Foundries 22-nm fully-depleted silicon-on-insulator (FD-SOI) CMOS process (22FDX). The process structure is shown in Fig. \ref{Technology} which includes one Aluminum top thick metal layer, 2 thick and 7 thin metal Copper layers. The substrate has a low resistivity (7\,$\rm \Omega.cm$) unlike the conventional SOI processes. The transformers in the PA circuit are implemented on the two top copper layers (IA and OI) which have a lower resistivity compared to the top Aluminum layer (LB). The circuit capacitors are realized as the metal-oxide-metal (MOM) capacitors using stacked thin metal layers (M1-2 and C1-5). 
+
+The process offers multiple types of transistors with different threshold and breakdown voltages. Super-low threshold voltage (SLVT) transistors are used in this design to benefit from their high transconductance $g_m$, unity current gain frequency $f_T$, and unity unilateral power gain frequency $f_{\rm max}$. The SLVT NMOS transistor features 0.25\,V threshold voltage, 0.8\,V nominal supply voltage, $f_T$ of 350\,GHz, and $f_{max}$ of 370 GHz. The process also provides body bias possibility to adjust threshold voltage of transistors which has not been used in this design. 
+
+
+
+%The substrate thickness and SOI thickness are 0.020\,$\mu m$ and 0.006\,$\mu m$, respectively. This process has a low-resistivity substrate. So, the substrate loss is like bulk CMOS. As illustrated in Fig.~\ref{Technology} This technology has one aluminum at toper layer and 9 copper layers. Since two layers IA and OI are thick metal, the transformers build in two layers can have a low loss, but LB is much higher resistivity than the other metals. The thickness of Box layer is $0.020\mu m$ that can save power with the back gate control for a low supply voltage. 
+
+%The process provides several transistors, and the super-low threshold voltage transistors because of high $g_{m}$ and $f_{\rm max}$ is used in this design which the threshold voltage nominal operation voltage are around $0.25 mV$ and 0.9\,V, respectively. Also, MOM cap is used for all capacitors. The final layout used vertical-gate finger connections to decrease the resistance of the gate to increase performance. For the design of a PA at high frequency, the most important parameter is the maximum frequency. $f_{Max}$ is around 420GHz in this technology for low-Vt transistor. 
+
+\begin{figure}[!t]
+  \begin{center}
+  \includegraphics[width=0.9\columnwidth]{figs/Fig_Tech_4.pdf}
+  \caption{The 22-nm FD-SOI CMOS process structure.}\label{Technology}
+  \end{center}
+\end{figure}
+
+
+
+
+%***********************
+%***********************
+\subsection{Stacked Power Cell}
+The circuit schematic of the power cells is shown in Fig. \ref{PA_Proposed}. The low breakdown voltage of the thin-oxide transistors limits their supply voltage and output power capability. Therefore, two transistors are stacked to increase the maximum supply voltage from nominal 0.8\,V to 1.6\,V. In the double-stacked amplifier, the gate node of the top transistors $M_{3,4}$ is biased through a large resistor $R_1$ operating roughly as open-circuit for the RF signal, unlike the Cascode amplifier in which the gate of top transistors is RF grounded. An accurately designed capacitor $C_1$ is included in the gate of top transistor to control the gate-source voltage swing of this device. This results in higher output power and efficiency in the stacked amplifier. The input transistors $M_{1,2}$ are biased at the class-AB to improve their gain and power-added efficiency (PAE). 
+
+The power cell is realized as a differential amplifier, shown in Fig. \ref{Fig_Stablity_Sch}(a), where the cross-connected neutralization capacitors $C_{neut}$ are used to cancel the gate-drain capacitors and achieve unconditional stability. Furthermore, an inductor $L_{s}$ is placed in the common node of the input transistors pair to improve the common-mode stability. This inductor has no effect in the differential mode, as shown in Fig. \ref{Fig_Stablity_Sch}(b), while it reduces gain of the transistors in the common mode, as can be inferred from Fig. \ref{Fig_Stablity_Sch}(c). Layout of the power cell is shown in Fig. \ref{PA_Layout}.
+
+\begin{figure}[!t]
+  \begin{center}
+  \includegraphics[width=\columnwidth]{figs/Fig_Stablity_Sch.pdf}
+  \caption{(a) Power cell differential amplifier with stability network, (b) differential-mode circuit, (c) common-mode circuit.}\label{Fig_Stablity_Sch}
+  \end{center}
+\end{figure}
+\begin{figure}[!t]
+  \begin{center}
+  \includegraphics[width=\columnwidth]{figs/Layout_Active_2.PNG}
+  \caption{Layout of the power cell.}\label{PA_Layout}
+  \end{center}
+\end{figure}
+
+
+%Fig.~\ref{Fig_Stablity_Sch} shows the stability network that used stabilizing the transistors. The neutralization capacitors () are used to compensate the gate-drain capacitor of the common-source pair, so guarantee frequency stability and enhancement power gain. 
+%Fig.~\ref{Stability} shows the k factor and maximum gain $G_{max}$ versus different $C_{neut}$.  
+%Also, an inductor ($L_{s}$) is used in the common node of the source pair transistor to improve common mode stability. As shown in Fig.~\ref{Fig_Stablity_Sch} (b), (c), the common node is virtual ground then $L_{s}$ has no effect on differential mode, but, in common-mode, $L_{s}$ appears in the source of the transistor and reduces the gain of PA. 
+ 
+
+%Since the supply voltage ($V_{DD}$) is low, the stacked structure is used to increase the signal swing at the output. The stacked FET structure is different from cascode. The gate of the common gate is ground in the cascode configuration, but the gate of the stacked transistor is not RF grounded and $C_{1}$ is used to control the voltage swing in the source of the common-gate transistor.  However, the gain of the cascode is higher than the stacked configuration, but the output power and PAE of the stack are higher cascode. According to the goal of the output power of PA, the differential PA cell with stacked-FET configuration is designed.
+
+%In this work, two stacked transistors are used then the $V_{DD}$ increases from nominal voltage 0.8\,V to 1.6\,V. The gate of each transistor is biased separately and the transistor of the common source is biased in class-AB operation to achieve maximum efficiency and output power. 
+
+
+
+%\begin{figure}[!t]
+%  \begin{center}
+%  \includegraphics[width=3in]{figs/Fig_Stack.pdf}
+%  \caption{The stacked topology for PA stage.}\label{Fig_Stack}
+%  \end{center}
+%\end{figure}
+
+
+
+%********************
+%********************
+
+%\begin{figure}[!t]
+%  \begin{center}
+%  \includegraphics[width=\columnwidth]{figs/Fig_1.pdf}
+%  \caption{ GF 22-nm CMOS FD-SOI.}\label{Technoloy}
+%  \end{center}
+%\end{figure}
+
+%********************
+%********************
+\subsection{Size of Transistors}
+%The design of the stability network and size of the transistor are done to have maximum performance (output power ($P_{out}$), power added efficiency (PAE),…) for the stabilized transistor of PA. 
+The gate length of all transistors is set at the minimum length of the process, 20\,nm. to achieve the best RF performance. The width of transistors is selected based on the output power (14\,dBm at 1-dB gain compression) and optimum load resistance (close to 50\,$\Omega$) requirements for each power cell. The width is determined using the load-pull and source-pull simulations performed on the power cell. The load-pull simulation results at the two frequencies 28\,GHz and 38\,GHz are shown in Fig. \ref{Fig_Load_Pull}. The optimum output power is 14.8/14.4\,dBm at 28/38\,GHz. 
+
+
+ %All transistors are set with minimum length ($20 nm$) to achieve the maximum performance of the transistor. Then the load-pull and source-pull analyses are performed at 1-dB gain compression point to choose the stacked FET dimension that has maximum PAE and $P_{out}$.  The load-pull simulation of the PA is illustrated in Fig.~\ref{Fig_Load_Pull}. The optimum load choose $Z_{opt}=R_{opt}||jX_{opt}=50||j62.5 \Omega$.  
+
+
+
+%\begin{figure}[!t]
+%  \begin{center}
+%  \includegraphics[width=0.9\columnwidth]{figs/Fig_Load_Pull.PNG}
+%  \caption{The load-pull simulation of the PA at 28\,GHz.}\label{Fig_Load_Pull}
+%  \end{center}
+%\end{figure}
+
+
+
+\begin{figure}[!t]\centering
+\begin{minipage}{0.24\textwidth}\centering
+  \includegraphics[width=\textwidth]{ figs/Fig_Load_Pull_28.PNG}
+    \subcaption{\label{Fig_Load_Pull_28}}
+\end{minipage}
+\begin{minipage}{0.24\textwidth}\centering
+  \includegraphics[width=\textwidth]{ figs/Fig_Load_Pull_38.PNG}
+    \subcaption{\label{Fig_Load_Pull_38}}
+  \end{minipage}
+  \caption{The load-pull simulation result for output power at 1-dB gain compression of the power cell: (a) 28\,GHz, (b) 38\,GHz. The optimum output power is 14.8/14.4\,dBm at 28/38\,GHz. 
+  %$Z_{opt}$ at the low and high band is 12.4+j35 and 12.8+j29, respectively.
+  }\label{Fig_Load_Pull}
+\end{figure}
+
+%\begin{table}[t]
+%\begin{center}
+%\caption{List of design parameter for proposed PA.} \label{List_Parameter}
+
+%\begin{tabular}{  c  c  c  c }
+%\hline
+% \textbf{Design Parameters} & \textbf{Value}  & \textbf{Design Parameters}  & \textbf{Value} \\ 
+% \hline
+% $M_{1,2}$ & 300$\mu$m & $M_{3,4}$ & 300$\mu$m\\
+% \hline
+% $V_{G}$ & 0.35V & $V_{stack}$ & 1.2V\\
+% \hline
+% $V_{DD}$ & 1.8V & $C_{neut}$ & 64fF\\
+% \hline
+% $C_{1}$& 300fF & $R_{1}$ & 1K$\Omega$\\
+% \hline
+ 
+ 
+%\end{tabular}
+%\end{center}
+%\end{table}
+
+
+%\begin{figure}[!t]
+%  \begin{center}
+%  \includegraphics[width=\columnwidth]{figs/K_Gmax_Factor.pdf}
+%  \caption{$\mu$ and maximum gain PA.}\label{Stability}
+%  \end{center}
+%\end{figure}
+%********************
+%********************
+%\subsection{Dual-Band Network With Inter-Band Suppression}
+
+%\begin{figure}[!t]
+%  \begin{center}
+%  \includegraphics[width=\columnwidth]{figs/Fig_4.pdf}
+%  \caption{Proposed the dual-band transformer.}\label{Dual_Trans}
+%  \end{center}
+%\end{figure}
+
+%********************
+%********************
+\subsection{Output Power Combiner}
+
+The output power combiner which also transforms the load resistance to the optimum load resistance of transistors is realized using four dual-band transformer networks and a transformer as output power combiner. The real part of the optimum load impedance of the power cells is about 50\,$\Omega$. Thus, the dual-band transformer $\rm XFMR_o$ has a 1:1 turn ratio. The parallel combining of two power cells transforms the resistance level to 25\,$\Omega$ which is then converted to 50\,$\Omega$ using the series combining. This allows the output transformer $\rm XFMR_{out}$ also be realized as a 1:1 transformer. This realizes a parallel-series power combining which can ideally convert the 14\,dBm output power of the power cell to 20\,dBm output power. The output network layout is shown in Fig. \ref{Output_Combiner}.
+
+The power combiner performance is simulated using the EMX planar 3D electromagnetic (EM) simulator. The extracted inductance and quality factor of the dual-band transformers are shown in Fig. \ref{Trans_Result}. The inductance is about 200\,pH and the quality factor is 22--25. Simulated scattering parameters of the dual-band transformer network are shown in Fig. \ref{S_Parm_DB_MN}. The insertion loss is about 1\,dB, the inter-band suppression is 6\,dB, and the input/output return losses are higher than 15\,dB. 
+
+
+%To boost output power, we combine four PAs with transformer-based.  depicts the power combine network. The input signal is combined by four differential PAs, which are connected in parallel and then connected in series. As discussed in section~\ref{MN_DB}, a resonator network is used in the transformer to have a notch between low and high bands. Due to the complex implementation, the transformer-based series combiner is not used after PA. To have a good notch between two frequency bands, PAs are paralleled two by two, and then a transformer-based series combiner is used. The output impedance of the PA is set to 50\,$\Omega$ and converted to 100\,$\Omega$ and matched to $R_{L}$ finally. The performance of the transformer strongly depended on the quality factor of the metal. In this work, the thick metal JA and OI have been used. The combiner was designed and simulated by the cadence EMX CAD tools. The performance of each transformer is shown in Fig.~\ref{Tran_Value}. As seen in this figure, the value of the inductor is around 200\,$pH$ and the quality factor is 20. 
+%The simulated insertion loss of a transformer with a resonator network is demonstrated in Fig.~\ref{S_Parm_DB_MN}.
+
+\begin{figure}[!t]\centering
+\begin{minipage}{0.24\textwidth}\centering
+  \includegraphics[width=\textwidth]{figs/L_trans.png}
+    \subcaption{\label{L_trans}}
+\end{minipage}
+\begin{minipage}{0.24\textwidth}\centering
+  \includegraphics[width=\textwidth]{figs/Q_trans.png}
+    \subcaption{\label{Q_Trans}}
+  \end{minipage}
+  \caption{Extracted (a) inductance and (b) quality factor of the output transformer $\rm XFMR_o$.}\label{Trans_Result}
+\end{figure}
+
+
+\begin{figure}[!t]
+  \begin{center}
+  \includegraphics[width=0.9\columnwidth]{figs/Output_Combiner.pdf}
+  \caption{Layout of the output power combiner and impedance matching network.}\label{Output_Combiner}
+  \end{center}
+\end{figure}
+
+\begin{figure}[!t]
+  \centering
+  \begin{subfigure}[b]{0.49\linewidth}
+    \includegraphics[width=\linewidth]{figs/S1122.png}
+    \caption{}
+  \end{subfigure}
+  \begin{subfigure}[b]{0.49\linewidth}
+    \includegraphics[width=\linewidth]{figs/S21.png}
+    \caption{}
+  \end{subfigure}
+  \caption{ Simulated scattering parameters of the dual-band transformer with the center-tap resonator network: (a) $S_{11}$ and $S_{22}$, (b) $S_{21}$.}
+  \label{S_Parm_DB_MN}
+\end{figure}
+
+
+%\begin{figure}[!t]
+%  \begin{center}
+%  \includegraphics[width=\columnwidth]{figs/S21.png}
+%  \caption{Scattering parameter of a transformer with resonator network.}\label{S_Parm_DB_MN}
+%  \end{center}
+%\end{figure}
+
+
+
+%********************
+%********************
+\subsection{Input Power Splitter}
+
+The input power splitter also serving as the input impedance matching network is shown in Fig. \ref{Input_Trans}. This network comprises two single-to-differential transformers and two transmission lines. The input impedance of the transformers should be 100\,$\Omega$ to provide an input impedance 50\,$\Omega$ with the two-way power splitter. The input transformers match the 100\,$\Omega$ resistance to the optimum source impedance of the transistors. 
+
+The input network is designed with a broad bandwidth that covers the lower and upper bands. Scattering parameters of the input network are shown in Fig. \ref{SP_TRin}, which indicates an insertion loss lower than 1.2\,dB in the target bands. 
+
+%with an overall simulated insertion of 2\,dB at both frequency bands. The output load of each transformer is the differential input impedance of the PA cell at 28/3\,-GHz, which is 12.4-j35.  To have a proper matching, the parameter of the transformer is determined as $k=0.6$, $L_{s}=200pH$, $L_{p}=210pH$ and the thickness of the transformer is $10\mu m$.  Also, the thickness of the transmission line is 30\,$\mu m$. 
+%Fig.~\ref{Input_Trans} (b) shows the layout of the input impedance matching and power splitter network. Its occupied area of each transformer is $150\,\mu m \times 150\,\mu m$.  The S-parameter of the ITM is illustrated in Fig.~\ref{SP_TRin} which the insertion loss is lower than 1.2\,dB in the target bands. Also, the insertion loss of the two-way combination after EM simulation is around 1\,dB. 
+
+
+\begin{figure}[!t]
+  \begin{center}
+  \includegraphics[width=0.6\columnwidth]{figs/Input_Trans.pdf}
+  \caption{Layout of the input power splitter and impedance matching network.}\label{Input_Trans}
+  \end{center}
+\end{figure}
+
+
+\begin{figure}[!t]
+  \begin{center}
+  \includegraphics[width=0.8\columnwidth]{figs/SP_Tin.png}
+  \caption{Simulated scattering parameters of the input network. Insertion loss is lower than 1.2\,dB in the target band.}\label{SP_TRin}
+  \end{center}
+\end{figure}
+%********************
+%********************
+\section{Power Amplifier Simulation Results}
+The layout of the PA is shown in Fig. \ref{Layout_PA}, where the chip measures 0.5\,mm $\times$ 0.9\,mm. The PA is biased at the supply voltage of $\rm V_{DD}=1.6\,V$, the gate bias voltage of $\rm V_{G}=0.35\,V$ for the input transistors, and $\rm V_{stack}=1.2\,V$ for the stack devices. The PA consumes $\rm 80\,mA$ drain current in the quiescent condition. The PA small-signal and large-signal simulations are performed using the 22-nm FD-SOI process design kit (PDK) for active devices and full electromagnetic simulations of the passive devices. 
+%All simulations like small signal, continuous wave (CW), and electromagnetic (EM) simulation were performed in the Cadence software. 
+
+\begin{figure}[!t]
+  \begin{center}
+  \includegraphics[width=2.5in]{figs/Layout_2.pdf}
+  \caption{Layout of the PA in 22-nm FD-SOI process.}\label{Layout_PA}
+  \end{center}
+\end{figure}
+
+\subsection{Small-Signal Simulations}
+Simulated scattering parameters of the PA are shown in Fig. \ref{S_Param}. The small-signal gain is 16.0\,dB at 28\,GHz and 15.5\,dB at 38\,GHz. The inter-band suppression is around 6\,dB which has been limited by low quality factors of the transformers and the resonator. It is expected to achieve higher inter-band suppression using a process with higher passives quality factor. The input return loss is higher than 10\,dB is both bands which indicate a good input impedance matching. The output return loss is 13\,dB at the lower and 8\,dB at the higher band. Furthermore, the stability K factor (Rollet criterion), shown in Fig. \ref{K_Factor}, indicates that the PA is unconditionally stable. 
+
+%A dual-band condition has been achieved at 28\,GHz and 38\,GHz in simulation in which the small gain is higher than 15\,dB at both frequency band and the notch frequency is at 33\,GHz. Also, $S_{11}$ and $S_{22}$ are around --10\,dB that has good input and output matching. The simulated $k$ factor of the proposed PA is illustrated in Fig.~\ref{K_Factor} which shows an unconditional stable.
+
+
+\begin{figure}[t!]
+  \centering
+  \begin{subfigure}[b]{0.9\linewidth}
+    \includegraphics[width=\linewidth]{figs/S21_PA2.png}
+    \caption{}
+  \end{subfigure}
+  \begin{subfigure}[b]{0.9\linewidth}
+    \includegraphics[width=\linewidth]{figs/SP_PA_2.png}
+    \caption{}
+  \end{subfigure}
+  \caption{Simulated S-parameter for proposed dual-band output matching transformer: (a) $S_{21}$, (b) $S_{11}$ and $S_{22}$.}
+  \label{S_Param}
+\end{figure}
+
+\begin{figure}[!t]
+ \begin{center}
+ \includegraphics[width=0.9\columnwidth]{figs/K.png}
+\caption{Simulated stability K factor of the PA.}\label{K_Factor}
+ \end{center}
+\end{figure}
+
+
+\subsection{Large-Signal Simulations}
+
+Simulations results for the large-signal performance of the PA are shown in Fig. \ref{Large_Signal_28_38}. The saturated output power $\rm P_{sat}$ is 22.6\,dBm at 28\,GHz and 22.0\,dBm at 38\,GHz. The output-input characteristics indicate that the output power is saturated at around 4-dB gain compression. The output power at 1-dB gain compression $\rm P_{1dB}$ is 19.8/20.0\,dBm at 28/38\,GHz, about 2--3\,dB lower than the saturated power. Furthermore, the maximum PAE reads 33/32\% at 28/38\,GHz. 
+
+
+%Fig.~\ref{CW_28_38} illustrates the simulated large signal performance in terms of input power at low and high-frequency bands. The output power at saturation ($P_{sat}$) is 21.6\,dBm and 21.8\,dBm at 28\,GHz and 38GHz respectively. Also, a maximum power added efficiency ($PAE_{sat}$) of 33\,\% at 28GHz and 32\,\% at 38\,GHz was achieved. The saturation happens at a gain compression of around 4\,dB. Also, the maximum gain is around 15\,dB at both frequency bands.  
+%The PA performance versus frequency is demonstrated at the input power of 10\,dBm in Fig.~\ref{Perf_vs_Freq}.  As seen in this figure, a dual-band characteristic PA at 28\,GHz and 38\,GHz is obtained.  
+
+
+\begin{figure}[t!]
+  \centering
+  \begin{subfigure}[b]{0.9\linewidth}
+    \includegraphics[width=\linewidth]{figs/Performance_28_F.png}
+    \caption{}
+  \end{subfigure}
+  \begin{subfigure}[b]{0.9\linewidth}
+    \includegraphics[width=\linewidth]{figs/Performance_38_F.png}
+    \caption{}
+  \end{subfigure}
+  \caption{Simulated saturated output power, PAE, and gain versus input power at: (a) 28\,GHz (b) 38\,GHz.}
+  \label{Large_Signal_28_38}
+\end{figure}
+
+\subsection{Performance Comparison}
+A performance comparison of the designed dual-band PA with state-of-the-art mm-wave CMOS PAs operating in similar frequency bands is presented in Table \ref{comparison}. We have indicated the references which are based on simulation results \cite{mayeda2020highly, mayeda2019effective, moret201728ghz} with an asterisk symbol to make a fair comparison. The saturated output power $\rm P_{sat}$ of the PA in this work is over 3\,dB higher than the PAs based on simulations results, while $\rm PAE_{max}$ is also higher than these works. Furthermore, $\rm P_{sat}$ is higher than that of the fabricated PAs except for \cite{daneshgar2020high} with single-band operation, 37\% higher supply voltage, and 6$\times$ chip area. $\rm PAE_{max}$ is competitive with state-of-the-art even though it is challenging to achieve high efficiency for such a high power level. Furthermore, the proposed inter-band suppression technique for the dual-band PA has not been considered in the literature.
+
+
+
+%\begin{figure}[!t]
+%  \begin{center}
+%  \includegraphics[width=\columnwidth]{figs/SP_PA.png}
+%  \caption{Simulated S-parameter for proposed dual-band output matching transformer.}\label{S_Param}
+%  \end{center}
+%\end{figure}
+
+
+\begin{table*}[!t]\footnotesize
+	\renewcommand{\arraystretch}{1.5}
+	\setlength{\tabcolsep}{5pt}
+	\caption{Performance comparison with mm-wave CMOS PAs.}
+	\label{comparison}
+	\begin{minipage}{7in}
+		\centering
+		\begin{tabular}{c|c|c|c|c|c|c|c|c}
+			\hline
+			&f (GHz) &$\mathrm{P_{1dB}}$ (dBm)& $\mathrm{P_{sat}}$ (dBm)& $\mathrm{PAE_{max}}$ (\%) & Gain (dB)& $\mathrm{V_{DD}}$ (V) & Area (mm$\rm ^2$)& Process \\
+			\hline\hline
+    	\cite{ding202228} & 28/38  & 17.8/15.8 &  18.8/17.0 & 25.0/17.5 & 25.7/21.4 & 3.3 & 0.94 & 250-nm BiCMOS \\
+			
+         \cite{lee2021millimeter} & 26.5/37 & 18.7/18.6 & 20.2/19.1 & 33.6/32.0 & 13.0/10.7 & NA & 0.11 &28-nm CMOS \\
+
+            \cite{xu202128} & 28/38 & 15.7/15.2 & 19.4/19.2& 26.4/25.1& 31.7/29.2 & 2.7 & 0.26 &22-nm FD-SOI CMOS \\
+
+            \cite{mayeda2020highly}$^{\mathrm{*}}$ & 30/40 & 13.7/13.6  &  17.3/16.4 & 29.2/22.7 & 14.9/13.3 & NA &  NA & 22-nm FD-SOI CMOS \\
+			
+            \cite{mayeda2019effective}$^{\mathrm{*}}$ & 24/28 & 14.0/15.4  &  17.8/17.3 & 32.0/29.2 & 26.5/22.1 & NA & NA & 22-nm FD-SOI CMOS \\
+
+            \cite{moret201728ghz}$^{\mathrm{*}}$ & 28 & 15.4   & 18.7 & 12.4 & 17.5 & 2.0 &   0.66 & 28-nm CMOS \\
+
+             \cite{shakib2016highly} & 30 & 13.2 &  14.0 & 35.5 & 15.7 & 1.0 & 0.16$^{\mathrm{**}}$& 28-nm CMOS\\
+
+             \cite{dasgupta201926} & 39 & 21.5 &  26.0 & 27.7 & 38 & 2.2 & 2.96 & 28-nm CMOS\\
+
+             \cite{daneshgar2020high} & 39 & 16.6 &  18.3 & 29.1 & 12.5 & 1.8 & 0.48 & 16-nm FinFET CMOS\\
+
+             \cite{tang2021design} & 28 & 18.2 &  19.4 &34.3 & 32 & 2.4 & 0.10 & 22-nm FD-SOI CMOS \\
+
+     
+            \cite{manente202028} & 28 & 20.7 &  21.5 & 26.0 & 20.4 & 1.8 & 0.5& 28-nm CMOS\\	
+						
+			 \cite{yu201828} & 28 &  17.4  &  18.0 & 26.7 & 19.0 & 1.0 & 0.16 & 65-nm CMOS \\
+			
+            
+            This Work$^{\mathrm{*}}$ & 28/38 & 19.8/20.0 & 22.6/22.0 & 33.0/32.0 & 16.0/15.5 &  1.6 &0.45 & 22-nm FD-SOI CMOS \\
+			\hline
+			\multicolumn{3}{l}{$^{\mathrm{*}}$Simulation results}\,{$^{\mathrm{**}}$Active area}
+		\end{tabular}
+	\end{minipage}
+\end{table*}
+
+
+\section{Conclusion}
+We presented a dual-band transformer network with inter-band suppression which is enabled by a resonator in the center-tap of the transformer. A theory was developed to provide insights into the circuit operation, design guidelines, and impacts of imperfect on-chip circuit elements. A proof-of-concept 28/38-GHz power amplifier (PA) was designed using the proposed network in 22-nm Fully-Depleted Silicon-on-Insulator (FD-SOI) CMOS process. The PA achieved state-of-the-art output power through multiple techniques including the transistor stacking, sizing the power cells for 50-$\Omega$ optimum resistance, and four-path parallel-series transformer combining. The inter-band suppression is 6\,dB at 33\,GHz which is limited by quality factor of inductors and transformers. It can be improved, in a future research, through applying the inter-band suppression in the input transformers, using a modified resonator circuit, and using a process with higher quality factor of inductors.
+
+
+
+\section*{Acknowledgment}
+
+The authors would like to thank Global Foundries for the PDK support.
+
+
+\begin{thebibliography}{00}
+
+\bibitem{rappaport-access2013}
+T. S. Rappaport et al., "Millimeter Wave Mobile Communications for 5G Cellular: It Will Work!," in IEEE Access, vol. 1, pp. 335-349, 2013, doi: 10.1109/ACCESS.2013.2260813.
+
+
+\bibitem{rappaport-access2019}
+T. S. Rappaport et al., "Wireless Communications and Applications Above 100 GHz: Opportunities and Challenges for 6G and Beyond," in IEEE Access, vol. 7, pp. 78729-78757, 2019, doi: 10.1109/ACCESS.2019.2921522.
+
+\bibitem{pang-jssc2019}
+J. Pang et al., "A 28-GHz CMOS Phased-Array Transceiver Based on LO Phase-Shifting Architecture With Gain Invariant Phase Tuning for 5G New Radio," in IEEE Journal of Solid-State Circuits, vol. 54, no. 5, pp. 1228-1242, May 2019, doi: 10.1109/JSSC.2019.2899734.
+
+
+\bibitem{lokhandwala2020high}
+M. Lokhandwala, L. Gao and G. M. Rebeiz, "A High-Power 24–40-GHz Transmit–Receive Front End for Phased Arrays in 45-nm CMOS SOI," in IEEE Transactions on Microwave Theory and Techniques, vol. 68, no. 11, pp. 4775-4786, Nov. 2020, doi: 10.1109/TMTT.2020.2998011.
+
+\bibitem{tang2021design}
+X. Tang et al., "Design and Analysis of a 28 GHz T/R Front-End Module in 22-nm FD-SOI CMOS Technology," in IEEE Transactions on Microwave Theory and Techniques, vol. 69, no. 6, pp. 2841-2853, June 2021, doi: 10.1109/TMTT.2021.3059891.
+
+\bibitem{wang-tmtt2022}
+S. Wang and G. M. Rebeiz, "Dual-Band 28-and 39-GHz Phased Arrays for Multistandard 5G Applications," in IEEE Transactions on Microwave Theory and Techniques, 2022, doi: 10.1109/TMTT.2022.3220272.
+
+\bibitem{Karakuzulu2023}
+A. Karakuzulu, W. A. Ahmad, D. Kissinger and A. Malignaggi, "A Four-Channel Bidirectional D-Band Phased-Array Transceiver for 200 Gb/s 6G Wireless Communications in a 130-nm BiCMOS Technology," in IEEE Journal of Solid-State Circuits, vol. 58, no. 5, pp. 1310-1322, May 2023, doi: 10.1109/JSSC.2022.3232948.
+
+\bibitem{camarchia2020review}
+V. Camarchia, R. Quaglia, A. Piacibello, D. P. Nguyen, H. Wang and A. Pham, "A Review of Technologies and Design Techniques of Millimeter-Wave Power Amplifiers," in IEEE Transactions on Microwave Theory and Techniques, vol. 68, no. 7, pp. 2957-2983, July 2020, doi: 10.1109/TMTT.2020.2989792.
+
+\bibitem{callender2019band}
+S. Callender, S. Pellerano and C. Hull, "An  E-Band Power Amplifier With 26.3\% PAE and 24-GHz Bandwidth in 22-nm FinFET CMOS," in IEEE Journal of Solid-State Circuits, vol. 54, no. 5, pp. 1266-1273, May 2019, doi: 10.1109/JSSC.2019.2899493.
+
+\bibitem{daneshgar2020high}
+S. Daneshgar et al., "High-Power Generation for mm-Wave 5G Power Amplifiers in Deep Submicrometer Planar and FinFET Bulk CMOS," in IEEE Transactions on Microwave Theory and Techniques, vol. 68, no. 6, pp. 2041-2056, June 2020, doi: 10.1109/TMTT.2020.2990638.
+
+\bibitem{mortazavi2016integrated}
+S. Y. Mortazavi and K. Koh, "Integrated Inverse Class-F Silicon Power Amplifiers for High Power Efficiency at Microwave and mm-Wave," in IEEE Journal of Solid-State Circuits, vol. 51, no. 10, pp. 2420-2434, Oct. 2016, doi: 10.1109/JSSC.2016.2588470.
+
+
+\bibitem{dasgupta201926}
+K. Dasgupta, S. Daneshgar, C. Thakkar, J. Jaussi and B. Casper, "A 26 dBm 39 GHz Power Amplifier with 26.6\% PAE for 5G Applications in 28nm bulk CMOS," 2019 IEEE Radio Frequency Integrated Circuits Symposium (RFIC), 2019, pp. 235-238, doi: 10.1109/RFIC.2019.8701834.
+
+
+\bibitem{wang2021broadband}
+F. Wang and H. Wang, "A Broadband Linear Ultra-Compact mm-Wave Power Amplifier With Distributed-Balun Output Network: Analysis and Design," in IEEE Journal of Solid-State Circuits, vol. 56, no. 8, pp. 2308-2323, Aug. 2021, doi: 10.1109/JSSC.2021.3078485.
+
+\bibitem{sarkar201728}
+A. Sarkar, F. Aryanfar and B. A. Floyd, "A 28-GHz SiGe BiCMOS PA With 32\% Efficiency and 23-dBm Output Power," in IEEE Journal of Solid-State Circuits, vol. 52, no. 6, pp. 1680-1686, June 2017, doi: 10.1109/JSSC.2017.2686585.
+
+\bibitem{Pashaeifar2022}
+M. Pashaeifar, L. C. N. de Vreede and M. S. Alavi, "A Millimeter-Wave CMOS Series-Doherty Power Amplifier With Post-Silicon Inter-Stage Passive Validation," in IEEE Journal of Solid-State Circuits, vol. 57, no. 10, pp. 2999-3013, Oct. 2022, doi: 10.1109/JSSC.2022.3175685.
+
+\bibitem{lee2021millimeter}
+J. Lee, J. -S. Paek and S. Hong, "Millimeter-Wave Frequency Reconfigurable Dual-Band CMOS Power Amplifier for 5G Communication Radios," in IEEE Transactions on Microwave Theory and Techniques, vol. 70, no. 1, pp. 801-812, Jan. 2022, doi: 10.1109/TMTT.2021.3122533.
+
+\bibitem{ding202228}
+K. Ding, D. M. W. Leenaerts and H. Gao, "A 28/38 GHz Dual-Band Power Amplifier for 5G Communication," in IEEE Transactions on Microwave Theory and Techniques, doi: 10.1109/TMTT.2021.3134641.
+
+
+\bibitem{hu201928}
+S. Hu, F. Wang and H. Wang, "A 28-/37-/39-GHz Linear Doherty Power Amplifier in Silicon for 5G Applications," in IEEE Journal of Solid-State Circuits, vol. 54, no. 6, pp. 1586-1599, June 2019, doi: 10.1109/JSSC.2019.2902307.
+
+\bibitem{hashemi-tmtt2002}
+H. Hashemi and A. Hajimiri, "Concurrent multiband low-noise amplifiers-theory, design, and applications," in IEEE Transactions on Microwave Theory and Techniques, vol. 50, no. 1, pp. 288-301, Jan. 2002, doi: 10.1109/22.981282.
+
+
+%\bibitem{lee2021frequency}
+%J. Lee, J. -S. Paek and S. Hong, "Frequency Reconfigurable Dual-Band CMOS Power Amplifier for Millimeter-Wave 5G Communications," 2021 IEEE MTT-S International Microwave Symposium (IMS), 2021, pp. 846-849, doi: 10.1109/IMS19712.2021.9574873.
+
+\bibitem{xu202128}
+X. Xu et al., "A 28 GHz and 38 GHz High-Gain Dual-Band Power Amplifier for 5G Wireless Systems in 22 nm FD-SOI CMOS," 2020 50th European Microwave Conference (EuMC), 2021, pp. 174-177, doi: 10.23919/EuMC48046.2021.9338181.
+
+%\bibitem{chu2021reconfigurable}
+%K. -D. Chu, S. Callender, Y. Wang, J. C. Rudell, S. Pellerano and C. Hull, "A Reconfigurable Non-Uniform Power-Combining V-Band PA With +17.9 dBm Psat and 26.5\% PAE in 16-nm FinFET CMOS," in IEEE Journal of Solid-State Circuits, vol. 56, no. 5, pp. 1502-1513, May 2021, doi: 10.1109/JSSC.2021.3063032.
+
+\bibitem{nikandish2014}
+G. Nikandish, E. Babakrpur and A. Medi, "A Harmonic Termination Technique for Single- and Multi-Band High-Efficiency Class-F MMIC Power Amplifiers," in IEEE Transactions on Microwave Theory and Techniques, vol. 62, no. 5, pp. 1212-1220, May 2014, doi: 10.1109/TMTT.2014.2315591.
+
+\bibitem{del2019multi}
+D. d. Rio et al., "Multi-Gbps Tri-Band 28/38/60-GHz CMOS Transmitter for Millimeter-Wave Radio System-on-Chip," 2019 IEEE MTT-S International Microwave Symposium (IMS), 2019, pp. 488-491, doi: 10.1109/MWSYM.2019.8701020.
+
+
+
+\bibitem{nikandish2016}
+G. Nikandish and A. Medi, "Transformer-Feedback Dual-Band Neutralization Technique," in IEEE Transactions on Circuits and Systems II: Express Briefs, vol. 64, no. 5, pp. 495-499, May 2017, doi: 10.1109/TCSII.2016.2581919.
+
+
+\bibitem{vigilante-jssc2018}
+M. Vigilante and P. Reynaert, "A Wideband Class-AB Power Amplifier With 29–57-GHz AM–PM Compensation in 0.9-V 28-nm Bulk CMOS," in IEEE Journal of Solid-State Circuits, vol. 53, no. 5, pp. 1288-1301, May 2018, doi: 10.1109/JSSC.2017.2778275.
+
+
+\bibitem{celik-jssc2021}
+U. Celik and P. Reynaert, "Robust, Efficient Distributed Power Amplifier Achieving 96 Gbit/s With 10 dBm Average Output Power and 3.7\% PAE in 22-nm FD-SOI," in IEEE Journal of Solid-State Circuits, vol. 56, no. 2, pp. 382-391, Feb. 2021, doi: 10.1109/JSSC.2020.3020229.
+
+
+\bibitem{chappidi2017frequency}
+C. R. Chappidi and K. Sengupta, "Frequency Reconfigurable mm-Wave Power Amplifier With Active Impedance Synthesis in an Asymmetrical Non-Isolated Combiner: Analysis and Design," in IEEE Journal of Solid-State Circuits, vol. 52, no. 8, pp. 1990-2008, Aug. 2017, doi: 10.1109/JSSC.2017.2686843.
+
+
+\bibitem{mayeda2020highly}
+J. C. Mayeda, J. Lopez and D. Y. C. Lie, "Highly-Efficient Broadband Medium Power Amplifier Design in 22nm CMOS FD-SOI for mm-Wave 5G," 2020 IEEE Texas Symposium on Wireless and Microwave Circuits and Systems (WMCS), Waco, TX, USA, 2020, pp. 1-4, doi: 10.1109/WMCS49442.2020.9172413.
+
+
+
+
+\bibitem{mazzanti2018second}
+A. Mazzanti and A. Bevilacqua, "Second-Order Equivalent Circuits for the Design of Doubly-Tuned Transformer Matching Networks," in IEEE Transactions on Circuits and Systems I: Regular Papers, vol. 65, no. 12, pp. 4157-4168, Dec. 2018, doi: 10.1109/TCSI.2018.2846029.
+
+\bibitem{bevilacqua2020doubly}
+A. Bevilacqua and A. Mazzanti, "Doubly-Tuned Transformer Networks: A Tutorial," in IEEE Transactions on Circuits and Systems II: Express Briefs, vol. 68, no. 2, pp. 550-555, Feb. 2021, doi: 10.1109/TCSII.2020.3046021.
+
+
+\bibitem{nikandish2021broadband}
+G. R. Nikandish, A. Nasri, A. Yousefi, A. Zhu and R. B. Staszewski, "A Broadband Fully Integrated Power Amplifier Using Waveform Shaping Multi-Resonance Harmonic Matching Network," in IEEE Transactions on Circuits and Systems I: Regular Papers, vol. 69, no. 1, pp. 2-15, Jan. 2022, doi: 10.1109/TCSI.2021.3095708.
+
+
+\bibitem{mayeda2019effective}
+J. C. Mayeda, J. Tsay, D. Y. C. Lie and J. Lopez, "Effective AM-PM Cancellation with Body Bias for 5G CMOS Power Amplifier Design in 22nm FD-SOI," 2019 IEEE International Symposium on Circuits and Systems (ISCAS), Sapporo, Japan, 2019, pp. 1-4, doi: 10.1109/ISCAS.2019.8702159.
+
+\bibitem{moret201728ghz}
+B. Moret, V. Knopik and E. Kerherve, "A 28GHz self-contained power amplifier for 5G applications in 28nm FD-SOI CMOS," 2017 IEEE 8th Latin American Symposium on Circuits \& Systems (LASCAS), Bariloche, Argentina, 2017, pp. 1-4, doi: 10.1109/LASCAS.2017.7948059.
+
+
+\bibitem{shakib2016highly}
+S. Shakib, H. Park, J. Dunworth, V. Aparin and K. Entesari, "A Highly Efficient and Linear Power Amplifier for 28-GHz 5G Phased Array Radios in 28-nm CMOS," in IEEE Journal of Solid-State Circuits, vol. 51, no. 12, pp. 3020-3036, Dec. 2016, doi: 10.1109/JSSC.2016.2606584.
+
+
+
+
+\bibitem{manente202028}
+D. Manente, F. Padovan, D. Seebacher, M. Bassi and A. Bevilacqua, "A 28-GHz Stacked Power Amplifier with 20.7-dBm Output P1dB in 28-nm Bulk CMOS," in IEEE Solid-State Circuits Letters, vol. 3, pp. 170-173, 2020, doi: 10.1109/LSSC.2020.3009973.
+
+\bibitem{yu201828}
+C. Yu, J. Feng and D. Zhao, "A 28-GHz CMOS Broadband Single-Path Power Amplifier with 17.4-dBm P1dB for 5G Phased-Array," ESSCIRC 2018 - IEEE 44th European Solid State Circuits Conference (ESSCIRC), 2018, pp. 38-41, doi: 10.1109/ESSCIRC.2018.8494246.
+
+%\bibitem{samsung-6g}
+%“The Next Hyper-Connected Experience for All.” Samsung White Paper, Jul. 2020.
+
+
+%\bibitem{banerjee2022stacked}
+%A. Banerjee, B. van Liempd and P. Wambacq, "A Stacked Segmented Adaptive Power Amplifier in 22nm FD-SOI," in IEEE Microwave and Wireless Components Letters, doi: 10.1109/LMWC.2022.3159601.
+
+%\bibitem{chappidi2020multi}
+%C. R. Chappidi, T. Sharma and K. Sengupta, "Multi-port Active Load Pulling for mm-Wave 5G Power Amplifiers: Bandwidth, Back-Off Efficiency, and VSWR Tolerance," in IEEE Transactions on Microwave Theory and Techniques, vol. 68, no. 7, pp. 2998-3016, July 2020, doi: 10.1109/TMTT.2020.2977342.
+
+
+%\bibitem{xu201921}
+%X. Xu et al., "A 21-39.5 GHz Power Amplifier for 5G Wireless Systems in 22 nm FD-SOI CMOS," 2019 IEEE Asia-Pacific Microwave Conference (APMC), 2019, pp. 1640-1642, doi: 10.1109/APMC46564.2019.9038202.
+
+%\bibitem{wang202020}
+%C. -W. Wang, Y. -C. Chen, W. -J. Lin, J. -H. Tsai and T. -W. Huang, "A 20.8-41.6-GHz Transformer-Based Wideband Power Amplifier with 20.4-dB Peak Gain Using 0.9-V 28-nm CMOS Process," 2020 IEEE/MTT-S International Microwave Symposium (IMS), 2020, pp. 1323-1326, doi: 10.1109/IMS30576.2020.9223905.
+
+%\bibitem{chang202028}
+%Y. -W. Chang, T. -C. Tsai, J. -Y. Zhong, J. -H. Tsai and T. -W. Huang, "A 28 GHz Linear and Efficient Power Amplifier Supporting Wideband OFDM for 5G in 28nm CMOS," 2020 IEEE/MTT-S International Microwave Symposium (IMS), 2020, pp. 1093-1096, doi: 10.1109/IMS30576.2020.9223864.
+
+%\bibitem{wang202022}
+%F. Wang, A. Wang and H. Wang, "A 22-37 GHz Broadband Compact Linear Mm-Wave Power Amplifier Supporting 64-/256-/512-QAM Modulations for 5G Communications," 2020 IEEE/MTT-S International Microwave Symposium (IMS), 2020, pp. 1105-1108, doi: 10.1109/IMS30576.2020.9223875.
+
+%\bibitem{liu202244}
+%Z. Liu and K. Sengupta, "A 44-64-GHz mmWave Broadband Linear Doherty PA in Silicon With Quadrature Hybrid Combiner and Non-Foster Impedance Tuner," in IEEE Journal of Solid-State Circuits, doi: 10.1109/JSSC.2022.3171570.
+
+%\bibitem{alhamed2021multi}
+%A. Alhamed, G. Gültepe and G. M. Rebeiz, "A Multi-Band 16–52-GHz Transmit Phased Array Employing 4 × 1 Beamforming IC With 14–15.4-dBm Psat for 5G NR FR2 Operation," in IEEE Journal of Solid-State Circuits, vol. 57, no. 5, pp. 1280-1290, May 2022, doi: 10.1109/JSSC.2021.3134325.
+
+
+%\bibitem{zong202128}
+%Z. Zong et al., "A 28-GHz SOI-CMOS Doherty Power Amplifier With a Compact Transformer-Based Output Combiner," in IEEE Transactions on Microwave Theory and Techniques, vol. 69, no. 6, pp. 2795-2808, June 2021, doi: 10.1109/TMTT.2021.3064022.
+
+%\bibitem{ud201824ghz}
+%I. u. Din, S. Andersson, T. Forsberg and H. Sjöland, "A 24GHz, 18dBm, Broadband, Three Stacked Power Amplifier in 28nm FDSOI," 2018 IEEE Nordic Circuits and Systems Conference (NORCAS): NORCHIP and International Symposium of System-on-Chip (SoC), 2018, pp. 1-4, doi: 10.1109/NORCHIP.2018.8573450.
+
+%\bibitem{aikio2019ka}
+%J. P. Aikio, M. Hietanen, N. Tervo, T. Rahkonen and A. Pärssinen, "Ka-Band 3-Stack Power Amplifier with 18.8 dBm Psat and 23.4\% PAE Using 22nm CMOS FDSOI Technology," 2019 IEEE Topical Conference on RF/Microwave Power Amplifiers for Radio and Wireless Applications (PAWR), 2019, pp. 1-3, doi: 10.1109/PAWR.2019.8708719.
+
+%\bibitem{ong201822nm}
+%S. N. Ong et al., "A 22nm FDSOI Technology Optimized for RF/mmWave Applications," 2018 IEEE Radio Frequency Integrated Circuits Symposium (RFIC), 2018, pp. 72-75, doi: 10.1109/RFIC.2018.8429035.
+
+%\bibitem{torres201831}
+%F. Torres, M. De Matos, A. Cathelin and E. Kerhervé, "A 31 GHz 2-Stage Reconfigurable Balanced Power Amplifier with 32.6dB Power Gain, 25.5\% PAEmax and 17.9dBm Psatin 28nm FD-SOI CMOS," 2018 IEEE Radio Frequency Integrated Circuits Symposium (RFIC), 2018, pp. 236-239, doi: 10.1109/RFIC.2018.8429009.
+
+%\bibitem{shakib2016highly}
+%S. Shakib, H. Park, J. Dunworth, V. Aparin and K. Entesari, "A Highly Efficient and Linear Power Amplifier for 28-GHz 5G Phased Array Radios in 28-nm CMOS," in IEEE Journal of Solid-State Circuits, vol. 51, no. 12, pp. 3020-3036, Dec. 2016, doi: 10.1109/JSSC.2016.2606584.
+
+%\bibitem{shakib201620}
+%S. Shakib, H. -C. Park, J. Dunworth, V. Aparin and K. Entesari, "20.6 A 28GHz efficient linear power amplifier for 5G phased arrays in 28nm bulk CMOS," 2016 IEEE International Solid-State Circuits Conference (ISSCC), 2016, pp. 352-353, doi: 10.1109/ISSCC.2016.7418052.
+
+%\bibitem{moret201728ghz}
+%B. Moret, V. Knopik and E. Kerherve, "A 28GHz self-contained power amplifier for 5G applications in 28nm FD-SOI CMOS," 2017 IEEE 8th Latin American Symposium on Circuits & Systems (LASCAS), 2017, pp. 1-4, doi: 10.1109/LASCAS.2017.7948059.
+
+%\bibitem{elgaard201826ghz}
+%C. Elgaard, A. Axholt, E. Westesson and H. Sjöland, "A 26GHz 22.2DBM Variable Gain Power Amplifier in 28NM FD-SOI CMOS for 5G Antenna Arrays," 2018 Asia-Pacific Microwave Conference (APMC), 2018, pp. 965-967, doi: 10.23919/APMC.2018.8617416.
+
+
+%\bibitem{xu202128}
+%X. Xu et al., "A 28 GHz and 38 GHz High-Gain Dual-Band Power Amplifier for 5G Wireless Systems in 22 nm FD-SOI CMOS," 2020 50th European Microwave Conference (EuMC), 2021, pp. 174-177, doi: 10.23919/EuMC48046.2021.9338181.
+
+
+%\bibitem{lee2021frequency}
+%J. Lee, J. -S. Paek and S. Hong, "Frequency Reconfigurable Dual-Band CMOS Power Amplifier for Millimeter-Wave 5G Communications," 2021 IEEE MTT-S International Microwave Symposium (IMS), 2021, pp. 846-849, doi: 10.1109/IMS19712.2021.9574873.
+
+%\bibitem{daneshgar2020high}
+%S. Daneshgar et al., "High-Power Generation for mm-Wave 5G Power Amplifiers in Deep Submicrometer Planar and FinFET Bulk CMOS," in IEEE Transactions on Microwave Theory and Techniques, vol. 68, no. 6, pp. 2041-2056, June 2020, doi: 10.1109/TMTT.2020.2990638.
+
+
+%\bibitem{hu20172}
+%S. Hu, F. Wang and H. Wang, "2.1 A 28GHz/37GHz/39GHz multiband linear Doherty power amplifier for 5G massive MIMO applications," 2017 IEEE International Solid-State Circuits Conference (ISSCC), San Francisco, CA, USA, 2017, pp. 32-33, doi: 10.1109/ISSCC.2017.7870246.
+
+\end{thebibliography}
+
+
+
+\end{document}
+

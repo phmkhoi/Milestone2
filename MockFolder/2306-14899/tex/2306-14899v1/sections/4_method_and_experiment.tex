@@ -1,0 +1,70 @@
+\section{Experiments}
+% \jingkang{Please have 1-2 sentences to introduce what will you show in this section.}
+In this section, we present an introduction to caption-based and instruction-based models, followed by an exploration of diverse metrics for evaluating FunQA tasks. Our comprehensive experiments and deep analysis of the results are then presented. More details are given in Appendix ~\ref{section_c: Experiments}.
+\subsection{Baselines}
+% \textbf{1) Q-ONLY} This baseline only uses the question feature as input to predict the answer.
+% \textbf{2) V-ONLY} This baseline only uses the visual feature as input to predict the answer.
+\subsubsection{Caption-based Models}
+% \noindent\textbf{Caption-based Models:}\quad\\
+\noindent\textbf{mPLUG}\quad
+mPLUG \cite{li2022mplug} consists of two unimodal encoders for image and text independently, a cross-modal skip-connected network, and a decoder for text generation. Based on the connected representation of the image and prefix sub-sequence, the decoder is trained with a prefix language modeling loss by generating the remaining caption. \\
+\noindent\textbf{GIT}\quad
+GIT \cite{wang2022git} is composed of one image encoder and one text decoder, for videos, multiple frames are sampled and encoded independently, and features are added with an extra learnable temporal embedding before concatenation. The image encoder is based on the contrastive pre-trained model \cite{yuan2021florence} with raw image input and a compact 2D feature map output. The text decoder is a transformer module to predict the text description.
+%which consists of multiple transformer blocks, each of which is composed of one self-attention layer and one feed-forward layer.
+
+
+\subsubsection{Instruction-based Models}
+\noindent\textbf{VideoChat}\quad
+VideoChat \cite{2023videochat} is an end-to-end chat-centric video understanding system, the version we use is VideoChat-13B. Its VideoChat-Embed architecture is instantiated using BLIP-2 \cite{li2023blip2} and StableVicuna (13b-delta), and combines pre-trained ViT-G \cite{sun2023evaclip} and GMHRA \cite{wang2022internvideo}. For the token interface, VideoChat-Embed uses the pre-trained QFormer with an additional linear projection to output Video Embedding. Both video description and Video Embedding will be input in LLMs (LLAMA-13B \cite{touvron2023llama}) for multimodal understanding and output timestamped video text descriptions. 
+%which has a VideoChat-Text architecture with video keyframes extracted using ffmpeg as input and a timestamped video text description as output
+\\
+\noindent\textbf{Video-ChatGPT}\quad 
+Video-ChatGPT \cite{maaz2023videochatgpt} is a large vision-language model with a dedicated video-encoder and LLM, which feeds the video frames into pre-trained video encoder, adds spatio-temporal features and feeds them into linear layer. Video Embedding is then input into LLM (Vicuna-7B, v1.1) along with System command and User Query to output the answer. It uses a data-centric, human-assisted, and semi-automated annotation framework for high-quality video instructional data with unique multimodal (visual-verbal) capabilities.\\
+\noindent\textbf{Otter}\quad 
+The Otter model \cite{li2023otter} utilizes the OpenFlamingo training paradigm, where the pretrained OpenFlamingo model consists of a LLaMA-7B language encoder \cite{touvron2023llama} and a CLIP ViT-L/14 vision encoder \cite{radford2021learning}. In the fine-tuning process for instruction tuning, Otter freezes both the encoders and only fine-tunes the Perceiver resampler module. We evaluate two versions of Otter: one that is fine-tuned on the Dense Caption dataset \cite{krishna2017dense}, and another that is fine-tuned on the FunQA training set. Due to GPU memory limitations, Otter can only train and test on 128 frames from a video.
+
+\input{table/experiment}
+
+\subsection{Evaluation Metrics}
+% \textbf{Moment} 
+% We use intersection of union to evaluate moment.\\
+% \textbf{Score} The metric is $ (result - score)/20$\\
+% \textbf{Free-text}
+% 1) NLG. NLG traditional metrics such as BLUE \cite{papineni2002bleu}, ROUGE-1/2/L \cite{lin2004rouge} and METEOR \cite{banerjee2005meteor} are common for natural language understanding, which enables researchers to fairly compare their models to others. In GEM \cite{gehrmann2021gem}, people . However, most of the tasks in our dataset are free-text, which is different from the rest of the extant VQA datasets, and most of the existing models fail to yield the desired results, which are close to 0 when evaluated with the existing NLG metric after FunQA testing.\\
+% 2) GPT 
+% Some work \cite{} has demonstrated that GPT can be used as a metric for NLG with good results, so we introduced GPT to help with the free-text evaluation. We carefully designed the prompt to achieve the desired effect, and GPT will focus on the consistency of the details of the two texts and the understanding of humor, creativity and magic effects, as detailed in \ref{Metics}.
+\noindent\textbf{Timestamp Localization (H1, C1, M1)}\quad 
+We employ the intersection of union based on time span. \\
+% which is calculated as $\min(result\_end, groud\_truth\_end) - \max(result\_start, groud\_truth\_start)/\min(result\_end, groud\_truth\_end) - \max(result\_start, groud\_truth\_start)$ 
+\noindent\textbf{Description \& Reasoning (H2-4, C2-4, M2-3)}\quad
+For all the \textbf{free-text} tasks, we employ three approaches for evaluation. Firstly, we utilize traditional NLG(Natural Language Generation) metrics. We use BLEU-4 \cite{papineni2002bleu}, ROUGE-L \cite{lin2004rouge}, CIDEr \cite{vedantam2015cider}, and BLEURT \cite{pu2021learning} as our metrics. The first two rely on N-gram overlap, which is only sensitive to lexical variations and cannot identify changes in sentence semantics or grammar. The latter two are reference-based evaluation metrics. Secondly, several works \cite{wang2023chatgpt, fu2023gptscore, kamalloo2023evaluating, chiang2023can} have shown promising results in utilizing GPT as a metric for NLG. Therefore, we introduce GPT-4 to assist in evaluating free-text similarity. We carefully design the prompts to make it possible to give objective ratings as much as possible like a human being. More details of GPT-4 prompts and evaluation criteria are provided in Appendix 
+\ref{appendix_c: Evaluation Metrics}.\\
+\noindent\textbf{Creative Scoring (C5)}\quad
+The evaluation uses the formula: $Metrics = 100 \times \left(1 - \frac{{\lvert Predict - GT \rvert}}{{20}}\right)$.
+
+
+\subsection{Results and Observations}
+Our results are summarized in Table \ref{T:experiment}. As an illustration, the responses of different models on HumorQA can be seen in Figure \ref{fig:model comparsion}. Overall, the performance of the models on the FunQA dataset is generally unsatisfactory, and we have made several key findings:\\
+\noindent\textbf{Timestamp localization task is the most challenging.}\quad
+Caption-based models, due to their emphasis on captioning tasks, tend to provide descriptions of the entire video even when tasked with timestamp localization (refer to Appendix \ref{appendix_c: Failure of t1}). Conversely, instruction-based models, which are typically derived from image-based VLMs, focus on specific keyframes rather than considering the entire temporal space of the video.\\
+\noindent\textbf{No clear winner across all tasks.}\quad
+Caption-based models excel in providing detailed descriptions but struggle in tasks that require reasoning, resulting in a notable performance gap between description tasks (e.g., H2) and reasoning tasks (e.g., H3). On the other hand, instruction-based models demonstrate stronger reasoning capabilities but tend to underperform in description tasks. One possible explanation is that instruction-based models may generate excessive information in their answers, including a significant amount of incorrect information.\\
+\noindent\textbf{Performance varies greatly across different video types.}\quad
+Most models can get a relatively accurate answer in humor and magic videos but have difficulty answering the questions in creative videos. One possible reason is that humor and magic videos often depict daily life that models have encountered previously, whereas creative videos contain content that models have never seen before, rendering them unable to generate new ideas and resulting in irrelevant and erroneous answers.\\
+\noindent\textbf{Insufficient evaluation metrics for free-text tasks.}\quad
+Traditional metrics yield near-zero scores on free-text questions, as they solely focus on short textual similarity. While BLEURT scores are significantly higher, they still fall short in evaluating more complex similarities. Intuitively, GPT-4 is found to show preliminary capabilities in assessing free-text in deep understanding, which will be detailed in Appendix \ref{appendix_c: Evaluation Metrics}. However, there are still issues of instability, where the same content can receive different scores.\\
+\noindent\textbf{Finetuned Otter performs well on traditional metrics but lags behind in GPT-4 score.}\quad
+We finetuned Otter on Dense Caption and FunQA, and Otter (FunQA) shows obvious performance advantages over Otter (D.C.). While Otter performs better in traditional metrics like ROUGE-L compared with other instruction-based models, the GPT-4 score of Otter (FunQA) underperforms. One possible reason revealed is that the input of Otter is only 128 frames sampled from the video, which is insufficient for comprehensive reasoning. Besides, the discrepancy between Otter's scores on traditional metrics and GPT-4 matches our finding of the lack of evaluation metrics.
+
+%it can be concluded that traditional metrics appear less suitable for more in-depth evaluation.
+
+%The inadequate and unbalanced information and the lagging loos function may lead to ineffective training.
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[width=\linewidth]{figures/model_comparsion.pdf}
+    \vspace{-0.6cm}
+    \caption{\textbf{Model responses on a HumorQA example.} Here shows the answers given by VideoChat~\cite{2023videochat}, Video-ChatGPT~\cite{maaz2023videochatgpt}, and Otter~\cite{li2023otter} on HumorQA video in Figure~\ref{figure_main}. On task \textbf{H2}, \textbf{H3}, VideoChat has the best performance. On task \textbf{H4}, Video-ChatGPT and Otter answer better, which is in line with our experiment result in Table \ref{T:experiment}. However, the answers from all models are still far from the ground truth. The descriptions of details and counter-intuitive explanations have numerous shortcomings. For example, Video-ChatGPT added incorrect details to the description, such as "wearing sunglasses", the humorous reason for "throwing ketchup" was wrongly interpreted by VideoChat as "knocking over the ketchup bottle", etc. }
+    \label{fig:model comparsion}
+    \vspace{-0.5cm}
+\end{figure}

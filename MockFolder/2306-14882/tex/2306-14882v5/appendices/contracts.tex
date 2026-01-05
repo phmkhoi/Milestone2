@@ -1,0 +1,105 @@
+\clearpage
+\section{Hardware Software Contracts}
+\label{app:hwsfcontract}
+
+We succinctly repeat the definitions and framework for Guarnieri et. al..
+Full details can be found in~\cite{guarnieri2021hardware}.
+% Let's $p$ be a program.
+% For a given CPU, we define $\sigma$, the architectural state composed of a memory and a set of registers.
+% Details on how to model the architectural semantics i.e. the transition between architectural states can be found in~\cite{guarnieri2021hardware}.
+% Hardware state is defined by combining a architectural state $\sigma$ and a microarchitectural state $\mu$, and a hardware semantic is used to express transition between hardware states and their successors.
+\\
+
+\noindent\textbf{Hardware-Software Contracts}
+Contracts define public or exposed states with respect to \emph{programs}.
+For a given program $p$ and an initial architectural state $\sigma_0$, $\contract[]{p}{}(\sigma_0)$ is the traces of architectural state when the program is run given the corresponding semantic.
+The traces of a contract $\contract[]{p}{})$ capture which architectural state is public and at risk of being exposed by the software when run.
+\\
+
+\subsection{Hardware Semantics}
+The \emph{adversary model} is modeled as projections of parts of the microarchitectural state.
+Given a program $p$, and an architectural state $\sigma$, $\uarch[]{p}{}(\sigma)$ denotes the trace of hardware observations produced in the run of the program on the given microarchitecture.
+The hardware semantic of a program $p$ is denoted as $\sigma$, $\uarch[]{p}{}$.
+\\
+
+\noindent\textbf{Definition 1} ($\uarch[]{\cdot}{} \vdash \contract[]{\cdot}{}$)
+A hardware semantics $\uarch[]{\cdot}{}$ \emph{satisfies a contract} $\contract[]{\cdot}{}$ if, for all programs $p$ and all initial architectural states $\sigma$, $\sigma'$, if $\contract[]{p}{}(\sigma) = \contract[]{p}{}(\sigma')$ then $\uarch[]{p}{}(\sigma) = \uarch[]{p}{}(\sigma')$.
+
+\subsection{Building Blocks for Contracts}
+Contracts for secure speculation are defined two fold.
+They are composed of a \emph{leakage model} and an \emph{execution model}.
+The leakage model describes what is observable by the attacker (e.g. execution trace and trace of memory accesses).
+The execution model, on the other hand, models the speculative behavior of the underlying semantic.
+\\
+
+\noindent\textbf{Existing Leakage Models}
+Several leakage models have been defined and used in previous work.
+The \emph{constant-time} model (\sw{ct} for short) leaks the trace of the \texttt{pc} (i.e. the control flow) and the trace all memory accesses (but not their values).
+The \emph{architectural} or \emph{sanboxing} model (\sw{arch}) extends the \sw{ct} model to include the values of elements loaded from memory.
+\sw{arch} effectively exposes the value of all registers during execution.
+The \emph{memory} model (\sw{mem}) only exposes the trace of memory accesses but not the control flow of the program and is sometimes used to model an attacker exploiting cache side-channels.
+The more states are exposed to an attacker by a leakage model, the \emph{stronger} it is considered to be (i.e. challenging to defend by software-only measures).
+Hence \sw{arch} being the strongest leakage model followed by \sw{ct} and finally \sw{mem}.
+\\
+
+\noindent\textbf{Existing Execution Models}
+The weaker execution model is \sw{seq}, which represents non-speculative, or sequential execution (one instruction at a time and in-order).
+We also have the strongest execution model \sw{spec} which models speculative execution with the following predictors: the pattern history table (PHT), the branch target buffer (BTB) and the return stack buffer (RSB).
+\\
+
+\subsection{SW side: Non-Interference Properties}
+
+Work by Cauligi et. al.~\cite{cauligi2022sok} defines direct and relative non-interference properties.
+We repeat these definitions here as a reminder.
+\\
+
+\noindent\textbf{Direct Non-Interference.}
+Program $p$ satisfies \emph{direct non interference} with respect to a given contract $\contract[]{\cdot}{}$ and policy $\pi$ if, for all pair of $\pi$-equivalent initial states $\sigma$ and $\sigma'$, executing $p$ with each initial trace produces the same trace. That is, $p \vdash NI(\pi, \contract[]{\cdot}{})$ is defined as
+$$ \forall \sigma, \sigma': \sigma \simeq_{\pi} \sigma' \Rightarrow \contract[]{p}{}(\sigma) = \contract[]{p}{}(\sigma')$$
+We elide $\pi$ for brevity and write $p \vdash NI(\contract[]{\cdot}{})$.
+\\
+
+\noindent\textbf{Removing Security Policy $\pi$.}
+In Cauligi et. al.~\cite{cauligi2022sok}'s definitions of relative non-interference properties all contain a security policy $\pi$, which is used to qualify which part of the initial states $\sigma$ and $\sigma'$ are public or private.
+This is redundant for the definition or \emph{relative} non-interference as what is public is already defined by what is leaked in the first contract.
+As a result, we elide $\pi$ for brevity.
+\\
+
+\noindent\textbf{Relative Non-Interference.}
+Program $p$ satisfies \emph{relative non interference} from contract $\contract[a]{\cdot}{seq}$ to $\contract[a]{\cdot}{\beta}$ if: for all pair of initial state $\sigma$ and $\sigma'$, if executing $p$ under $\contract[a]{\cdot}{seq}$ produces equal traces, then executing $p$ under $\contract[a]{\cdot}{\beta}$ produces equal traces.
+That is, $p \vdash NI(\contract[a]{\cdot}{seq} \Rightarrow \contract[a]{\cdot}{\beta})$ is defined as
+\begin{align*}
+\forall \sigma, \sigma': \quad
+&\contract[a]{\cdot}{seq}(\sigma) = \contract[a]{\cdot}{seq}(\sigma') \\[1ex]
+&\Rightarrow \contract[a]{\cdot}{\beta}(\sigma) = \contract[a]{\cdot}{\beta}(\sigma')
+\end{align*}
+
+\section{Burst Mode Security Analysis}
+\label{app:proofburstmode}
+Given that $\uarch[burst]{\cdot}{} \vdash \contract[shm]{\cdot}{stl}$.
+Given that our static program analysis tool \hw{sta} returns \texttt{true} on a program $p$ if $p \vdash NI(\contract[shm]{\cdot}{seq} \Rightarrow \contract[shm]{\cdot}{stl})$, and \texttt{false} otherwise.
+Let us prove $\uarch[burst]{p}{sta} \vdash \sw{(}\contract[shm]{\cdot}{seq}$.
+\\
+
+Let us take $p$ a program, $\sigma$ and $\sigma'$ some initial state so that
+$(\contract[shm]{p}{seq}(\sigma) = \contract[shm]{p}{seq}(\sigma'))$
+We have two cases:
+\\
+
+\noindent
+If $sta(p) = \texttt{true}$, $p \vdash NI(\contract[shm]{\cdot}{seq} \Rightarrow \contract[shm]{\cdot}{stl})$ and $\uarch[burst]{p}{} = \uarch[burst]{p}{sta}$ so:
+\begin{align*}
+    (\contract[shm]{p}{seq}(\sigma) &= \contract[shm]{p}{seq}(\sigma')) \\[1ex]
+    \Rightarrow &(\contract[shm]{p}{stl}(\sigma) = \contract[shm]{p}{stl}(\sigma')) \\[1ex]
+    \Rightarrow &  \uarch[burst]{p}{}(\sigma) = \uarch[burst]{p}{}(\sigma') \\[1ex]
+    \Rightarrow &  \uarch[burst]{p}{sta}(\sigma) = \uarch[burst]{p}{sta}(\sigma')
+\end{align*}
+
+\bigskip
+\noindent
+If $sta(p) = \texttt{false}$, $\uarch[burst]{p}{sta} = \varnothing$ and:
+$$\uarch[burst]{p}{sta}(\sigma) = \uarch[burst]{p}{sta}(\sigma') \text{ is always true.}$$
+
+\bigskip
+\noindent
+As a result, under our threat model, $\uarch[burst]{p}{sta} \vdash \contract[shm]{\cdot}{seq}$.

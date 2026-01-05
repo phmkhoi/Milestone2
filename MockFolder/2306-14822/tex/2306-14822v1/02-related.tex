@@ -1,0 +1,77 @@
+\section{Related Work}
+\subsection{Fine-grained Classification}
+% Classification is a fundamental research topic in both CV and NLP. 
+% Deep neural networks continue to demonstrate improved accuracy in coarse-grained
+% classification tasks, but fine-grained classification remains challenging and has
+% gradually become more popular for sophisticated real-world
+% scenarios. For instance, in the computer vision domain, 
+% the CUB-200-2011 image dataset~\cite{wah2011caltech} requires the model to distinguish between
+% 200 different sub-categories of birds. For NLP, in turn,
+% there is a dataset for annotating 15,000
+% tweets from multiple hurricanes with Plutchik-24 emotions~\cite{desai-etal-2020-detecting}.
+% %SST-5~\cite{socher-etal-2013-recursive} for example as a fine-grained dataset in 5-rate sentiment analysis \lwku{I feel very weird from the beginning...I thought Ekman's 6 and 5 classes are not fine grained at all...pls explain}. 
+% Also, emotion classification datasets exist that include 4 to 7 basic
+% types of human emotion, including EmoInt~\cite{EmoInt} or ISEAR~\cite{ISEAR}.
+% In our work, we focus on two emotion datasets that are even more challenging:
+% GoEmotions~\cite{demszky-etal-2020-goemotions} and Empathetic
+% Dialogues~\cite{rashkin-etal-2019-towards}, which have 27 and 32 emotions,
+% respectively.
+Most of the literature addresses fine-grained text classification in Euclidean space.
+\citet{khanpour-caragea-2018-fine} propose combining lexicon-based features to
+detect fine-grained emotions in online health posts.
+\citet{yin-etal-2020-sentibert} demonstrate that pre-trained models can
+learn compositional sentiment semantics with self-attention applied to a
+binary constituency parse tree and transfer to downstream sentiment
+analysis tasks.
+\citet{coarse2fine} propose utilizing generative language models for
+fine-grained classification on coarsely annotated data.
+\citet{suresh-ong-2021-negatives} propose label-aware contrastive loss (LCL),
+which estimates the model confidence for each sample, and use this to weight
+supervised contrastive loss~\cite{NEURIPS2020_supcon}. 
+All of the above-mentioned work addresses FEC task primarily on the euclidean space, while we argue that some emotion with close semantics are not separable in this latent space. In our work, we integrate hyperbolic space to address this issue that improves FEC task.
+
+% In our work, we re-weighted the standard cross-entropy loss instead of the contrastive loss. Without the need of supervised contrastive loss, we could be more sample-efficient while also improving the performance. More specifically, we calculate the distance in the hyperbolic space as the weights, and if the distance between the sample and label in the hyperbolic space is far, the cross-entropy loss for that specific sample would also get massive penalty. 
+
+\subsection{Hyperbolic Geometry}
+A hyperbolic space is a non-Euclidean space for which the parallel
+postulate does not hold~\cite{2021_hyper_survey, dhingra-etal-2018-embedding-text-hyper}.
+The parallel postulate asserts that for every line~$L$ and 
+point~$P$ not on $L$, there is a unique line that passes through $P$ that shares the same
+plane with $L$ and $P$ and yet does not intersect with $L$. Without this
+postulate, familiar mathematical properties in Euclidean space are
+different. For example, in hyperbolic space, there can be more than one
+line parallel to line~$L$ that goes through a point~$P$ not on $L$. Also,
+whereas the distance between two points is a straight line in Euclidean space, this can
+be generalized as a geodesic $\in [0, 1]$ which is the minimized distance
+between two points. Moreover, the hyperbolic distance grows exponentially as
+the points approach the boundary, making it more spacious than
+Euclidean space given the same dimensions. These properties suit the nature of a tree-like structure, as the number of nodes grows exponentially
+when the depth increases. In our work, we leverage the nature of hyperbolic
+geometry to better capture label hierarchy, and propose improving the FEC task by jointly learning representations in both
+Euclidean and hyperbolic space.
+
+\subsection{Poincar\'{e} Embeddings}
+The Poincar\'{e} ball model~\cite{Cannon_hyperbolicgeometry} is commonly
+adopted in hyperbolic neural networks (HNN) and representation learning
+research due to its differentiable distance
+function~\cite{dhingra-etal-2018-embedding-text-hyper,NIPS2017_poincare_hierarchical}.
+The Poincar\'{e} ball model is a Riemannian manifold that can be formulated as
+$(B, g_x^b)$ with a Riemannian metric $g_x^b = \lambda_x^2 g^E$, where
+$\lambda_x^2 = \frac{2}{1 - \Vert x \Vert^2}$ is called the \textit{conformal
+factor}, and $g^E = I_n$ is the Euclidean metric tensor. The Riemannian metric
+defines the geometric properties of a space, such as distances, angles, or curve
+length. For example, Euclidean space is a manifold with zero curvature, and
+the distance between two points can be written as $d(x, y) =
+\sqrt{\sum_i{(x_i-y_i)}^2}$. The Poincar\'{e} ball model, on the other hand, is
+a manifold with a constant negative curvature, where $B = \{x \in \mathbb{R}^n :
+\Vert x \Vert < 1\}$ is an unit ball.
+In natural language processing, researchers have applied such embeddings to
+tasks as varied as fine-grained entity
+typing~\cite{lopez-strube-2020-fully}, text classification~\cite{cho2019large}, and language modeling~\cite{dhingra-etal-2018-embedding-text-hyper}. % In the
+% FEC task, the inventory of emotion labels can be viewed as a hierarchical
+% structure. For instance, \citet{parrott2001emotions} proposes an emotion
+% classification model that contains a tree-like structure. In particular,
+% \textit{love} is the primary emotion, and has the three secondary emotions
+% \textit{affection}, \textit{lust}, and \textit{longing}. Given this
+% hierarchical structure, we leverage the nature of the Poincar\'{e} ball model to
+% better encode tree-like label structures.

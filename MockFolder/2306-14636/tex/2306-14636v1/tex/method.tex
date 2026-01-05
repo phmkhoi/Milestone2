@@ -1,0 +1,85 @@
+\section{Method}
+\subsection{Problem Setup}
+The goal of this work is to perform localized text-to-image generation given pretrained text-to-image generative models. The localization information provided by the users should consist of text phrases that describe the contents and the constrained spatial locations associated with these contents in the image space. Common location information includes bounding boxes and semantic segmentation maps. Moreover, we aim at performing this task with (1) no additional training or finetuning (2) no model architecture modification and (3) no extra inference time (4) no further limitation on the input text space from the original model. The provided pretrained models can either be trained with localization information, or solely trained with the text-image pairs.
+
+Formally, given a pretrained text-to-image generative model $p_\theta$, a length $n_0$ text prompt $y_0 \in \mathcal{Y}^{n_0}$ and a set of localization information $g = \{g_i\}_{i=1}^m$, our goal is to generate an image $x \in \mathcal{X} \subset \mathbb{R}^{C\times H\times W} \sim p_\theta(x|y_0, g)$ that is visually consistent with the overall textual description provided in $y_0$ and the localized description provided in $g$. Here $\mathcal{Y}$ represents the vocabulary space of the text prompt, $C,H,W$ are the dimensionalities of the output images, and for each $i \in \{1,\cdots,m\}$, $g_i = (y_i, b_i) \in \mathcal{Y}^{n_i} \times [0,1]^{H\times W}$ where $y_i$ is the textual description of the $i$-th localized region and $b_i$ is the spatial constraint mask corresponding to that description. 
+The pretrained model $p_\theta$ can either sample from %
+$p(x|y_0)$ or $p(x|y_0,g)$. We assume the pretrained models use cross attention mechanism, which we will discuss in the following sections, for the text-image conditioning.
+
+\subsection{Text-to-Image Generation with Cross Attention}
+
+State-of-the-art text-to-image generative models achieve their success with cross attention mechanism. 
+Due to the open source availability, we choose Stable Diffusion~\citep{stablediffusion} as the backbone model and we will discuss our method based on its formulation. However, our method can also be applied to other cross attention based diffusion models such as Imagen~\citep{imagen} and GANs such as GigaGAN~\citep{gigagan}.
+
+\ke{appendix}
+
+For the task of sampling from $x \in p_\theta(x|y_0)$ where $x \in \mathcal{X}, y_0 \in \mathcal{Y}^n$, a cross attention layer $l$ in $p_\theta$ receives an encoded text prompt $e_{y_0} \in \mathbb{R}^{n_0 \times d_e}$ 
+and an intermediate sample $z^{(<l)} \in \mathbb{R}^{(H^{(l)} \times W^{(l)}) \times C^{(l)}}$
+that has been processed by previous layers in the network and previous diffusion timesteps as its inputs. 
+$n_0, d_e$ are the text length and text embedding dimension, and $C^{(l)}, H^{(l)}, W^{(l)}$ represent the perceptive dimensions of layer $l$, which can be different from $C',H',W'$ because of the U-Net structure. We then project $z^{(<l)}$ into a query matrix $Q^{(l)} = l_Q(z^{(<l)}) \in \mathbb{R}^{h\times (H^{(l)} \times W^{(l)}) \times d}$ and $e_{y_0}$ into a key matrix and a value matrix $K_0^{(l)} = l_K(e_{y_0}) \in \mathbb{R}^{h\times n_0 \times d}, V_0^{(l)} = l_V(e_{y_0}) \in \mathbb{R}^{h\times n_0 \times d_v}$. $h$ is the number of heads for multihead attention, $d$ is the feature projection dimension of query and key and $d_v$ is that of the value. The cross attention map at layer $l$ is then calculated to be:
+\begin{equation}
+    M_0^{(l)} = \text{Softmax}(\frac{Q^{(l)}K_0^{(l)^\top}}{\sqrt{d}}) \in \mathbb{R}^{h\times (H^{(l)} \times W^{(l)}) \times n_0}.
+    \label{og_attn}
+\end{equation}
+
+$z^{(l)} = l_O(M_0^{(l)}V_0^{(l)}) \in \mathbb{R}^{(H^{(l)} \times W^{(l)}) \times C^{(l)}}$ is the output of $l$ where $l_O$ is another linear projection.
+
+We can interpret the each entry $M_{0,(r,j,k)}^{(l)}$ in $M_0^{(l)}$ as the extent of attention the $r$-th head pays to the $k$-th token in $y_0$ when generating the $j$-th pixel block in the image. The layer output is the weighted average of the value features, where the weights are assigned by the attention maps from all heads.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.9\textwidth]{img/pipeline3.pdf}
+  \caption{\small The illustration of CAC for localized generation. CAC uses localized text descriptions and spatial constraints to manipulate the cross attention maps.
+  }
+  \label{fig:pipeline}
+\end{figure}
+\subsection{Cross Attention Control (CAC) for Localized Generation}
+\label{main_method}
+
+
+Each localization information pair $g_i = (y_i, b_i)$ indicates that the model should generate contents that can be described by text prompt $y_i$ at pixel locations where $b_i > 0$. Therefore, based on the previous interpretation and discovery, the $(r,j,k)$-th element in the attention map should only receive attention from the $k$-th token in $y_i$ if the $j$-th entry $b_{i,(j)}$ in the spatial constraint mask $b_i$ is positive.
+
+As a result, we first interpolate the original location mask $b_i$ to obtain $b_i^{(l)} \in H^{(l)} \times W^{(l)}$ that match dimentionality of the perceptive field of layer $l$. Let $B_i^{(l)} \in ^{h\times (H^{(l)} \times W^{(l)}) \times n}$ denote the flattened and broadcasted location mask constructed from $b_i^{(l)}$ and $K_i^{(l)} = l_K(e_{y_i}) \in \mathbb{R}^{h\times n_i \times d}$ denote the key matrix calculated from $y_i$, we can extend Equation~\ref{og_attn} to have:
+\begin{equation}
+    M_i^{(l)} = \text{Softmax}(\frac{Q^{(l)}K_i^{(l)^\top}}{\sqrt{d}}) \odot B_i^{(l)} \in \mathbb{R}^{h\times (H^{(l)} \times W^{(l)}) \times n_i}.
+    \label{attn_i}
+\end{equation}
+The remaining question is: how should we combine the $m+1$ attentions maps $\{M_i^{(l)}\}_{i=0}^m$\footnote{We define $b_0$ to be an all-one matrix to calculate $M_0^{(l)}$ and all text prompts are padded to the same length.}? One intuitive attempt is to calculate the average map $\overline{M^{(l)}} = \frac{1}{m+1}\sum_{i=1}^m M_i^{(l)}$. However, it is unclear what is the "average" value matrix corresponding to this attention map. Another attempt is to separately calculate the matrices $M_i^{(l)}V_i^{(l)}$ where $V_i^{(l)} = l_V(e_{y_i})$, and then calculate the average output matrix $\frac{1}{m+1}\sum_{i=0}^m l_O(M_i^{(l)}V_i^{(l)})$ or $\frac{1}{m+1}l_O(\sum_{i=0}^m M_i^{(l)}V_i^{(l)})$ as the output of the layer. This attempt resembles StructureDiffusion proposed by~\citet{structurediffusion}. While it works well for their standard text-to-image generation task, very sparse attention maps rendered by localization information associated with small objects in our setting can lead to unexpected behaviors. %
+
+This question can be much easier to answer if $y_i$ is a substring of $y_0$ for all $i = 1,\cdots,m$: for instance, if a user wants to generate "a photo of a dining room with cups on a dining table" and provides bounding boxes for the "cups" and the "dining table", then we can directly mask the parts of the attention map for the caption (i.e. $M_0^{(l)}$) that are associated with the tokens for "cups" and "dining table" using the location information. Formally, suppose $y_i$ corresponds to the $j_i$-th token to the $(j_i + n_i)$-th token in $y_0$, then we can directly calculate: 
+\begin{equation}
+    M_i^{(l)} = M_0^{(l)}\odot B_{i,(j_i:j_i + n_i)}^{(l)},
+\end{equation}
+where $ B_{i,(j_i:j_i + n_i)}^{(l)}$ is the mask where $b_i^{(l)}$ is only broadcasted to the $j_i$-th to $(j_i + n_i)$-th submatrices in the third dimension while keeping the rest of the elements all zeros. \ke{this sentence is kind of unclear} 
+Then we can calculate $z^{(l)} = l_O((\sum_{i=0}^m M_i^{(l)})V_0^{(l)})$.
+
+However, this assumption may not hold all the time. For example, the user can request to generate "a photo of a dining room" without describing all the details of the scene, but they can still specify the locations of the "cups" and the "dining table" with bounding boxes without mentioning them in the caption. Therefore, to apply this method to all inputs without this assumption, we construct a new text prompt by concatenating all input prompts: \ke{are the notations super confusing at this point...}
+\begin{equation}
+    y = y_0 \oplus y_1 \oplus \cdots \oplus y_m
+\end{equation}
+where $\oplus$ denotes concatenation. We keep all the special tokens from encoding and pad the resulting prompt after concatenation.
+Similar to the text prompts, we also concatenate all masks to create:
+\begin{equation}
+    B^{(l)} = B_{0}^{(l)} \oplus B_{1}^{(l)} \oplus \cdots \oplus B_{m}^{(l)} \in \mathbb{R}^{h\times (H^{(l)} \times W^{(l)}) \times (\sum_{i=0}^m n_i)}
+\end{equation}
+We use all-one matrices as the location masks for the caption $y_0$ and the special tokens in practice.
+
+Similar to Prompt-to-Prompt Editing~\citep{prompt2prompt}, we can also apply a separate set of weights $\lambda \in \mathbb{R}^{\sum_{i=0}^m n_i}$ to the attention maps to adjust the effects of each token has to the resulting generation. With $K^{(l)} = l_K(e_{y}) \in \mathbb{R}^{h\times (\sum_{i=0}^m n_i) \times d}$, we can calculate the aggregated attention map as
+\begin{equation}
+    M^{(l)} = \lambda\text{Softmax}(\frac{Q^{(l)}K^{(l)^\top}}{\sqrt{d}}) \odot B^{(l)} \in \mathbb{R}^{h\times (H^{(l)} \times W^{(l)}) (\sum_{i=0}^m n_i)}.
+    \label{attn_i}
+\end{equation}
+
+Finally, the output of the layer can be computed as $ z^{(l)} = l_O(M^{(l)}V^{(l)})$ and our framework is illustrated in Figure~\ref{fig:pipeline}.
+
+Our method only changes the forward pass of the pretrained model at sampling time and thus does not require any further training or model architecture modifications, and it does not demand any other language restrictions or priors such as a fixed set of vocabulary or a language parser. It is also well packaged in the original optimized transformer framework and therefore requires no additional inference time. Because of the minimal assumption, our method is an {open-vocabulary plugin for all} text-to-image generative models that use cross attention for textual guidance {at no extra cost}.
+
+\subsection{Incorporating Self Attention Control}
+\ke{i feel like this section is kind of weird and unclear}
+
+In addition to cross attention, self attention layers are also essential for many text-to-image generative models to produce coherent spatial layouts. ~\citet{prompt2prompt} also found that in addition to cross attention control, applying self attention control to a small portion of the diffusion process can further help provide consistent geometry and color palettes. While self attention control is trivial in editing, it becomes complicated in our setting since location information for different localization prompts can overlap with each other, resulting conflicting signals at the overlapping pixels and ambiguous masks.
+
+
+One approach to incorporate self attention control is to separately optimize each region according to different localization prompts before binding all regions together. When applying both self attention control and cross attention control to all diffusion steps, the solution to this optimization problem can be roughly reduced to MultiDiffusion~\citep{multidiffusion}. As a result, we can first apply MultiDiffusion to a small portion of the diffusion process, and then perform cross attention controlled diffusion as described in~\ref{main_method} to the rest of the diffusion timesteps to obtain the desired effect. \ke{is this sentence clear enough} We can also use models like GLIGEN~\citep{gligen} that are finetuned on localization information to provide learned self attention control.
+
+Notice that in this case our method is considered a plugin for MultiDiffusion and GLIGEN to provide better localization ability, and it still does not add extra cost to the two algorithms.

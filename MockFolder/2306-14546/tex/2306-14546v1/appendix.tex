@@ -1,0 +1,455 @@
+\section{Background}
+
+\subsection{LTN Example}
+\label{appendix:example_sat_ltn}
+Let us denote the predicate $\Friend$ as $\shortFriend$ for brevity.
+In the expression $\shortFriend(\shortalice,\shortbob)$, let $\Gt(\shortalice)$ and $\Gt(\shortbob)$ be vector embeddings in $\R^m$.
+A primitive approximation of the friendship relationship could be a cosine similarity function $\Gt(\shortFriend) : (\bx,\by)\mapsto \frac{\bx \cdot \by}{||\bx|| ||\by||} $.  
+If $\Gt(\shortalice) = \begin{bsmallmatrix}3&2&0&5\end{bsmallmatrix}$ and $\Gt(\shortbob) = \begin{bsmallmatrix}1&0&0&4\end{bsmallmatrix}$, we have 
+$\Gt(\shortFriend(\shortalice,\shortbob)) = 0.905$; that is, a high truth degree. 
+
+Of course, stating that people are friends if they are similar is primitive.
+In a real-case scenario, the friendship relationship would likely be approximated by a parametric function, such as a neural network, 
+and trained based on constraints in a loss function.
+
+Consider the formula $\phi = \lnot \shortFriend(\shortalice, \shortbob) \lor \shortFriend(\shortbob, \shortalice)$
+and a knowledgebase that contains this unique formula $\K = \{ \phi \}$.
+The formula states that if $\alice$ is a friend of $\bob$, then $\bob$ is a friend of $\alice$.
+    \footnote{$\phi$ is semantically equivalent to $\shortFriend(\shortalice, \shortbob) \imp \shortFriend(\shortbob, \shortalice)$ 
+            if we use a material implication defined as $p \imp q \equiv \lnot p \lor q$.}
+Let the grounding for $\Gt(\shortFriend(\shortalice, \shortbob))$ depend 
+on a trainable neural network for the friendship relation
+and a set of features for $\alice$ and $\bob$.
+To update $\btheta$ via gradient descent steps, we calculate 
+$\frac{\partial \Gt(\phi)}{\partial \Gt(\shortFriend(\shortalice,\shortbob))}$ 
+and 
+$\frac{\partial \Gt(\phi)}{\partial \Gt(\shortFriend(\shortbob,\shortalice))}$.
+Using the operators $\Ns(x) = 1-x$ and $\Sprod(x,y)=x+y-xy$, we get:
+%
+\begin{align}
+    \Gt(\phi) & =  \Sprod(\Ns(\Gt(\shortFriend(\shortalice,\shortbob))), \Gt(\shortFriend(\shortbob,\shortalice))) \\
+            & = 1 - \Gt(\shortFriend(\shortalice,\shortbob)) + \Gt(\shortFriend(\shortalice,\shortbob)) \Gt(\shortFriend(\shortbob,\shortalice))
+\end{align}
+And the partial derivatives:
+\begin{align}
+    \label{eq:partial_friendba} \frac{\partial \Gt(\phi)}{\partial \Gt(\shortFriend(\shortbob,\shortalice))} & = \Gt(\shortFriend(\shortalice,\shortbob)) \\
+    \label{eq:partial_friendab} \frac{\partial \Gt(\phi)}{\partial \Gt(\shortFriend(\shortalice,\shortbob))} & = -1+\Gt(\shortFriend(\shortbob,\shortalice))
+\end{align}%
+
+Equations \eqref{eq:partial_friendab} and \eqref{eq:partial_friendba} give us interesting insights on the power of LTN.
+When maximizing the satisfiability of the formula, if $\shortFriend(\shortalice,\shortbob)$ is high,
+then $\frac{\partial \Gt(\phi)}{\partial \Gt(\shortFriend(\shortbob,\shortalice))}$ is high.
+Intuitively, if $\alice$ being friend with $\bob$ has a high truth value, LTN will tend to increase the truth value of $\bob$ being friend with $\alice$.
+Alternatively, if $\shortFriend(\shortbob,\shortalice)$ is low, $\frac{\partial \Gt(\phi)}{\partial \Gt(\shortFriend(\shortalice,\shortbob))}$ is close to $-1$.
+That means that if $\bob$ is not considered friend with $\alice$, LTN will tend to decrease the truth value of $\alice$ being friend with $\bob$.
+
+These are different scenarios and ways in which the framework pushes parametric groundings to verify logical constraints.
+One can easily imagine how the LTN loss can be used as an additional loss term when training neural networks or embeddings to find a balanced optimum that also satisfies a knowledgebase.
+
+
+\subsection{Product Real Logic and Prenex Normal Form}
+\label{appendix:prodrl_and_pnf}
+The study conducted by \cite{van_krieken_analyzing_2022} evaluated a range of operators for differentiability and found Product Real Logic to be the current state-of-the-art operator semantics for differentiable fuzzy logics.
+This set of semantics uses the product t-norm $\Tprod(x,y)=xy$, its dual t-conorm $\Sprod(x,y)=x+y-xy$, the standard negation $\Ns(x)=1-x$, and the material implication.
+The universal quantifier uses the log-product aggregator $(\log \circ \Atprod)(x_1,\dotsc,x_n) = \sum_{i=1}^{n} \log(x_i)$,
+and the existential quantifier uses a smooth maximum.
+
+A limitation of this set of semantics is that it combines operators in both the standard space and the logarithm space, making it challenging to handle certain formulas. 
+For example, a formula such as $(\forall u P(u)) \lor (\forall v Q(v))$ cannot be grounded as is, as the $\forall$ operator outputs a log truth degree while the $\lor$ operator expects a normal truth degree. 
+One potential solution is to transform the formula into Prenex Normal Form (PNF) $\forall u \forall v (P(u) \lor Q(v))$, but this adds considerable complexity as we now need to ground combinations of individuals from $u$ and $v$. 
+PNF formulas that contain universal quantifiers within the scope of existential quantifiers, such as $\forall u \exists v \forall w P(u,v,w)$, are even more difficult to handle. 
+\logLTN, on the other hand, is simpler to work with in these cases.
+
+\subsection{Simplification of Log Sigmoid and Log Softmax}
+\label{appendix:logsigmoid}
+Given the sigmoid function $\sigmoid(x) = \frac{1}{1+e^{-x}}$, for large negative values of $x$, we have $\log(\sigmoid(x)) = \log(\frac{1}{1+N}) = \log(1)-\log(1+N) \approx -N$ where $N$ is a large number. 
+The derivative is also simple. Given that $\partialderivative{\sigmoid(x)}{x} = \sigmoid(x) (1-\sigmoid(x))$, we have:
+\begin{equation}
+    \partialderivative{\log(\sigmoid(x))}{x} = 1-\sigmoid(x)
+\end{equation}
+Similarly, given that the softmax function $\softmax(\mathbf{z})_i = \frac{e^{z_i}}{\sum_{j=1}^{K} e^{z_j}}$ over a vector $\mathbf{z}$ of $K$ values, $i=1,\dots,K$, 
+has the derivatives $\partialderivative{\softmax(\mathbf{z})_i}{\mathbf{z}_j} = \softmax(\mathbf{z})_i (\delta_{ij}- \softmax(\mathbf{z})_j)$, we have:
+\begin{equation}
+    \partialderivative{\log(\softmax(\mathbf{z})_i)}{\mathbf{z}_j} = \delta_{ij}- \softmax(\mathbf{z})_j
+\end{equation}
+where $\delta_{ij} = \begin{cases}
+        1 \ \ i=j\\
+        0 \ \ i \neq j 
+    \end{cases}$. 
+
+
+
+\section{Experiments}
+\subsection{Semantic PASCAL-Part Dataset}
+\label{appendix:pascalpart}
+The semantic PASCAL-Part dataset is a simplified version of the PASCAL-Part dataset introduced by \cite{pascalpart_chen_2014}. 
+The goal is to train a type classifier $\istype(x,\bottle)$, $\istype(x,\captype)$, etc., that predicts the type of an object within a bounding box $x$,
+ and to train a relation predictor $\ispartof(x,y)$ that determines if one bounding box $x$ is part of another bounding box $y$.
+
+\subsubsection{Constraints}
+Training is guided by three constraints based on ground truth examples,
+one for labeled type examples, one for pairs of positive examples for $\ispartof$, and one for pairs of negative examples. 
+Note that the negative pairs are always sampled in bounding boxes belonging to the same image.
+\begin{gather}
+    \forall \mathrm{diag}(x_\mathsf{label}, \mathsf{label})\ \istype(x_\mathsf{label}, \mathsf{label}) \\
+    \forall \mathsf{pairs_+}\ \ispartof(\mathsf{pairs_+[0]}, \mathsf{pairs_+[1]}) \\
+    \forall \mathsf{pairs_-}\ \lnot \ispartof(\mathsf{pairs_-[0]}, \mathsf{pairs_-[1]}) \\
+\end{gather}
+Where $\mathrm{diag}(x_\mathsf{label}, \mathsf{label})$ is a special quantification that aggregates only arranged pairs of bounding boxes and their labels,
+$\mathsf{pairs_+}$ is a batch of positive examples of $\ispartof$, $\mathsf{pairs_-}$ is a batch of negative examples of $\ispartof$.
+
+There are two constraints stating that $\ispartof$ is antisymmetric and antireflexive.
+\begin{gather}
+    \forall \mathsf{pairs}\ \lnot \big( \ispartof(\mathsf{pairs[0]}, \mathsf{pairs[1]}) \land \ispartof(\mathsf{pairs[1]}, \mathsf{pairs[0]}) \big) \\
+    \forall x\ \lnot \ispartof(x, x)
+\end{gather}
+
+Finally, and most importantly, there are mereological constraints that the types and their meanings.
+The mereological constraints are based on the ontologies in Table \ref{tab:ontologies} rearranged in the shape of \eqref{eq:constraint_mereo1_appendix} and \eqref{eq:constraint_mereo2_appendix}.
+\begin{gather}
+    \forall x,y \ \istype(x,\bottle) \land \ispartof(y,x) \imp (\istype(y,\captype) \lor \istype(x,\body)) \label{eq:constraint_mereo1_appendix} \\
+    \forall x,y \ \istype(x,\captype) \land \ispartof(x,y) \imp \istype(y,\bottle) \label{eq:constraint_mereo2_appendix} 
+\end{gather}
+
+\subsubsection{Features}
+This setup has been previously implemented by \cite{donadello_ltnimage_2017,van_krieken_semi-supervised_2019}. 
+In these previous works, the bounding boxes were grounded with the object class predictions produced by an object detector trained on the PASCAL-Part dataset. 
+This means that LTN was only used to correct the predictions of the detector. 
+In contrast, we increased the difficulty by grounding the bounding boxes with a latent vector of 1024 features, which is produced by an intermediate layer of the FasterRCNN~\cite{Ren_fasterrcnn_2017}.
+This means that LTN must also learn the final layers of the object classifier.
+In addition, we included the coordinates of each bounding box and their overlapping ratio when grounding the pairs.
+
+For a work that trains an object detector architecture end-to-end on all types using LTN, refer to \cite{manigrasso_faster-ltn_2021}.
+
+\subsubsection{Violation metrics}
+In addition to the standard accuracy metrics for each predictor (PR AUC for the part-of predictor and balanced accuracy for the type predictor), we also assess their combined performance by measuring \emph{violations} of the mereological constraints.
+It's important to note that not all misclassifications are equal. For instance, if a model predicts a cap inside a plant, it suggests that the system has learned less from prior knowledge compared to a model that misclassifies the cap in a different context, such as a wrong bottle.
+
+This concept is visually represented in Figure \ref{fig:examples_violations}. Our results demonstrate that not only does \logLTN\ exhibit significantly fewer violations, but it also reaches this outcome much faster compared to other baseline approaches, as shown in Figure \ref{fig:pascalpart_violations}.
+
+\begin{figure}
+    \centering
+    \begin{subfigure}{0.45\textwidth}
+      \centering
+      \includegraphics[width=0.8\linewidth]{figures/nonviolation2.png}
+      \caption{Nonviolation (a cap port of a bottle)}
+      \hfill
+    \end{subfigure}
+    ~
+    \begin{subfigure}{0.45\textwidth}
+      \centering
+      \includegraphics[width=0.8\linewidth]{figures/violation1.png}
+      \caption{Violation (a plant part of another plant)}
+    \end{subfigure}
+    
+    \caption{Examples of false positives on Semantic PASCAL-Part. Green is predicted in blue.}
+    \label{fig:examples_violations}
+  \end{figure}
+  
+
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.5\linewidth]{figures/pascalpart_violations_results.pdf}
+    \caption{Violations over training time. The first 100 training steps are used for pretraining without the mereological constraints.}
+    \label{fig:pascalpart_violations}
+\end{figure}
+
+
+\begin{table}
+    \begin{tabular}{l|l}
+        \toprule
+        Whole & Parts \\
+        \midrule
+        aeroplane & artifact\_wing, body, engine, stern, wheel \\
+        bicycle & chain\_wheel, handlebar, headlight, saddle, wheel \\
+        bird & animal\_wing, beak, tail, eye, head, leg, neck, torso \\
+        bottle & body, cap \\
+        bus & bodywork, door, headlight, license\_plate, mirror, wheel, window \\
+        car & bodywork, door, headlight, license\_plate, mirror, wheel, window \\
+        cat & ear, tail, eye, head, leg, neck, torso \\
+        cow & ear, horn, muzzle, tail, eye, head, leg, neck, torso \\
+        dog & ear, muzzle, nose, tail, eye, head, leg, neck, torso \\
+        horse & ear, hoof, muzzle, tail, eye, head, leg, neck, torso \\
+        motorbike & handlebar, headlight, saddle, wheel \\
+        person & arm, ear, ebrow, foot, hair, hand, mouth, nose, eye, head, leg, neck, torso \\
+        pottedplant & plant, pot \\
+        sheep & ear, horn, muzzle, tail, eye, head, leg, neck, torso \\
+        train & coach, headlight, locomotive \\
+        tvmonitor & screen \\
+        boat & \\
+        chair & \\
+        sofa & \\
+        diningtable & \\
+        \bottomrule
+    \end{tabular}
+\caption{Full ontologies in Semantic PASCAL-Part}
+\label{tab:ontologies}        
+\end{table}
+
+
+\subsection{Implementation Details}
+\label{appendix:implementation}
+
+logLTN is made available as a subpackage of the LTN library.\footnote{\url{https://github.com/logictensornetworks/logictensornetworks}}
+Table \ref{tab:appendix_models} details the neural models used in each experimental task and Table \ref{tab:appendix_operator_params} details the hyperparameters of the baselines.
+The Adam optimizer is trained with a learning rate of $0.002$ in the clustering task and a learning rate of $0.001$ for the MNISTAdd and Semantic Image Interpretation (SII) task.
+We run our experiments on a machine equipped with a Tesla T4 GPU.
+
+\begin{table}
+    \begin{center}
+    \begin{tabular}{llll}
+        \toprule
+        Baseline  & Operator & Parameter & Schedule \\
+        \midrule
+        logLTN & $\exists: \LME$ & $\alpha$ & Linear: $[1,4]$\\
+        Prod RL & $\exists: \mathrm{pM}$ & $p$ &  Linear: $[1,6]$\\
+        Stable RL & $\exists: \mathrm{pM}$ & $p$ &  Linear: $[1,6]$\\
+        \bottomrule
+    \end{tabular}
+    \end{center}
+    
+    \begin{tablenotes}
+        \small
+        \item Linear $[a,b]$: the parameter increases linearly from $a$ to $b$ over the training steps,
+        \item $\mathrm{pM}(x_1, \dots, x_n \mid p) = (\frac{1}{n} \sum_{i=1}^{n} x_i^p)^{\frac{1}{p}}$,
+        \item $\mathrm{pME}(x_1, \dots, x_n \mid p) = 1 - (\frac{1}{n} \sum_{i=1}^{n} (1- x_i)^p)^{\frac{1}{p}}$.
+      \end{tablenotes}
+    \caption{Overview of the hyperparameters used in the experiments for each fuzzy operator configuration.}
+    \label{tab:appendix_operator_params}
+\end{table}
+
+\newcommand{\Conv}{\mathrm{Conv}}
+\newcommand{\Dense}{\mathrm{Dense}}
+
+\begin{table*}[b]
+    \centering
+    \begin{tabular}{llll}
+        \toprule
+        Task  & Predicate & Model & Output layer \\
+        \midrule
+        Clustering & $C(x,c)$ & $\mathrm{Dense}(16)^\ast$, $\mathrm{Dense}(16)^\ast$, $\mathrm{Dense}(16)$ & $\mathrm{Softmax}$ \\
+        MNISTAdd & $\isdigit(x,d)$ & \makecell[tl]{$\Conv(6,5)^\ast$, $\mathrm{MP}(2,2)$, $\Conv(16,5)^\ast$, $\mathrm{MP}(2,2)$,\\
+                 $\Dense(100)^\ast$, $\Dense(84)^\ast$, $\Dense(10)$} & $\mathrm{Softmax}$\\
+        SII & $\mathsf{type}(x,t)$ & \makecell[tl]{$\mathrm{Dense}(512)^\ast$, $\mathrm{Dense}(256)^\ast$, $\mathrm{Dense}(256)^\ast$,\\ 
+                $\mathrm{Dense}(128)^\ast$, $\mathrm{Dense}(128)$} & $\mathrm{Softmax}$ \\
+        SII & $\mathsf{partof}(x,y)$ & \makecell[tl]{$\mathrm{Concat}(\mathsf{type}_{\mathrm{Model}}(x),\mathsf{type}_{\mathrm{Model}}(y))$, $\mathrm{Dense}(512)^\ast$, \\ 
+                $\mathrm{Dense}(256)^\ast$, $\mathrm{Dense}(256)^\ast$, $\mathrm{Dense}(128)^\ast$, $\mathrm{Dense}(128)$}      &  $\mathrm{Sigmoid}$ \\
+        \bottomrule
+    \end{tabular}
+    \begin{tablenotes}
+        \small
+        \item $\ast$: layer ends with an $\mathsf{elu}$ activation,
+        \item $\mathrm{Dense}(k)$: linear layer with $k$ units,
+        \item $\Conv(f,k)$ : 2D convolution layer with $f$ filters and a kernel of size $k$,
+        \item $\mathrm{MP}(w,h)$ : max pooling operation with a $w \times h$ pooling window.
+      \end{tablenotes}
+    \caption{Overview of the neural architectures used in each task.}
+    \label{tab:appendix_models}
+\end{table*}
+
+\section{Theory}
+\subsection{Log-Negations}
+\subsubsection{Proof of Theorem \ref{thm:log_not_sigmoid}}
+\label{appendix:proof_log_not_sigmoid}
+\lognotsigmoid*
+\begin{proof}
+    \begin{align*}
+        (\log \circ \Ns) (x) &= \log(1-S(x)) = \log(S(x))+\log(\frac{1-S(x)}{S(x)})\\
+        & =\log(S(x)) + \log(\frac{1 - \frac{e^x}{e^x+1}}{ \frac{e^x}{e^x+1}}) \\
+        & = \log(S(x)) + \log(\frac{e^x + 1 - e^x}{e^x})\\
+        & = \log(S(x)) - x \qedhere
+    \end{align*}
+\end{proof}
+    
+\subsubsection{Proof of Theorem \ref{thm:log_not_softmax}}
+\label{appendix:proof_log_not_softmax}
+\lognotsoftmax*
+\begin{proof}
+    \begin{align*}
+        (\log \circ \Ns) (\softmax(\mathbf{z})_i)
+         &= \log(1-\softmax(\mathbf{z})_i) \\
+         & = \log(\softmax(\mathbf{z})_i) + \log(\frac{1-\softmax(\mathbf{z})_i}{\softmax(\mathbf{z})_i})\\
+         &=  \log(\softmax(\mathbf{z})_i) + \log(\frac{1 - \frac{e^{z_i}}{\sum_{j=1}^{K} e^{z_j}}}{\frac{e^{z_i}}{\sum_{j=1}^{K} e^{z_j}}})\\
+        & =  \log(\softmax(\mathbf{z})_i) + \log(\frac{\sum_{j=1}^{K} e^{z_j} - e^{z_i}}{e^{z_i}}) \\
+        &= \log(\softmax(\mathbf{z})_i) + \log(\sum_{\substack{j=1\\j\neq i}}^K e^{z_j}) - z_i \qedhere
+    \end{align*}
+\end{proof}
+
+\subsection{Relaxation of the Disjunction}
+\subsubsection{Bounds of LogSumExp}
+\label{appendix:bounds_LSE_lower}
+We start from Equation \eqref{eq:bounds_LSE_traditional} and substract $-\frac{\log(n)}{a}$ in all parts of the inequality:
+\begin{equation}
+    \label{eq:appendix_LSE_lb_1}
+    \max(\mathbf{x}) - \frac{\log(n)}{\alpha} \leq \LSE(\mathbf{x} \mid \alpha, C) - \frac{\log(n)}{\alpha} \leq \max(\mathbf{x})
+\end{equation}
+
+And:
+\begin{align}
+    \LSE(\mathbf{x} \mid \alpha, C) - \frac{\log(n)}{\alpha} &= \frac{1}{\alpha} \Bigg( C + \log(\sum_{i=1}^n e^{\alpha x_i - C}) - \log(n)\Bigg) \\
+            & \quad = \frac{1}{\alpha} \left( C + \log(\frac{\sum_{i=1}^n e^{\alpha x_i-C}}{n} ) \right) \\
+   \label{eq:appendix_LSE_lb_2}         & \quad = \LME(\mathbf{x} \mid \alpha, C)
+\end{align} 
+
+Given \eqref{eq:appendix_LSE_lb_1} and \eqref{eq:appendix_LSE_lb_2}, we obtain the inequality for $\LME$:
+\begin{equation}
+    \max(\mathbf{x}) - \frac{\log(n)}{\alpha} \leq \LME(\mathbf{x} \mid \alpha, C) \leq \max(\mathbf{x})
+\end{equation}
+
+
+
+\subsection{De Morgan's Inequalities}
+\subsubsection{Proof of Theorem \ref{thm:log_demorgans}}
+\label{appendix:proof_nnfdemorgans}
+\logdemorgans*
+
+\begin{proof}
+    Let $\G(P) = x$, $\G(Q) = y$, and $\G(P(u)) = [x_1, \dots, x_n]$, where $x, y, x_1, \dots, x_n \in [0,1]$.
+    Grounding the operators with the definitions of Section \ref{s:logltn_semantics}, we need to prove:
+    \begin{align}
+        \Ns(\Tprod(x,y)) &\geq \Smax(\Ns(x),\Ns(y)) \label{eq:demorgan_tprod}\\
+        \Ns(\Smax(x,y)) &\geq \Tprod(\Ns(x),\Ns(y)) \label{eq:demorgan_smax}\\
+        \Ns(\Atprod(x_1,\cdots,x_n)) &\geq \Asmax(\Ns(x_1),\dots,\Ns(x_n)) \label{eq:demorgan_atprod}\\
+        \Ns(\Asmax(x_1,\cdots,x_n)) &\geq \Atprod(\Ns(x_1),\dots,\Ns(x_n)) \label{eq:demorgan_asmax}
+    \end{align}
+    \eqref{eq:demorgan_tprod} and \eqref{eq:demorgan_smax} are specializations of the other two equations by working with $n=2$ values.
+    We focus on proving \eqref{eq:demorgan_atprod}.
+    Indeed, we can easily retrieve \eqref{eq:demorgan_asmax} from \eqref{eq:demorgan_atprod}.
+    \paragraph{Equivalence of \eqref{eq:demorgan_atprod} and \eqref{eq:demorgan_asmax}}
+    Posing $x_i'=1-x_i$ for $i=1\dots n$, we have:
+    \begin{align}
+        & \quad \Ns(\Atprod(x_1,\cdots,x_n)) \geq \Asmax(\Ns(x_1),\dots,\Ns(x_n))\\
+        \iff & \quad \Ns(\Ns(\Atprod(x_1,\cdots,x_n))) \leq \Ns(\Asmax(\Ns(x_1),\dots,\Ns(x_n))) \\
+        \iff & \quad \Atprod(x_1,\cdots,x_n) \leq \Ns(\Asmax(\Ns(x_1),\dots,\Ns(x_n))) \\
+        \iff & \quad \Atprod(\Ns(x_1'),\cdots,\Ns(x_n')) \leq \Ns(\Asmax(x_1',\dots,x_n'))\\
+        \iff & \quad \Ns(\Asmax(x_1',\dots,x_n')) \geq \Atprod(\Ns(x_1'),\cdots,\Ns(x_n'))
+    \end{align}
+
+    \paragraph{Proof of \eqref{eq:demorgan_atprod}}
+    In the left-hand side of the inequality, we have:
+    \begin{equation}
+        \Ns(\Atprod(x_1,\cdots,x_n)) = 1-\prod_{i=1}^{n} x_i
+    \end{equation}
+    and in the right-hand side:
+    \begin{equation}
+        \Asmax(\Ns(x_1),\dots,\Ns(x_n)) = \max_{i=1}^n (1-x_i) = 1-\min_{i=1}^n (x_i)
+    \end{equation}
+    Replacing them in the original inequality, and denoting $j = \argmin_{i=1}^n (x_i)$, we obtain:
+    \begin{align}
+        & \quad 1-\prod_{i=1}^{n} x_i \geq 1-\min_{i=1}^n (x_i) \\
+        \iff & \quad \prod_{i=1}^{n} x_i \leq \min_{i=1}^n (x_i) \\
+        \iff & \quad x_j \prod_{\substack{i=1\\i\neq j}}^n x_i \leq x_j \\
+        \iff & \quad \prod_{\substack{i=1\\i\neq j}}^n x_i \leq 1
+    \end{align}
+    Which is true because all $x_i \in [0,1]$.
+\end{proof}
+
+\subsubsection{Tightness of the bounds}
+\label{appendix:bound_tightness}
+We provide an analysis of the tightness of the bounds of the De Morgan's inequalities.
+We measure the tightness for the quantifier variants of the inequalities, as this generalizes to the case $n=2$.
+\paragraph{Tightness of \eqref{eq:demorgan_atprod}}
+Let us first characterize the maximum value of the bound.
+We are interesting in finding the values $(x_1^*,\dots,x_n^*)$ that maximize the difference of the two members in \eqref{eq:demorgan_atprod}.
+\begin{align}
+    (x_1^*,\dots,x_n^*) = \argmax_{(x_1,\dots,x_n)}  \Delta_\land(x_1,\dots,x_n)
+\end{align}
+with
+\begin{align}
+     \Delta_\land(x_1,\dots,x_n) &= \Ns(\Atprod(x_1,\cdots,x_n)) - \Asmax(\Ns(x_1),\dots,\Ns(x_n)) \\
+            &= (1-\prod_{i=1}^{n} x_i) - (1-\min_{i=1}^n(x_i) ) = \min_{i=1}^n(x_i) - \prod_{i=1}^n x_i 
+\end{align}
+Let $j = \argmin_{i=1}^n (x_i)$.
+\begin{align}
+    \Delta_\land(x_1,\dots,x_n) = x_j - \prod_{i=1}^n x_i =  x_j (1-\prod_{\substack{i=1\\i\neq j}}^n x_i)
+\end{align}
+For any set of values, we have $\Delta_\land(x_j,\dots,x_j) \geq \Delta_\land(x_1,\dots,x_n)$, 
+as $(1-x_j^{n-1}) \geq (1-\prod_{\substack{i=1\\i\neq j}}^n x_i)$ given that $x_j = \min_{i=1}^n (x_i)$.
+Therefore, $(x_1^*,\dots,x_n^*)$ is actually a tuple of the same value taken $n$ times,
+and we reduce the search to:
+\begin{align}
+    x^* = \argmax_{x}  \Delta_\land(x) = \argmax_x x - x^n
+\end{align}
+Given that $x \in [0,1]$, we find by first and second order derivative analysis that $\Delta_\land(x)$ is concave on the whole domain and has a single maximum at:
+\begin{align}
+    \label{eq:demorgan_and_max_bound}
+    x^* & = n^{-(\frac{1}{n-1})} 
+\end{align}
+
+For $n=2$, that is, when applying the De Morgan's law to a simple conjunction of two terms $x_1$ and $x_2$, the bound of the inequality is maximal when $x_1=x_2=0.5$, giving $\Delta_\land = 0.25$.
+However, on average, the bound is smaller. 
+By sampling 10e4 $\times$ 10e4 points linearly on the domain $[0,1] \times [0,1]$, we find an average $\Delta_\land = 0.083167$. 
+We visualize the bound of the inequality in Figure \ref{fig:demorgan_bounds}.
+It is zero when any $x_i=0$ or $x_i=1$, in which case the De Morgan's laws are verified.
+
+For larger $n$, that is, when applying the quantifier equivalent of the De Morgan's law, the maximal value of the bound becomes larger.
+For example, with $n=8$, the bound is maximal for $x_1=\dots=x_8\approx 0.743$, with $\Delta_\land \approx 0.650$.
+However, on average, the bound stays small.
+By sampling 10e8 points linearly in the domain $[0,1]^8$, we have an average bound of $0.07135$.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{figures/demorgan_bound_2d_and.pdf}
+    \caption{De Morgan's inequality bound $-\Delta_\land(x_1,x_2)$}
+    \label{fig:demorgan_bounds}
+\end{figure}
+
+
+
+\paragraph{Tightness of \eqref{eq:demorgan_asmax}}
+As we have shown in Section~\ref{appendix:proof_nnfdemorgans}, \eqref{eq:demorgan_asmax} is equivalent to \eqref{eq:demorgan_atprod} by replacing the input values with $x_i'=1-x_i$ for $i=1\dots n$.
+Therefore, the maximum value of the bound is the same, except that it happens on a complement set of value.
+We have:
+\begin{align}
+    x^* & = \argmax_{x}  \Delta_\lor(x) \\ 
+        &= \argmax_{x} \Ns(\Asmax(x,\cdots,x)) - \Atprod(\Ns(x),\dots,\Ns(x)) \\
+            &= \argmax_x 1 - x - (1-x)^{n} \\
+            \label{eq:demorgan_or_max_bound}
+            &= 1 - n^{-(\frac{1}{n-1})} 
+\end{align}
+
+For $n=2$, when applying the De Morgan's law to a simple disjunction of two terms $x_1$ and $x_2$, $\Delta_\lor$ is maximal when $x_1=x_2=0.5$.
+We find again that the peak is $\Delta_\lor = 0.25$, and by sampling 10e4 $\times$ 10e4 points linearly on the domain $[0,1] \times [0,1]$, we find an average $\Delta_\lor =  0.083167$. 
+
+For $n=8$, this time the bound is maximal when $x_1=\dots=x_8\approx 0.257$, with $\Delta_\lor \approx 0.650$.
+Sampling 10e8 points linearly in $[0,1]^8$, we still get an average bound of $0.07135$.
+
+
+\subsection{Common Fuzzy Properties for \logLTN}
+We provide an overview of common fuzzy properties that are verified by the operator configuration in Table \ref{tab:fuzzy_properties}. 
+The distributivity of $\land$ over $\lor$ for \logLTN\ is the only new property and can be demonstrated easily.
+Let $\G(P)=x$, $\G(Q)=y$, and $\G(R)=z$ be the grounding of three predicates. We have:
+\begin{align}
+    & \G(P \land (Q \lor R)) = \G((P \land Q) \lor (P \land R)) \\
+    \iff & \qquad  x \max(y,z) = \max(xy, xz)
+\end{align}
+
+
+\begin{table}
+    \centering
+    \begin{tabular}{l|c|c|c}
+        \toprule
+        Property                                            & \logLTN       & Prod RL       & Stable RL \\
+        \midrule
+        Commutativity of $\land$, $\lor$                    & \checkmark    & \checkmark    &  \checkmark \\
+        Associativity of $\land$, $\lor$                    & \checkmark    & \checkmark    &  \checkmark \\
+        De Morgan's laws for $\land$ and $\lor$             &               & \checkmark    &  \checkmark \\
+        Material Implication                                & \checkmark    & \checkmark    & \checkmark  \\
+        Distributivity of $\land$ over $\lor$               & \checkmark    &               &             \\
+        Distributivity of $\lor$ over $\land$               &               &               &             \\
+        Double negation, i.e.\ $\G(\lnot \lnot p) = \G(p)$                 & \checkmark    & \checkmark    & \checkmark  \\
+        Law of non-excluded middle, i.e.\ $\G(p \land \lnot p) = 0$                          &               &               &             \\
+        Law of non-contradiction, i.e.\ $\G(p \lor \lnot p) = 1$                           &               &               &             \\
+        Conjunction elimination, i.e.\ $\G(p \land p) \leq \G(p)$ & \checkmark & \checkmark & \checkmark \\
+        Disjunction amplification, i.e.\ $\G(p \lor p) \geq \G(p)$ & \checkmark & \checkmark & \checkmark \\
+        $\forall$ defined as a generalization of $\land$    & \checkmark    & \checkmark    &             \\
+        $\exists$ defined as a generalization of $\lor$     & \checkmark    &               &             \\
+        De Morgan's laws for $\forall$ and $\exists$        &               &               &             \\
+        
+        \bottomrule
+    \end{tabular}
+    \caption{Fuzzy properties for \logLTN, Product Real Logic (Prod RL), and Stable Product Real Logic (Stable RL).}
+    \label{tab:fuzzy_properties}
+\end{table}
+

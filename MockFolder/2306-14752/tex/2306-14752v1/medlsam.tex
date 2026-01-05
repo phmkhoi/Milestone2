@@ -1,0 +1,214 @@
+% This is samplepaper.tex, a sample chapter demonstrating the
+% LLNCS macro package for Springer Computer Science proceedings;
+% Version 2.20 of 2017/10/04
+%
+\documentclass[a4paper]{llncs}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{floatrow}
+\floatsetup[table]{capposition=top}
+\newfloatcommand{capbtabbox}{table}[][\FBwidth]
+\usepackage[marginal]{footmisc}
+\renewcommand{\thefootnote}{}
+\usepackage{authblk}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{bm}
+\usepackage{float}
+\usepackage{makeidx}  % allows for indexgeneration
+\usepackage{amssymb}
+\usepackage{verbatim}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{pbox} 
+\usepackage{cite}
+\usepackage{threeparttable}
+\usepackage{caption}
+% \usepackage{subfigure}
+\usepackage{array}
+\usepackage{arydshln}
+\usepackage{subcaption}
+\usepackage{hyperref}
+\usepackage{makecell}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{caption}
+\usepackage{graphicx}
+\def\sym#1{\ifmmode^{#1}\else\(^{#1}\)\fi}
+\begin{document}
+
+\title{MedLSAM: Localize and Segment Anything Model for 3D Medical Images}
+
+\author{Wenhui Lei\inst{1,2}\and Wei Xu\inst{3,4} \and Xiaofan~Zhang\inst{1,2}\thanks{Corresponding author.} \and Kang Li\inst{4} \and Shaoting~Zhang\inst{1}}
+\institute{ $^1$Shanghai AI Lab, Shanghai, China\\
+$^2$School of Electronic Information and Electrical Engineering, Shanghai Jiao Tong University, Shanghai, China\\
+$^3$School of Biomedical Engineering \& Suzhou Institute for Advanced Research, University of Science and Technology of China, Suzhou, China\\
+$^4$West China Biomedical Big Data Center, West China Hospital, Sichuan University, Chengdu, China\\
+\email{xiaofan.zhang@sjtu.edu.cn}\\
+}
+\maketitle
+
+\begin{abstract}
+The Segment Anything Model (SAM) has recently emerged as a groundbreaking model in the field of image segmentation. Nevertheless, both the original SAM and its medical adaptations necessitate slice-by-slice annotations, which directly increase the annotation workload with the size of the dataset. We propose MedLSAM to address this issue, ensuring a constant annotation workload irrespective of dataset size and thereby simplifying the annotation process. Our model introduces a few-shot localization framework capable of localizing any target anatomical part within the body. To achieve this, we develop a Localize Anything Model for 3D Medical Images (MedLAM), utilizing two self-supervision tasks: relative distance regression (RDR) and multi-scale similarity (MSS) across a comprehensive dataset of 14,012 CT scans. We then establish a methodology for accurate segmentation by integrating MedLAM with SAM. By annotating only six extreme points across three directions on a few templates, our model can autonomously identify the target anatomical region on all data scheduled for annotation. This allows our framework to generate a 2D bounding box for every slice of the image, which are then leveraged by SAM to carry out segmentations. We conducted experiments on two 3D datasets covering 38 organs and found that MedLSAM matches the performance of SAM and its medical adaptations while requiring only minimal extreme point annotations for the entire dataset. Furthermore, MedLAM has the potential to be seamlessly integrated with future 3D SAM models, paving the way for enhanced performance. Our code is public at \href{https://github.com/openmedlab/MedLSAM}{https://github.com/openmedlab/MedLSAM}.
+% while significantly reducing the need for manual annotation.
+
+\end{abstract}
+
+\begin{keywords}
+SAM $\cdot$ Medical Image Segmentation $\cdot$ Contrastive Learning
+\end{keywords}
+
+
+\section{Introduction}
+\begin{figure}[t!]
+\vspace{-0.6cm}
+    \centering
+    \includegraphics[width=1\linewidth]{seg_pipe.pdf}
+    \caption{The overall segmentation pipeline of MedLSAM operates as follows. Given a dataset of any size, MedLSAM first applies a localization process (MedLAM) to identify the six extreme points (in the z, x, and y directions) of any anatomical region of interest. This process results in the generation of a 3D bounding box encompassing the targeted organ or structure. Subsequently, for each slice within this 3D bounding box, a corresponding 2D bounding box is generated. These 2D bounding boxes are then utilized by the Segment Anything Model (SAM) to carry out precise segmentation of the target anatomy, thereby automating the entire segmentation process.}
+    \label{fig:MedLSAM}
+\end{figure}
+
+\par The Segment Anything Model (SAM) \cite{kirillov2023segment} has recently demonstrated remarkable capabilities in a broad range of segmentation tasks due to its ability to manage diverse objects. Previous research has explored the application of SAM to medical image segmentation \cite{cheng2023sam, he2023sam, MSA, MedSAM, huang2023segment, he2023accuracy, zhang2023customized, mazurowski2023segment, zhang2023segment}. Particularly with fine-tuned medical adaptations \cite{MSA, MedSAM}, SAM models have achieved impressive performance in this specialized area. However, SAM's application to medical image segmentation poses a significant challenge due to its requirement for manual annotations. These include labeled points or bounding boxes that delineate the segmentation region, which are both time-intensive and costly to produce.
+
+In this paper, we introduce MedLSAM, an automated medical image segmentation model designed to significantly reduce the annotation workload. As illustrated in Fig. \ref{fig:MedLSAM}, MedLSAM employs a two-stage methodology. The first stage involves a few-shot localization framework that automatically identifies the positions of target organs within volumetric medical images. The subsequent stage utilizes the bounding boxes generated in the first stage by applying the SAM model to execute precise image segmentation. The result is a fully autonomous pipeline that eliminates the need for manual intervention.
+
+The few-shot localization framework, MedLAM, is an extension of our previous work \cite{lei2021contrastive} and is premised on the observation that the spatial distribution of organs maintains strong similarities across different individuals. Our previous studies trained the model on a relatively smaller dataset. In contrast, this current study significantly expands the dataset to include 14,012 CT scans from 16 different datasets. This allows us to train a unified, comprehensive model capable of localizing structures across the entire body. The training process involves a projection network that predicts the 3D physical offsets between any two patches within the same image, thereby mapping every part of the scans onto a shared 3D latent coordinate system.
+
+While our localization approach is robust, we acknowledge that individual variations in anatomical positioning could result in different anatomical structures sharing the same latent coordinates across various images. To mitigate this issue, we refine our localization accuracy by extracting pixel-level features from our points of interest. This method enables us to identify the most similar feature within the vicinity of the initially localized point, thus enhancing the overall localization accuracy. Our approach is inspired by the self-supervised learning tasks proposed in \cite{yao2021one, yan2022sam}, which strive to maximize the similarity between the original and augmented instances of the same image point and minimize the similarity between different points. This technique improves the accuracy and precision of our model's localization.
+
+For the segmentation stage, we employ the original SAM and the well-established MedSAM \cite{MedSAM} as the foundation for our segmentation process. MedSAM, previously fine-tuned on a comprehensive collection of medical image datasets, has exhibited considerable performance in 2D and 3D medical image segmentation tasks. The use of such a robust model bolsters the reliability and effectiveness of our proposed pipeline.
+
+The effectiveness of MedLSAM is validated through experiments on two 3D datasets comprising 38 organs. The results demonstrate that MedLSAM parallels the performance of SAM and its medical adaptations while significantly reducing the burden of manual annotation.
+
+\par 
+\section{Methodology}
+In this section, we elucidate the mechanisms underpinning MedLAM's functionality. Initially, in Section \ref{sec:2.2}, we explore the training of MedLAM, during which global anatomical coordinates and local image features are extracted from any given point within a scan, aiding in identifying the most similar point within a query scan. Subsequently, in Section \ref{sec:2.3}, we detail the inference process of MedLAM and its integration with the Segment Anything Model (SAM) to give rise to the comprehensive MedLSAM model.
+
+
+\subsection{Training of MedLAM}
+\label{sec:2.2}
+Our MedLAM model, as illustrated in Fig. \ref{fig:training}, comprises two main components: Relative Distance Regression (RDR) and Multi Scale Similarity (MSS).
+\begin{figure}[t!]
+\centering
+\includegraphics[width=1\linewidth]{train.pdf}
+\caption{The learning process of MedLAM. }
+\label{fig:training}
+\end{figure}
+
+\par We start by selecting a volumetric image $\bm{v}$ from the unannotated training set. We then extract two large image patches from $\bm{v}$, which serve as the source for further extractions. These large patches undergo a variety of transformations to produce two pairs of patches, namely, the original patch pair $(\bm{x_q}, \bm{x_s})$ and the transformed patch pair $(\bm{x_q'}, \bm{x_s'})$.
+
+\subsubsection{Relative Distance Regression (RDR)} In this step, we leverage the RDR methodology, an extension of our previous work \cite{lei2021contrastive}. This involves mapping 3D scan images from different individuals onto a unified implicit 3D anatomical coordinate system, ensuring that identical anatomical structures from different individuals share the same coordinate. As a result, it allows us to perform an initial, coarse localization of the point within a query scan that shares the same implicit coordinate as our point of interest.
+
+The RDR model aims to predict the 3D offset between the query patch $\bm{x_q}$ and the support patch $\bm{x_s}$. Considering $\bm{e} \in R^3$ as the pixel spacing of $\bm{v}$, and $\bm{c_{q}}, \bm{c_{s}} \in R^3$ as the centroid coordinates of $\bm{x_q}$ and $\bm{x_s}$ in $\bm{v}$ respectively, the ground truth offset $\bm{d'_{qs}}$ from $\bm{x_q}$ to $\bm{x_s}$ in the physical space can be calculated as:
+
+\begin{equation}
+\bm{d'_{qs}}= (\bm{c_{s}}-\bm{c_{q}}) \cdot \bm{e}
+\end{equation}
+
+Both $\bm{x_s}$ and $\bm{x_q}$ undergo processing via an encoder to distill high-level features. Subsequently, fully connected layers map these features to their corresponding 3D latent vectors, $\bm{p_s}$ and $\bm{p_q}$, each $\in R^3$. This process leads to the predicted offset $\bm{d_{qs}} \in R^3$ from the query patch $\bm{x_q}$ to the support patch $\bm{x_s}$ being computed as:
+
+\begin{equation}
+\bm{d_{qs}}= r \cdot tanh(\bm{p_{s}}-\bm{p_{q}})
+\end{equation}
+
+The utilization of the hyperbolic tangent function $tanh$ in conjunction with the hyper-parameter $r$ is intended to dictate the upper and lower bound of $\bm{d_{qs}}$, thereby covering the largest feasible offset. Lastly, to measure the difference between $\bm{d_{qs}}$ and $\bm{d'_{qs}}$, we employ the Mean Square Error (MSE) loss function:
+
+\begin{equation}
+L_D = ||\bm{d_{qs}}- \bm{d'_{qs}}||^2
+\end{equation}
+
+
+\subsubsection{Multi Scale Similarity (MSS)} Given the inherent variations in anatomical positioning across different individuals, regions sharing the same latent coordinates in various images may still correspond to different anatomical structures. Therefore, we need to further refine the precision of our localization by extracting local pixel-level features from our points of interest. This allows us to pinpoint the most similar feature within the vicinity of the initially localized point, thereby enhancing the overall localization accuracy. This is inspired by the work in \cite{yao2021one, yan2022sam}, which ensures that augmented instances of the same image yield highly similar features for the same point, while different points exhibit substantially divergent features.
+\par More specifically, as shown in Fig. \ref{fig:mss}, the inputs to our MSS process include multi-scale feature maps extracted from $\bm{x_s}$ and $\bm{x'_s}$, along with a chosen point $c_1$ from $\bm{x_s}$, whose corresponding point in $\bm{x'_s}$ is the $c'_1$. We extract the feature vectors corresponding to point $c_1$ from the various scale feature maps of $\bm{x_s}$, and we compute the similarity between these feature vectors and the corresponding scale feature maps in $\bm{x'_s}$. After resizing the resulting similarity maps to the original image size, we aggregate them. This process allows us to pinpoint the location within $\bm{x'_s}$ that exhibits the highest similarity to point $c_1$, thereby further refining our localization.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.5\linewidth]{MSS.pdf}
+    \caption{Deatils of the Multi Scale Similarity (MSS).}
+    \label{fig:mss}
+\end{figure}
+
+\subsection{Inference of MedLSAM}
+\label{sec:2.3}
+\par The inference stage for our MedLSAM framework combines the strengths of MedLAM for landmark localization and MedSAM for medical image segmentation, as shown in Fig. \ref{fig:inference}.
+
+\par Initially, we utilize MedLAM to localize the desired landmark in the query image. We conceptualize the localization task as maneuvering an agent from a randomly initialized position towards the target location. A patch is extracted from a random position within the query image, and simultaneously, a support patch is extracted from the support image, centered around the pre-specified landmark. Upon processing these two patches through the MedLAM model, we obtain a 3D offset that represents the estimated relative spatial displacement between the query and target positions. By updating the agent's location based on this offset, we achieve a coarse localization of the landmark within the query image.
+
+\par For refining the landmark localization, the Multi Scale Similarity (MSS) component of MedLAM is utilized. We extract multi-scale feature maps around the coarsely localized point in the query image and its corresponding point in the support image, perform similarity calculations, and aggregate the similarity maps to pinpoint the location with the highest feature similarity in the query image. This procedure significantly enhances the precision of our landmark localization.
+
+\par After successfully identifying the landmarks, we transition to the segmentation stage. For this, we utilize both SAM and MedSAM, a specialized variant of SAM that has been fine-tuned for medical image datasets. Both models serve as the foundation for our segmentation tasks. The versatility of SAM and the domain-specific adaptations of MedSAM help us provide robust segmentation results, thereby adding to the overall efficacy of the MedSLAM system. 
+
+\begin{figure}[t!]
+    \centering
+    \includegraphics[width=0.6\linewidth]{localize_pipe.pdf}
+    \caption{Structure of our Localization Anything Model (MedLAM). $\bm{x_s}$ and $\bm{x_q}$ are the support and query patches centered at $\bm{c_s}$ and $\bm{c_q}$. We use a shared Pnet to transform $\bm{x_s}$ and $\bm{x_q}$ to 3D latent vectors $\bm{p_s}$ and $\bm{p_q}$, respectively. The Pnet contains convolution blocks to extract features and fully connected layers for projection. We apply scale factor $r$ and hyperbolic tangent function $tanh$ to get the predicted offset $\bm{d_{qs}}$, i.e., relative position from $\bm{x_s}$ to $\bm{x_q}$.}
+    \label{fig:inference}
+\end{figure}
+
+\section{Experiments}
+
+\subsection{Dataset}
+\par Our MedLAM model is trained on an extensive set of 16 datasets, which collectively comprise a total of 14,012 CT scans. These scans encompass various regions of the human body, providing comprehensive anatomical coverage. An overview of the training datasets is provided in Table~\ref{tab:dataset}. The diverse and abundant training data ensures the robustness and generalizability of our model across different medical imaging contexts.
+\par To validate the effectiveness of our approach, we integrate MedLAM with two segmentation backbones: SAM\cite{kirillov2023segment} and MedSAM\cite{MedSAM}. We test these combined models on two CT segmentation datasets: 1) StructSeg19 Task1 dataset \footnote{https://structseg2019.grand-challenge.org/Home/} for the 22 head-and-neck (HaN) organs with 50 scans; 2) the WORD dataset \cite{luo2022word} for the 16 abdomen organs with 120 scans. For both datasets, we randomly select five scans as support volumes. For each organ in these scans, we compute the extreme coordinates and average the coordinates and features across the five images. This process generates an average representation of latent coordinates and features for each extreme point of the organ, which are then utilized in the succeeding stages of MedLAM as depicted in Sec. \ref{sec:2.3}.
+
+\input{tabel/dataset}
+
+\subsection{Implementation Details}
+Our model was trained using four NVIDIA GTX 3090 Ti GPUs. We utilized the Adam optimizer~\cite{kingma2014adam} with a batch size of 8, an initial learning rate of $10^{-3}$, and training duration of 250 epochs. 
+\par In terms of pre-processing for MedLAM's training and testing, we rescaled the voxel spacing to [3,3,3] mm and standardized the cropping patch sizes to 64$\times$64$\times$64 pixels. To ensure that the scanning range was fully covered, we set the parameter $r$ as [1500, 600, 600]. 
+\par Upon utilizing SAM and MedSAM, the original images are subjected to a separate preprocessing routine in line with the standard procedures described in the original MedSAM methodology. This includes adjusting the slice resolution to 3 × 1024 × 1024, normalizing the intensity.
+
+\par Further, specific handling measures are adopted for different datasets based on their unique characteristics. For abdominal organs in the WORD dataset, in accordance with MedSAM, we exclude segmentation targets that consist of fewer than 100 pixels. While for the HaN organs in the StructSeg dataset, which are typically smaller, we adapt the criteria and exclude only those slices that contain fewer than 10 pixels. This adjustment ensures the model's robust performance in identifying and analyzing small yet potentially significant anatomical structures in HaN CT scans.
+\par For the 3D bounding box obtained from MedLAM localization, we extended it by [2, 10, 10] pixels in the z, x, and y directions, respectively. This strategy ensured that the targeted organ was completely encapsulated within the box, enabling effective segmentation.
+ 
+
+\subsection{Experiments Results}
+\subsubsection{Evaluation of LAM}
+
+\begin{figure}[t!]
+  \centering
+  \includegraphics[width=1\textwidth]{fig/word.pdf}
+  \includegraphics[width=1\textwidth]{fig/structseg.pdf}
+  \caption{The mean IOU score of each organ in the WORD (top) and StructSeg (bottom) dataset.}
+  \vspace{-4mm}
+  \label{fig:iou}
+\end{figure}
+
+In this section, we begin by evaluating the localization performance of MedLAM, with the purpose of validating the viability of our universal localization model. We used the Intersection Over Union (IOU) as the metric to evaluate the accuracy of organ localization. The mean IOU of each organ is displayed in Fig. \ref{fig:iou}. In the WORD dataset, the model achieved excellent localization with the highest IOU for Head of Femur (L), reaching 0.737. Meanwhile, Gallbladder showed the lowest IOU with 0.180, suggesting room for improvement in localizing smaller organs.
+
+\input{tabel/structseg}
+
+In the StructSeg dataset, the best localization performance was observed for Mandible R with an IOU of 0.805, while Opt Chiasma, being a relatively small organ, showed the lowest IOU of 0.104.
+
+In summary, MedLAM exhibited reliable localization performance, particularly for larger organs. For smaller organs, despite lower IOU scores, the subsequent preprocessing step—expanding the 3D bounding box—ensured that these organs were adequately captured for segmentation, thereby ensuring practical applicability across a wide range of organ sizes. This methodology thus provides a practical solution to the challenge of localizing smaller organs with MedLAM, balancing out the performance across different organ sizes.
+
+\subsubsection{Evaluation of MedLSAM}
+
+\input{tabel/word}
+After validating the localization performance of MedLAM, we proceeded to examine the segmentation performance of the proposed MedLSAM framework. In our experiments, the Dice Similarity Coefficient (DSC) was employed as a measure to gauge the accuracy of our method. MedLSAM utilizes the localization information from MedLAM, together with either SAM or MedSAM, to perform segmentation tasks.
+
+In addition to the automatic localizations generated by MedLAM, we also included manual bounding boxes in our evaluation. These were simulated based on the ground-truth masks, following the same approach used for generating bounding boxes in MedSAM. During training, a bounding box prompt was generated from each ground-truth mask, with a random perturbation of 0-20 pixels introduced to mimic the potential inaccuracies that would be present in manually-drawn bounding boxes.
+
+The DSC scores of StructSeg Task1 dataset are shown in Table \ref{tab:structseg}, it is clear that MedLAM performed comparably to manual localisation in the context of small organs. For example, organs like the left and right eyes, MedLAM based SAM and MedSAM have DSC values of around 61-67\%, which are close to the DSC values of 67-69\% from manual localization. For minute organs such as the left and right lenses, MedLAM shows a similar DSC value to manual localisation (around 22\% for SAM and 16\% for MedSAM). However, MedLAM based SAM and MedSAM have lower performance in the context of the mandible (left and right), with DSC values of 48.3\% and 43.5\% for SAM and only 9.0\% and 2.6\% for MedSAM, compared to manual localization DSC values of 85.3\% and 80.4\%.
+
+\begin{figure}[t!]
+    \centering
+    \includegraphics[width=1\linewidth]{seg_result.pdf}
+    \caption{Visualization examples of segmentation results on WORD and StructSeg Task1 datasets using pre-trained MedSAM and SAM, post landmark localization with MedLAM.}
+    \label{fig:seg_result}
+\end{figure}
+
+Meanwhile, our evaluation on the WORD dataset for abdominal organ segmentation, as shown in Table \ref{tab:word}, revealed that MedLAM demonstrated robust performance for organs such as the left and right kidneys. For instance, when integrated with SAM, the Dice Similarity Coefficient (DSC) reached 78.5\% for the left kidney, and escalated to an impressive 83.0\% for the right kidney. When combined with MedSAM, the model maintained satisfactory performance with a DSC of 66.2\% for the left kidney and 62.3\% for the right kidney. However, for smaller organs like the adrenal gland, both SAM and MedSAM yielded lower DSC values under 4\% in comparison to a manual localization DSC of 18.7\%. 
+
+\section{Discussion \& Conclusions}
+The presented work introduced MedLSAM, the first completely automated medical adaptation of the SAM model, designed to significantly alleviate the annotation workload in the segmentation of medical images. By cleverly integrating MedLAM, a few-shot localization framework, with SAM, the system was able to achieve comparable performance to SAM and its medical adaptations, yet required only minimal extreme point annotations for the entire dataset.
+
+This endeavor was fueled by the observation that the spatial distributions of organs across different patients maintain strong similarities. Consequently, MedLAM was designed to project every part of the scans onto a shared 3D latent coordinate system, accurately localizing target anatomical parts within the body. Coupling this approach with SAM's segmentation capabilities led to an efficient and accurate process for image segmentation.
+
+Moreover, MedLSAM demonstrated its effectiveness across two 3D datasets covering 38 different organs, providing robust evidence of its versatility. Importantly, this automated approach is not burdened by an increased annotation workload as data size increases. It also holds promise for direct integration with potential future 3D SAM models in the medical field, which could further enhance its performance and utility.
+
+\bibliographystyle{splncs04}
+\bibliography{medlsam.bib}
+\end{document}

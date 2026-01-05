@@ -1,0 +1,243 @@
+\begin{figure*}
+\includegraphics[width=1.0\textwidth]{figs/model.png}
+\centering
+\caption{\label{fig_model}Stage 2: overall architecture of \modelname.
+Required inputs are underlined.}
+\centering
+\end{figure*}
+\section{Methodology}
+\label{sec-model}
+Having motivated the use of FR, we propose \modelname, a novel framework which
+incorporates FR techniques and veracity verification. \modelname consists of
+two stages. In the first stage, we pretrain an FR predictor
+and an FR proposer~(\S~\ref{subsec_fr_scorer}). Both of them take verified news titles as input. 
+The FR predictor is trained to predict which FRs a verified headline contains;
+hence the gold label is the FRs of the current input verified headline. The FR
+proposer, in turn, learns to predict which combination of FRs the corresponding fake
+news exhibits; the gold label is the FRs of the corresponding fake
+headline of the current input verified headline. The main concept in stage~1 is
+learning FRs from fake news to provide the direction best suited
+to rewriting a monotonic verified headline into an interesting headline. 
+
+When the FR predictor and FR proposer are ready, we proceed to stage~2 to
+generate attractive but faithful headlines. 
+Figure~\ref{fig_model} depicts the overall architecture of the second stage. 
+The input during stage~2 consists only of verified news headlines and their
+content for learning headline generation, where the developed FR predictor
+and FR proposer together provide rewards to the learning model. First, we use a
+sequence generator~(\S~\ref{subsec_seq_gen}) to generate headlines from the
+input verified news content, and utilize the FR proposer to predict which
+combination of FR types is best suited to rewriting the input verified news
+headline. 
+During each decoding step, we use the FR predictor to predict which FR types 
+the currently generated headline contains, and we align the prediction
+from the FR proposer and the FR predictor to transform the
+original boring verified headlines into exciting ones. This is achieved by
+computing the FR type reward~(\S~\ref{subsec_fr_reward}). 
+After decoding, we make use of a faithfulness
+scorer~(\S~\ref{subsec_faithfulness_scorer}) and a sensationalism
+scorer~(\S~\ref{subsec_sensation_scorer}) to compute the faithfulness and
+sensationalism rewards by which to evaluate the generated headline; all
+three rewards are then combined to make the generated results attractive but
+faithful.
+During inference, given verified news headlines and their content, \modelname
+then generates attractive but faithful headlines using the above-mentioned
+components. 
+%Thus the model has four major components: a sequence generator, a FR type classifier, a faithfulness scorer, and a sensationalism scorer. 
+Below we describe each major component in detail.
+\subsection{FR Predictor \& FR Proposer}
+\label{subsec_fr_scorer}
+To mimic different FR types on datasets without FR type
+labels, we pretrain two multi-label classifiers: 
+(1)~A FR predictor, which predicts which FR type the generated headline contains;
+this is pretrained by taking verified news headlines as input and classifying
+which FR type these headlines exhibit. 
+(2)~A FR proposer, which learns what specific combination of FRs is best suited to
+rewriting a given verified title.
+This is trained by taking the verified headline as input and predicting the FR
+type of the corresponding fake news.
+Note that this setting is achievable because we have paired news data with both
+real and fake FR labels (see preview sample in Fig.~\ref{PANCO_sample} in the
+appendix).
+
+We implement these FR classifiers with a BERT-based encoder. Given a verified
+news headline, we obtain a sentence-level representation $h_p$ with the hidden
+state of the [CLS] token. 
+The FR type $\hat{y_{\mathit{fr}}}$ is predicted by a MLP classifier following
+a sigmoid function and a softmax operation: 
+$\label{eq_fr}
+\hat{y_{\mathit{fr}}} = \mathrm{softmax}(\sigma(W_{p}h_{p}+b_{p})),$
+where $\hat{y_{\mathit{fr}}} \in \{0,1\}^{l}$, $l$ is the number of the FR type, and $W_p$,
+$b_{p}$ are trainable parameters. 
+We pretrain these models using binary cross entropy loss, yielding a 0.91
+micro-F1 score for the FR predictor and 0.65 for the FR proposer on a pretraining test
+set. Below we denote the FR predictor's prediction as $\hat{y}_{r}$ and the FR proposer's prediction
+as $\hat{y}_{f}$. 
+
+Predicting the fake version of FR types from the verified news headline is more
+challenging, as the performance of the FR proposer is lower than of the FR predictor (0.65
+vs.\ 0.91).
+In practice, we could directly use the FR label of the fake news acquired from
+our user study to replace $\hat{y}_{f}$, and view this setting as an upper
+bound for the FR proposer accuracy to calculate $\mathcal{R}_{\mathit{fr}}$.
+% The FR prediction by FR Proposer $\hat{y}_{f}$ can be treated as a hint to guide
+% \wmodelname as to which FR type is more likely to be applied given the verified news headline. 
+%Based on our observation, however, to interest the user, it is not necessary to generate headlines according to a specific FR type. 
+% That is to say, w
+However, when we are not provided with the FR labels of fake titles, we do not
+know which FR technique(s) should be applied to rewrite the given
+verified news headline. Hence, the FR proposer can be used as an auxiliary tool to
+help decide which FR type to use; this is especially useful when the dataset
+contains no FR-type labels.
+After pre-training the FR predictor and proposer, we proceed to the second
+stage. 
+
+\subsection{Sequence Generator}
+\label{subsec_seq_gen}
+In the second stage, we adopt a pointer network~\cite{see-etal-2017-get} as the
+sequence generator because of its ability to copy words from the source text.
+Given verified news content with $M$~tokens $ X=\{x_1, x_2, \ldots, x_M \}$
+and its corresponding real headline consisting of $Q$~tokens $ y=\{ y_1, y_2,
+\ldots, y_Q \}$, the encoder encodes each token with a bidirectional
+LSTM~\cite{1997lstm}.
+We adopt Chinese word-level embeddings pretrained on the Weibo corpus~\cite{2018chemb}. The final distribution is
+combined with the probability computed by the copy mechanism, making words from source content available for generation. For the objective we use the negative log likelihood as
+\begin{equation}
+    \mathcal{L}_{\mathit{MLE}} = - \frac{1}{T} \sum_i^{T} \log P_{\mathit{final}}(y_i).
+\end{equation}
+
+
+\subsection{Forward Reference Reward}
+\label{subsec_fr_reward}
+For each decoding time step, we calculate the FR reward once:
+tokens generated up to the current time step $y^{*}_{1:t}$ are sent to the FR
+predictor to derive $\hat{y}_{r}^{1:t}$ and calculate how well the generated
+text fits the FR prediction using the FR Proposer $\hat{y}_{f}$. 
+% After $T$~steps of decoding  and       the headline is generated, 
+  After $T$~steps of decoding, and after the headline is generated,   % AMH: check
+we calculate the average FR reward as
+\begin{equation}
+    \mathcal{R}_{\mathit{fr}} = \frac{1}{T}\sum_i^T(1 - \mathcal{D}(\hat{y}_{f}, \hat{y}_{r}^{1:i})),
+\end{equation}
+where $\mathcal{D}$ denotes a distance function---in our case the mean squared
+error---and $\mathcal{R}_{\mathit{fr}} \in [0, 1]$ is the average FR reward. 
+Here $\hat{y}_{r}$ is the FR types
+exhibited by the current generated headline, which should align
+with the prediction from the FR proposer $\hat{y}_{f}$, which is pretrained to learn
+which specific combination of FRs are best suited to rewrite the given title. The
+closer they get, the higher $\mathcal{R}_{\mathit{fr}}$ is. 
+
+\subsection{Faithfulness Scorer}
+\label{subsec_faithfulness_scorer}
+Inspired by research which shows that textual entailment correlates better with
+faithfulness than raw metrics~\cite{falke-etal-2019-ranking}, we use a
+pretrained faithfulness scorer to evaluate whether the generated headline
+distorts or contradicts the corresponding content. 
+When pretraining, we use a verified news headline and its content as a
+positive example, and use a fake news headline with the corresponding real news
+content as a negative example. 
+We pretrain this as a natural language inference (NLI) task (classifying
+entailment and contradiction). %\footnote{We exclude real-headline fake-content pairs since some fake content is not necessarily fake.} 
+The headline and content sentence embeddings of are denoted as $x_f$ and $w_f$.
+We apply a popular method to encode sentences for the NLI model~\cite{infersent}:
+\begin{equation}
+    h = [x_f; w_f; x_f - w_f; x_f \odot w_f],
+    \label{infersent}
+\end{equation}
+where ``$;$'' denotes concatenation, and ``$\odot$'' denotes the element-wise product. The faithfulness scorer achieves an accuracy of 0.83 on the testing set.
+
+\subsection{Sensationalism Scorer}
+\label{subsec_sensation_scorer}
+%In addition to being faithful, the desired output must be attractive. 
+Apart from the FR type reward, we make use of another BERT-based binary
+classifier to obtain the sensationalism score, since there are headlines that
+are still interesting without the use of FRs (around 27\% according to our
+collected data). 
+We first manually reviewed 100 news for each categories in seven different new
+sources, selected the news categories that were consistently sensational (more
+than two-thirds of the articles in such a category were sensational, e.g., fashion, gossip,
+headlines) and collected the news headlines along with the content in these
+categories. We reviewed 5,000 headlines in total and collected 50,000
+sensational news headlines.
+%The collected news headlines are regarded as sensational. 
+For non-sensational headlines, we utilized a pointer generator to obtain a
+summary headline, and treated this as a non-sensational title since summarization
+models retain only the semantics of the content. In this way we ensured a 50/50
+split for sensational and non-sensational headlines for training.
+We trained the sensation scorer using binary cross entropy along with a softmax
+layer to produce a sensationalism score $\in [0, 1]$:
+$\mathcal{R}_{\mathit{sen}} = \sigma( W_{s} h_s + b_s ), $
+where ${h_s}$ is the aggregated representation of the [CLS] token produced by
+BERT, and $W_s$ and $b_s$ are learnable weights.
+The accuracy on the test set is 0.86, indicating its ability to discriminate
+sensational headlines.
+
+\subsection{Hybrid Training}
+%Since the required input of real2real FR-classifier, faithfulness scorer and sensation scorer is the generated title, which is sampled from the generator and hence disabling gradients to be back-propagated. 
+We adopted reinforcement learning (RL)~\cite{rl1992} to train our model
+with the weighted sum of $\mathcal{R}_{fr}$, $\mathcal{R}_{faith}$ and $\mathcal{R}_{sen}$ as the reward~$\mathcal{R}$. Following
+\citet{xu-etal-2019-clickbait, ranzato2015sequence}, we used the baseline reward
+$\hat{\mathcal{R}_t}$ to reduce variance, where $\hat{\mathcal{R}_t}$ is the
+mean reward estimated by a linear layer for each time step~$t$ during training.
+The final reward and the objective are 
+\begin{equation}
+\begin{gathered}
+    \mathcal{R} = \mathcal{R}_{\mathit{fr}} + \alpha\mathcal{R}_{\mathit{faith}} + (1-\alpha)\mathcal{R}_{\mathit{sen}} \\[4pt]
+    \mathcal{L}_{\mathit{RL}} = -\frac{1}{T} \sum_i^T (\mathcal{R}-\hat{\mathcal{R}_t})\log P_{\mathit{final}}(y_t). \\[4pt]
+\end{gathered}
+\end{equation}
+Similar to \citet{xu-etal-2019-clickbait}, we computed the final loss as the
+combination of $\mathcal{L}_{\mathit{MLE}}$ and $\mathcal{L}_{\mathit{RL}}$:
+\begin{equation}
+\begin{aligned}
+    \mathcal{L} = \lambda \mathcal{L}_{\mathit{MLE}} + (1- \lambda)\mathcal{L}_{\mathit{RL}},
+\end{aligned}
+\end{equation}    
+where $\alpha$ and $\lambda$ $\in [0,1]$ are hyperparameters that balance
+the weight of each component; the composite design here ensures that
+we produce headlines that satisfy all objectives. In sum, we use the FR reward
+to estimate whether the generated headline matches the FR type of its fake
+version, the faithfulness scorer to evaluate the textual entailment between the
+generated headline and the verified news content, and the sensationalism scorer
+to measure the sensationalism of the generated headline. 
+
+% We construct our event graph with following steps. \\
+% Step 1. For each sentence in the article, we parse it into a set of tuples, we adopt Language Technology Platform \cite{che2020n}, an off-the-shell open source toolkit for Chinese semantic role labeling \cite{carreras-marquez-2004-introduction}. \\
+% Step 2. Given a tuple, we only consider elements with certain types as nodes. We extend seven types of elements as verb, argument, adverb, degree, extent, location and temporal as node. Every two nodes in the tuple are connected with an edge. \\
+% Step 3. To build connection between tuples, we also create edges for nodes in different tuple if one of three following conditions satisfied. (1) A equals B; (2) A contains B; (3) the number of overlapped words between A and B is larger than the half of the minimum number of words in A and B. \\
+% Step 4. For each article, we construct the final event graph by combining all content graphs on same event, we cluster these news with its headline by applying step 3. on headlines, any condition satisfied will be consider pointing to same event. \\
+
+% =================================
+% PANCO Table
+
+% \begin{table*}[ht!]
+% \small
+% \begin{CJK*}{UTF8}{gbsn}
+% \centering
+% \begin{tabular}{llccccccc}
+% \Xhline{1.0pt}
+% \textbf{Real headline} & \textbf{Real content} & FR\\
+% \hline
+% \makecell[l]{辟谣：夏季曝晒后的瓶装水致癌} & 
+% \makecell[l]{夏天放在车里的瓶装水会致癌？\\又是一条健康谣言...} & No FR. \\
+% % \makecell[l]{Rumors has it that water in a bottle \\is carcinogenic after the exposure of \\summer sun. }& 
+% \makecell[l]{Rumor has it that bottled water exposed \\ to the summer sun is carcinogenic. }& 
+% \makecell[l]{
+% Bottled water is carcinogenic in\\the car when it's summer?\\ Another health rumor...} \\
+
+% \hline 
+% \textbf{Fake Headline} & \textbf{Fake Content} & FR\\
+% \hline
+% \makecell[l]{BBC紧急曝光：\\这种水喝一口，就会致癌！} & 
+% \makecell[l]{今天，这个有害健康、甚至会夺人\\性命的巨大隐患终于被曝光了！世界\\卫生组织通报：9成以上瓶装水有毒...}
+% & FR1+FR5 \\
+% \makecell[l]{BBC urgent disclosure: Just one \\sip of this water can result in cancer!} & 
+% \makecell[l]{This enormous concern, which is dangerous\\and even fatal, has now been made public.\\WHO reports that over 90\% of water in\\bottles is tainted...}\\
+% \Xhline{1.0pt}
+% \end{tabular}
+% \caption{\label{PANCO_sample}Sample from PANCO dataset,
+% comprised of paired real and fake news headlines, the news content,
+% and FR type labels for both real and fake headlines. }
+% \end{CJK*}
+% \clearpage
+% \end{table*}

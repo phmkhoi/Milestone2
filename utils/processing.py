@@ -1,5 +1,5 @@
 import re
-import json
+
 mock_data = {
     "elements": {
         "root_doc": "Document Root",

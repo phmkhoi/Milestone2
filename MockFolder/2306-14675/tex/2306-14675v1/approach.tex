@@ -1,0 +1,311 @@
+\section{Approach}
+
+\subsection{Overview}
+
+
+
+
+This section details our tool, \tool, a hybrid approach that automatically understands license texts, detects license incompatibility, and provides useful suggestions for license incompatibility resolution.
+\revise{The input of \tool is the path of a folder where the target OSS is stored.} As shown in Figure~\ref{fig_overview}, given an OSS, \tool first extracts all involved licenses for further analysis, including the licenses accompanied with integrated software packages. After preprocessing the extracted licenses, the main components of \tool include three parts: \textbf{(1)} License understanding. As a fundamental step, \tool first understands the regulations implied by licenses by fine-grained entity extraction and relation extraction, so as to provide detailed information for further incompatibility analysis and resolution. \textbf{(2)} Incompatibility issue localization. Based on the fined-grained understandings of licenses, \tool detects and localizes license incompatibility issues by considering both the hierarchical structure and copyright holders of licenses. \textbf{(3)} License incompatibility resolution. Given a license involved in an incompatibility issue, \tool fixes the issue by resolving the constraints obtained from the parent and child licenses of the target license. Finally, \tool gives suggestions for license incompatibility resolution by recommending official licenses in priority. When none of existing licenses are compatible with the license context, \tool generates a custom license as an alternative solution. \revise{\tool stores the license incompatibility issues, their locations, the corresponding suggestions, i.e., the name of recommended official licenses or the full-text of custom licenses in an output file.} 
+
+\subsection{{License Hierarchy Extraction}}\label{sec:hie}
+
+% Given the file hierarchical structure of open source software project explicitly, its 
+OSS, especially in the form of frameworks or libraries, is often used as a component of software products, which can be recursively integrated into larger software. 
+The hierarchical structure of OSS accompanied with licenses leads to the hierarchical structure of licenses. 
+\revise{Previous studies regarded all licenses in a project independently and equally~\cite{jss`17-Kapitsaki-SPDX,kapitsaki2019modeling,xu2021lidetector}, regardless of their licensing scopes.} For instance, \Cref{hierarchy} illustrates a real-world example from Flask JSONDash~\cite{url-example1}, {a popular OSS to create chart dashboards}. In this example, the project license, which states the regulations for the whole project, is the MIT license in the main directory of the project. As shown in \Cref{withoutHie}, there are four component licenses in the modules or integrated third-party packages which are incompatible with the project license. The reason is that the component licenses are more restrictive than the project license, so that anyone who conforms to the project license (i.e., the MIT license) may violate the component licenses (e.g., Apache-2.0). To address this issue, one should either replace the third-party software packages or change the project license in the root directory.
+\revise{In this paper, we observe that the location of a license determines its scope of licensing, which affects license incompatibility detection and resolution.} \Cref{withHie} depicts a part of the license hierarchy of JSONDash~\cite{url-example1}. It can be seen that \textit{pymongo} and \textit{datetime} are two third-party packages imported by the source code file \textit{db.py}. However, their licenses (i.e., Apache-2.0 and ZPL-2.1) are incompatible with the license of \textit{db.py} (i.e., the MIT license). In this case, even if the project owner changes the project license, license incompatibility still remains. %License incompatibility may occur anywhere in the project.
+
+To address this issue, we extract the hierarchical structure of all involved licenses in a project. Specifically, \tool first builds the hierarchical structure according to the file structure. Then, it extracts three types of licenses from the project, i.e., the declared licenses, the referenced licenses, and the inline licenses. The \textit{declared licenses} state rights and obligations explicitly in license files (e.g., LICENSE). The \textit{referenced licenses} are obtained by their names, versions, direct links, or the websites of incorporated third-party packages. The \textit{inline licenses} typically appear at the beginning of source code files. Different licenses may have different licensing scopes. For example, an inline license is only responsible for the source code within the same source code file. The scope of the license accompanied with a third-party software package is only the package itself. \revise{After obtaining the original file structure, \tool removes the nodes without licenses from bottom to up and links its children nodes to its parent node if necessary.} %\tool merges the nodes without licenses and obtains the license hierarchy as shown in \Cref{withHie}. 
+Finally, the licensing scopes of all licenses can be obtained by the hierarchy as shown in \Cref{withHie}, as well as the dependencies between them, which can be further used for license incompatibility resolution. 
+
+
+
+%which is necessary because, only file structure may lost some significant information (e.g., the implicit licenses of imported packages in code files), 
+% the licenses of imported packages in code files take equal importance with other obvious licenses in texts
+%or display some unnecessary information (e.g., if some modules with their license absent, their child modules should act a direct influence on the license compliance of higher modules). 
+
+%In the example of ~\ref{XX}, ...., 
+
+\begin{figure}
+	
+	
+	\centering
+	\subfigure[License Compatibility Analysis without Hierarchy Extraction]{
+		\begin{minipage}{7cm} 
+                        \includegraphics[width=\textwidth]{figs/hierachy1.pdf} \\
+
+		\end{minipage}\label{withoutHie}
+	}
+
+	\subfigure[License Compatibility Analysis with Hierarchy Extraction]{
+		\begin{minipage}{7cm}%[b]%{0.2\textwidth}
+			\includegraphics[width=\textwidth]{figs/hierachy2.pdf} \\
+		\end{minipage}\label{withHie}
+	}
+ \caption{Illustration of License Hierarchy} 
+ \label{hierarchy}
+\end{figure}
+
+\subsection{License Understanding}\label{sec:und}
+
+After obtaining the license hierarchy, \tool \textit{automatically} understands the semantics of each license as a fundamental step. %However, license texts are typically long and complicated, which makes it difficult to interpret them. The problem is exacerbated by the large number of licenses, variants, and custom licenses. 
+\revise{There are mainly two reasons for automating license understanding. (1) There exist a variety of official licenses (i.e., 552), and the number keeps growing~\cite{url-spdx-github}. However, manually extracting the detailed information from long and complicated licenses is time-consuming and labor-intensive. (2) A previous study investigated 1,846 projects and obtained 5,777 unique licenses, among which 24.56\% were custom licenses with flexible expressions~\cite{xu2021lidetector}. Motivated by them, it is valuable to automatically understand licenses to facilitate further analysis.}
+In this paper, we cast license understanding as an \textbf{information extraction} problem, which can be further decomposed into an entity extraction task %(i.e., the extraction of the \textit{action}, \textit{object}, \textit{attitude},  and \textit{condition} of a license term) 
+and a relation extraction task. %(i.e., the classification of the relations between these entities like \textit{action-object}).
+
+
+
+
+
+%Hence, the effort on automated license \sihan{interpretation?} does not only facilitate license incompatibility detection, but also provides guidance for repairing license incompatibility issues. % its essentials rapidly, but 
+% help detect license incompatibility more accurately and 
+%help generate repair texts with more lawful compliance. 
+
+\subsubsection{{Fine-grained Entity Extraction}}
+%\ling{may briefly mention why we need such fine-grained entity? the necessity. such as help to further repair.}
+%To provide detailed information, we decompose each license into a set of terms which describe the conditions of software use. 
+\revise{Unlike previous works that regarded each right/obligation as a single entity~\cite{xu2021lidetector}, in this paper, we observe that each right/obligation could be decomposed into four types of
+entities (i.e., \textit{action}, \textit{object}, \textit{attitude}, and \textit{condition}) and construct a fine-grained structure to model it. Each entity, regardless of its type, is a flexible expression that describes a specific action, object, attitude, or condition in the form of a word, a phrase, or even a sentence in a license. \revise{For instance, from ``\textit{you are allowed to distribute modified works}'', the previous study~\cite{xu2021lidetector} identified the term ``Distribute'' and inferred an attitude CAN. However, \tool extracts the action (``distribute''), the object (``modified works''), the attitude (``are allowed to''), and the condition if there exists.} The definitions of four types of entities are as follows.}
+%Then, we further model each license term with a fine-grained structure by four types of entities described as follows. 
+
+\textbf{Action}: the process of %excising 
+{exercising} a granted right or performing an obligation enforced by a license, e.g., \textit{Disclose Source}. 
+
+\textbf{Object}: the object to be acted upon, which is typically a software artifact such as source code or binary.
+
+%\noindent\textbf{Performer}: the person or organization that grants the rights or conveys the obligations, e.g., \textit{GPL corporation} in GPL 2.0.
+\textbf{Attitude}: the attitudes of licensors towards licensees to grant or reserve rights, or enforce obligations.
+
+\textbf{Condition}: the obligations that licensees must comply with to exercise the granted rights.
+
+%\ling{revise.}
+
+
+\revise{To extract the fine-grained entities from licenses, we employ sequence labelling to identify the beginning and last token of each entity.}
+%Inspired by Named Entity Recognition (NER)~\cite{ISPRS`20-Runyu-NER} in natural language processing, we employ sequence labeling to identify and localize the aforementioned entities (i.e., actions, objects, attitudes, and conditions). 
+As a fundamental step, we first split each license text into sentences and preprocess them by removing non-textual parts, checking spellings, performing stemming and morphological. \revise{In the training phase, we label each token in a license as illustrated in \Cref{fig_entity}, %In the training phase, we label each token with the BIO (Begin, Inside, and Outside) mode~\cite{CSCL`17-Reimers-BIO}. 
+%As illustrated in \Cref{fig_entity}, 
+where B-\textit{X} and I-\textit{X} represent the first token (i.e., the beginning token) and an inside token of an entity whose type is $X$, respectively. $O$ denotes a token outside any named entities. Note that unlike LiDetector~\cite{xu2021lidetector} which used $X$ to represent the $X^{th}$ license term, in this work, we use $X$ to represent the type of the entity. }For instance, B-\textit{object} in~\Cref{fig_entity} indicates that the token \textit{source} is at the beginning of an entity whose type is \textit{object}.
+
+% Based on the labelled dataset, we train a probabilistic model to identify and localize named entities. Specifically, 
+% we first embed words into vectors by the pre-trained Glove model~\cite{url-glove} to employ its prior knowledge on word semantics. Then, we feed the results of word embeddings into a bi-Directional
+% Long Short-Term Memory (bi-LSTM) model~\cite{CSAI`19-Xia-BiLSTM}, and learn the representation of each license sentence. Finally, for each token we utilize Conditional Random Fields (CRF)~\cite{USENIX`19-Andow-Policylint} to calibrate the probability distribution over each label and make a global decision. 
+{Based on the labelled dataset, we train a NER model based on spaCy~\cite{spacy} to identify and localize named entities. 
+We first embed words into vector with a pre-trained \textit{roberta-base} model~\cite{Liu2019RoBERTaAR} to employ its prior knowledge on word semantics and boost the word embedding strategy using subword features. 
+Then, we feed the results of word embeddings into a transition-based parser, which utilizes a deep convolutional neural network with residual connections to learn the representation of each license sentence and parse named entities.
+In the inference phase, \tool sequentially predicts the label of each token in license text so as to identify and localize entities in licenses.}
+For the example in~\Cref{fig_entity}, \tool extracts seven entities, i.e., two \textit{action} entities (\textit{distribute} and \textit{disclose}), two \textit{object} entities (\textit{software} and \textit{source code}), two \textit{attitude} entities (\textit{can} and \textit{must}), and a \textit{condition} entity (\textit{provide that}).
+
+
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.9\linewidth]{figs/entity.pdf}
+    %\vspace{-2mm}
+    \caption{Illustration of the BIO Mode for Entities in Licenses}
+    \label{fig_entity}
+\end{figure}
+
+
+
+\subsubsection{{Relation Extraction}}
+
+Relation extraction in license understanding aims to extract structured knowledge about relations between entities from unstructured license text. \revise{Unlike previous studies~\cite{xu2021lidetector,APSEC`17-Kapitsaki-termsIdentifying} which regarded a right/obligation as a whole entity, in this paper, we decompose each regulation into four types of entities, and propose a relation extraction model to reconstruct the relations between these entities for a fine-grained and structured understanding of licenses.} Since there exists no tagged dataset for entity relations in licenses and labelling is time-consuming, inspired by the promising results of prompt-tuning for few-shot tasks, we employ a prompt-based relation extraction model based on KnowPrompt~\cite{Chen2022KnowPrompt}. The basic idea is to leverage the knowledge hidden in the pre-trained language model and formalize specific tasks as cloze tasks. With the prompt template, \tool predicts the {mask} %\ling{???} 
+and maps the prediction result to the classes, which are the relations between input entities. \revise{Specifically, we extract five types of relations, i.e., \textit{action-object}, \textit{action-attitude}, \textit{action-condition}, \textit{condition-action}, and \textit{others}. \textit{Action-object} represents the relation between an action and the object to be acted upon. \textit{Action-attitude} represents the relation between an action and the attitude towards this action. \textit{Action-condition} represents the relation between an action and the condition of exercising the action. \textit{Condition-action} denotes the relation between a condition and the action required in the condition. Finally, \textit{others} represent the relations other than the aforementioned relations. With these specific relations, \tool organizes the extracted entities and constructs a fine-grained understanding of licenses.}
+
+%In this paper, prompt-tuning transforms the relation extraction task into a classification task.
+%Although prompt-based ideas overtake traditional ideas (e.g., fine-tuning on massive pre-trained model) on its less complex model structure and can utilize deeper language knowledge to provide quite desirable predictions, they transform almost every tasks into classification tasks due to its process of answer mapping from the answered \textit{[MASK]} to the ultimate label dictionaries. 
+%Therefore, this paper applies prompt-tuning idea only on our term relation extraction task and the license term entity identification task is realized by traditional sequence tagging process of supervised training on pre-trained models because of its focus on the boundary of the term-related entities. 
+% {"token": ["you", "can", "distribute", "modified", "versions", "if", "you", "keep", "track", "of", "the", "changes", "and", "the", "date", "you", "made", "them", "."], "h": {"name": "distribute", "pos": [2, 3]}, "t": {"name": "modified versions", "pos": [3, 5]}, "relation": "Action-Recipient(e1,e2)"}
+\Cref{fig_relation} illustrates the model construction of relation extraction. It can be seen that given a license phrase ``\textit{you can distribute the software}'', \tool first extracts the entities \textit{can}, \textit{distribute}, and \textit{software}.
+Then, taking the relations between \textit{distribute} and \textit{software} as an example, \tool constructs a prompt template as ``{[CLS] you {can} [\textit{E1}] \textbf{distribute} [\textit{/E1}] the [\textit{E2}] \textbf{software} [\textit{/E2}]. [SEP] [\textit{act}] \textbf{distribute} [/\textit{act}] [MASK] [\textit{obj}] \textbf{software} [/\textit{obj}] [SEP]}'', 
+and feeds it to the Mask Language Model (MLM)~\cite{Devlin2019BERT}. 
+{Here, [CLS] and [SEP] mark the input sequence and its prompt, [\textit{E1}], [\textit{/E1}], [\textit{E2}], and [\textit{/E2}] mark the beginning and end tokens of two input entities, [\textit{act}], [/\textit{act}], [\textit{obj}], and [/\textit{obj}] represent virtual types of entities learned during the prompt tuning process, and [MASK] denotes the output prediction of the MLM model. }
+After that, \tool obtains the probability distribution of {[MASK]} over the vocabulary list, and maps the prediction result to the embeddings of answer words, which are the classes of relations between input entities. Finally, \tool achieves the prediction result as the relation between two entities \textit{distribute} and \textit{software}. Note that for official licenses whose rights and obligations have already been known, we only extracted fine-grained entities and relations automatically in the preparation phase, and manually checked them to construct a database that can be directly used for further analysis. The details of the database can be seen in \Cref{sec:official}.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.9\linewidth]{figs/knowprompt.pdf}
+    %\vspace{-2mm}
+    \caption{Illustration of Relation Extraction from Licenses}
+    \label{fig_relation}
+\end{figure}
+
+%As for the period of license incompatibility detection, this paper mainly focus on the importance of term action and its attitude polarity (e.g., \textit{can}, \textit{cannot} and \textit{must}). Considering diverse phrases may convey the same term action meaning, several common term action types as stated in LiDetector~\cite{xu2021lidetector} are introduced and tagged in the same time during above sequence tagging process. Besides, the attitude polarity towards term action is analyzed by automatically grammar parsing and sentiment analysis as in ~\cite{xu2021lidetector}. 
+
+
+
+
+
+\subsection{Incompatibility Issue Localization}
+
+%In this section, we detect license incompatibility issues, and filter them by copyright holder detection, so as to localize target issues that can be resolved in the next phase.
+
+
+
+
+
+
+
+
+\subsubsection{{Incompatibility Detection}}\label{sec:incompapproach}
+Based on the outputs of license understanding and hierarchy extraction, %\tool detects incompatibility issues in a given project. 
+{\tool identifies incompatibility issues in a given project together with the specific localization, i.e., the packages or files involved in the incompatibility issues.}
+\revise{Previous works only distinguished between the project and component licenses~\cite{xu2021lidetector}, in this paper, we extract license hierarchy to obtain the licensing scope of each license, as well as the relations between multiple licenses. }%Inspired by previous studies that distinguished between the project and component licenses~\cite{xu2021lidetector}, 
+\revise{Then, we can obtain \textit{parent-child} pairs from the extracted license hierarchy. Given a license $l$ and its child nodes $l_c$, we define that the license $l$ is compatible with its child nodes $l_c$ if {anyone who complies with the license $l$ will not violate any of its child nodes $l_c$}. Otherwise, there exists license incompatibility. In other words, a parent license $l$ is supposed to be equally or more restrictive than any of its child nodes $l_c$. On this basis, we propose to detect license incompatibility from bottom to up, layer by layer according to the extracted license hierarchy, so as to conduct a fine-grained license incompatibility detection. }
+%we adopt a more fine-grained license incompatibility detection strategy. Specifically, based on hierarchy extraction, %we define a ``one-way compatibility'' strategy to check license compatibility, i.e., \textit{anyone who conforms to a parent license will not violate any of its child licenses}. To achieve this goal, the license at a parent node should be equally or more restrictive than all the child licenses belonging to it. 
+%\revise{we examine the license heirarchy from bottom to }
+
+%Based on the aforementioned definition, we detect license incompatibility issues from bottom to top according to the license hierarchy of the project. 
+For each \textit{parent-child} pair of licenses, we extract the fine-grained entities and relations as mentioned in \Cref{sec:und}. \revise{Then, a fundamental step for incompatibility analysis is semantic alignment. Specifically, for each \textit{attidue} entity (e.g., ``are not allowed''), we follow previous works~\cite{xu2021lidetector,tldrlegal} to assign it a label (i.e., CAN, CANNOT, or MUST) for further analysis.} We also classify the entities of \textit{actions} into 23 categories as previous studies~\cite{APSEC`17-Kapitsaki-termsIdentifying,kapitsaki2019modeling,xu2021lidetector}. Each group represents a type of actions that licensees may do. To this end, we trained a classification model with the Support Vector Machine algorithm~\cite{hearst1998support} based on the dataset provided in~\cite{xu2021lidetector}. To conduct an accurate analysis, we further distinguish the same \textit{actions} with different \textit{objects} into different groups. For example, \textit{distribute source code} and \textit{distribute binaries} are regarded as two different regulations. 
+
+By this means, we group the regulations from the \textit{parent-child} pair of licenses. Each group contains the regulations about the same \textit{action-object} but multiple attitudes, and \tool detects whether there exist conflict attitudes between a parent license and its child license towards the same \textit{action-object}.
+%After aligning license terms represented by \textit{action-object} pairs, we detect whether there exist conflict attitudes between a parent license and its child license towards the same \textit{action-object}. %Given the ``one-way-compatibility'' definition, a parent license is compatible with a child license only if it is equally or more restrictive than the child license. 
+\revise{For example, if \tool infers from a parent license that states \textit{can distribute source code}, while infers from one of its child licenses that claims \textit{cannot distribute source code}, in this case, anyone who conforms to the parent license may violate at least one of its child licenses by distributing source code.}
+%For example, towards the same \textit{action-object}, the \textit{attitude} MUST is stricter than CAN, hence anyone who conforms to MUST will not violate CAN. 
+%Moreover, we observe that there might be some license terms that only appear in one license (e.g., the parent license). Following previous studies~\cite{xu2021lidetector}, we take the absence of license terms as rights reserved, and categorize \textit{actions} into two types, i.e., right and obligation. For the right-related \textit{actions}, their absence in a license indicates that licensees CANNOT exercise these rights. For the obligations, the absence of them are marked with CAN by default. 
+As for the \textit{conditions}, if a \textit{condition} entity is extracted as well as its relations with other entities, we consider the conditional cases separately, i.e., separately assume two cases where the condition is $True$ or $False$, respectively. %Specifically, we first assume the condition is $True$ and update the attitudes towards the \textit{actions} in the main and subordinate clauses for incompatibility detection. Then, we assume the condition is $False$, update the attitudes, and check incompatibility in this case.
+{By this means, we can identify incompatibility issues and the detailed information about such issues, including the incompatible parent and child nodes (i.e., licenses and the packages/files where they are located), the incompatible \textit{action-object} pairs, the \textit{attitudes} and \textit{conditions} (optional) of the involved licenses, which are further utilized for license incompatibility resolution.} Note that as previous studies~\cite{url-choosealicense,xu2021lidetector}, the absence of a project license implies all rights are reserved, i.e., nobody can copy, distribute, or modify the work. In this case, \tool detects whether the licenses at the first level of the hierarchy can be incorporated into the same project without license violations, and reports incompatible licenses.
+
+\subsubsection{{Copyright Holder Filtering}}
+%\ling{why here. may move to 2.4?}
+% As the research of Vendome .et al~\cite{Vendome2016Assisting}, the copyright holders 
+\revise{Previous research mainly focused on the project license whose licensing scope is the whole project, while ignoring other licenses in the project~\cite{liu2019predicting,kapitsaki2019modeling,xu2021lidetector}. 
+ However, in this paper, we notice that there are often more than one license that can be changed for incompatibility resolution.} The intuition behind is that if a license has the same copyright holder with the project license, the project owner ought to have the right to modify or replace it. 
+Actually, it is a common practice for developers of large-scale OSS to place their own license claimers in the modules implemented by themselves for copyright protection and ownership assertion of these modules. 
+
+For the above reason, we propose to identify copyright holders so as to enlarge the scope of licenses that can be modified for license incompatibility resolution. Since we assume that a project owner can always modify the project license, \tool first identifies the copyright holder stated by the project license. Then, it examines all licenses involved in license incompatibility issues, so as to localize the module licenses (also known as component licenses) with the same copyright holder as the project license, which indicates that these licenses can also be modified by the project owner. 
+
+Specifically, we first identify the license sentences that claim copyright holders. Since the expressions of copyright holders are relatively fixed, we define a set of phrases as the signals of copyright claim, for instance, \textit{copyright (c)} and \textit{authored by}. The specific expressions can be seen online~\cite{ourwebsite}. We detect these keywords by regular matching. 
+After identifying the copyright-related sentences, we utilize Stanford CoreNLP~\cite{url-corenlp} to recognize named entities related to \textit{person names} and \textit{organization names} as the copyright holder of the input license.
+
+
+For the example in \Cref{withHie}, \tool first identified the copyright holder \textit{Chris Tabor} claimed in the project license. Then, it detected 10 component licenses inside the project that have the same copyright holder with the project license, such as the inline licenses (i.e., the MIT license) at the beginning of source code files \textit{db.py} and \textit{wordcloud.py}. In this case, there exist more than one license that can be modified to resolve license incompatibility issues. 
+
+
+
+
+
+\subsection{License Incompatibility Resolution}
+
+\SetKwInput{KwInput}{Input}
+\SetKwInput{KwInput}{Input}
+\SetKw{Let}{let}
+\SetKw{Continue}{continue}
+\SetKw{Break}{break}
+\SetKw{Create}{CREATE}
+\begin{algorithm2e}[t]
+%\color{blue}
+    \footnotesize
+	\setcounter{AlgoLine}{0}
+	\caption{{License Incompatibility Resolution}}
+	\label{algo}
+	\DontPrintSemicolon
+	\SetCommentSty{mycommfont}
+	%\SetAlgoLined
+	{
+	   % \KwIn{$l_1<t_1, atti_{t1}>$ and $l_2<t_2, atti_{t2}>$: A pair of licenses with extracted terms and attitudes}
+	   % \KwIn{$l$, $l_{prt}$, $LC \gets l_{cdn}$: A license to repair and its parent license and numerous child licenses, each of which is composed of 
+	   %$<t, atti_{t}, cond_{t}, >$}
+	    %\KwIn{$LR \gets l_{repair}$: the set of licenses with incompatibility issues repair in given OSS project after $CompDetect()$, each of which is composed of $<t, atti_{t}, cond_{t}, >$ based on results of $LiUnderStand()$ }
+	    \KwIn{$X$: the target project with license incompatibility issues}
+    	\KwOut{$S$: the resolution suggestions of the incompatibility issues}
+    	
+    	\SetKwProg{Fn}{Function}{:}{}
+                    $LR \gets detectCompt(X)$ \tcp*[h]{obtain incompatible licenses that can be changed.}\;
+                    $S \gets \emptyset$ \tcp*[h]{resolution of the project.}\;
+    	        \ForEach{$l \in LR$}{
+    	            \tcp*[h]{iterate licenses in $LR$ {from bottom to top}.} \;
+    	            $l_{p} \gets \text{getParent}(X, l)$  \;
+                        $r_p \gets \text{getReq}(l_p)$ \;
+                        $l_c \gets \text{getChildren}(X, l)$ \;
+                        $r_c \gets \emptyset$ \;
+                        $f_l \gets False$ \tcp*[h]{initialize the flag for exception.} \;
+                        \ForEach{$c \in l_c$}{
+                         $r \gets \text{getReq}(c)$ \;
+                         $r_c, f \gets \text{mergeReq}(r_c, r)$ \\\tcp*[h]{merge the requirements of child nodes.}\;
+                         $f_l \gets f_l \lor f$ \tcp*[h]{if there are conflicts between child nodes.}\; 
+    	        }
+    	            $R_l \gets \text{resolve}(r_p, r_c) $ \tcp*[h]{resolve the constraints for license $l$, i.e., no more restrictive than $r_p$ but no more loose than $r_c$.} \;
+                        \eIf{$R_l$ is None}{
+                        \Continue \tcp*[h]{if the constraints cannot be resolved, continue.} \;
+                    }
+                 {
+                        $s_l.o \gets \text{checkOfficial}(R_l)$ \;
+                        \If{$s_l.o$ is None}{
+                            $s_l.c \gets \text{generateCustom}(R_l)$ \;
+                            \If{$f_l$ is TRUE}{
+                                $s_l.c \gets \text{addException}(R_l, s_l.c)$
+                        }
+                }   
+                $S \gets S \cup s_l$
+    	        }
+             \Return $S$
+    	        }
+    }
+
+
+\end{algorithm2e}
+
+
+\iffalse
+   	        \ForEach{$l_i \in LR$}{
+    	            \tcp*[h]{choose specific repair solution for each license to repair. } \;
+    	            
+    	            $isRecomd$, $recomdLi$ = checkOfficialLi($Need_i$, $L_{offic}$) \;
+    	            \tcp*[h]{iterate all official licenses based on their interpreted information, and check 
+    	            whether the repair constraint of this license can be satisfied. } \;
+    	            \eIf{$isRecomd$ is $False$}{
+    	                
+    	                \tcp*[h]{generate a custom license based on the term essentials interpreted. } \;
+    	                $customLi$ = geneCustomLi($Need_i$) \;
+    	                
+    	                $isExcep$, $excepTerms$ = checkExceptionNeeds($Need_i$) \;
+    	                \eIf{$isExcep$ is $True$}{
+    	                    \tcp*[h]{there is some exception constraints and we must add exceptions to the base custom licenses.} \;
+    	                    \ForEach{$t_{excep} \in excepTerms$}{
+    	                        \ForEach{$atti \in t_{excep}.Atti$}{
+    	                            $filepath_{atti}$ = findAttiSource($atti$, $t_{excep}$, $l_i$, $OSS$) \;
+    	                            $exceptLi$ = updateExceptionLi($customLi$, $filepath_{atti}$) \;
+    	                        }
+    	                    }
+    	                    \Return $exceptLi$ \;
+    	                }{
+    	                    \Return $customLi$ \;
+    	                }
+    	                
+    	            }{
+    	                \Return $recomdLi$ \;
+    	            }
+    	       }
+\fi
+
+\subsubsection{{License Constraint Resolution}}\label{sec:constraint}
+
+As described in \Cref{algo}, 
+%after license incompatibility %detection \ling{identification?} and copyright holder identification, 
+{taking the project with license incompatibility issues as input,}
+\tool obtains a set of problematic licenses (denoted by $LR$) which can be modified or replaced to handle the incompatibility issues (Line 1). Based on hierarchy extraction mentioned in \Cref{sec:hie}, \tool iterates the licenses in $LR$ from bottom to 
+top for license incompatibility resolution (\revise{Lines 3--23}). Specifically, for each license in $LR$, \tool first obtains its parent and child nodes, and then computes the requirements brought by them (\revise{Lines 4--12}). Since there may exists multiple child nodes for a license, we merge the requirements from all child nodes by extracting the most restrictive attitude towards each \textit{action} (Line 11). Note that to obtain constraints, we only take into account the licenses without the same copyright holder with the project license (i.e., the licenses that cannot be modified by the software owner). The intuition behind is that \textit{licenses with the same copyright holder of the project license can be changed to address incompatibility issues, and thus should not be the constraints for the current license/node}. For the example shown in \Cref{withHie}, there exist three licenses that can be modified (i.e., one project license and two inline licenses stated in \textit{db.py} and \textit{wordcloud.py}). In this case, \tool resolves the incompatibility issues from bottom to top, and starts from a MIT license in a Python file. Then, it computes the requirements from two child licenses, which are imported by the third-party software packages. As for the parent license, it can be seen that although the current license should be no more restrictive than its parent node (i.e., the project license in this case), however, the project license can be changed later to satisfy the requirements of compatibility, which should not be considered as a source of constraints for the current node. 
+
+
+Based on the license \textit{actions}, \textit{attitudes}, \textit{conditions}, and \textit{objects} extracted in the phase of license understanding, \tool resolves the constraints brought by its parent and child nodes. The basic idea is that the current license $l$ should be no more restrictive than its parent license $l_p$ but no more loose than its child nodes $l_c$. 
+\revise{Specifically, given a license $l$, \tool merges the requirements from its child nodes by grouping the \textit{action-object} pairs mentioned in \Cref{sec:incompapproach}, so that the requirements towards the same \textit{action-object} are within the same group. Then, for each \textit{action-object} pair, \tool merges the requirements from the children by obtaining the most restrictive attitude towards the same \textit{action-object}, which serves as a constraint for this \textit{action-object}.} Similarly, \tool obtains the requirements from the parent license, which serve as another boundary of the constraints. By this means, \tool achieves the constraints from the context and stores them in $R_l$.
+
+\subsubsection{{Official License Recommendation}} \label{sec:official}
+
+After license constraint resolution, we obtain the constraints for a current node, which is a license involved in license incompatibility and can be changed by the project owner. However, we note that not all constraints from the context can be resolved. According to the ``one-way-compatibility'' definition, given a license, if it has a child license which is more permissive than its parent license, the requirements from the context of the current license (i.e., its parent and child licenses) cannot be satisfied simultaneously. In this case, the constraints for fixing the incompatibility issue cannot be resolved, \tool moves on to the next target license. Hence, as described in \Cref{algo}, \tool only provides resolutions for licenses whose constraints from their context can be resolved by \tool (\revise{Lines 17--22}). Specifically, after resolving the constraints, \tool first checks whether there exist official licenses that can satisfy the requirements. In this paper, official licenses represent the licenses from the Software Package Data Exchange (SPDX)~\cite{spdx} which are publicly available. Note that the high priority of recommending official licenses comes from an empirical study that reported official licenses counted for more than half of the investigated licenses rather than custom licenses~\cite{xu2021lidetector}. However, \tool also provides settings for users to set priority of resolutions.
+
+To recommend official licenses for license incompatibility resolution, we constructed a database of official licenses whose rights and obligations have already been known by previous studies~\cite{tldrlegal,xu2021lidetector}. We manually checked the license terms labelled by previous studies (e.g., CAN \textit{distribute}), extracted the fine-grained entities and relations mentioned in \Cref{sec:und} using \tool, and verified the labels by three authors and a lawyer to construct the database. Finally, when more than one official licenses satisfy the constraints, we rank these licenses according to their similarities to the original license via cosine similarity. %\sihan{Note that for each incompatible license to be resolved, we only take into consideration its parent and child licenses , without  to other licenses such as the grand-parent licenses.}
+
+\subsubsection{{Custom License Generation}}\label{sec:custom}
+
+Except official licenses, developers are also allowed to customize their own licenses, which are named by \textit{custom licenses} in this paper. As described in \Cref{algo}, given a set of constraints, it is possible that none of existing official licenses can satisfy the constraints $R_l$. In this case, as an alternative way, we propose to generate a custom license for the project owner to choose (\revise{Lines 18--21}). We note that although there are no conventions for custom licenses to comply with, however, as a type of contracts between the owner and users of projects, the expressions of licenses need to be precise and strict in most cases. For this reason, despite the remarkable progress of text generation techniques in natural language processing~\cite{yu2022survey}, we do not utilize machine learning-based methods for license text generation. Instead, in this paper, we propose a template-based approach to generate custom licenses according to the constraints and fine-grained information obtained in the aforementioned steps. 
+
+As displayed in \Cref{algo}, $R_l$ represents the results of constraint resolution for a target license $l$. Then, \tool \textit{automatically} generates a custom license by organizing the fine-grained entities and their relations stored in $R_l$. Specifically, for each \textit{action} in $R_l$, if there exists an \textit{object} and an \textit{action-object} relation between them, then \tool concatenates them directly or with a preposition determined by {CoreNLP}~\cite{url-corenlp}. As for the \textit{attitude}, we note that the results of constraint resolution may contain multiple attitudes toward the same \textit{action-object}. For instance, given a parent node with the {attitude} MUST and a child node with the {attitude} CAN towards the same \textit{action-object}, the result of constraint resolution for the current node contains a set of \textit{attitudes} [CAN, MUST] for this \textit{action-object} pair, which is no more restrictive than the parent node and no more permissive than the child node. In this case, \tool uses the most restrictive \textit{attitude} in the set by default. In addition, when a \textit{condition} entity is found along with its relation with the \textit{action} (i.e., \textit{action-condition}), \tool adds the \textit{condition} at the end of the current sentence, equipped with the \textit{action}, \textit{attitude}, and \textit{object} (optional) orderly found by the relations \textit{condition-action}, \textit{action-attitude}, and \textit{action-object}. \revise{For instance, after extracting an \textit{action} entity ``modify'' and an \textit{object} entity ``source code'', as well as the \textit{action-object} relation between them, \tool concatenates them and generates ``{modify source code}'' as a result. If there exists a \textit{condition} entity ``as long as'' in $R_l$ and an \textit{action-condition} relation between ``{modify}'' and ``as long as'', \tool extends the statement and generates ``{modify source code as long as ...}''. Finally, to generate a clear and concise license, \tool merges the sentences with the same \textit{objects} (e.g., you can \textit{distribute} and \textit{modify} copies of software)}.
+
+
+\smallskip
+\noindent \textbf{Exceptions}. In this paper, we observe that there may exist some conflicts between the requirements of multiple child licenses which cannot be modified by the project owner. A natural solution to this problem is to replace the third-party packages involved in the conflicts. However, since the replacement of a third-party package requires substantial efforts due to the complex package dependency, we also provide an alternative way by attaching an \textit{exception}, which grants an exception to the license or some additional permissions (e.g., LLVM Exceptions~\cite{url-llvm}). Specifically, \tool first localizes the files, packages or directories of the conflict licenses. Then, towards the conflict \textit{action} and \textit{object} (optional), it assigns different attitudes with different licensing scopes in the same license. By this means, \tool attaches an \textit{exception} to the target license, so as to mitigate the incompatibility issue.
+

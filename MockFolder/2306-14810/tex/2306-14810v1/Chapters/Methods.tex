@@ -1,0 +1,116 @@
+%\section{Wind Turbine-aware Segmentation}
+\section{Wind Turbine Blade Segmentation}
+\label{section_methods}
+
+Let $\mathbf{I}$ be a $H \times W \times 3$ color image of a wind turbine blade that was captured from an arbitrary point of view and under uncontrolled lighting conditions. Our goal is to recover a $H \times W$ binary mask $\hat{\mathbf{S}}$ to indicate the region in the image that belongs to the blade. In our formulation, the mask is represented by the binary entries $\hat s_{h,w}$, where $h=\{1,\ldots,H\}$ and $w=\{1,\ldots,W\}$ denote the pixel coordinates in the mask.
+
+Given the corresponding ground-truth mask $\mathbf{S}$, we propose a supervised learning framework composed of four modules to learn the mapping $\mathbf{I}_{i,j}\rightarrow{\mathbf{S}_{i,j}}$ for a $i$-th blade and $j$-th  image: 1) an encoder-decoder network algorithm with a tailored loss, 2) a hole filling step, 3) a random forest block and, 4) a latter hole filling step to refine the solution. Without loss of generality, for every blade surface there are considered up to $J$ images for the $i$-th blade.
+
+%it may be observed blades of very different sizes and shapes
+
+%-----------------------------------------------------------------
+\subsection{Blade U-Net (BU-Net)}
+
+Given an input RGB image $\mathbf{I}$, our BU-Net aims at classifying each input pixel into blade or background, i.e., obtaining the output mask ${\hat{\mathbf{S}}}^{BU}$ by exploiting the labels in $\mathbf{S}$. This module follows a standard U-Net architecture~\cite{unet}, and its last layer includes a $1 \times 1$ convolution to map the feature channels to the desired number of classes. The mask ${\hat{\mathbf{S}}}^{BU}$ is obtained by combining four predictions via soft voting, where each one corresponds to a flipping rotation. Additionally, a regularized focal loss is employed to adapt the learning task to our particular dataset. The two terms are detailed below.
+
+%-------------------------------------------------------------
+The \textit{Focal Loss} \label{sec:focal-loss} optimizes our segmentation mapping~\cite{focal} by penalizing low-confidence predictions. Moreover, to avoid benefiting the majority class (in our case, the background) relative to the minority class, we apply weights to each class: 
+
+\vspace{-0.2cm}
+\begin{gather} 
+\label{focal_loss}
+    \mathcal L_{f}(\mathbf{S}, {\hat{\mathbf{S}}}^{BU}) = -\sum_{h,w} \left[ \alpha \left(1-\sigma(\hat s^{BU}_{h,w})\right)^\gamma s_{h,w}\log\sigma(\hat s^{BU}_{h,w})  \right. \nonumber \\ 
+   \left.  + (1 - \alpha) \left(\sigma(\hat s^{BU}_{h,w}))\right)^\gamma (1-s_{h,w})\log(1-\sigma(\hat s^{BU}_{h,w}))    \right],
+\end{gather}
+where $\sigma(\cdot)$ denotes the sigmoid function, $\gamma$ controls the confidence penalty; and $\alpha$ sets the class balance.  
+
+%the output is coded by a sigmoid function $sigma(\cdot)$ :
+%\begin{align}
+   % \mathcal L_{f}(y, \hat y) = -\sum_{i,j} \left[ \alpha \left(1-\sigma(\hat y_{i,j})\right)^\gamma y_{i,j}\log\sigma(\hat y_{i,j})  \right. \nonumber \\ 
+  % \left.  + (1 - \alpha) \left(\sigma(\hat y_{i,j}))\right)^\gamma (1-y_{i,j})\log(1-\sigma(\hat y_{i,j}))    \right],
+%\end{align}
+%where $\gamma$ is a focusing weight to control the confidence; and $\alpha$ is a coefficient to set the class balance. 
+
+%Let $\sigma$ denote the sigmoid function, $y$ is the desired output, $\hat y$ is the output of the model and $i, j$ are the coordinates of the image pixels. The Focal loss \cite{focal} weights each pixel by the confidence we have in the prediction of that pixel. Moreover, to avoid benefiting the majority class (in our case, the background) relative to the minority class we apply weights to each class:
+
+
+%The optimal values obtained in \cite{focal} were $\gamma = 2$, which controls the confidence, and $\alpha=0.25$, which controls the class balance. Thus, we based our experiments around these values.
+
+The \textit{Contiguity Loss}~\cite{cont} minimizes the jaggies in the blade boundaries, forcing to detect contiguous objects:
+\begin{align}
+    \mathcal L_{c}({\hat{\mathbf{S}}}^{BU}) = \frac{1}{HW} \Big[ \sum_{h,w} \left(   \sigma(\hat s^{BU}_{h+1,w})-\sigma(\hat s^{BU}_{h,w})  \right)^2 \nonumber \\
++ \sum_{h,w} \left(    \sigma(\hat s^{BU}_{h,w+1})-\sigma(\hat s^{BU}_{h,w})   \right)^2 \Big]^{1/2} .
+\end{align}
+
+
+The \textit{Total Loss} is defined as a linear combination of the two previous losses modulated by the scalar $\lambda$:
+\begin{equation}
+\label{total_loss}
+\mathcal L = \mathcal L_{f} + \lambda\mathcal L_{c}\text{ } .
+\end{equation}
+ As the output of this block is the probability for the blade class, i.e., $\sigma(\hat{\mathbf{S}}^{BU})$, it is quantized by a threshold of 0.4.
+
+%(\alpha = 0.25, \gamma = 2)
+
+%\subsection{Hole Filling by Raül}
+%After training the model, the segmented image is enhanced through a set of post-processing steps. Let $f$ denote the BU-Net, $\mathbf{x}_{ij}$ the $j$-th image of the blade $i$-th (in each inspection, there are $M_i$ images for each blade $i$) and $f(\mathbf{x}_{ij})$ the corresponding segmented image. To enhance the robustness of the BU-Net outcome, $f(\mathbf{x}_{ij})$ is obtained by combining four predictions via soft voting. These predictions correspond to the BU-Net output of $\mathbf{x}_{ij}$, where $\mathbf{x}_{ij}$ has been rotated by $k \dfrac{\pi}{2}$ for $k=\{0,1,2,3\}$. %ensure the rotation invariance 
+
+%A blade mask is a connected component and it should be uniform. As the output of the network may present some irregularities on the blade shape,  we fill in the holes of the blade image regions using the classical operation presented in \cite{fill}. As this method is able to only fill in holes that are completely surrounded by blade pixels, we ensure that the blade image borders (pixels that lay in the image borders that correspond to blade) are identified as such, using our prior knowledge that they are continuously connected. 
+
+%As we know that the blade traverses the image, from left-to-right (horizontal orientation) or top-to-bottom (vertical orientation), we first calculate the blade orientation. It is classified as vertical (horizontal) if the accumulated gradient along the x-axis is higher (lower) than along the y-axis; we compare the absolute sum of the horizontal and vertical Sobel on the BU-Net mask. Once the orientation is identified, we can distinguish where the blade image borders are. Therefore, we ensure those borders are continuously connected by replacing the background pixels within the blade area by blade pixels.
+
+
+%------------------------------------------------------------------------
+\subsection{Hole Filling}
+\label{hole_filling}
+
+%After training the model, the segmented image is enhanced through a set of post-processing steps. Let $f$ denote the BU-Net, $\mathbf{x}_{ij}$ the $j$-th image of the blade $i$-th (in each inspection, there are $M_i$ images for each blade $i$) and $f(\mathbf{x}_{ij})$ the corresponding segmented image. To enhance the robustness of the BU-Net outcome, $f(\mathbf{x}_{ij})$ is obtained by combining four predictions via soft voting. These predictions correspond to the BU-Net output of $\mathbf{x}_{ij}$, where $\mathbf{x}_{ij}$ has been rotated by $k \dfrac{\pi}{2}$ for $k=\{0,1,2,3\}$. %ensure the rotation invariance 
+
+The estimated segmentation $\hat{\mathbf{S}}^{BU}$ still contains some non-realistic regions, including some holes. We propose a {\em hole filling} step to reduce these artifacts. Our approach is able to not only fill in the holes surrounded by blade pixels, but also when they are surrounded by the image borders. By exploiting a spatial prior, our approach relies on localizing first the blade pixels in the image boundaries, i.e., the blade-borders.
+
+
+Assuming that the blade traverses the image, we first compute the blade orientation by means of an accumulated gradient. Basically, it is classified as vertical (horizontal) if the accumulated gradient along the $x$-axis is higher (lower) than along the $y$-axis. Once the orientation is identified, we know the blade-border locations, so we can enforce their continuity by setting their pixels as blade. Finally, we proceed with the standard hole filling algorithm~\cite{fill} to obtain the output $\hat{\mathbf{S}}^{H}$. Both vertical and horizontal orientation examples are displayed in Fig.~\ref{fig:holefilling}. The hole filling step is applied twice: 1) considering as input the estimation in our BU-Net and, 2) using as input the output of our random forest algorithm that is introduced below. To differ between both hole filling estimations, we will use the notation $\hat{\mathbf{S}}^{H1}$ and $\hat{\mathbf{S}}^{H2}$, respectively. 
+
+
+%As we know that the blade traverses the image, from left-to-right (horizontal orientation) or top-to-bottom (vertical orientation), we first calculate the blade orientation. It is classified as vertical (horizontal) if the accumulated gradient along the x-axis is higher (lower) than along the y-axis; we compare the absolute sum of the horizontal and vertical Sobel on the BU-Net mask. Once the orientation is identified, we can distinguish where the blade image borders are. Therefore, we ensure those borders are continuously connected by replacing the background pixels within the blade area by blade pixels.
+
+
+
+\begin{figure}[t!] %[htb]
+\begin{minipage}[b]{1.0\linewidth}
+  \centering
+  \resizebox{8.5 cm}{!} {
+  \centerline{\includegraphics[width=8.5cm]{Figures/holefilling.png}}}
+  \vspace{-0.25cm}
+\end{minipage}
+\caption{\textbf{Hole filling representation.} First, the blade orientation is detected to identify the blade image borders (in orange). Then, holes that edge with the image borders are filled. }
+\label{fig:holefilling}
+\vspace{-0.3cm}
+\end{figure}
+%By inferring the orientation of the blade, our hole filling algorithm is capable to fill holes that edge with the image borders. Orange borders represent the identified blade image borders.
+
+
+%--------------------------------------------------------------------
+\vspace{-0.2cm}
+\subsection{Unsupervised Random Forest}
+\label{random_forest}
+
+
+Finally, we propose a simple random forest to denoise the estimation and to fix uncommon errors of a single image. The inability of previous steps to capture global context is tackled by learning which RGB pixels are usually mapped as foreground, providing a fine-grained boundary precision. To this end, we learn the mapping $\{\mathbf{I}_{i,j}\}_{j \in J} \rightarrow \{\hat{\mathbf{S}}^{H1}_{i,j}\}_{j \in J}$ given the $i$-th blade surface. This model ensembles tree estimators by averaging their probabilistic predictions to set whether a single RGB pixel and its local neighborhood is foreground:
+
+\vspace{-0.5cm}
+\begin{equation}
+\label{eq:rf} 
+P^{RF}\big(\hat s_{h,w}^{RF} \big) = \frac{1}{|RF|} \sum_{t \in RF} P^t\big( \hat s_{h,w}^{t} | \hat s_{h,w}^{H1}, \text{neighbors}(\hat s_{h,w}^{H1}) \big)\text{ } , \nonumber
+\vspace{-0.2cm}
+\end{equation}
+where $RF$ is the set of decision trees $t$. It is worth pointing out that this approach enables our algorithm to adapt to the image features of a specific $i$-th blade. Once the model is trained, it is applied to obtain the estimation $\hat{\mathbf{S}}^{RF}_{i,j}$.
+
+Lastly, we again apply a hole filling (section~\ref{hole_filling}) step to refine the solution, obtaining $\hat{\mathbf{S}}^{H2}$ as our final estimation $\hat{\mathbf{S}}$. 
+
+
+
+
+
+
+
