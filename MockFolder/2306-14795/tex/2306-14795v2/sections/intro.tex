@@ -1,0 +1,112 @@
+
+\section{Introduction}
+\label{intro}
+
+\iffalse
+	1 Why in latent space, raw motion vs latent space
+	1.1 raw motion is noised
+	use latent can denoise, smooth/stable,
+	1.2 raw motion is redundant
+	latent space => compression => avoid overfitting
+	1.3 latent is contributed on semantic information (KL-reg)
+	1.4 AMSSS motion-data can support bigger and better latent representation
+	p.s. text-to-latent vs text-to-raw data
+
+	2 Why diffusion?
+	refer to MDM or other motion diffusion
+	2.1 compare to latent-align (temos methods)
+	2.2 refer to other diffusion
+	better trainning comparing to GAN, no 模式崩塌
+	xxx
+
+	3 Why latent diffusion?
+	Fast inference ... near real-time
+	夸 stable diffusion
+\fi
+
+% (1) background on large model and multi-modal
+Recent years have witnessed a significant breakthrough in pre-trained large language models such as GPT~\cite{radford2018gpt,radford2019gpt2,brown2020gpt3,ouyang2022instructgpt}, BERT~\cite{devlin2018bert}, and T5~\cite{raffel2020t5,chung2022flant5}, which lead to the convergence of language~\cite{zhang2022opt,touvron2023llama}, image~\cite{radford2021clip,wang2022beit,li2022blip}, mesh~\cite{youwang2022clipactor,mohammad2022clipmesh} and mutlimodal~\cite{girdhar2023imagebind} modeling. Nevertheless, a general pre-trained model for human motion and language has yet to emerge. This pre-trained motion-language model, capable of supporting numerous motion-relevant tasks through prompts, should benefit diverse fields like gaming, robotics, virtual assistant, and human behavior analysis.
+
+
+% (2) Recent methods and their shortages.
+% Diffusion-based
+%    MDM  simple but efficient framework, slow
+%    MLD  fast and high quality, but 
+%    T2M-GPT also pretrain but not effective
+% text-motion method. 
+%    tm2t  transfer only
+% 
+Previous research on human motion has explored various tasks, including motion generation~\cite{petrovich21actor, Guo_2022_CVPR_humanml3d,mdm2022human,chen2023mld,zhang2023generating}, motion captioning~\cite{goutsu2021seqgan,chuan2022tm2t}, and motion prediction~\cite{yuan2020dlow,zhang2021we,ma2022multi}. 
+%
+Recent text-to-motion works\cite{mdm2022human, zhang2022motiondiffuse,petrovich22temos,chen2023mld} have attempted to employ pre-trained language-relevant models~\cite{devlin2018bert,radford2021clip}. For instance, MDM~\cite{mdm2022human} learns a motion diffusion model with conditional text tokens from CLIP~\cite{radford2021clip}, while MLD~\cite{chen2023mld} integrates motion latent space to improve the efficiency of motion diffusion process.
+%  
+On the other hand, MotionCLIP~\cite{tevet2022motionclip} and TM2T~\cite{chuan2022tm2t} concentrate on modeling the coupled relationship between motion and text description.
+%
+However, the above approaches treat motion and language as separate modalities, which often require \ct{strictly} paired motion and text data.
+% motionclip 好像与下面的不符合？
+Moreover, since the supervisions are task-specific, they can hardly generalize effectively to unseen tasks or data, as they lack a comprehensive understanding of the relationship between motion and language.
+% 
+We thus focus on \ct{building} a pre-trained motion-language model, which can generalize to various tasks and learn \ct{in-depth motion-language correlation knowledge} from more feasible motion and language data.
+
+\begin{figure}[t] 
+	\centering 
+        % \vspace{-10pt}
+	\includegraphics[width=\linewidth]{teaser.pdf} 
+ \vspace{-18pt}
+\caption{MotionGPT can address diverse motion-relevant tasks uniformly given different instructions. We provide the results on text-to-motion (the upper left), motion captioning (the bottom left), motion completion (the upper right), and the language question-to-answer (the bottom right). The left to right of motion represents the time order. Blue motion denotes the input, and yellow is the generation.} 
+\vspace{-10pt}
+	\label{fig:teaser} 
+	% \vspace{-8pt} 
+\end{figure} 
+
+
+% (3) Some challenges on human motion-relevant task
+% 1 动作数据的 连续性 和 文字语言的 连续性 是非常 接近的
+% 比如，手语本身就是一种语言的表示形式
+% 2 强调 文本 本身就可以做为动作生成相关任务的 prompts指令
+Two challenges are crucial \ct{and need to be solved} for \ct{pre-training a promising motion-language model}. The first is modeling the relation between language and motion, and the second is \ct{building} a uniform \ct{multi-task framework} that can generalize to new tasks.
+%
+% (4) Insight in MotionGPT - motion as body language, semantic information as words in the language
+Fortunately, human motion exhibits a semantic coupling similar to human language, often interpreted as a form of body language.
+% 
+Building upon this observation,% and inspired by the image domain~\cite{wang2022beit}, 
+we \ct{follow vision-language pre-training from BEiT-3~\cite{wang2022beit} to
+% that uses natural language to help understand images,
+} treat human motion as a specific foreign language. 
+% 
+By integrating motion and language data \ct{together and encoding them within} a single vocabulary, the relationship between motion and language 
+% can be learned better. 
+becomes more apparent.
+%
+Therefore, with recent significantly larger-scale language data and models, the motion-language pre-training \ct{has great potential to} improve the performance on motion tasks.
+%
+Meanwhile, this pre-training on language enables textual instructions like prompts in InstructGPT~\cite{ouyang2022instructgpt} and makes the model more versatile and user-friendly for various motion tasks.
+
+% our method
+In this work, we propose a uniform motion-language framework, namely MotionGPT, that leverages the strong language generation and zero-shot transfer abilities of pre-trained language models for doing human motion-related tasks. 
+%
+To enable MotionGPT to comprehend and generate human-like motions, we first learn a motion-specific vector quantized variational autoencoder (VQ-VAE) model to construct ``motion vocabulary'', akin to English vocabulary and then convert raw motion data into a sequence of motion tokens.
+%
+These tokens are then processed by a pre-trained language model~\cite{raffel2020t5,chung2022flant5} that learns the underlying grammar and syntax of the motion language, as well as its relationship with the corresponding textual descriptions.
+% training scheme
+To effectively integrate language and motion in MotionGPT, we design a two-stage training scheme.
+%
+We first pre-train the language model on the raw motion dataset to learn the basic grammar and syntax of the motion language.
+%
+For prompt tuning, we fine-tune the language model on an instruction dataset, which contains both textual descriptions and motion data, to learn the correlation between the two modalities.
+%
+% This second stage enables MotionGPT to perform various motion-related tasks like text-to-motion, motion-to-text and motion-caption, facilitating the seamless integration of language and motion.
+Extensive experiments demonstrate that MotionGPT achieves state-of-the-art performance on text-to-motion, motion-to-text, motion prediction, and motion in-between.
+% By treating motion as a foreign language, MotionGPT can perform multiple motion-related tasks using a single model, without compromising scalability or increasing complexity. 
+% 
+% This approach also facilitates effective generalization to new tasks and data, as the framework can learn the underlying relationships between motion and language, enabling it to generate more natural and diverse human-like motion. Overall, MotionGPT represents a promising approach to integrating language and motion for various human motion-related tasks effectively.
+
+
+
+% (6) Conclusion and contribution
+We summarize our contributions as follows: 
+(1) We propose a uniform motion-language generative pre-trained model, MotionGPT, which treats human motion as a foreign language, introduces natural language models into motion-relevant generation, and performs diverse motion tasks with a single model.
+% while also facilitating effective generalization to new tasks. 
+(2) We introduce a motion-language training scheme with instruction tuning, to learn from task feedback and produce promising results through prompts.
+%
+(3) We propose a general motion benchmark for multi-task evaluation, wherein MotionGPT achieves competitive performance across diverse tasks, including text-to-motion, motion-to-text, motion prediction, and motion in-between, with all available codes and data.

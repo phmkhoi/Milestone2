@@ -1,0 +1,109 @@
+
+
+\section{Algorithms}
+We describe the detailed algorithms for meta-training and meta-test of ProtoDiff as following Algorithm~\ref{alg:train} and~\ref{alg:test}, respectively:
+
+\begin{algorithm}[h]
+\caption{Meta-training phase of ProtoDiff. \\ \textbf{Input:} $p(\mathcal{T})$: distribution over tasks; $\theta$: diffusion parameters; $\phi$: feature extractor parameters; $T$:  diffusion steps.\\
+\textbf{Output:} $\mathbf{z}_{\theta}$: diffusion network, $f_{\phi}$: feature extractor.}
+\label{alg:train}
+\begin{algorithmic}[1]
+\REPEAT
+\STATE \text{Sample batch of tasks $\mathcal{T}^i \sim p(\mathcal{T})$}
+\FOR{all $\mathcal{T}^i$}
+\STATE Sample support and query set $\{\mathcal{S}^i, \mathcal{Q}^i\}$ from $\mathcal{T}^i$
+\STATE Compute the vanilla prototype $\tilde{\mathbf{z}}^i = f(\mathcal{S}^i)$
+\REPEAT
+    \STATE Take some gradient step on $\nabla \mathcal{L}_{\mathrm{CE}}(\mathcal{S}^i, \mathcal{Q}^i)$, updating $\phi^i$ 
+\UNTIL{$\mathcal{L}_{\mathrm{CE}}(\mathcal{S}_i, \mathcal{Q}_i)$ converges}
+\STATE Compute the overfitted prototype by using the updated $\phi^i$, $\mathbf{z}^{i, *} = f_{\phi^i}(\mathcal{S}_i)$
+    \STATE $t \sim Uniform({1...T})$
+\STATE $\epsilon = \mathcal{N}(\mathbf{0},\mathbf{1})$
+\STATE $\beta_t = \frac{10^{-4}(T-t) + 10^{-2}(t-1)}{T-1}$,$\alpha_t = 1-\beta_t$,
+$\bar{\alpha}_t = \Pi_{k=0}^{k=t} \alpha_k $
+\STATE $\hat{\mathbf{z}}_t^i = \sqrt{\bar{\alpha_t}}(\mathbf{z}^{i, *} - \tilde{\mathbf{z}}^i) + \sqrt{1-\bar{\alpha_t}^2}\epsilon$  
+\STATE Compute diffusion loss $\mathcal{L}_{\mathrm{diff}}$ with Equation (9) and the final loss $\mathcal{L}_{\mathcal{T}^i}$ with Equation (10)
+\STATE Update $\{\phi, \theta\} \leftarrow \{\phi, \theta\} - \beta \nabla_{\{\phi, \theta\}} \sum_{\mathcal{T}^i \sim p(\mathcal{T})} \mathcal{L}_{\mathcal{T}^i}$ using query data of each task.
+\ENDFOR
+\UNTIL{$f_{\phi}$ and $\mathbf{z}_{\theta}$ converges}
+\end{algorithmic}
+\end{algorithm}
+
+
+\begin{algorithm}[h]
+\caption{Meta-test phase of ProtoDiff. \\ \textbf{Input:} $\tau= \{\mathcal{S}, \mathcal{Q}\}$: meta-test task, $\mathbf{z}_{\theta}$: trained diffusion network parameters,  $f_{\phi}$: trained feature extractor network parameters, $T$:  diffusion steps.}
+\label{alg:test}
+\begin{algorithmic}[1]
+\STATE $\mathbf{z}_{T} \sim \mathcal{N}(\mathbf{0}, \mathbf{I})$
+\STATE Compute vanilla prototype $\tilde{\mathbf{z}}$ with support set $f(\mathcal{S})$
+\FOR{t=$T, \cdots$, 1}
+\STATE $\epsilon = N(\mathbf{0},\mathbf{1})$
+\STATE $\beta_t = \frac{10^{-4}(T-t) + 10^{-2}(t-1)}{T-1}$,$\alpha_t = 1-\beta_t$,
+$\bar{\alpha}_t = \Pi_{k=0}^{k=t} \alpha_k $ 
+\STATE $\mathbf{z}_{t-1} = \mathbf{z}_{\theta}(\mathbf{z}_{t}, \tilde{\mathbf{z}},t)$
+\ENDFOR
+\STATE Compute the final prediction $\mathbf{y}^q$ by with Equation (1) based on  $\mathbf{z}_0 + \tilde{\mathbf{z}}$
+\end{algorithmic}
+\end{algorithm}
+
+\section{Per-task prototype overfitting architecture}
+To enhance our comprehension of the Per-task prototype overfitting part, we propose a succinct architectural representation depicted in Figure~\ref{fig:overfit}. The initial step entails the computation of the conventional prototypes $\tilde{\mathbf{z}}$ for a meta-training task. Subsequently, Equation (1) is employed to calculate the predictions for the query sample. The backbone's parameters are subsequently updated through $I$ iterations. Through the utilization of parameters from the final iteration, we ultimately obtain the prototypes $\mathbf{z}^{*}$ that exhibit overfitting characteristics.
+
+
+\begin{figure}[ht]
+  \centering 
+\includegraphics[width=1.\linewidth] {graph/overfitted.pdf}\\
+    \caption{\textbf{Per-task prototype overfitting.}}
+    \label{fig:overfit}
+\end{figure}
+
+
+\section{Residual prototype learning architecture}
+In order to gain a more comprehensive understanding of our residual prototype learning, we have crafted a succinct architecture diagram illustrated in Figure~\ref{fig:residuals}. Our proposition involves the prediction of the prototype update, denoted as $\mathbf{z}^* -\tilde{\mathbf{z}}$, instead of directly predicting the overfitted prototype $\mathbf{z}^*$. This distinctive approach also allows us to initialize ProtoDiff with the capability to perform the identity function, achieved by assigning zero weights to the decoder. Notably, we have discovered that the amalgamation of a global residual connection and the identity initialization substantially expedites the training process. By harnessing this mechanism, we have successfully enhanced the performance of ProtoDiff in the context of few-shot learning tasks.
+
+
+
+\begin{figure}[h]
+  \centering 
+\includegraphics[width=0.7\linewidth] {graph/residual.pdf}\\
+    \caption{\textbf{Residual prototype learning.}}
+    \label{fig:residuals}
+\end{figure}
+
+
+\section{Datasets}
+
+\textbf{Within-domain few-shot.}
+For this setting we focus on 5-way 1-shot/5-shot tasks, which aligns with previous research \cite{snell2017prototypical}. The within-domain few-shot experiments are performed on three datasets: \textit{mini}Imagenet \cite{vinyals2016matching} \textit{tiered}Imagenet \cite{ren2018meta}, and  ImageNet-800~\cite{chen2021meta}.  \textit{mini}Imagenet consists of 100 randomly selected classes from ILSVRC-2012~\cite{russakovsky2015imagenet}, while \textit{tiered}Imagenet is composed of 608 classes that are grouped into 34 high-level categories. We measure the accuracy of 600 tasks randomly sampled from the meta-test set to evaluate the performance. Following~\cite{chen2021meta}, we also evaluate our model on ImageNet-800, a dataset obtained by randomly dividing the 1,000 classes of ILSVRC-2012 into 800 base classes and 200 novel classes. The base classes consist of images from the original training set, while the novel classes comprise images from the original validation set. 
+
+\textbf{Cross-domain few-shot.}
+In the 5-way 5-shot cross-domain few-shot classification experiments, the training domain is \textit{mini}Imagenet \cite{vinyals2016matching}, and the testing is conducted on four different domains. These domains are CropDisease \cite{mohanty2016}, which contains plant disease images; EuroSAT \cite{helber2019eurosat}, a collection of satellite images; ISIC2018 \cite{tschandl2018ham10000}, consisting of dermoscopic images of skin lesions, and ChestX \cite{wang2017chestx}, a dataset of X-ray images.
+
+\textbf{Few-task few-shot.}
+Few-task few-shot learning~\cite{yao2021meta} 
+challenges the common meta-training assumption of having many tasks available. We conductt experiments on four few-task meta-learning challenges, namely \textit{mini}Imagenet-S~\cite{vinyals2016matching}, ISIC~\cite{milton2019automated}, DermNet-S~\cite{Dermnetdataset}, and Tabular Murris~\cite{cao2020concept}. To reduce the number of tasks and make it comparable to previous works, we followed~\cite{yao2021meta} by limiting the number of meta-training classes to 12 for miniImagenet-S, with 20 meta-test classes. ISIC~\cite{milton2019automated} involves classifying dermoscopic images across nine diagnostic categories, with 10,015 images available for training in eight different categories, of which we selected four as meta-training classes. DermNet~\cite{Dermnetdataset}, which contains over 23,000 images of skin diseases, was utilized to construct Dermnet-S by selecting 30 diseases as meta-training classes, following \cite{yao2021meta}. Finally, Tabular Murris~\cite{cao2020concept}, which deals with cell type classification across organs and includes nearly 100,000 cells from 20 organs and tissues, was utilized to select 57 base classes as meta-training classes, again following the same approach as \cite{yao2021meta}.
+
+\section{Implementation details}
+In our within-domain experiments, we utilize a Conv-4 and ResNet-12 backbone for \textit{mini}Imagenet and \textit{tiered}Imagenet. A ResNet-50 is used for ImageNet-800. We follow the approach described in \cite{chen2021meta} to achieve better performance and initially train a feature extractor on all the meta-training data without episodic training. We use the SGD optimizer with a momentum of 0.9, a learning rate starting from 0.1, and a decay factor of 0.1. For \textit{mini}Imagenet, we train for 100 epochs with a batch size of 128, where the learning rate decays at epoch 90. For tieredImageNet, we train for 120 epochs with a batch size of 512, where the learning rate decays at epochs 40 and 80. Lastly, for ImageNet-800, we train for 90 epochs with a batch size of 256, where the learning rate decays at epochs 30 and 60. The weight decay is 0.0005 for ResNet-12 and 0.0001 for  ResNet-50. Standard data augmentation techniques, including random resized crop and horizontal flip, are applied. For episodic training, we use the SGD optimizer with a momentum of 0.9, a fixed learning rate of 0.001, and a batch size of 4, meaning each training batch consists of 4 few-shot tasks to calculate the average loss.
+%
+For our cross-domain experiments, we use a ResNet-10 backbone to extract image features, which is a common choice for cross-domain few-shot classification \cite{ye20, guo2020broader}. The training configuration for this experiment is the same as the within-domain \textit{mini}Imagenet training. 
+%
+For few-task few-shot learning, we follow \cite{yao2021meta} using a network containing four convolutional blocks and a classifier layer. Each block comprises a 32-filter 3 {$\times$} 3 convolution, a batch normalization layer, a ReLU nonlinearity, and a 2 {$\times$} 2 max pooling layer.
+All experiments are performed on a single A100 GPU, each taking approximately 20 hours.
+We will release all our code.
+
+
+\section{Visualization of diffusion process}
+The ProtoDiff method utilizes a task-guided diffusion model to generate prototypes that provide efficient class representations, as discussed in the previous section. To better understand the effectiveness of our proposed approach, we provide a visualization by Grad-Cam~\cite{selvaraju2017grad} in Figure of the diffusion process, demonstrating how ProtoDiff gradually aggregates towards the desired class prototype during meta-training.  The vanilla prototype is shown in the first row on the left, which does not exclusively focus on the \textit{guitar}. In contrast, the overfitted prototype in the second row on the left provides the highest probability for the \textit{guitar}. ProtoDiff, with the diffusion process, randomly selects certain areas to add noise and perform diffusion, resulting in a prototype that gradually moves towards the \textit{guitar} with the highest probability at t=0. Moreover, ProtoDiff with residual learning produces a more precise prototype. The comparison between these different prototypes demonstrates the effectiveness of the ProtoDiff diffusion process in generating a more accurate and informative prototype for few-shot learning tasks.
+
+
+\begin{figure*} [t!]
+\centering
+\includegraphics[width=0.99\linewidth]{graph/diff_process.pdf
+}
+\caption{\textbf{Visualization of the diffusion process.} The first row on the right shows the vanilla prototype, which does not exclusively focus on the \textit{guitar}. In contrast, the overfitted prototype in the second row on the right provides the highest probability for the \textit{guitar}. ProtoDiff randomly selects certain areas to predict during the diffusion process, with the lowest probability at the beginning time step. As time progresses,  the prototype gradually aggregates towards the \textit{guitar}, with the highest probability at t=0. In comparison, ProtoDiff with residual learning produces a more precise prototype.}
+ \label{fig:visualize}
+\end{figure*}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

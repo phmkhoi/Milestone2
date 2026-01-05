@@ -1,0 +1,326 @@
+\documentclass[times,twocolumn,final,authoryear]{elsarticle}
+\usepackage{prletters}
+\usepackage{framed,multirow}
+\usepackage[table,xcdraw]{xcolor}
+
+\usepackage{url}
+
+\usepackage{placeins}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{rotating}
+\usepackage{multirow}
+\usepackage[pdftex]{hyperref}
+\hypersetup{pdfauthor={Name}}
+
+\journal{Pattern Recognition Letters}
+
+\begin{document}
+
+\begin{frontmatter}
+
+\title{A Flyweight CNN with Adaptive Decoder for \textit{Schistosoma mansoni}'s Egg Detection}
+
+\author[inst1]{Leonardo~de~Melo~Joao\corref{cor1}}
+\ead{l228118@dac.unicamp.br}
+\author[inst1]{Azael~de~Melo~e~Sousa}
+\ead{a180784@dac.unicamp.br}
+\author[inst2]{Bianca Martins dos Santos}
+\ead{b120382@dac.unicamp.br}
+\author[inst3]{Silvio~Jamil~Ferzoli~Guimarães}
+\ead{sjamil@pucminas.br}
+\author[inst2]{Jancarlo~Ferreira~Gomes}
+\ead{jgomes@ic.unicamp.br}
+\author[inst1]{Alexandre~Xavier~Falcao}
+\ead{afalcao@ic.unicamp.br}
+\affiliation[inst1]{Institute of Computing, State University of Campinas, Campinas, 13083-872, São Paulo, Brazil}
+\affiliation[inst2]{School of Medical Sciences, State University of Campinas, Campinas, 13083-872, São Paulo, Brazil}
+\affiliation[inst3]{Institute of Computing Sciences, Pontifical Catholic University of Minas Gerais, Belo Horizonte, 30535-901, Minas Gerais, Brazil}
+
+\cortext[cor1]{Corresponding author}
+
+\begin{abstract}
+Schistosomiasis mansoni is an endemic parasitic disease in more than seventy countries, whose diagnosis is commonly performed by visually counting the parasite’s eggs in microscopy images of fecal samples. State-of-the-art (SOTA) object detection algorithms are based on heavyweight neural networks, unsuitable for automating the diagnosis in the laboratory routine. We circumvent the problem by presenting a flyweight Convolutional Neural Network (CNN) that weighs thousands of times less than SOTA object detectors. The kernels in our approach are learned layer-by-layer from attention regions indicated by user-drawn scribbles on very few training images. Representative kernels are visually identified and selected to improve performance with reduced computational cost. Another innovation is a single-layer adaptive decoder whose convolutional weights are automatically defined for each image on-the-fly. The experiments show that our CNN can outperform three SOTA baselines according to five measures, being also suitable for CPU execution in the laboratory routine, processing approximately four images a second for each available thread.
+\end{abstract}
+
+
+    \begin{keyword}
+    flyweight-cnn, object-detection, schistosoma-mansoni-detection, adaptive-decoder, flim
+    \end{keyword}
+
+\end{frontmatter}
+
+\section{Introduction}\label{sec:intro}
+ Parasitic infection is a severe problem in developing tropical countries~\cite{santos2019tf}, and schistosomiasis is one of the most frequent, with two hundred million people infected in 2019~\cite{WHO}. Schistosomiasis mansoni is the most common schistosomiasis, infecting around seven million people in Brazil alone~\cite{mds2010doenccas}. This disease is caused by \textit{Schistosoma mansoni}, a parasite trematode effectively endemic in seventy-six countries. Its diagnosis is commonly performed by visually counting the parasite's eggs in microscopy images of fecal samples.
+    
+\textit{TF-Test Quantified} technique~\cite{santos2019tf} is a recent parasitological procedure developed to facilitate the detection of \textit{S. mansoni}'s eggs. It can improve the diagnostics' sensitivity and egg counting compared to the traditional Kato-Katz exam \cite{katz1972simple}, as discussed in the literature~\cite{santos2019tf,carvalho2016tf,kongs2001unreliability}. On the other hand, the amount of fecal impurities is high since it is difficult to eliminate them while preserving the number of eggs in the microscopy slide.
+
+This work focuses on the image analysis of microscopy slides from the \textit{TF-Test Quantified} technique. Most state-of-the-art (SOTA) algorithms for object detection rely on deep neural networks, requiring large annotated sets to train models with millions of parameters (heavyweight) that demand powerful computational resources in GPUs~\cite{zaidi2022survey}. Even few-shot-learning-based models, which require a small number of training images, are heavyweight~\cite{huang2021survey}. Such models are unsuitable for automating the detection of \textit{S. mansoni}'s eggs in laboratory routines. One exam can produce thousands of images with millions of pixels, and the result should take very few minutes. Not requiring expensive GPUs to perform the diagnosis in time would also decrease the monetary cost significantly, enabling the solution for most laboratories.
+
+Constructing lightweight neural networks from weak user supervision and very few training images is possible through a recently proposed method named \textit{Feature Learning from Image Markers} (FLIM)~\cite{de2020feature}. The user indicates attention regions by drawing scribbles on training images, and the kernels of a feature extractor (a sequence of convolutional layers) are learned from those markers without backpropagation or weight initialization. Although backpropagation with annotated images might improve performance, a FLIM-based feature extractor is usually adequate as designed for classification and segmentation~\cite{sousa2021cnn, de2020feature}.
+
+The deep-learning paradigm of training a model for a highly complex problem (using datasets such as Imagenet~\cite{deng2009imagenet}, and MSCoco~\cite{lin2014microsoft}) and then specializing it for a simpler one creates oversized models that are hard to simplify. Instead, this work builds on top of FLIM to propose a methodology for creating few-shot and weakly supervised Flyweight (tiny) Convolutional Neural Networks (CNN) for detecting \textit{S. mansoni}'s eggs. The presented Flyweight CNNs combine FLIM encoders with an innovative adaptive and unsupervised single-layer decoder, that uses prior information of the image domain for estimating weights on-the-fly.
+
+For the encoder, we use \textit{FLIM-Builder}~\footnote{\url{https://github.com/LIDS-UNICAMP/FLIM-Builder}.} for learning kernels layer-by-layer, where kernel outputs are visually inspected by the network designer and manually selected to create a small and sufficient kernel set suitable for the adaptive decoder. The decoder weights the selected kernels as foreground or background dominant according to their mean activation and fixed threshold, making our decoder adapt to each input image (Figure \ref{fig:foreground-background-kernel}). By adapting the feature's roles for each image, the decoder requires less feature diversity to perform well. The decoder performs a point-wise convolution with the adaptive weights, adding activation maps from foreground kernels and subtracting activation maps from background kernels to output a single object saliency map. During training, the network designer can inspect this saliency map to assist decision-making (adding more layers or re-doing the kernel selection). The objects are detected by thresholding the map and filtering components by area. A minimum bounding box containing each component describes its position. It is important to highlight that the unsupervised and adaptive decoder is essential for enabling the kernel selection strategy proposed in this work, as presented in Section \ref{sec:method}.
+
+\begin{figure}[t!]
+    \centering
+    \begin{tabular}{c c}
+         \includegraphics[width=0.18\textwidth]{orig-foreground.png} &
+         \includegraphics[width=0.18\textwidth]{foreground-adapt.png} \\
+         \includegraphics[width=0.18\textwidth]{orig-background.png} &
+         \includegraphics[width=0.18\textwidth]{background-adapt.png} \\
+         (a) & (b) \\
+     \end{tabular}
+    \caption{The activation maps of a  kernel in two training images. (a) Original images; (b) Kernel activation maps. In the proposed adaptive decoder, the kernel is considered a foreground dominant kernel for the top image, and background dominant for the bottom one.}
+    \label{fig:foreground-background-kernel}
+\end{figure}
+
+The proposed CNNs are more closely related to saliency estimation than to object detection, but we compare them with SOTA baselines from both areas: \textit{$U^2Net$}~\cite{qin2020u2}, which uses nested U-Nets to capture object saliency in multiple scales; SelfReformer~\cite{yun2022selfreformer}, which uses a transformer backbone and a patch-based decoder with a global-context module to create high-resolution saliency maps; and  \textit{DETReg}~\cite{bar2021detreg}, a few-short-learning object detector implemented as an extension of the Detection Transformer~\cite{carion2020end}. Such baselines are heavyweight neural networks, previously trained with thousands of images and fine-tuned in the same training set used to learn our FLIM encoder.
+
+Our approach was trained from scratch (no pre-training) using only five images; it does not require pixel-wise annotation, as it was trained using only user-drawn scribbles; it is flyweight, meaning it is thousands of times smaller than lightweight models, being efficiently executed on CPU (around 200ms per image in a single thread); and it outperformed deep heavyweight methods for saliency estimation and few-shot object detection considering five metrics in our in-house \textit{Schistosoma mansoni}'s egg detection dataset. Two executions in parallel would fulfill the speed requirement for the laboratory routine. Additionally, we show kernel selection's importance and each added layer's impact in our ablation studies, and we discuss future work and improvements in the conclusion.
+
+As contributions, we present: (i) a strategy to build a FLIM encoder layer-by-layer with kernel selection; (ii) the first unsupervised and adaptive decoder for CNNs; and (iii) a novel flyweight CNN for the detection of \textit{S. mansoni}'s eggs that do not require GPU to run and outperforms large deep models. Moreover, it is suitable for CPU execution in the laboratory routine. 
+
+\section{Related Work}\label{sec:related-work}
+     Deep-learning-based object detectors often use a backbone pre-trained on the ImageNet dataset followed by fine-tuning the model with training samples of the given application~\cite{liu2020deep,huang2021survey}. Few-shot-learning-based approaches additionally pre-train the model in large object-detection datasets before fine-tuning it with a few samples for the given application~\cite{kang2019few,wu2020multi,yan2019meta}. In both cases, the backbone is pre-trained on ImageNet using a loss function suitable for classification. Alternatively, current object detectors create weak labels to adopt a self-supervised approach for object detection~\cite{bar2021detreg,o2020unsupervised,wei2021aligning,yang2021instance}. They execute an unsupervised object detector on ImageNet to create weak labels and then pre-train the model on ImageNet using the weak labels and a detection loss. Among these self-supervised approaches, the Detection with Transformer using Region priors (DETReg)~\cite{bar2021detreg} has achieved the best results on MSCOCO \cite{lin2014microsoft} -- the most popular dataset for object detection. DETReg uses Selective Search ~\cite{uijlings2013selective} to create weak labels and adopts a class-agnostic model (i.e., estimates bounding boxes around objects without class knowledge). The authors adapt the model for the expected classes by incorporating a classification head that outputs the probability of a bounding box containing a given object class. Two problems with this method concerning our application are the model's size, which comprises around 40 million parameters and requires expensive GPUs to execute, and the fixed number of bounding boxes per image, which results in many false positives --  higher the number of false positives, higher will be the processing time to classify parasites and impurities. Even though the authors state it is not required, non-maximum suppression is a solution for the second problem, but the model's size makes it unsuitable for the laboratory routine and budget.
+     
+   Class-agnostic approaches can also be implemented by combining a Salient Object Detection (SOD) method with an object classifier. SOD methods highlight objects that stand out given observer-defined salient features. The state-of-the-art approaches are based on deep learning~\cite{wang2021salient}. They usually adopt a backbone pre-trained on ImageNet, and then the model is trained on a large annotated dataset -- DUTS~\cite{wang2017learning} is the most popular with ten thousand images. Among the recent approaches, U²Net~\cite{qin2020u2} achieved state-of-the-art performance when considering a reduced number of parameters and can be trained using a small number of training images. The method proposes multiple U-shaped blocks to explore multiple scales. By reducing the image size at every step, the number of parameters can be kept low. We also evaluated the pre-published SelfReformer (SR)~\cite{yun2022selfreformer}, which has achieved the highest scores in most SOD benchmarks. SelfReformer uses the Pyramid Vision Transformer~\cite{wang2021pyramid} as its backbone for improving long-range information dependency, uses Pixel Shuffle~\cite{shi2016real} instead of pooling for keeping fine segmentation details, and frames the saliency detection problem in a patch-wise manner, which relies on a global-context branch to feed information to the local-context patch-based branch. However, both U²Net and SR are still unsuitable for our application because they also require expensive GPUs to execute in a viable time.
+   
+Our application requires a tiny model that can execute fast on multiple images without expensive GPUs. One exam may produce thousands of images with millions of pixels for object detection (eggs and impurities), followed by classification. This requirement and the absence of large annotated datasets led us to investigate Feature Learning from Image Markers (FLIM) -- a method that learns the kernels of convolutional layers from image regions indicated as relevant by the user~\cite{de2020feature}. The user draws markers on a few training images (typically two-three images per class), and the method finds the kernels by grouping patches of the same shape extracted from all marker pixels. Such kernels should activate the relevant regions of each object/class, being a suitable feature extractor for classification~\cite{de2020learning, sousa2021cnn} and segmentation~\cite{de2020feature} tasks. To the best of our knowledge, no published works have used FLIM for object detection.
+
+\section{Flyweight CNN with Adaptive Decoder}\label{sec:method}
+\begin{figure*}[t!]
+    \centering
+         \includegraphics[width=0.62\textwidth]{diagram-flyweight-learning.png} 
+    \caption{Diagram of the proposed learning strategy of Flyweight CNNs using FLIM. The network is learned layer by layer following the "Flyweight Layer Learning" steps (A), and more layers are added iteratively until the network designer decides to stop during "Architecture Learning" (B). The Flyweight Network created at the end of (B) is a concatenation of multiple Encoder Layers Learned in (A) followed by the Adaptive and Unsupervised Decoder. In the diagram, blue boxes are automatic processes, and green are interactive ones.}
+    \label{fig:training-diagram}
+    % \vspace{-0.4cm}
+\end{figure*}
+This section presents a method to construct a CNN with the designer in the learning loop. The CNN estimates saliency maps for object detection. Particularly, the CNN is flyweight and suitable for  \textit{S. mansoni}'s egg detection. Combined with a fast classification network, the solution is suitable for distinguishing between parasite and impurity, counting the number of eggs in a given exam during the laboratory routine. Our method (Figure \ref{fig:training-diagram}) involves the following steps. 
+\begin{enumerate}
+\item The designer annotates a minimal training set with scribbles in relevant parts of the images. 
+\item The kernels of the current layer are estimated by the FLIM algorithm. 
+\item The designer manually selects relevant kernels based on the visualization of their activations.
+\item A single-layer unsupervised decoder converts the output of the current encoder with the selected kernels into an object saliency map. Visualizing the saliency allows the designer to decide whether to continue the architecture learning.
+\item If the designer opts to add a next convolutional layer, steps 2 to 4 are repeated until the designer is satisfied with the architecture of the CNN. 
+\end{enumerate}
+The final CNN consists of a sequence of convolutional layers (a feature extractor as the encoder) followed by a single-layer unsupervised adaptive decoder. The network architecture is also defined by the designer. Our CNN is a flyweight and effective network with only three convolutional layers.
+    
+\subsection{FLIM - Feature Learning from Image Markers}
+    FLIM extracts image patches from marker pixels with the same shape of the kernels in a given layer. The designer can specify the number of kernels ($n_m$), with $m$ channels, per marker and the number of kernels per layer ($b_l$). Let $\mathcal{I}$ be an image, $\textit{P}$ be the set of all pixels in $\mathcal{I}$, $\mathcal{M} \subset \textit{P}$ be a marker, $\mathcal{P}(p)$ be a patch of size $j\times j\times m$ centered on $p$, and $K^*_\mathcal{M} = \bigcup\limits_{\forall p \in \mathcal{M}}{\mathcal{P}(p)}$ be all candidate kernels extracted from marker $\mathcal{M}$.
+    
+    Then, all patches are clustered using K-means in the $\mathbb{R}^{j\times j\times m}$ feature space to find $n_m$ clusters per marker. The centroid of each cluster is selected as a candidate kernel. Because the number of clusters is bigger than the number $b_l$ of desired kernels for that layer, another K-means is executed to find the $b_l$ kernels that compose the kernel bank of the current layer. Note that this process does not require a full feed through the network, allowing each layer to be built separately. Each convolutional layer contains marker-based normalization (i.e., a batch normalization using only the parameters of the markers), convolution, ReLU activation, and max-pooling~\cite{sousa2021cnn}. The above process is repeated using the same markers and output of the previous layer to estimate the kernels of the next layer.  
+    
+\subsection{Single-layer unsupervised and adaptive decoder}
+
+      Let $\textbf{I}_k(p)$ be the FLIM encoder's output activation of a kernel $k$ for a pixel $p$. We  normalize these activation values within $[0,1]$ and define $\mu_k = \frac{1}{|P|} \sum\limits_{\forall p \in P}{\textbf{I}_k(p)}$ as the mean activation of a kernel $k$. Assuming the objects of interest are considerably smaller than background structures, kernels that activate for most pixels are likely activating for background structures. So, a kernel is considered a background kernel if it has high activation values for most pixels; otherwise, it is considered a foreground kernel --- \textit{i.e.}, if $\mu_k \geq 0.5 \rightarrow k \in \mathcal{B}$, and conversely, if $\mu_k < 0.5 \rightarrow k \in \mathcal{F}$, where  $\mathcal{F}$ and $\mathcal{B}$ the subsets of foreground and background kernels in the last encoder's layer. The decoder combines the activation maps for each subset (foreground and background), creating a foreground activation map $\textbf{A}_f(p) = \frac{1}{|\mathcal{F}|}\sum\limits_{k \in \mathcal{F}}{\textbf{I}_k(p)}$, and a background activation map $\textbf{A}_b(p) = \frac{1}{|\mathcal{B}|}\sum\limits_{k \in \mathcal{B}}{\textbf{I}_k(p)}$. The two activation maps are finally subtracted to filter out false positives, creating a decoder activation score,  $\textbf{D}(p) = \textbf{A}_f(p) - \textbf{A}_b(p)$, followed by ReLU activation: \textit{i.e.,} $\textbf{D}(p) < 0 \rightarrow \textbf{D}(p) = 0$. This way, impurities with high saliency values in both maps cancel each other. The object saliency map \textbf{D} is normalized between $[0-255]$. The objects of interest are detected by binarizing \textbf{D}, using the Otsu's threshold~\cite{otsu1979threshold}, and removing components out of the expected object area. The eggs should satisfy a known area interval, then we discard components out of the interval $[0.5\%,5\%]$ of $|P|$.
+    
+    Note that our decoder is equivalent to performing a $1 \times 1 \times B$ convolution (point-wise) with kernel weights $w_k = \{-1, 1\}$, $k\in [1,B]$, followed by \textit{ReLU} activation. These weights are set for each activation map as $1$ if derived from a foreground kernel or $-1$ otherwise, making our decoder adaptive. Depending on the image, a kernel may be considered a foreground or a background kernel (Figure \ref{fig:foreground-background-kernel}). Such classification is only related to the mean activation value and does not imply the kernel has to activate the object of interest.
+
+
+\subsection{Layer-by-layer encoder construction using kernel selection}
+   
+With no backpropagation, FLIM allows the layer-by-layer construction of the encoder. After annotating the training set with scribbles, FLIM uses the image colors as the first layer's features and estimates kernels considering the annotation. Using FLIM-Builder, the network designer can visualize the activation maps of each estimated kernel and select which kernels to keep in that layer.
+       
+Two observations can guide Kernel selection: (i) foreground kernels that together activate all eggs in the training images and (ii) pairs of foreground and background kernels that activate the same impurities. Since a foreground kernel may not activate all eggs (Figure \ref{fig:foreground-background-kernel}), multiple kernels are required to satisfy observation (i). Given that our decoder subtracts foreground and background activation maps,  observation (ii) implies that both kernel types should be selected to reduce the number of false positives (Figure \ref{fig:complementary-background}). 
+
+Understanding the decoder's dynamics, the user can select a combination of foreground kernels that is enough to detect all eggs in the training images and a combination of background kernels that reduce the number of impurities to a minimum while keeping the eggs. To verify the impact of such decisions, the user can analyze the output of the decoder using the selected kernels on a validation set. 
+
+After analyzing the decoded result, if the user identifies any object lacking in the training set, another layer can be added, in which the features from the previous layer are used as input, and a new kernel selection must be performed. When satisfied, the training pipeline finishes, the Flyweight model's encoder is the concatenation of all learned layers, and its decoder is the proposed unsupervised adaptive decoder.
+
+\begin{figure}[t!]
+    \centering
+    \begin{tabular}{c c c}
+         \includegraphics[width=0.12\textwidth]{orig-comp.png} &
+         \includegraphics[width=0.12\textwidth]{foreground-comp.png} &
+         \includegraphics[width=0.12\textwidth]{background-comp.png} \\
+         (a) & (b) & (c)\\
+     \end{tabular}
+    \caption{Activation maps of a pair of foreground and background kernels for an image. (a) Original image; (b) Foreground kernel activation; (c) Background kernel activation. The egg (in the box) is activated in (b) and is not activated in (c). However, the impurity (in the ellipse) is activated in both and can be eliminated by the subtraction (c) from (b). }
+    \label{fig:complementary-background}
+\end{figure}
+
+\section{Experimental Results}\label{sec:results}
+
+\subsection{Experimental Setup}
+    \textbf{Computer Setup:} Our approach was trained and executed on an i7-7700 (CPU), while the heavyweight models used an NVIDIA RTX A6000 (GPU).
+
+    \textbf{FLIM parameters}: Our network has two convolutional layers with kernel sizes $j = 3$, no strides, number of kernels per marker $n_m = 5$ in all layers, and number of kernels per layer $b_1 = 27$ and $b_2,b_3 = 64$. We adopted atrous convolution with dilation factors $\{3,5,7\}$ for the first, second, and third layers, respectively. After ReLU, we used max-pooling with $j=3$ in the first and second layers and $j=5$ in the third one. As explained, the decoder has no parameters. The number of kernels selected for the first two layers is $10$, and $12$ for the third.
+    
+    \textbf{DETReg overlapping bounding boxes:} DETReg outputs a fixed number (30) of bounding boxes per image. For our application, that number is too high. We executed non-maximum suppression using an IoU threshold of $0.1$ due to the low chance of overlapping objects.
+    
+    \textbf{Saliency-based bounding boxes:} To estimate bounding boxes from object saliency maps, we binarize the decoded image using Otsu's thresholding~\cite{otsu1979threshold} and place minimum bounding boxes around every connected component of the binary image. For our solution, we increased the bounding boxes' width and height by $10\%$, after observing that the boxes were consistently smaller than the object. The bounding box increase did not improve the other methods.
+    
+    \textbf{Size filtering:} Because the objects of interest (Schistosoma mansoni eggs) are of a particular size, we implemented a size filter to discard bounding boxes outside the given range. The same filtering was applied to all methods.
+    
+    \textbf{Dataset}: The dataset used is proprietary and is composed of $631$ images containing \textit{S. mansoni}'s eggs. The images are annotated by specialists that provide a pixel-wise segmentation mask. The images often have a cluttered background, and fecal impurities sometimes occlude the eggs (Figure \ref{fig:quali-results}). We separated $20\%$ of the dataset for testing and $80\%$ for training and validation. We used 3-fold cross-validation in our experiments, using $1\%$ (5 images) for training and the rest for validation in each split. The test set was only executed once with the best-performing model considering the validation results of each method in all splits. The training images were selected manually to guarantee a good representation of the real problem.
+    
+    \textbf{Evalutation metrics}: We used multiple object detection metrics to evaluate our solution, which depends on the \textit{Intersection over Union} (IoU), the \textit{Precision}, and the \textit{Recall}. The \textit{IoU} is the ratio between intersection and union of the pixels of the predicted bounding boxes and the expected ones. Formally, let $bb = \{x1, x2, y1, y2\}$ be a bounding box, such that $x2 > x1, y2 > y1$. Let $\mathcal{B}$ be the set of all ground-truth bounding boxes, and $bb_p$ be a predicted box. The \textbf{IoU}($bb_p$) can be defined as:
+    
+    \begin{equation}
+        \textbf{IoU}(bb_p) = \max_{\forall bb_l \in \mathcal{B}}\{ \frac{| bb_p \cap bb_l |}{| bb_p \cup bb_l|}\}
+    \end{equation}
+    
+    Bounding boxes with $IoU > \tau$ are considered true positives, and false positives otherwise. Let $TP^{\tau}$, $FP^{\tau}$, $FN^{\tau}$ be the total number of true positives, false positives, and false negatives considering $\tau$. The precision can be described as $P^\tau = \frac{TP^\tau}{TP^\tau + FP^\tau}$, and the recall as $R^\tau = \frac{TP^\tau}{TP^\tau + FN^\tau}$.
+    
+    The metrics we used for evaluation are the Precision-Recall (PR) curve, considering the mean precision and recall on varying IoU thresholds ranging from $\tau \in [0.50, 0.55, ..., 0.95]$, the mean average precision ($\mu AP$) as proposed for MS Coco considering the same threshold range, the average precision ($AP^{\tau'}$), and the $F^{\tau'}_2$-score, considering two fixed IoU thresholds $\tau' \in \{0.5,0.75\}$. The $AP^{\tau'}$ is the Area Under the Curve (AUC) of the PR-curve in a fixed threshold, and the $\mu AP$ is the mean of all AUCs considering the threshold range. The $F_2\text{-score}^{\tau'} = (1+\beta)^{2} \frac{P^{\tau'}\cdot R^{\tau'}}{\beta^{2} \cdot P^{\tau'}\cdot R^{\tau'}}$ is the harmonic mean of average precision and recall.
+    
+\subsection{Ablation on manual kernel selection and number of layers}
+    We executed the experiments with and without kernel selection to compare both approaches' performance and model size differences. As presented in Table \ref{tab:ablation-studies}, kernel selection increased the $\mu AP$ by $0.28$ and $F^{0.75}_2$-score by $0.494$. Regarding the number of parameters, the model with kernel selection is more than 20x smaller than the full model (Table \ref{tab:model-sizes}), but the full model is still tens of times smaller than the lightweight models.
+    
+    
+    \begin{table}[htb]
+ \centering
+    \caption{Results of the proposed method with all components (FLIM), the same model but using only one ($FLIM_1$) and two ($FLIM_2$) layers, and the model without manual kernel selection ($FLIM*$).}
+    \resizebox{.45\textwidth}{!}{%
+    \begin{tabular}{l|c|c|c|c|c}
+    \hline
+    \rowcolor{gray!25}
+                            & $F^{0.5}_2 $              & $AP^{0.5}$                & $F^{0.75}_2$              & $AP^{0.75}$               & $\mu$AP \\ \hline 
+    Adaptive-$FLIM_1$       &  0.778                    & 0.456                     & 0.248                     & 0.070                     & 0.185  \\ \hline 
+    Adaptive-$FLIM_2$       &  \textcolor{green}{0.792} & 0.506                     & \textcolor{green}{0.295}  & 0.089                     & 0.199  \\ \hline 
+    Adaptive-$FLIM*$        &  0.559                    & \textcolor{green}{0.643}  & 0.136                     & \textcolor{green}{0.151}  & \textcolor{green}{0.241}  \\ \hline
+    \textbf{Adaptive-FLIM}  &  \textcolor{blue}{\textbf{0.799}}  & \textcolor{blue}{\textbf{0.929}}  & \textcolor{blue}{\textbf{0.630}} & \textcolor{blue}{\textbf{0.488}}   & \textcolor{blue}{\textbf{0.525}}  \\ \hline 
+    \end{tabular}
+    }
+    \label{tab:ablation-studies}
+\end{table}
+
+    
+\subsection{Quantitative Results}
+    Table \ref{tab:quantitative-results-splits} presents the validation-set results of all methods in all three splits. The proposed \textbf{Adaptive-FLIM} outperformed all other methods in all metrics apart from \textit{Split 1}, where U²Net had better $AP$ for all threshold values. U²Net had the highest standard deviation across splits, with a $\sigma_{\mu AP} = 0.114$, while our solution had $\sigma_{\mu AP} = 0.014$, meaning our method is more consistent and less dependent on the choice of training images.
+    
+    The model with the highest $\mu AP$ in the validation set was selected for each method. Table \ref{tab:quantitative-results-test} presents the models' results on the test set (images never before seen). Adaptive-FLIM had the best results in all metrics. DETReg had the lowest values, primarily due to lack of precision (the model output many boxes in wrong objects), as seen in the PR-curves (Figure \ref{fig:PR-curves}). Self-Reformer had competitive performance when considering a lower \textit{IoU} threshold ($AP^{0.5}, F^{0.5}_2$), but loses performance significantly when the \textit{IoU} requirement is increased; that decrease is also represented in the PR curves, and, as discussed in Section \ref{sec:qualitative-results}, it is mostly due to sub-par segmentation (represented by poorly delineated bounding-boxes). U²Net had the second-best results overall, but more components were missed, which hampered their recall values.
+    
+    Regarding model size, Table \ref{tab:model-sizes} compiles each network's number of parameters. We also present a size comparison to Lightweight Networks architectures to illustrate the difference. The proposed solution is over $17,000$ times smaller than DETReg and almost $40,000$ times smaller than Self-reformer. Compared to lightweight networks, our approach is $543$ times smaller than SqueezeNet and $1,526$ times smaller than MobileNet.
+    
+\begin{table}[htb]
+ \centering
+    \caption{Validation set results for each split considering our proposed solution (FLIM), U²Net, Self-Reformer and DETReg. The two best results for each metric in each split are highlighted in blue and green, respectively.}
+    \resizebox{.45\textwidth}{!}{%
+    \begin{tabular}{l|c|c|c|c|c}
+    \hline
+    \rowcolor{gray!25}
+    \textcolor{blue}{\textbf{Split 1}}      & $F^{0.5}_2 $              & $AP^{0.5}$                & $F^{0.75}_2$              & $AP^{0.75}$               & $\mu$AP \\ \hline
+    DETReg                                  &  0.623                    & 0.329                     & 0.523                     & 0.276                     & 0.208  \\ \hline 
+    U²Net                                   &  0.748                    & \textcolor{blue}{0.853}   & \textcolor{green}{0.579}  & \textcolor{blue}{0.661}  & \textcolor{blue}{0.544}  \\ \hline 
+    Self-Reformer                           &  \textcolor{green}{0.786} & 0.682                     & 0.161                     & 0.034                     & 0.199  \\ \hline 
+    \textbf{Adaptive-FLIM}                  &  \textcolor{blue}{\textbf{0.793}}  & \textcolor{green}{\textbf{0.676}}  & \textcolor{blue}{\textbf{0.629}}   & \textcolor{green}{\textbf{0.536}}   & \textcolor{green}{\textbf{0.457}}  \\ \hline 
+    \rowcolor{gray!25}
+    \textcolor{blue}{\textbf{Split 2}}      & $F^{0.5}_2 $              & $AP^{0.5}$                & $F^{0.75}_2$              & $AP^{0.75}$               & $\mu$AP \\ \hline
+    DETReg                                  &  0.444                    & 0.151                     & 0.397                     & 0.129                     & 0.102  \\ \hline 
+    U²Net                                   &  0.628                    & 0.518                     & \textcolor{blue}{0.513}   & \textcolor{green}{0.423}  & \textcolor{green}{0.351}  \\ \hline 
+    Self-Reformer                           &  \textcolor{green}{0.697} & \textcolor{green}{0.596}  & 0.095                     & 0.013                     & 0.167  \\ \hline 
+    \textbf{Adaptive-FLIM}                  &  \textcolor{blue}{\textbf{0.821}}  & \textcolor{blue}{\textbf{0.688}}  & \textcolor{blue}{\textbf{0.627}}   & \textcolor{blue}{\textbf{ 0.525}}   & \textcolor{blue}{\textbf{0.438}}  \\ \hline 
+    \rowcolor{gray!25}
+    \textcolor{blue}{\textbf{Split 3}}      & $F^{0.5}_2 $              & $AP^{0.5}$                & $F^{0.75}_2$              & $AP^{0.75}$               & $\mu$AP \\ \hline
+    DETReg                                  &  0.619                    & 0.273                     & 0.437                     & 0.145                     & 0.148  \\ \hline 
+    U²Net                                   &  \textcolor{green}{0.672} & 0.413                     & \textcolor{green}{0.503}  & \textcolor{green}{0.309}  & \textcolor{green}{0.265}  \\ \hline 
+    Self-Reformer                           &  0.648                    & \textcolor{green}{0.495}  & 0.097                     & 0.017                     & 0.129  \\ \hline 
+    \textbf{Adaptive-FLIM}                  &  \textcolor{blue}{\textbf{0.763}}  & \textcolor{blue}{\textbf{0.667}}   & \textcolor{blue}{\textbf{0.570}}    & \textcolor{blue}{\textbf{0.498}}   &\textcolor{blue}{\textbf{0.423}}  \\ \hline 
+    \end{tabular}
+    }
+    \label{tab:quantitative-results-splits}
+\end{table}
+
+%_--------------------------------------------------------------------------------------
+\begin{table}[htb]
+ \centering
+    \caption{Test set results considering our proposed solution with kernel selection (Adaptive-FLIM), U²Net, Self-Reformer and DETReg. The two best results for each metric are highlighted in blue and green, respectively.}
+    \resizebox{.45\textwidth}{!}{%
+    \begin{tabular}{l|c|c|c|c|c}
+    \hline
+    \rowcolor{gray!25}
+    \textcolor{blue}{\textbf{Test set}}     & $F^{0.5}_2 $              & $AP^{0.5}$                & $F^{0.75}_2$              & $AP^{0.75}$               & $\mu$AP \\ \hline
+    DETReg                                  &  0.634                    & 0.279                     & 0.421                     & 0.146                     & 0.155  \\ \hline 
+    U²Net                                   &  0.740                    & 0.531                     & \textcolor{green}{0.609}  & \textcolor{green}{0.405}  & \textcolor{green}{0.335}  \\ \hline 
+    Self-Reformer                           &  \textcolor{green}{0.747} & \textcolor{green}{0.688}   & 0.114                     & 0.024                     & 0.227  \\ \hline 
+    \textbf{Adaptive-FLIM}   &  \textcolor{blue}{\textbf{0.799}}  & \textcolor{blue}{\textbf{0.929}}  & \textcolor{blue}{\textbf{0.630}}   & \textcolor{blue}{\textbf{0.488}}   & \textcolor{blue}{\textbf{0.525}}  \\ \hline 
+    \end{tabular}
+    }
+    \label{tab:quantitative-results-test}
+\end{table}
+
+\subsection{Qualitative Results}\label{sec:qualitative-results}
+    
+    The first two rows of Figure \ref{fig:quali-results} present images where our solution detected the correct component. The last row presents a fail case, where the object of interest was not detected.
+\begin{figure}
+    \centering
+    \begin{tabular}{c c}
+        \includegraphics[width=0.19\textwidth]{split1.png} &
+        \includegraphics[width=0.19\textwidth]{split2.png} \\
+         (a) & (b) \\
+        \includegraphics[width=0.19\textwidth]{split3.png} &
+        \includegraphics[width=0.19\textwidth]{test.png} \\
+        (c) & (d)
+     \end{tabular}
+    \caption{Precision-Recall curves from splits one to three (a-c) and test set (d).}
+    \label{fig:PR-curves}
+\end{figure}
+    
+    In the first row, the object is obscured by impurities, and our method could still detect the component with a well-fitted bounding box. U²Net failed to detect the component, and SR detected it with a poorly defined bounding box. DETReg detected the object with a larger than necessary bounding box, with two additional false-positive boxes. This image is a good example of the recall loss of U²Net, the poor definition of bounding boxes by SR, and the decreased precision of DETReg.
+    
+    The second row presents an image where Adaptive-FLIM detected the object with three false positives, but U²Net and SR failed to detect it. DETReg also detected the object, but it also predicted four false positives. The last row presents an image heavily obscured by impurities where no methods were able to detect the parasite. However, FLIM did not estimate any false positives.
+    
+\begin{figure*}
+    \centering
+    \begin{tabular}{c c c c c}
+         \includegraphics[width=0.14\textwidth]{65-label.png} &
+         \includegraphics[width=0.14\textwidth]{65-flim.png} &
+         \includegraphics[width=0.14\textwidth]{65-u2net.png} &
+         \includegraphics[width=0.14\textwidth]{65-sr.png} &
+         \includegraphics[width=0.14\textwidth]{65-detr.png} \\
+         \includegraphics[width=0.14\textwidth]{22-label.png} &
+         \includegraphics[width=0.14\textwidth]{22-flim.png} &
+         \includegraphics[width=0.14\textwidth]{22-u2net.png} &
+         \includegraphics[width=0.14\textwidth]{22-sr.png} &
+         \includegraphics[width=0.14\textwidth]{22-detr.png} \\
+         \includegraphics[width=0.14\textwidth]{42-label.png}&
+         \includegraphics[width=0.14\textwidth]{42-flim.png}&
+         \includegraphics[width=0.14\textwidth]{42-u2net.png}&
+         \includegraphics[width=0.14\textwidth]{42-sr.png}&
+         \includegraphics[width=0.14\textwidth]{42-detr.png}\\
+         (a) & (b) & (c) & (d) & (e) \\
+     \end{tabular}
+    \caption{Comparison among \textbf{FLIM-Select} and the baseline methods. (a) Ground-truth, (b) \textbf{Adaptive-FLIM}, (c) U²Net, (d) Self-Reformer, (e) DETReg.}
+    \label{fig:quali-results}
+\end{figure*}
+
+
+\begin{table}[htb]
+ \centering
+    \caption{Comparison among the number of parameters of different models. The deep models presented are used in our comparisons, and the lightweight models are standard backbones used for object detection. Adaptive-FLIM* is our model without manual kernel selection}
+    \resizebox{.3\textwidth}{!}{%
+    \begin{tabular}{l | c }
+\rowcolor{gray!25}
+    \hline
+    \textbf{Deep Models}            & \#Parameters  \\ \hline
+    DETReg                          & 39.847.265\\ \hline 
+    U²Net                           & 44.009.869\\ \hline
+    Self-Reformer                   & 91.585.457\\ \hline  \hline
+\rowcolor{gray!25} 
+    \textbf{Lightweight Models}     & \#Parameters \\ \hline
+    MobileNetv2                     & 3.504.872 \\ \hline 
+    SqueezeNet                      & 1.248.424 \\ \hline  \hline 
+\rowcolor{gray!25}    
+    \textbf{Flyweight Models}       & \#Parameters \\ \hline 
+    Adaptive-FLIM*              & 53,333    \\ \hline 
+    \textcolor{blue}{\textbf{Adaptive-FLIM}} & \textcolor{blue}{\textbf{2,296}}      \\ \hline
+    
+    \end{tabular}
+    }
+    \label{tab:model-sizes}
+\end{table}
+
+\section{Conclusion}\label{sec:conclusion}
+    We presented a user-in-the-learning-loop methodology to improve FLIM-based encoders and build flyweight networks layer-by-layer with kernel selection. Using this methodology, we introduced \textbf{Adaptive-FLIM} -- a flyweight network for \textit{S. mansoni}'s egg detection using a novel unsupervised and adaptive decoder. We showed that \textbf{Adaptive-FLIM} outperformed the baselines in five object detection metrics, using only five images to train from scratch without segmentation masks while being thousands of times smaller, which is a relevant contribution towards embedded solutions for this application.  
+    
+    In future work, we intend to extend our approach to other problems, handle multi-class object detection, test architectures with more layers, and explore multi-scale feature extraction.
+
+
+\bibliographystyle{model2-names}
+\bibliography{main}
+
+\end{document}

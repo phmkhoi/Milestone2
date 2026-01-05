@@ -1,0 +1,180 @@
+
+\subsection{Implementation Setup}
+\vspace{-0.1in}
+\textbf{Baselines. }We evaluate the zero-shot performance of 5 recently released LMMs: (1) MiniGPT4; (2) MiniGPTv2; (3) InstructBLIP; (4) Multimodal-GPT (MMGPT); (5) mPLUG-Owl; (6) LLaVA; (7) LLaVA 1.5. All models above have been tuned on their collected visual instruction data. 
+
+
+\textbf{Training Details. }As for MiniGPT4, we initialize from its checkpoint of the first pretraining stage. Then we instruct-tune the model on \textit{LRV-Instruction} with the linear projection layer as the only learnable module. As for mPLUG-Owl, we train the text encoder by LoRA training. Additionally, we only replace the LLaVA dataset in their finetuning data with \textit{LRV-Instruction} to make a fair comparison with the original Mplug-Owl. We utilize MiniGPT4-7B and mPLUG-Owl-7B since we don’t have the computing resources to finetune the 13B models. We trained our models on NVIDIA Quadro RTX 8000. As for the hyper-parameters, please refer to \citep{zhu2023minigpt, ye2023mplug}.
+
+\textbf{Evaluation Benchmarks. }Apart from our proposed evaluation set, we evaluate LMMs on three public benchmarks. MME \citep{fu2023mme} is a human-annotated benchmark, measuring perception and cognition abilities on 14 subtasks. POPE \citep{li2023evaluating} and AMBER \citep{wang2023llm} are recently released datasets to evaluate object hallucination. GQA dataset~\citep{hudson2019gqa} is a public visual question-answer dataset with open-ended questions.
+
+
+% \kevin{The below question list can be removed. Repeated in Sec6.2 already}
+
+% \textbf{Research Questions. }We conduct empirical experiments to investigate the following questions: 
+% \begin{itemize}[nosep,leftmargin=*]
+%     \item \textit{Question1: "Do LMMs perform better on Positive or Negative instructions?"}. 
+%     \item \textit{Question2: "Do LMMs perform better on different formats and lengths of instructions?"}. 
+%     \item \textit{Question3: "How do LMMs perform on different semantic levels of hallucination?"}
+%     \item \textit{Question4: "How do LMMs perform on different datasets?"}
+%     \item \textit{Question5: "How do LMMs perform on different ratios of composition in training data?"} 
+% \end{itemize}
+
+\vspace{-0.1in}
+\subsection{Main Results}
+
+\textbf{\textit{How do LMMs perform on public datasets? }}We compare our model against the baseline models on POPE in Tab.\ref{tab:pope} and AMBER in Tab. \ref{tab:comparison_amber}. The results show that current LMMs may not work well with open-ended negative instructions. In contrast, the highest scores of our model demonstrate that \textit{LRV-Instruction} exhibits robustness to visual hallucination, matching or surpassing the performance of 13B counterparts. From Tab.\ref{tab:MME}, we found both finetuned LMMs on \textit{LRV-Instruction} outperform original ones in the zero-shot evaluations. Additionally, Finetuned-Mplug-Owl exceeds Finetuned-MiniGPT4 because Mplug-Owl can do the LoRA training to improve the language ability. We also calculate the accuracy on positive and negative samples of MME in the right chart of Tab.\ref{tab:MME}. The improvement in the positive samples is because {LRV-Instruction} has more diverse tasks than mPLUG-Owl datasets and MiniGPT4 datasets. The improvement in the negative samples demonstrates the value of \textit{LRV-Instruction} dataset to equip the model with the ability to say ‘no’ and provide correct answers. The completed results on shown in Tab. \ref{tab:mme_preception}.\ref{tab:mme_cog}. We further explore the LMMs' performance in the common scenario of visual question-answering (VQA). Results in Tab. \ref{tab:GQA} suggest our method (Finetuned mPLUG-Owl) achieves on-par performance with InstructBLIP in a generic VQA setting.
+
+% \textbf{Results on \textit{LRV-Instruction}. }
+\textbf{\textit{How do LMMs perform on \textit{LRV-Instruction}? }}Tab.~\ref{tab:comparison_evaluation} and Tab. \ref{tab:LRV_evaluation_more} show results on our evaluation set. Among the baselines, InstructBLIP achieves better results than other LMM baselines because its visual instructions are collected from a wide variety of publicly available datasets. LLaVA \citep{liu2023visual} utilizes the GPT-assisted approach to generate visual instructions, but its performance is much worse. This is probably because its synthetic answers from GPT4 are generally longer and may involve irrelevant information. As a comparison, our model outperforms the existing LMM baselines by a large margin, benefiting from the rich composition of our dataset and better prompt design. 
+
+%%%%%%%
+
+\begin{table}[t]
+\setlength\tabcolsep{3pt}
+\centering
+\small
+\begin{tabular}{lccccc|cc}
+\toprule[1.5pt]
+& Model& InstructBLIP-13B & LLaVA-13B & MiniGPT4-13B & mPLUG-Owl-7B &\textbf{Ours-7B}& Ours-7B-Psu \\
+\midrule
+&\textit{Accuracy} & 0.62 & 0.47 & 0.42 & 0.41 & \textbf{0.64}& 0.60\\
+\bottomrule[1.5pt]
+\end{tabular}
+\vspace{-2mm}
+\caption{
+Zero-shot evaluation on GQA. \textit{Ours-7B} means \textit{Finetuned mPLUG-Owl-7B}. \textit{Ours-7B-Psu} means we finetune mPLUG-Owl on pseudo instruction data by \citep{wu2022grit}.}
+\label{tab:GQA}
+\vspace{-0.2in}
+\end{table}
+
+
+
+
+
+
+
+
+
+
+
+% \begin{table*}[t!]\centering
+% %%%%%%%%%% subfloat a
+% \subfloat[Evaluation results on GQA dataset \citep{hudson2019gqa}\label{tab:perform11}]
+% \begin{tabular}{lcc}
+% 	\toprule[1.5pt]
+% 	Model & Training Size & Accuracy\\
+% 	\midrule
+% 	InstructBLIP & >1M & \textbf{0.62}\\
+% 	LLaVA & 150k & 0.48\\
+% 	MiniGPT4 & 3k & 0.44\\
+% 	Ours & 120k& \textbf{0.61}\\
+% 	\bottomrule[1.5pt]
+% \multicolumn{1}{c}{} \\ % space holder
+% \end{tabular}
+% \hfill
+% %%%%%%%%%% subfloat b
+% \subfloat[Results of different composition ratios in training \label{tab:perform112}]
+% \begin{tabular}{lcc}
+% 	\toprule[1.5pt]
+% 	Ratio & \textit{$Acc_p$} & \textit{$Acc_n$}\\
+% 	\midrule
+% 	\textit{All Pos} & 0.97 & 0.05\\
+% 	\textit{Pos:Neg=2:1} & 0.95 & 0.50\\
+% 	\textit{Pos:Neg=1:1} & 0.92 & 0.85\\
+% 	\textit{Pos:Neg=1:2} & 0.87 & 0.86\\
+% 	\textit{All Neg} & 0.10 & 0.98\\
+% 	\bottomrule[1.5pt]
+% \end{tabular}
+% \caption{
+% Evaluation of current LMMs on the VQA dataset and ablation study of our model
+% }
+% \vspace{-4mm}
+% \end{table*}
+
+
+
+
+
+
+
+\subsection{Detailed Analysis}
+\textbf{\textit{Does GPT4-Assisted Visual Instruction Evaluation align with Human Evaluation?}} We select three human experts specializing in the field of NLP to evaluate the predictions from LMMs with four options for the scores \textit{(1) Very Poor, (2) Poor, (3) Good, (4) Excellent}. To evaluate the results quantitatively, we assign different scores for the options: \textit{Very Poor=1, Poor=2, Good=3, Excellent=4}. More implementation details are shown in the appendix. From Tab. \ref{tab:comparison_evaluation}, all experts agree that the output from our model is the best, followed by InstructBLIP in second place, and MMGPT performs the worst. The observation aligns with the \textit{GAVIE} evaluation results. 
+
+\textbf{\textit{Is GPT4-Assisted Evaluation Stable?  }} We execute \textit{GAVIE} 5 times on each instruction and evaluate the predictions from different LMMs. We leverage \textit{Standard Deviation (STD)} to measure the stability of \textit{GAVIE}. From Tab. \ref{tab:experiments} (left), we observe that \textit{STD} ranges from 0.65 to 2.46. The \textsc{Accuracy} and \textsc{Relevancy} scores of an instance from GPT4 may vary between different times, but they always belong to the same grade level. According to completed results from Tab. \ref{tab:stability1}, \textsc{Relevancy} has four grade levels: (1) The response is completely relevant (9-10), (2) The response is mostly relevant (6-8), (3) The response is partly relevant (3-5), (4) The response is seldom relevant (0-2). \textsc{Accuracy} has four grade levels: (1) The response is completely accurate (9-10), (2) The response has minor errors (6-8), (3) The response is partly accurate (3-5), (4) The response is mostly or completely wrong (0-2).
+
+\begin{table}[t]
+\setlength\tabcolsep{3pt}
+\centering
+\small
+\begin{tabular}{lccccccc}
+\toprule[1.5pt]
+Categories& Metric&\textbf{Ours} & MiniGPT4 & LLaVA & InstructBLIP & MMGPT& mPLUG-Owl\\
+\midrule
+Neg1 & \textsc{Accuracy(GPT4)} & \textbf{8.90} & 3.72 & 2.09 & 5.50 & 1.13 & 4.20\\
+Neg2 & \textsc{Accuracy(GPT4)} & \textbf{6.50} & 2.57 & 1.42 & 2.18 & 0.96& 2.46\\
+Neg3 & \textsc{Accuracy(GPT4)} & \textbf{6.25} & 2.30 & 1.56 & 2.38 & 0.94& 2.57\\
+\midrule
+Neg1 & \textsc{Relevancy(GPT4)} & \textbf{8.96} & 5.94 & 4.83 & 7.22 & 2.24 & 5.35\\
+Neg2 & \textsc{Relevancy(GPT4)} & \textbf{8.46} & 2.53 & 1.82 & 2.73 & 1.19& 3.16\\
+Neg3 & \textsc{Relevancy(GPT4)} & \textbf{8.21} & 2.40 & 1.78 & 2.39 & 0.98& 2.87\\
+\bottomrule[1.5pt]
+\end{tabular}
+% \vspace{0.05in}
+\vspace{-2mm}
+\caption{
+Completed evaluation results on \textit{Neg1: Nonexistent Object Manipulation}, \textit{Neg2: Existent Object Manipulation} and \textit{Neg3: Knowledge Manipulation} by \textit{GAVIE}.}
+\label{tab:neg1neg2}
+\vspace{-0.1in}
+\end{table}
+
+\textbf{\textit{How do LMMs perform at the different semantic levels of hallucination? }}As shown in Tab \ref{tab:neg1neg2}, all baselines perform better on \textit{Neg1 (Nonexistent Object Manipulation)} than \textit{Neg2 (Existent Object Manipulation)} and \textit{Neg3 (Knowledge Manipulation)}. From the visual perspective, existent object manipulations with wrong attributes in \textit{Neg2} are more challenging than adding nonexistent objects from images to instructions in \textit{Neg1}. For example, in Fig. \ref{fig:neg_example}, it %is not hard 
+may be straightforward to find that the "hot air balloon" does not appear in the image. However, "woman" does exist in the second example of Fig.~\ref{fig:neg_example} while she is not in the blue pants and pink shirts, which requires a fine-grained understanding of the visual content. Therefore, a more powerful vision encoder is needed for future LMMs. Knowledge manipulation is challenging because current LMMs are finetuned on general images without specific knowledge. In contrast, our model greatly improves at all semantic levels, which benefits from our diverse instruction tuning data. 
+
+
+
+\begin{table}[t]
+\begin{subtable}[t]{0.35\textwidth}
+\small
+\begin{tabular}{lcc}
+\toprule[1.5pt]
+Metric& Accuracy-STD & Accuracy-Mean\\
+\midrule
+Ours& 2.42 & 6.60\\
+MiniGPT4& 2.46 & 3.76\\
+InstructBLIP& 2.42 & 5.29\\
+mPLUG-Owl& 1.96 & 0.87\\
+LLaVA& 2.37 & 3.80\\
+MMGPT& 0.65 & 4.84\\
+\bottomrule[1.5pt]
+\end{tabular}
+\end{subtable}
+\hspace{1.1in}
+\begin{subtable}[t]{0.4\textwidth}
+\setlength\tabcolsep{4.7pt}
+\centering
+\small
+\begin{tabular}{lcc}
+\toprule[1.5pt]
+Ratio & $Acc_{pos}$  & $Acc_{neg}$ \\
+\midrule
+All Pos & 0.97 & 0.05\\
+Pos:Neg=2:1 & 0.95 & 0.50\\
+Pos:Neg=1:1 & 0.92 & 0.85\\
+Pos:Neg=1:2 & 0.87 & 0.86\\
+All Neg & 0.10 & 0.98\\
+\bottomrule[1.5pt]
+\end{tabular}
+\end{subtable}
+\vspace{-2mm}
+\caption{(left): Evaluation of the stability of GAVIE. STD means standard deviation. Completed results are shown in Tab. \ref{tab:stability1}. (right): Results of different composition ratios in instruction tuning.}
+\label{tab:experiments}
+\vspace{-0.2in}
+\end{table}
+
+\textbf{\textit{How do LMMs perform at the different composition ratios in training data?}} In Tab. \ref{tab:experiments} (right), we investigate how \textit{LRV-Instruction} addresses hallucination issues with different ratios of positive and negative samples in the training set. Inspired by \citep{li2023evaluating}, we instruct the model to produce “Yes” or “No” and use classification accuracy on our evaluation set. \textit{$Acc_{pos}$} is the accuracy on the positive instruction set, while \textit{$Acc_{neg}$} is the accuracy on the negative instruction set. From Tab. \ref{tab:experiments} (right), we found that \textit{$Acc_{neg}$} increases with more negative samples, which verifies our hypothesis that the hallucination problem of current LMMs is due to the lack of negative instructions. Besides, with a balanced ratio (\textit{pos:neg=1:1}), the model performs the best in both positive and negative sets.
+
+\textbf{\textit{Use Pseudo Dense Captions instead of GT from Visual Genome to Generate Instructions.}} To demonstrate the scalability of our dataset, we use pseudo-dense captions generated by GRiT \citep{wu2022grit} to replace the GT captions in the Visual Genome dataset. We remove the images, whose detected objects by GRiT are less than 15 to ensure GPT4 has enough visual information when generating visual instructions. From Tab. \ref{tab:GQA}, we found finetuning on pseudo captions can also improve the performance compared to the original mPLUG-Owl. This demonstrates that our visual instruction generation method can be further scaled up without groundtruth dense captions.
+
+
+

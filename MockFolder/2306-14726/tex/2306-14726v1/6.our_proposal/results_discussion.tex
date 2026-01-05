@@ -1,0 +1,50 @@
+\subsection{VIT Performance Improvement}
+\label{sec:our_results}
+
+\textbf{\textit{Improving \base's VTI performance}}. To evaluate the effectiveness of our method in improving VIT performance, we apply our method as the post-processing step of \base (so-called \ebase). Note that all our experiments were conducted on a workstation with a P100 GPU, dual vCPUs, and 32GB RAM.
+
+After enhancement, 308 predictions in 1,055 cases are affected with an accuracy rate of 84\%. In other words, there are 260/308 predictions are accurately corrected. Table~\ref{tab:type_iden_perf} (tab \textit{After Enhancement}) shows the VIT performance of \base with the post-processing step. 
+%
+%
+%
+Compared to \base (tab \textit{Original Performance}), after applying the post-processing step, the macro-average precision increases by 6.1\%, while the macro-average recall is significantly improved by 25\%. This means that for a \vt $t$, \ebase not only identified much more the cases of $t$ (higher recall) but also is more precise in identifying $t$ (higher precision). 
+%
+Indeed, as shown in Table~\ref{tab:improv_base}, the precision of 5/8 types and recall of all types are improved. Especially, the precision for \textit{Information Gain} is improved by 37\%, while \ebase doubles the recall of \base for this type.
+
+For the micro-average in Table~\ref{tab:type_iden_perf}, the precision and recall are slightly improved by 1.4\% and 13.0\%. The reason is that for certain types, such as \textit{DoS} or \textit{Overflow}, with more cases than the other types, \base already learns better in identifying these types. Thus, \ebase did not improve \base much for those types. Consequently, micro-average metrics, which are calculated based on individual TP, FP, and FN, were not improved much. This reason explains the slight improvement in the weighted-average. 
+%
+Meanwhile, for samples-average, the improvements in the precision and recall are more significant, 12\% and 17\%, respectively. This demonstrates the effectiveness of the \ebase in improving the individual predictions of \base.
+
+\input{tables/improv_performance}
+
+The improvements in these above metrics result in the increases of all \textit{exact match ratio}, \textit{hamming score}, and \textit{accuracy} (Table~\ref{tab:type_iden_perf}).
+% (the last three rows of Table~\ref{tab:improv_base}). 
+%
+As seen, \ebase can give 3/5 fully correct predictions. Meanwhile, more than 2/3 predicted types (\textit{hamming score} of 69\%) are accurately given by \ebase. Compared to \base, both the \textit{exactly match ratio} and \textit{hamming score} of \ebase are more than 10\% better. However, the improvement in \textit{accuracy} is only 2.2\%. This is because the cases whose \vt set is small are very popular, and models tend to predict very few types. Meanwhile, \textit{accuracy} considers both labels 0 and 1 in prediction vectors and ground-truth vectors. Thus, the accuracy of \base in each case is already high. This leads to the low improvement by \ebase in \textit{accuracy}.
+
+
+\textbf{\textit{Compared to CodeBERT-based approach}}. As seen in Table~\ref{tab:type_iden_perf}, \ebase achieved better performance in all the metrics (except micro-average precision) compared to the CodeBERT-based approach. 
+For micro-average, although the precision of \ebase is slightly lower than that of CodeBERT (0.72 vs. 0.73), the improvement of \ebase in the recall is more significant (0.78 vs. 0.73). This results in an improvement in micro-average F1. Analyzing the cases where CodeBERT-based can perform well while \ebase did not, we found that these cases have quite complex logic and belong to multiple types which have a causal relationship. For example, \textit{DoS} vulnerabilities could be caused by \textit{Overflow} ones. Meanwhile, \ebase does not consider the relationship between types. Thus, although they have certain distinguishing tokens of a type, \ebase might fail to infer that a vulnerable code also has other types.
+%TODO: Example
+
+In our implementation, the preparing (prep.) step to extract distinguishing tokens and the model training step are performed in parallel. Thus, the total time for model training and preparing is still 2.48 minutes. Meanwhile, the predicting time slightly increases from 4.0 to 5.2 seconds. These time costs are much more efficient than those of CodeBERT.  
+
+
+\input{tables/effects.tex}
+
+\textit{\textbf{Overall},} we can conclude that \textit{a simple model combined with a lightweight component could achieve better VTI performance and be much more efficient than advanced deep pre-trained approaches}. This could be very meaningful for users who want to achieve both high effectiveness and efficiency in VTI.
+
+\textbf{\textit{Effectiveness in improving approaches}}. Inspired by the success of our method in improving the performance of \base, we apply the technique to enhance the other approaches. 
+%
+Table~\ref{tab:type_iden_perf} (tab \textit{After Enhancement}) shows the VTI performance of Word2vec and CodeBERT approaches after applying our method as a post-processing step. 
+Compared to their performance before enhancement (Table~\ref{tab:type_iden_perf}), the performance of all these approaches is improved. The improvements for CodeBERT are minor but still visible by up to 10\% in macro-average F1. 
+%
+The numbers of affected predictions and accuracy rates for Word2vec and CodeBERT are shown in Table~\ref{tab:effects}. As seen, the effect of the post-processing step on the Word2vec-based approach is more significant, with a higher accuracy rate compared to that of the CodeBERT-based method.
+%
+The reason could be that the advanced deep pre-trained CodeBERT can capture well certain degrees of our rules. Thus, our method was not very effective in improving the CodeBERT-based VIT approach. 
+%
+However, the improvements in all the micro-average, macro-average, weighted-average, and sample-average metrics for Word2vec are significant. Among these metrics, macro-average F1 increases by 92.8\% after applying our post-processing step. These results demonstrate that \textit{our approach is very effective in improving the VTI performance of not only \base, but also the others.}
+
+% \subsection{Discussion}
+
+\

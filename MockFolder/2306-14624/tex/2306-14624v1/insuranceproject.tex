@@ -1,0 +1,688 @@
+\documentclass[11pt]{article} % For LaTeX2e
+\usepackage{ebgaramond}
+\usepackage[preprint]{tmlr}
+\usepackage{microtype}
+% If accepted, instead use the following line for the camera-ready submission:
+%\usepackage[accepted]{tmlr}
+% To de-anonymize and remove mentions to TMLR (for example for posting to preprint servers), instead use the following:
+%\usepackage[preprint]{tmlr}
+
+% Optional math commands from https://github.com/goodfeli/dlbook_notation.
+\input{math_commands.tex}
+
+%\usepackage{tikz}
+
+\usepackage{amsmath}
+\usepackage{amsfonts} 
+\usepackage{mathtools}
+\usepackage{amsthm} % for proof environment
+
+\usepackage{hyperref}
+\usepackage{url}
+
+\usepackage{xcolor}
+\usepackage{mdframed}
+
+% better tables?
+%\usepackage{booktabs}
+
+\definecolor{mygray}{gray}{0.92}
+\definecolor{mycolor2}{RGB}{255, 250, 176}
+
+\newmdenv[backgroundcolor=mygray, linewidth=0pt]{sectionpurpose}
+
+\usepackage{xspace}
+\newcommand*{\eg}{e.g.\@\xspace}
+\newcommand*{\ie}{i.e.\@\xspace}
+\newcommand*{\ia}{i.a.\@\xspace}
+\newcommand*{\cf}{cf.\@\xspace}
+\newcommand*{\versus}{vs.\@\xspace}
+\newcommand*{\p}{p.\@\xspace}
+
+% independent rvs
+\newcommand{\indep}{\perp \!\!\! \perp}
+
+% actuarially fair predictor
+\newcommand{\actfairpred}{\hat{Y}_{\mathrm{af}}}
+
+
+
+% theorem etc environments
+\newtheorem{theorem}{Theorem}[section]       % Fixed all these to use a single numbering scheme
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{example}[theorem]{Example}
+
+%\title{Insights from the sociology of insurance
+%for fair machine learning}
+
+% Uncertainty, Fairness and Responsibility in Insurance and Machine Learning: A Bridge for Sociotechnical Scholarship
+%\title{Insurance and Machine Learning:\\ A Bridge for Sociotechnical Scholarship}
+
+\title{Insights From Insurance for Fair Machine Learning:\\ Responsibility, Performativity and Aggregates}
+%\title{Insights From Insurance for Fair Machine Learning:\\ Responsibility, Performativity and Aggregates\\ {\small draft - please do not distribute}}
+
+% Authors must not appear in the submitted version. They should be hidden
+% as long as the tmlr package is used without the [accepted] or [preprint] options.
+% Non-anonymous submissions will be rejected without review.
+
+\author{\name Christian Fröhlich \email christian.froehlich@uni-tuebingen.de \\
+      \addr Department of Computer Science\\
+      University of Tübingen
+      \AND
+      \name Robert C. Williamson \email bob.williamson@uni-tuebingen.de \\
+      \addr Department of Computer Science\\
+      University of Tübingen\\ 
+      and Tübingen AI Center
+      % \AND
+      % \name Hugo Larochelle \email hugolarochelle@google.com\\
+      % \addr Mila, Universit\'e de Montr\'eal \\
+      % Google Research\\
+      % CIFAR Fellow
+      }
+
+% The \author macro works with any number of authors. Use \AND 
+% to separate the names and addresses of multiple authors.
+
+\newcommand{\fix}{\marginpar{FIX}}
+\newcommand{\new}{\marginpar{NEW}}
+
+\def\month{MM}  % Insert correct month for camera-ready version
+\def\year{YYYY} % Insert correct year for camera-ready version
+\def\openreview{\url{https://openreview.net/forum?id=XXXX}} % Insert correct link to OpenReview for camera-ready version
+
+
+\begin{document}
+
+
+\maketitle
+
+\begin{abstract}
+% Our goal is to initiate a new interdisciplinary dialogue between two fields of research: scholarship on fair machine learning and the sociology and philosophy of insurance, which study insurance as a general technology of risk. 
+We argue that insurance can act as an analogon for the social situatedness of machine learning systems, hence allowing machine learning scholars to take insights from the rich and interdisciplinary insurance literature. Tracing the interaction of uncertainty, fairness and responsibility in insurance provides a fresh perspective on fairness in machine learning. We link insurance fairness conceptions to their machine learning relatives, and use this bridge to problematize fairness as calibration. 
+% In this process, we emphasize three themes which are largely absent in the machine learning literature:
+%In this process, we emphasize three themes which have been relatively understudied in the machine learning literature:
+In this process, we bring to the forefront three themes that have been largely overlooked in the machine learning literature: 
+%which provide broad lessons and insights for machine learning: 
+responsibility, performativity and tensions between aggregate and individual.
+
+\iffalse
+Insurance is ``boring'', or at least so the cliché says. In this paper, we argue that in fact insurance is far from boring, but a rich source of inspiration and insight to scholarship interested in socio-technical issues surrounding machine learning, specifically the field now known as fair machine learning.
+What relates insurance and machine learning on a conceptual level is the triad of uncertainty, fairness and responsibility. We link fairness conceptions from insurance, which appear in the face of uncertainty, to their machine learning relatives, specifically calibration and independence. We argue that negotiating between these two fairness notions amounts to assigning responsibility, that is, responsibilization.
+The literature on responsibility in insurance is rich and lends many inspiring examples to machine learning. By taking further inspiration from insurance, we demonstrate issues with calibration as a fairness notion. Our first argument illustrates social contingencies in responsibilization. Another set of criticism revolves around the theme of performativity. Third, we suggest that tensions betwen aggregate and individual also favour skepticism about calibration as fairness.
+\fi
+
+
+\end{abstract}
+
+\section{Introduction}
+Insurance is ``interestingly uninteresting''.\footnote{\citet{mcfall2020personalisation} call insurance ``interestingly uninteresting'', referring to how insurance is ``hugely underresearched'' given its societal importance, which is typically not recognized \citep{ewald1989versicherungs}.} 
+% Insurance is ``boring'',\footnote{\citet{mcfall2020personalisation} call insurance ``interestingly uninteresting'', referring to how insurance is ``hugely underresearched'' given its societal importance.} or at least so the cliché says. 
+In this work, we argue that in fact insurance is far from uninteresting, but a rich source of inspiration and insight to scholarship interested in social issues surrounding machine learning, specifically the field now known as fair machine learning. Our proposal is that insurance can be viewed as an analogon to machine learning with respect to these issues arising from the social situatedness. While machine learning is a relatively recent technology, debates regarding social issues in the context of insurance have been ongoing for a long time. Thus, we argue that taking inspiration from insurance can contribute to a more integrative view of machine learning systems as \textit{socio-}technical systems \citep{sociotechnical}. 
+
+Both machine learning and insurance are firmly based on a statistical, probabilistic mode of reasoning --- an \textit{actuarial} mode. Indeed, insurance can be viewed as the first commercial test of probability theory \citep{gigerenzer1989empire,mcfall2011good}. Insurance, a technology for \textit{doing risk}, transforms uncertainty into calculable risk \citep{lehtonen2014editorial}. The key idea is to share the risk of a loss in a collective, organized through an abstract mutuality; due to the law of large numbers, uncertainty thus becomes manageable and the effect of chance can be offset \citep{ewald1991insurance}. In this way, insurance creates a ``community of fate'' \citep{heimer1985reactive} in the face of uncertainty. To enter into this community (the insurance \textit{pool}), the insurer demands a certain fee, called \textit{premium}, from the policyholder.
+
+In insurance, questions of fairness inevitably arise, and have been the subject of much debate. The central point of debate is the tension between risk assessment and distribution \citep{abraham1985efficiency}. In other words, who is to be mutualized in the pool. Some form of segmentation is found in many insurantial arrangements: the pool of policyholders can be stratified by separating high and low risk individuals. But the specific nature that such segmentation takes typically depends not only on risk assessment, but on further considerations such as assignment of responsibility, modulated by social context; in this way, insurance is not a neutral technology \citep{baker2002embracing,glenn2003postmodernism}. 
+%“Insurance is not a neutral technology but a means of distributing responsibility and a site for constituting moral subjects” \citep{tanninen2020contested}.
+
+Our non-comprehensive outline of the history of insurance illustrates how uncertainty, fairness and responsibility interact, and can be entangled and disentangled. From this background, we can extract conceptual insights which also apply to machine learning.
+The tension between risk assessment and distribution is mirrored in formal fairness principles: \textit{solidarity}, which can be linked to independence in fair machine learning, contrasts with \textit{actuarial fairness}, linked to calibration. Briefly, actuarial fairness demands that each policyholder should pay only for their own risk, that is, mutualization should occur only between individuals with the same `true' risk. In contrast, solidarity calls for equal contribution to the pool.
+On one level of this text, we problematize actuarial fairness (by extension, calibration) as a notion of fairness in the normative sense by taking inspiration from insurance. This perspective is aligned with recent proposals that stress the discrepancy of formal algorithmic fairness and ``substantive'' fairness \citep{green2022escaping}, which some prefer to call \textit{justice} \citep{vredenburghfairness}.
+Parallel to this runs a distinct textual level, where we emphasize three intricately interacting themes: \textit{responsibility}, \textit{performativity}, and \textit{tensions between aggregate and individual}. All three entail criticism of actuarial fairness, but we suggest that they additionally provide much broader, fruitful lessons for machine learning from insurance.
+
+At the highest level of abstraction, our goal is to establish a general conceptual bridge between insurance and machine learning. Traversing this bridge, machine learning scholars can obtain new perspectives on the social situatedness of probabilistic, statistical technology --- we attempt to offer a new `cognitive toolkit' for thinking about the social situatedness of machine learning. Our point of view is that fairness cannot be reduced to a formal, mathematical issue, but that it requires taking broader social context into account, reasoning for instance about responsibility. And for this, we suggest, insurance is an insightful analogon.  Therefore, our objective is to furnish the reader with a guide that charts the landscape of insurance with respect to social issues and to establish links to machine learning.
+%Our aim, then, is to provide the reader with a map to the landscape of insurance with respect to social issues.
+
+On a formal level, we use the following analogy. In a machine learning task, we are given some features $X$ and associated outcomes $Y$, which we attempt to approximate by predictions $\hat{Y}$. The structural relation to insurance is established by conceiving of $X$ as the features of policyholders (\eg age, gender) with outcomes $Y$ (\eg having an accident or not), and the task is to set a corresponding premium $\hat{Y}$.
+
+
+
+
+
+
+
+\section{A Brief History of Insurance Rationalities}
+Insurance is not a monolithic technology, but rather a general principle of risk management, which is instantiated in multiple distinct forms. %\citet{ewald1989versicherungs} calls them \textit{insurantial imaginaries}.
+%For instance, one of the historically most prominent distinction for instance is between public and private (commerical) insurance. 
+Insurance and the conceptual resources it deploys are not immutable and stable over time, as exemplified by \citeauthor{baker1996genealogy}'s \citeyearpar{baker1996genealogy} study on \textit{moral hazard}, attesting to their evolving nature. 
+In this section, we provide a succinct, necessarily non-comprehensive description of three historical modes of insurantial operation: the welfare state, neoclassical economics and personalized insurance. 
+%focusing on the triad of uncertainty, fairness and responsibility. 
+Throughout, we focus on the role that uncertainty, fairness and responsibility play in each of the three modes.
+To each mode we can ascribe a set of attitudes towards these three aspects and in what manner they are entangled or disentangled.
+%Here, we are not viewing responsibility from a normative philosophical point of view but rather what individuals are enacted as being responsible for in a given societal context.
+Fairness conceptions in insurance are contingent upon prevailing societal norms, particularly stories about responsibility, but concurrently insurance shapes the moral fabric of the society it is embedded in \citep{glenn2003risk,van2006making,lehtonen2015producing}. Furthermore, fairness conceptions in insurance are historically intertwined with their accompanying (statistical) epistemologies, ways of `knowing' the risk in the face of uncertainty. A common thread is also that distinct forms of insurance correspond to distinct ways of governing society. 
+%``different modes of quantification are associated with different modes of government'' \citep{diaz2016introduction}. 
+Importantly, we do not want to suggest a linear historic progression here\footnote{See Baker's \citeyearpar[p.\@\xspace 571]{baker2000insuring} on Ewald's work for this point.} 
+--- different forms of insurance co-exist at any given time. For instance, contemporary health care systems tend to operate with the logic of the welfare state, while actuarial fairness undergirds the private insurance sector. What follows is our synthesis of the literature, particularly drawing on the works of \citet{ewald_letat_1986} and \citet{frezal2020fairness}, with a discerning focus on elucidating the intricate interplay between uncertainty, fairness, and responsibility. With this background, we are then able to extract conceptual lessons that apply also to machine learning.
+
+
+\subsection{Broad Solidarity in the Welfare State}
+In his seminal work \textit{L'Ètat providence}, \citet{ewald_letat_1986} gives an influential account of the rise of the welfare state and explicates how insurance became its prime way of government. The point of departure is the predominance of liberal reasoning, which operates with the categories of \textit{fault} and \textit{foresight} in risk management. The occurence of an accident (a damage, loss or injury) must be due to \textit{fault}, a lack of foresight. Liberal thought held individuals responsible for their own fate \citep{ewald_letat_1986} and inequalities were naturalized as just consequences of individual responsibility \citep{landes2013normative}. An accident implies a trial under the “regime of juridical responsibility”, where the goal is trying to establish the fault of one party. An accident is always
+seen as an exception, negligence, as a disturbance of harmony. Responsibility is then borne by the person who is assigned fault, who is seen as having caused the accident. In turn, voluntary charity is the preferred means of supporting the poor and unlucky. 
+With the rise of industrialization in different countries, an ``accident crisis'' unfolded roughly between 1870 and 1910 \citep{krippner2023unmasked}: the number of workplace accidents dramatically increased and there appeared a new regularity at the aggregate level, suggesting a kind of determinism in the phenomenon. This led to the \textit{objectification} of the accident and its management became a question of the collective, the \textit{social}. By objectification, we understand an act of aggregation combined with the law of large numbers. As a consequence, we find a conception of insurance as broad solidarity and the rise of the welfare states. While at the individual level it was impossible to predict \textit{who} will suffer an accident, the new regularity observed at the aggregate level could provide an effective pattern of risk management. Since equal ignorance in the fate of uncertainty was emphasized \citep{ewald_letat_1986}, 
+%(\cf \citeauthor{rawlstheory}'s \citeyearpar{rawlstheory} \textit{veil of ignorance}),
+solidarity, implying equal contribution to the pool, was considered fair. Indeed, this conception of insurance was so firmly based on the aggregate, leading \citet{ewald1991insurance} to assert that 
+%“from the point of view of insurance there is no such thing as individual risk. Risk is always social”.
+\begin{quote}
+Strictly speaking there is no such thing as an individual risk; otherwise insurance would be no more than a wager. Risk only becomes something calculable when it is spread over a population. The work of the insurer is, precisely, to constitute that population by selecting and dividing risks. [..] It makes each person a part of the whole.
+\end{quote}
+The business of insurance, then, is the constitution of abstract mutualities\footnote{Typically policyholders are unaware with whom they are mutualized, however, so this mutualization does not require a shared sense of groupness \citep{krippner2022person}.} \citep{lehtonen2011forms} and the sharing of responsibility to counteract the effect of fate.
+
+
+The epistemology of the welfare state, is one of the aggregate, the collective, the social. In this respect, it is interesting and instructive how insurance became intertwined with probability and statistics.
+%, in fact insurance can be viewed as the first market test of probability theory \citep{gigerenzer1989empire}. 
+Early forms of insurance were more like \textit{gambling}, and insurance was often accused of being immoral and faced prohibitions.\footnote{\citet{cooper2009probability} provides some examples. In 18th century London life insurance could be bought on the life of celebrities, without an insurable interest to the policyholder. In fact, the notion of an insurable interest was put forward by the insurers to counter the allegation of gambling \citep{baker1996genealogy,mcfall2018or}. Particularly interesting is also insurance in Islamic law, which prohibits gambling and contracts based on usury: the morality of insurance is justified then by emphasizing the solidaristic nature of the arrangement \citep{baker2002risk}, in contrast to the view of insurance as a bilateral contract that is more prevalent in Western societies.} Insurance gained more legitimacy when it became based on objective probability and statistics \citep[p.\@\xspace 162ff]{daston2023classical}; by the end of the nineteenth century, the morality of insurance was established \citep{baker1996genealogy}.
+The crucial conceptual move was the marriage of probability theory and statistics. While early probabilists were more concerned with reasonable subjective judgment, the nineteenth century shows an increasing shift towards ``objective calculation'' \citep{mcfall2011good}. The idea is that in a large insurance pool losses occur randomly, so the law of large numbers applies and the total loss can be predicted at the level of the aggregate. Frequentist (``objective'') probability thus combines aggregate regularity with individual irregularity, as explained by \citet[p.\@\xspace 4]{Venn1876}.
+
+The work of Alain Desrosières \citeyearpar{desrosieres1998politics} is instructive for its explication of how distinct modes of quantification are connected to distinct modes of government --- and when probability theory was applied to statistics, a new mode emerged. \citet{desrosieres1998politics} studied statistics as an ``evidencing tool and a tool of government'' and pointed out that statistics has close ties to the development of nation-states \citep{armatte2016introduction}, making credible the existence of social `facts' \citep{mcfall2011good}. He argued for a conventionalist approach, holding that statistics is at the same time conventional and real. 
+%He noted that ``social facts are not `givens' [..], since they are constructed and costly to produce''. 
+Here, we find our first hint at the \textit{performativity} of statistics (or more broadly, quantification): social `facts' require continuous work to sustain them; this work, however, tends to go unnoticed \citep{espeland2008sociology}. Also, trust in such numbers, for example for policymaking, was the result of a long process \citep{porter1996trust,mcfall2011good}.
+
+A key player in this development was Adolphe Quetelet, a Belgian astronomer, who initiated the study of ``social physics'' by attempting to discover natural laws about human behaviour.
+%, not unlike the laws governing the movement of planets.
+Quetelet's innovation was the transposition of one sense of the concept \textit{average} to a different one. Consider first the familiar aggregating sense of average, where a set of commensurate objects is summarized in a single number. A prima facie different sense of average is as the single true value of some measurement problem, from which one can obtain a set of noisy measurements. The radical conceptual move was then to transpose the second to the first sense, thereby viewing the individuals of a population as many realizations of some abstract \textit{average man} \citep{ewald1990norms,mcfall2011good}. In this way, the rates of birth, death and other social phenomena could be attributed to this fictional average man. Contemporarily, we should speak of the average human; for consistency with the literature, we stick with the term `average man'. In the context of the workplace accident and insurance, in line with the imaginary of the average man, the focus shifted from the unique, individual experience (the object of a juridical trial) to an objectification based on the average occurrence \citep{krippner2023unmasked}. With regard to how this influences the notion of personhood, \citet{dean1998risk} writes
+\begin{quote}
+    Insurance practices displace the abstract, invariant norm of a responsible juridical subject with an individuality relative to other members of an insured population, an `average sociological individuality'.
+\end{quote}
+Quetelet's fiction of the average man has made an impact on the insurance sector \citep{mcfall2011good}: identifying the individual with an average is at the core of actuarial practice.
+Indeed, the question of how individuals relate to the aggregates they make up is, as we suggest in line with \citet{krippner2023unmasked}, runs through the history of insurance. Moreover, we argue in Section~\ref{sec:aggvsind} that it is a major concern for fair machine learning, too.
+
+Although insurance increasingly relied on probability and statistics, the available quantification methods at the level of the collective severely limited the possibility of actually `knowing' the risk of an individual \citep{barry2019rationality}. With improved actuarial methods, new possibilities for segmentation of the pool have opened up, which have led also to the rise of a new fairness notion that is successively contributing to the erosion of solidarity.
+
+
+
+
+
+\subsection{Neoclassical Economics and Actuarial Fairness}
+\label{sec:neoclassical}
+A distinct mode of insurance, which undergirds contemporary (private) insurance, is based on neo-classical economics, which construes individuals as rational expected utility maximizers --- the human is viewed as a \textit{homo oeconomicus}. The assumption in this paradigm is that insurance is purchased due to risk aversity from the perspective of the policyholder, while the insurer is risk neutral. 
+%In this way, insurance combines egoism and altruism in an efficient way.
+This configuration of the individual is tied to a different notion of \textit{fairness} which constrasts starkly with the solidarity of the welfare state: \textit{actuarial fairness}. The idea is that the pure premium (i.e. what the policyholder pays before adding additional expenses such as for administration) should equal the expected risk for each policyholder. While the idea of ``equality in risk'' was around for a long time \citep{martinez2016fair}, its modern formulation is due to \citet{arrow1963uncertainty}.
+On the one hand, actuarial fairness can be understood as a purely descriptive, technical notion; but it is also advanced in literature and by insurers as a notion of \textit{fairness} in a normative sense, as legitimate practice, see for instance
+\citep{clifford1987aids,daniels1990insurability,stone2001admissions,thiery2006fairness}; Williams (as cited in \citep{miller2009disparate}) writes:
+\begin{quote}
+    An insurance rate structure will be considered to be unfairly discriminatory [..], if allowing for practical limitations, there are premium differences that do not
+correspond to expected losses and average expenses or if there are expected
+average cost differences that are not reflected in premium differences.
+\end{quote}
+% See also \citep{walters1981risk}, who argues that solidarity has no place in insurance; the premium must be ``fundamentally based upon the expected value''.
+See also \citep{walters1981risk}, who argues that the premium must be ``fundamentally based upon the expected value''.
+%[citation? it's more of a necessity than truly normative..what about this ad campaign?].
+Interestingly, actuarial fairness can be traced back to the Aristotelian consistency principle ``fairness is to treat equal people equally and unequal people unequally'' \citep{landes2015fair}, in a context where `equal' means `equal risk' \citep{martinez2016fair}. As early as 1909 in Kansas, actuarial fairness was codified in legislation \citep{miller2009disparate}, but the exact meaning of the term was subject to renegotiation over time \citep{meyers2018enacting,barry2020insurance}.
+
+
+The definition and especially the Aristotelian motivation betrays that actuarial fairness is in practice always a \textit{group-based} notion \citep{miller2009disparate}, since insurers needed (traditionally, at least) to make use of large segments for calculating expected losses. For this, actuaries choose a set of relevant variables, while ignoring others. This seems fundamentally in conflict with the idea of adjustment to the `individual risk' of the policyholder --- and indeed this was not how actuarial fairness was construed until roughly the 1970s, it remained firmly group-based \citep{barry2020insurance}.
+In line with Quetelet, \citet{thiery2006fairness} describes the logic succinctly as follows:
+\begin{quote}
+    [I]nsurance classification schemes rely on the assumption that individuals answer to the average
+(stereotypical) characteristics of a group to which they belong. 
+%[..] [I]nsurers think of the average woman and the average
+%man.
+\end{quote}
+
+Hence the justification for group-based actuarial fairness relies on assuming an ``average sociological individuality'' \citep{dean1998risk} --- each individual is assigned to a segment and is then identified with the corresponding average \citep{krippner2022person}. In this sense, we find again the logic of the welfare state but now only \textit{segmentwise}, with the aspiration to reduce solidarity between groups as much as possible, given practical constraints.
+In the terminology of \citet{lehtonen2011forms}, this means that ideally only \textit{chance solidarity} is left, which compensates for the effects of aleatoric uncertainty; in contrast, \textit{risk subsidizing solidarity} refers to a solidarity between individuals of different expected loss.\footnote{\citet{lehtonen2011forms} further mention \textit{subsidizing income solidarity}, occuring when premia are adjusted based on income; this is more like a tax than `genuine' insurance solidarity.}
+
+The role of responsibility in actuarial fairness is subtle. Actuarial fairness, when understood as a normative principle, rests on the assumption that people can be held responsible for their individual risk to some extent \citep{lehtonen2015producing}. However, we should distinguish conceptually between \textit{responsibility} and \textit{responsibilization}, that is, \textit{holding} someone responsible for something.\footnote{We use the term `responsibilization' in line with \citet{andersen2015luck}. The term originally appeared in the governmentality literature and refers to a neoliberal mode of governing that frames individuals as autonomous and responsible, see for example \citep{shamir2008age,pyysiainen2017neoliberal}.} While normative philosophical literature may be careful about this distinction, in practice it can be blurry. In fact, there are two principles that provide \textit{non-responsibility based reasons for responsibilization}  in insurance \citep{andersen2015luck}, therefore in favour of actuarial fairness: \textit{moral hazard} and \textit{adverse selection} (see Section~\ref{sec:moralhazardadverse}).
+Thus, responsibility is, in the neoclassical framework, not central to actuarial fairness \citep{landes2015fair}.
+However, the role of responsibility (more precisely, responsibility-based reasons for responsibilization) in insurance is currently being emphasized more and more. To this we turn now.
+
+
+
+
+
+\subsection{The Climax: Personalized Insurance}
+\label{sec:personalized}
+%Enter the era of personalized insurance.
+From the 1980s on, the insurance industry was increasingly challenged by anti-discrimination legislation. Social movements attacked the average man (woman) logic that insurance based its actuarially `fair' premia on. A prominent example is the campaign initiated by the National Organization for Women (NOW) \citep{krippner2022person,krippner2023unmasked}, aimed at ending gender-based risk segmentation. In line with the civil rights movement, feminists considered such underwriting (that is, risk classification) practices to be unfairly discriminatory, as they rely on group-based generalizations. Instead, they asked for a finer adjustment to \textit{individual risk}. What was under attack here is the fundamental group-based logic of actuarial fairness. The US supreme court asserted in the context of insurance that ``[e]ven a true generalization about [a] class cannot justify
+class-based treatment'' (Norris, 1983, as cited in \citet{avraham2017discrimination}). A more recent case is the \textit{ECJ Test-Achats} ruling in the EU, which highly restricts gender-based underwriting \citep{rebert2015right,cevolini2022actuarial}. 
+
+In response to such anti-discrimination legislation and in anticipation of a continuation of this trend, the practical meaning of actuarial fairness gradually began to shift --- \citet{meyers2018enacting} speak of a change in the \textit{enactment} of actuarial fairness.\footnote{See Section~\ref{sec:performativity}. We equate \textit{enactment} with `practical meaning' here only as a first approximation.} Consequently we find two highly entangled trends in the contemporary insurance industry: the \textit{individualization of risk} and \textit{behaviour-based personalization} \citep{cevolini2020pool,mcfall2020personalisation}.
+
+The individualization of risk can be understood as taking group-based actuarial fairness to the limit and (hypothetically) forming `groups of one'; instead of spreading risk over a pool, each policyholder would pay exactly for her own \textit{individual risk} \citep{cevolini2020pool}. In terms of solidarity, this implies a complete erosion of subsidizing risk solidarity, so that ideally only chance solidarity remains. Rephrasing this, what is now being emphasized is the non-homogeneity within previous groups of policyholders \citep{barry2020insurance}.
+To this end, insurers begin to shift the focus from attributes which are considered uncontrollable (\eg gender, race)\footnote{While the case of gender demonstrates that what is considered controllable can change, for insurance purposes, gender is arguably still uncontrollable.} to controllable, dynamic data about the individual, and adjust premia accordingly, yielding behaviour-based personalization. Of course, the hope is that behaviour is closely linked to the individual risk, otherwise personalization would hardly be reasonable; in this way individualization and personalization are correlated.\footnote{One would (in most contexts) not try to personalize premia based on the binary feature `having attached earlobes'.} 
+%Taking a broader perspective, individualized insurance is aligned with the phenomenon of \textit{datafication}, the increasing quantification of qualitative aspects of life \citep{mayer2013big,ruckenstein2017datafication}.
+
+Personalization is linked to \textit{InsurTech}, that is, technology-driven innovation in insurance \citep{mcfall2020personalisation}. A prominent example is the use of wearable devices such as fitness trackers in health insurance \citep{lupton2016diverse,mcfall2019personalizing}, where discounts and rewards are supposed to incentivize ``healthy behaviour''. In car insurance, the use of telematics is gaining popularity \citep{verbelen2018unravelling,meyers2018enacting,cevolini2022actuarial}, where a small device installed in the car dynamically provides information about driving behaviour from proxy variables such as speed to the insurer, as well as feedback to the policyholder. Here, the premium is continuously adjusted to behaviour, which contrasts with previous static underwriting. In both examples, the premium is supposed to act \textit{on} the behaviour with the aim of loss prevention \citep{mcfall2018or}; this opens up the possibility for feedback loops. In other words, the premium is \textit{performative} --- see Section~\ref{sec:performativity}.
+
+
+
+% What then is the accompanying epistemology, the attitude towards uncertainty, associated with the shift towards individualization and personalization? The aim is to tailor the premium to the ``true individual risk'', 
+The accompanying epistemology associated with the shift towards individualization and personalization is the aim to tailor the premium to the `individual risk' 
+and it is assumed that a combination of big data (often behavioural, with a fine temporal resolution) and machine learning enables `knowing' this risk \citep{cevolini2020pool}. Hence, in this currently unfolding chapter, machine learning enters into a dynamic interaction with insurance; we expect conceptual lessons to flow in both directions in the future (compare also \citep{williamson2004dynamic}); in this paper, however, we specifically focus on lessons from insurance for machine learning. \citet{barry2019rationality} describes the new epistemology as follows:
+%\footnote{Insurance scholar \citet{barry2019rationality} does not write specifically about insurance in this specific work, but offers a general Foucauldian view on predictive analytics.}
+\begin{quote}
+    Hence what was once considered as `noise,' the
+individual specificities that had to be averaged out by statistics, is now the core of the
+analysis and the focus of the new knowledge.
+\end{quote}
+% \begin{quote}
+%     Hence what was once considered as `noise,' the
+% individual specificities that had to be averaged out by statistics, is now the core of the
+% analysis and the focus of the new knowledge. The aim is not to give broad descriptions of
+% classes of people; [..] It is rather to find people 'like \textit{you};' [..] \newline [emphasis in original].
+% \end{quote}
+The upshot, according to \citet{barry2019rationality}, is the ``deconstruction of the aggregate viewpoint that produced collectives''. Commentators speak of emerging ``segments of one'' \citep{prainsack2020shifting}. 
+
+The individualization and personalization of risk is associated with a shift in fairness: actuarial fairness is taken to the limit and now clearly carries a normative flavour based on a linkage to  \textit{responsibility}. We call this utopia of individual risk adjustment \textit{perfect actuarial fairness}, to demarcate it from practical, group-based actuarial fairness. Reviving pre-Welfare liberal thought, individual responsibility is stressed \citep{dean1998risk}. For example, \citet{ericson2000moral} document a shift in the concept of accident; the new rhetoric, speaking of a ``crash'' in the case of a car accident, underscores that \textit{someone must be at fault} and thus responsible. Without taking a philosophical stance on actual responsibility, the trend is one of the \textit{responsibilization} of the individual. Even in the context of health insurance, individuals face such responsibilization \citep{van2006making,prainsack2020shifting}. For example, self-tracking favours a view of individuals as ``managers'' of their health \citep{lupton2016diverse,sharon2017self}. Overall, responsibilization is linked to neoliberal modes of government \citep{dean1998risk,ericson2000moral,meyers2018enacting}.
+
+As a consequence, many commentators argue that personalization undermines solidarity \citep{Rosanvallon2000-ROSTNS-2,prainsack2020shifting,barry2020insurance,cevolini2020pool}; For instance, \citet{swedloff2014risk} claims that big data is in contradiction to the risk-spreading mechanism of insurance and \citet{martinez2016fair} observe that, when taken to the extreme, actuarial fairness contradicts the very logic of insurance.\footnote{Some argue that there is no place for risk subsidizing solidarity in insurance, that insurance is concerned only with chance solidarity. However, the conceptual distinction between these forms of solidarity is unclear and rather heuristic \citep{frezal2020fairness}; \cf also the discussion in Section~\ref{sec:aggvsind} on individual risk.} When risk spreading disappears, insurance becomes more like personal saving. With respect to distributive consequences, the individualization of risk has been ``profoundly inegalitarian'' \citep{armstrong2005equality}. The highest-at-risk individuals can even face exclusion from the pool \citep{lehtonen2015producing,cevolini2020pool}.
+
+In summary, we have described three broad modes of insurance and their associated attitudes towards uncertainty, fairness and responsibility. We now investigate multiple dimensions of responsibility and then establish a link to fair machine learning, where we argue that reflections on responsibility should be foregrounded.
+
+
+
+\section{Responsibility}
+Insurance actively constructs and distributes responsibility \citep{baker2002risk}; the boundaries of individual responsibility are drawn by accounting for some factors but not for others in the premium. 
+%We argue that responsibility also deserves more attention in fair machine learning and that it is instructive to take inspiration from insurance. 
+Adding to the terminology of \citet{landes2015insurance}, we distinguish four dimensions of responsibility: causal (\textit{who is causally responsible for the accident?}), control-based (\textit{who could control the happening?}), moral (\textit{who is normatively responsible?}) and material (\textit{who bears the consequences?}). By responsibilization we understand holding individuals responsible, with an emphasis on the material dimension, a social process which includes stories about causal, control-based and moral dimensions of some phenomenon. What is distinctive about insurance as a technology of risk management is the tendency to separate these dimensions \citep{landes2015insurance}. However, we have observed a recent trend towards a renewed entanglement when compared to the mode of the welfare state. In particular, the notion of actuarial fairness has been increasingly linked to responsibility in contrast to mere non-responsibility based responsibilization.
+
+
+What is intriguing is also how the entanglement of uncertainty and responsibility has changed historically. A thick veil of ignorance, when the individual level remains out of reach, appears to favour a collective responsibility for risk management; when this veil is gradually lifted, it seems easier to assign responsibility to individuals \citep{frezal2020fairness,barry2020insurance}. Note however, that this is not a necessity: `knowing' individual risk (to some extent) does not necessarily imply that individuals are morally responsible or that we should hold them materially responsible (see Section~\ref{sec:contingencies}).
+
+Responsibility is moreover deeply intertwined with personhood \citep{mcfall2018or,moor2018price}, \textit{what it means to be a person}, when we suppose that responsibility requires autonomous agency. It is never the whole of a person that a premium is attached to in insurance, but just specific aspects of it, deemed relevant in the present context \citep{mcfall2018or}. In this way, a person is transformed into an insurance risk \citep{van2014politics}; rather than the starting point, personhood here is the outcome of a social process \citep{mcfall2018or}. Traditionally, insurance operates with a conception of personhood as average sociological individuality \citep{dean1998risk,krippner2022person} --- ``most actuaries
+cannot think of individuals except as members of groups'' \citep{brilmayer1979sex} --- see the discussion in Section~\ref{sec:aggvsind}. In behaviour-based, personalized insurance, this picture is radically altered: rather than viewing an individual \textit{as a member} of a certain social-demographic group (implying temporal stability), the gaze now dynamically turns on context-specific behaviour (\eg driving behaviour)  \citep{moor2018price,mcfall2018or,lury2019algorithmic}.  As a consequence, some suggest that the policyholders' autonomy is under attack \citep{tanninen2020contested}. 
+%We will revisit the shifting conception of personhood in the context of tensions between aggregate and individual in Section~\ref{sec:aggvsind}.
+
+
+
+
+
+
+
+\subsection{Causality and Control}
+\label{sec:causalitycontrol}
+Causality has received major attention in recent machine learning research and is also widely discussed in the literature on insurance. A highly related, but subtly distinct notion is that of control --- indeed, the recent trend of responsibilization can to some extent be explained as a response to legislation that prohibits differentiating premia based on variables beyond individual control \citep{meyers2018enacting}.
+While actuarial practice is correlation-based, causality and control are emphasized by legal commentators on insurance discrimination (see \eg \citep{abraham1985efficiency,gaulding1994race,avraham2013understanding,avraham2017discrimination}). For example, \citet{avraham2017discrimination} demands that a variable used for calculating premia must be both causally linked to the risk \textit{and} within individual control. Why demand a causal relationship? If a variable is merely non-causally correlated with risk, then it is a proxy for another variable, which should be used in its place in order to avoid differential inaccuracy \citep{avraham2013understanding}.
+
+Another argument is that causality is necessary for control, and that in fact control is at the heart of many controversies. We understand ``$X$ causes $Y$'' as ``intervening on $X$ changes $Y$'', and we understand an intervention (setting the value of $X$) as hypothetical control. In contrast, when we speak of controllability, we mean that a feature can \textit{actually} be controlled by the policyholder --- for example, we might say that race causes some $Y$ and imagine intervening as hypothetical control,\footnote{We leave open whether this is even hypothetically possible in this case.} yet race is beyond individual control. Observe that 
+without a causal relationship to the risk, a variable cannot be controllable in a way that controls the risk, otherwise it \textit{would} be causally related. The importance of control then derives from responsibility: how could an individual be responsible (in the moral and perhaps in the material sense) for a variable which is beyond control \citep{abraham1985efficiency}? Mere causality seems insufficient for this. Hence, we view causality as the conceptual entry point to get at control. Moreover, control is key for downstream effects, as we discuss in Section~\ref{sec:performativity}. From a normative perspective on responsibility, the importance of control (or more precisely, choice) is emphasized in theories of \textit{luck egalitarianism}, often discussed as a justification of risk classification \citep{knight2013luck,lippert2015genetic,huseby2016can,bjork2020better}.
+
+Conversely, control is arguably not \textit{sufficient} for responsibility. %\citet{abraham1985efficiency} gives the example of drivers with a congenitally slow reaction time, which may cause accidents, but is clearly beyond control.
+For instance, control without causality can yield `discrimination by proxy': in \citet{swedloff2014risk}'s hypothetical example, liking Vampire novels (arguably within control) is correlated with risky behaviour, but in a non-causal way. This suggests that here a controllable variable works as a proxy for a potentially non-controllable one such as gender. To further complicate matters, the argument by \citet{hu2020s} demonstrates that a conflict may arise when a seemingly controllable stands to a non-controllable variable such as gender in a \textit{constitutive} relation;\footnote{For constitutive relations, see also the discussion on performativity in Section~\ref{sec:performativity}.} responsibilizing for the controllable variable then effectively leads to responsibilization for the non-controllable one, too.
+
+In the context of (fair) machine learning (see Section~\ref{sec:fairmllink}), causality has received much attention, but due to the previous considerations we suggest putting reflections on control-based responsibility at the center. This implies shifting the focus to downstream (`performative') effects of deploying a machine learning system, since consequences of responsibilization are linked to control (see Section~\ref{sec:performativity}). Problematically, however, what is under control is itself a normative question as we illustrate now.
+
+
+
+\subsection{Social Contingencies in Responsibilization: What Is Under Control?}
+\label{sec:contingencies}
+The distinction of \textit{control vs. no-control} plays a major role in justifying the responsibilization of individuals, and thus actuarial fairness in the mode of personalization.\footnote{Recall that in the neoclassical mode, the question of control is disregarded, but it is emphasized in the mode of personalization.} Here we illustrate with examples from insurance that this dichotomy is a slippery one, however, and thus provides only a shaky basis for actuarial fairness. The question of whether a variable is within individual control is often unclear and thus insurance scholars have argued that it is a normative question \citep{abraham1985efficiency,gaulding1994race}. 
+%%%% commented this out
+% Causality is a similarly elusive concept, so that we should rather speak of \textit{causal stories} \citep{stone1989causal}. For instance, does male sex cause a shorter lifespan or is it merely correlated with it?
+
+
+An instructive example is risk classification based on smoking in life insurance. It was only in the 1980s that life insurance companies widely started to differentiate premia with respect to smoking, even though it was already known in the 1960s that the associated difference in lifespan is substantial --- the decision \textit{not} to responsibilize depended on the social acceptability of smoking \citep{wilkie1997mutuality,glenn2003risk}. Today, `lifestyle'-based responsibilization increasingly plays a role in insurance and smoking is considered a prime example for a variable within individual control \citep{van2006making,van2007genetic}. We should thus pay close attention to shifting societal narratives about control and responsibility.
+%Thus the story about responsibility has shifted, one
+A contrasting example is the case of the human immunodeficiency viruses (HIV) in underwriting practices, which \citet{daniels1990insurability} explicitly contrasts with the (previous) neglect of smoking as a rating variable. \citet{daniels1990insurability} discusses a widespread denial of health insurance coverage for individuals with HIV with a justification based on actuarial fairness. However, \citet{daniels1990insurability} suspects that homophobia and social antipathy to drug users may play a role in this, favouring responsibilization for risky `lifestyle', conceived as controllable.
+
+Underwriting based on `lifestyle' risks can be most starkly contrasted with the use of genetic information in health and life insurance, which is now tightly regulated in some countries \citep{van2018genomics} albeit welcomed by the industry \citep{rechfeld2016personalised}. The notion that ``we are all carriers of genes'' has successfully invoked a solidaristic imaginary in this context \citep{van2007genetic}: many argue that nobody should be penalized for their genes, since they are clearly beyond individual control. Here, a `genetic veil of ignorance' is mobilized in the debate. This has even given rise to the paradigm of \textit{genetic exceptionalism}, holding that genetic information is normatively distinct from other medical information (for a critique see \citep{lippert2015genetic}). In the context of genetic information, solidarity is thus emphasized \citep{liukko2010genetic}, but this has on the other hand contributed to a responsibilization of `lifestyle' risk which continues to justify actuarial fairness \citep{van2018genomics}. 
+
+The previous examples illustrate that stories about responsibility are contingent upon a web of stories and normative judgements, with control playing a major role --- even when a causal relationship is accepted, an often problematic matter in itself. This provides a new lens on the \textit{fairness} of actuarial fairness, demonstrating that actuarial calculations are not `objective and neutral', a point which we further develop in Section~\ref{sec:performativity}.
+%We take this to show the problematic character of actuarial fairness as a notion of fairness in a normative sense. 
+While our examples are from insurance, we want to transport conceptual insights to machine learning.
+
+
+
+
+
+\section{The Link to Fair Machine Learning}
+\label{sec:fairmllink}
+%Our aim is to take insurance as an analogy to study problems arising from the social situatedness of machine learning. 
+In recent years, as machine learning is increasingly being deployed in sensitive domains, the field of \textit{fair machine learning} has flourished \citep{barocas-hardt-narayanan,mitchell2021algorithmic,mehrabi2021survey,castelnovo2022clarification}. Different mathematical formalizations of fairness have been proposed in the literature; we here focus on statistical, group-based definitions. 
+As is common in the literature we fix a probability space, for simplicity assumed finite, where we define the following random variables: $X \in \mathcal{X}$ represents the features of the individuals under consideration, $Y$ represents the true outcomes associated with those individuals, $\hat{Y}$ represents the predictions generated by our model, and $S \in \mathcal{S}$ represents a `sensitive feature'\footnote{In the fair machine learning literature, a sensitive feature relates to membership in a socially salient group, for instance based on gender, race or religion.} related to the individuals. We assume that $S$ can be perfectly predicted from $X$, \eg $X=(\tilde{X},S)$ for some $\tilde{X}$.
+% $X$ representing features, $Y$ representing true outcomes, $\hat{Y}$ representing predictions and $S$ representing a ``sensitive feature''. 
+For simplicity, we assume binary $Y \in \{0,1\}$ and probabilistic scores $\hat{Y} \in [0,1]$. For example, in a credit lending scenario, $X$ contains features such as age, income etc., $S$ could represent gender in a binary way,\footnote{A choice which might be criticized, but is a standard example in the literature.} $Y$ indicates whether an individual defaulted or not and $\hat{Y} \in [0,1]$ represents the probabilistic prediction of the model. Group-fairness definitions are often based on binary decisions, but for the analogy with insurance we use probabilistic scores: we intuitively think of $Y$ as representing the true outcome (an accident, damage or loss) and $\hat{Y}$ as representing the premium that the insurer (by analogy, the ML engineer) demands for shouldering the risk of the uncertain outcome $Y$. By $\indep$ we denote statistical independence of random variables.
+
+\begin{definition}
+\label{def:independence}
+    A model satisfies \emph{independence} if \thinspace\thinspace $\hat{Y} \indep S $.
+    % \Leftrightarrow \E[\hat{Y}|S=s]=\E[\hat{Y}|S=s']$ $\forall s,s' \in \mathcal{S}
+    % \begin{equation}
+    %     \hat{Y} \indep S 
+    % \end{equation}
+\end{definition}
+If, for instance, $S$ represents gender, independence demands that the distribution of scores is the same for women and men. Independence starkly contrasts with calibration.
+
+% \begin{definition}
+%     A model satisfies \emph{sufficiency} if \thinspace\thinspace $Y \indep S \mid \hat{Y} $.
+%     % \Leftrightarrow \E[Y|S=s,\hat{Y}=\hat{y}]=\E[Y|S=s',\hat{Y}=\hat{y}]$ $\forall s,s' \in \mathcal{S}$, $\forall \hat{y} \in [0,1]
+% \end{definition}
+
+% The intuition for sufficiency is better grasped by relating it to calibration within groups, of which it is in fact a consequence.
+\begin{definition}
+\label{def:calibrationwithingroups}
+    A model satisfies \emph{calibration within groups} with respect to $S$ if 
+    \begin{equation}
+        \E[Y \mid S=s, \hat{Y}=\hat{y}] = \hat{y}, \quad \forall s \in \mathcal{S} \thinspace \thinspace \forall \hat{y} \in [0,1].
+    \end{equation}
+\end{definition}
+
+% We view calibration, not sufficiency, as the fundamental notion here.\footnote{Sufficiency is subject to the \textit{levelling-down} criticism. We think that the underlying motivation behind sufficiency actually comes from matching predictions to ``true'' probabilities.} 
+As a fairness criterion, calibration embodies the aim of matching our probabilistic predictions well to the true outcomes. If our model predicts a probability of $p$\% for defaulting, then indeed $p$\% should default if our model is adequate. 
+A finer variant, called \textit{multi-calibration}, has recently received much attention in the machine learning literature, which replaces the grouping based on a single sensitive attribute by a variety of groups. 
+%Let $\mathcal{X}$ be the input-space, so that $X$ takes values in $\mathcal{X}$. 
+Assume an input-based set of groups, \ie $\mathcal{G} \subseteq 2^{\mathcal{X}}$, with $2^{\mathcal{X}}$ denoting the powerset.
+\begin{definition}
+\label{def:multicalibration}
+    A model satisfies \emph{multi-calibration} with respect to $\mathcal{G}$ if 
+    \begin{equation}
+        \E[Y \mid X \in G, \hat{Y}=\hat{y}] = \hat{y}, \quad \forall G \in \mathcal{G} \thinspace \thinspace \forall \hat{y} \in [0,1].
+    \end{equation}
+\end{definition}
+Recently, \citet{holtgen2023richness} have demonstrated that in fact calibration is a richer notion than typically assumed. While they focus on the case of finite data, we present a corresponding theoretical definition. Assume again some set of groups $\mathcal{G} \subseteq 2^{\mathcal{X}}$. Calibration can then be defined based on this choice of groups.
+\begin{definition}
+\label{def:calibrationtheo}
+A model satisfies (theoretical) calibration with respect to a set of groups $\mathcal{G}$ if:
+    \begin{align}
+\forall G \in \mathcal{G}: \E[(\hat{Y}(X)-Y)|X \in G]=0
+\end{align}
+\end{definition}
+While this looks deceptively similar to Definition~\ref{def:multicalibration}, it abstracts away from the prediction-based binning of the unit interval; that calibration uses prediction-based binning is partly due to historical reasons \citep{holtgen2023richness}.
+To gain intuition, it is instructive to consider what this means in the case of finite data.
+Assume a finite dataset $(X_1,Y_1),..,(X_n,Y_n)$ with associated predictions $\hat{Y}(X_1),..,\hat{Y}(X_n)$. 
+%For ease of exposition, assume an i.i.d. dataset $(X_1,Y_1),..,(X_n,Y_n)$ with associated predictions $\hat{Y}(X_1),..,\hat{Y}(X_n)$. 
+A set of groups is then equivalent to choosing a subset of the data, \ie a set $\mathcal{G} \subseteq 2^{\{1,..,n\}}$.
+%$\mathcal{G}$, where $G \subseteq \mathcal{J}$ $\forall G \in \mathcal{G}$,  $\mathcal{J}=\{1,..,n\}$. 
+If we use the empirical distribution associated with this dataset in Definition~\ref{def:calibrationtheo}, we obtain the following empirical variant.
+\begin{definition}
+\label{def:generalcalibration}
+    A model satisfies (empirical) calibration with respect to a set of groups $\mathcal{G}$ if:
+    % \begin{align}
+    %     &\forall G \in \mathcal{G}: \frac{1}{|G|} \sum_{i \in G} \hat{Y}(X_i) = \frac{1}{|G|} \sum_{i \in G} Y_i,\\
+    %     \Leftrightarrow \thinspace &\forall G \in \mathcal{G}: \frac{1}{|G|} \sum_{i \in G} (\hat{Y}(X_i) - Y_i) = 0.
+    % \end{align}
+    \begin{equation}
+         \forall G \in \mathcal{G}: \frac{1}{|G|} \sum_{i \in G} (\hat{Y}(X_i) - Y_i) = 0.
+    \end{equation}
+\end{definition}
+This offers an `insurantial interpretation': $\hat{Y}(X_i)$ is the premium we demand for shouldering the risk of the uncertain $Y_i$. Indeed, calibration is formally reminiscent of the subjective betting interpretation for probability theory proposed by \citet{de2017theory}.
+%\footnote{We refer the reader to \citep{feduzi2012finetti} for an intriguing discussion of de Finetti's stance on the \textit{risk vs.\@\xspace uncertainty} distinction.} 
+There, the expectation $\E[Y]$ is viewed as the fair betting price for a gamble $Y$.\footnote{Accordingly, probability refers to indicator gambles, that is, indicator functions of events.} Calibration is however not tied to a subjective or objective interpretation of probability, but a criterion for model evaluation.
+
+Actuarial fairness and calibration are in close correspondence. For a given set of groups $\mathcal{G} \subset 2^{\mathcal{X}}$, which we assume forms a partition of $\mathcal{X}$, we define the actuarially fair predictor $\actfairpred(x) \coloneqq \E[Y|X \in G_x]$, where $G_x$ is the unique group that contains $x$. The goal of actuarial fairness is to make this partition as fine as possible (\cf Section~\ref{sec:neoclassical},~\ref{sec:personalized}).
+
+
+
+
+  Consider first the extreme choice of a single group as the whole population in Definition~\ref{def:generalcalibration}. 
+  %, \ie $G=\mathcal{J}$, $\mathcal{G}=\{G\}$. 
+  Then calibration in the theoretical (respectively, empirical) case demands that  
+\begin{align}
+\E[\hat{Y}(X) - Y]=0, 
+\quad \frac{1}{n} \sum_{i=1}^n (\hat{Y}(X_i) - Y_i)=0,
+\end{align}
+which is called \textit{global balance} in insurance \citep{denuit2021autocalibration}; intuitively, we need to collect sufficient premia $\hat{Y}(X_i)$ to cover all claims $Y_i$. In this case of a single group, calling $\actfairpred$ `actuarially fair' is some abuse of naming, since in this case it corresponds to full solidarity.
+\begin{proposition}
+\label{prop:actfair}
+    Given a partition $\mathcal{G} \subset 2^{\mathcal{X}}$ of $\mathcal{X}$, the actuarially fair predictor $\actfairpred$ satisfies (theoretical) calibration with respect to $\mathcal{G}$, and is furthermore the coarsest calibrated predictor in the sense that any other predictor which is calibrated with respect to $\mathcal{G}$ either coincides with it or is not group-wise constant.
+\end{proposition}
+The trivial proof is in Appendix~\ref{app:actfairproof}.
+If we had access to the true outcomes $Y$, we could use them for the finest, calibrated predictions. In this way, calibration is still a coarser criterion as it is based on the expectation, the theoretical average and thus aligned with actuarial fairness; perfect accuracy is in general not demanded.
+In the extreme, making the partition finer and finer we reach segments of one. Calibration then demands that $\hat{Y}(x) = \E[Y|X=x]$, which we called perfect actuarial fairness.
+In this way, we obtain a `spectrum of calibration', where refining the choice of groups interpolates between two extremes. Group-based actuarial fairness attempts to approximate the extreme of segments of one given practical constraints. Hence, actuarial fairness is well-aligned with fairness-unaware machine learning, where the goal is to approximate the conditional expectation $\E[Y|X]$ as closely as possible. In the limit, the distinction between group-based approaches to fairness and \textit{individual fairness} (in the sense of the machine learning literature) then becomes blurry: perfect actuarial fairness corresponds to the notion of \textit{individual merit} \citep{joseph2016fairness}, but in line with \citet{binns2020apparent} we argue in Section~\ref{sec:aggvsind} that this does not yield actually `individual' fairness.
+
+Actuarial fairness is closely related to calibration due to Proposition~\ref{prop:actfair}; however finer predictors (\eg the perfect predictor) satisfy calibration, as well. For a precise conceptual correspondence with perfect actuarial fairness, we could consider the following class of fairness measures, inspired and slightly generalized from \citet{raz2021group}.\footnote{\citet{raz2021group} defines a fairness measure as conservative if it is necessarily satisfied by the perfect predictor $\hat{Y}=Y$.}
+% \begin{definition}
+%     A fairness measure is conservative* with respect to the choice of groups $\mathcal{G}$ if it is necessarily satisfied by the actuarially fair predictor $\actfairpred(x)=\E[Y|X \in G_x]$.
+% \end{definition}
+\begin{definition}
+    A fairness measure is probabilistically conservative if it is necessarily satisfied by the perfect actuarially fair predictor $\actfairpred(x)=\E[Y|X=x]$.
+\end{definition}
+For simplicity and due to the insurantial interpretation, we focus on calibration.
+
+Not only for calibration, but similarly for independence (Definition~\ref{def:independence}) the choice of grouping is crucial. At the one extreme, choosing $S$ to be the indicator of the whole population, independence becomes vacuous, \ie is trivially satisfied. In contrast, we can add more and more groups (sensitive features) for which we demand independence, so that less and less variations in $\hat{Y}$ are allowed. In the limit, then, we reach \textit{full solidarity} with a constant $\hat{Y}$ (see Appendix~\ref{app:solidarityproof}).
+Contrasting independence and calibration, the question is whether we allow the prediction $\hat{Y}$ (the premium) to be sensitive to a certain group or not --- where the within-group variation is however neglected. 
+%Since calibration is practically for free for loss-minimizing predictive models \citep[p.\@\xspace 62f]{barocas-hardt-narayanan}, we suggest to focus on chosing a grouping for independence in practice.
+
+
+Calibration and independence can be mapped onto \textit{responsibilization vs. non-responsibilization}. The fairness notion that is embodied by calibration is that of accurately reflecting the `true' probabilities, that is, holding individuals responsible for their risk.
+%; this is similar to a further fairness notion called \textit{equality of odds} \citep{hardt2016equality}. The commonality of these two is that a perfect predictor is considered fair. \citet{raz2021group} captured this in the definition of a \textit{conservative} fairness notion, which conserve the status quo. 
+In contrast, independence works to decouple predictions from `true' probabilities to some extent and thus can be viewed as non-responsibilizing --- independence is similar, albeit not equivalent, to affirmative action \citep{raz2021group}. As a consequence, we expect different \textit{performative effects} (see Section~\ref{sec:performativity}), \ie downstream effects, when applying calibration vs. independence. 
+
+For practice, a simple suggestion is as follows. Since calibration comes practically for free for loss-minimizing predictive models \citep[p.\@\xspace 62f]{barocas-hardt-narayanan}, we may focus on demanding certain independence relationships. Assume that we have designated a subset of features $X_R$ which we aim to responsibilize for, and a set of features $X_{NR}$ which we aim \textit{not} to responsibilize for. Hence $X=(X_R,X_{NR},X_{\text{other}})$. Conditional independence \citep{castelnovo2022clarification} then demands that 
+\begin{equation}
+    \hat{Y} \indep X_{NR} \mid X_R
+\end{equation}
+The features $X_{\text{other}}$, on which we withhold judgement, can then be used by the model in a way restricted by the conditional independence.
+In the spirit of Section~\ref{sec:contingencies}, however, the choice of features for (non)responsibilization should be the outcome of a reflexive process of inquiry.
+
+Identifying responsibilization with calibration and non-responsibilization with independence is not the only possibility. In the fair machine learning literature, other proposals relating to responsibilization have been put forward; here, the lessons from insurance can be applied. For instance, within an equality of opportunity framework, \cite{heidari2019moral} suggest splitting the whole set of features into a set of ``accountability'' features and ``irrelevant'' features. From our perspective, this maps onto responsibilization and non-responsibilization. As another prominent example, in a causal fairness framework, \citet{kilbertus2017avoiding} assumes that a set of ``resolving variables'' is given, which are influenced by a sensitive feature in a way that it considered ``non-discriminatory''; but the authors do not provide guidance on how to choose them. 
+We believe that the lessons from insurance about causality and control (Section~\ref{sec:causalitycontrol}), and more broadly on responsibility in general, can on the one hand guide the selection of such features. On the other hand, we have seen that causality, control and responsibility are highly sensitive to social context (Section~\ref{sec:contingencies}). This highlights the normative element in making such a distinction (responsibilizing or not), which can be problematic. All in all, we take this to favour solidarity in contrast to actuarial fairness.
+% Where fair machine learning is typically focused on race and gender, without looking further, other features which are beyond control may be neglected in the discussion and thus subject to responsibilization. For example, \citet{loi2022calibration} equate group fairness with non-discrimination as defined by \citet{Lippert-Rasmussen2013-LIPBFA}, for whom discrimination presupposes social salience.
+For machine learning practice, we suggest paying close attention to and reflecting more about the implicit stories about causality, control and responsibility that are about to be implemented when choosing a certain fairness measure and set of groups. In this reflection, we suggest that context-specific reasoning about performativity is key (see Section~\ref{sec:performativity}).
+% Rather than proposing a universal `right' choice (\eg always demanding independence with respect to race and gender and nothing else), we suggest that the performative (downstream) effects of responsibilization are key, and they are necessarily context-specific (Section~\ref{sec:performativity}).
+
+
+
+
+
+
+\section{Performativity}
+\label{sec:performativity}
+A central and unifying theme that emerges when considering social issues surrounding insurance, and as we contend, also machine learning, is that of \textit{performativity}. This concept allows us to comprehend many of the previously raised points through a new lense. The idea of performativity originates from John L.\@\xspace Austin's seminal work ``How to do things with words'' \citep{austin1962how}, where Austin notes that the function of language is often not only descriptive, but also has constitutive and causal effects. For example, uttering ``I promise'' itself \textit{constitutes} a promise and has the causal effect of establishing certain expectations. \citet{austin1962how} refers to sentences with such \textit{performative} force as \textit{speech acts}. Since Austin, the term `performativity' has travelled far into multiple disciplines and acquired lives of its own, so that it can be hard to pin down precisely a common core (see \citep{maki2013performativity} for a critique). We will use the term in the broadest possible sense to emphasize similarity of perspectives instead of differences.
+An influential account has been put forward in economics \citep{callon1998laws,mackenzie2007economists,mackenzie2008engine}, which has inspired also a recent formalization in machine learning \citep{perdomo2020performative,hardt2022performative}. The central claim of this line of work is that economics is not simply in the business of describing or representing an independent, passive reality, but also actively shapes it, for instance by encouraging people to act in accordance with its models \citep{boldyrev2016enacting}. Another general framework and a source of inspiration to us, can be found in the work of \citet{mol2002body}. To avoid the dualist connotation of the term performance, implying a `backstage reality',\footnote{However, for a critical examination of whether this dualism is inherently associated with `performance', see \citep{hafermalz2016enactment}.} \citet{mol2002body} instead coins the term \textit{enactment}, referring to the multiple and ongoing work that sustains a reality:
+\begin{quote}
+   % So I need a word
+%that doesn’t suggest too much. A word with not too much of an academic history.
+%The English language has a nice one in store: enact. 
+It is possible to say that in practices objects are \textit{enacted}. This suggests that activities take place --- but
+leaves the actors vague. It also suggests that in the act, and only then and there,
+something \textit{is} --- being enacted. [emphasis in original]
+\end{quote}
+%%%% this statement is too controversial I guess:
+% In contrast to how performativity is used in economics, we read \citet{mol2002body} as emphasizing more the constitutive work (as opposed to only causal effects).
+% implying a move beyond the separation of ontology and epistemology and dissolving the dichotomy of knowing subject and known object. 
+Perhaps the simplest way to understand what is at the heart of performativity, we suggest, is to assert that \textit{representation and intervention are entangled} \citep{vosselman2014performativity}. 
+%In simple words, ``seeing'' and ``doing'' are not independent.
+Performativity hence contrasts with the commonsense view that perception and action can be neatly separated; in the latter, the task of machine learning is simply to extract patterns from a passive reality `out there' in an objective way.
+For instance, \citet{mitchell2021algorithmic} distinguish between ``world as it is'' and ``world as it should and could be'', mapping onto prediction and decision task. Similarly, \citet{kuppler2021distributive} urge to cleanly separate prediction and decision.
+A word that frequently occurs in this context is `bias', which we like to avoid, since we associate it with the notion of an objective `backstage' reality, whose representation is then distorted. 
+%\textit{If} only we had access to the perfect dataset, \textit{then} our model would be ``unbiased'' as in objective and neutral.
+
+What then is the relevance of performativity for insurance, and by analogy, machine learning? Actuarial fairness (calibration), or more broadly the fairness of `accurate' statistical methods, carries with it a myth of objectivity and neutrality. \textit{If} we choose responsibilization, \textit{then} our predictive models better be `objective and neutral'. Recall that actuarial fairness aims to set premia in accordance with the expected risk for each policyholder, and it is assumed that insurers can know this risk through statistical methods. \citet{glenn2003postmodernism} succinctly captures this as follows:
+\begin{quote}
+    [T]here is a general belief that
+insurance practices are predicated on objective statistics, what has elsewhere been called
+“the myth of the actuary”. The myth of the actuary is the idea that there
+is a reality in the world that can be captured by rational choice models and statistical
+analysis—and that insurance companies do this ethically, objectively, and “correctly.”
+\end{quote}
+Such objectivity then is supposed to be a source of authority and fairness. In the words of \citet{van2014politics}:
+\begin{quote}
+    The dominant view is that
+insurance technologies of risk assessment are somehow ‘measuring’, ‘observing’ or
+‘describing’ peoples’ insurance risks. This paper calls for a different approach, namely a
+pragmatist analysis of the \textit{performativity of insurance calculative devices}. Contrary to the
+financial realism of the everyday categories of insurance numbers, I argue that insurance
+calculative devices not only represent but generate, intervene and rearrange the worlds in
+which they are deployed. [emphasis added]
+\end{quote}
+
+The performativity of insurance and machine learning becomes especially relevant due to ethical implications. Many scholars have argued, providing insightful examples, that insurance is fundamentally a \textit{normative technology}  \citep{baker2002embracing,glenn2003postmodernism,van2006making,van2007genetic,lehtonen2015producing,tanninen2020contested,prainsack2020shifting}, depending on stories about causality, control and responsibility. \textit{Doing} insurance or machine learning involves \textit{enacting} certain realities and suppressing others, as we have sketched in Section~\ref{sec:contingencies}. For instance, in the process of collecting data, only some features are considered, and others neglected. Expanding on this, a performativity perspective would emphasize that there is no objective data `collection' process, that quantification and categorization require significant and ongoing work; such work may be influenced by implicit normative judgements, which becomes ingrained and hidden in the `representation'. There is now a vibrant, if still nascent, research field on the \textit{sociology of quantification} (including categorization), owing much to the seminal work of \citet{desrosieres1998politics}; for overviews of this field see \citep{espeland2008sociology,diaz2016introduction,mennicken2019s}, where the reader finds plenty of evidence for such work. Central in this research field is again performativity, or what has been called the \textit{constitutive potential} of quantification  \citep{mennicken2019s}. 
+As a noteworthy example, it has been demonstrated that the census, through the introduction of statistical categories, can contribute to the establishment of a collective identity among the individuals it aims to describe \citep{lee1993racial,mora2014making}. Thus, a category that was initially intended to merely represent acquires performativity by actively shaping the formation of this particular group \citep{gromme2020doing}.\footnote{To anticipate a criticism, this does of course not imply that arbitrary sets of people can become a mutually recognizing group: the hard conceptual work is to investigate how performativity of groups functions and what its limits are. 
+In Austinian terms, this means delineating the ``felicity'' conditions, which make performative utterances successful \citep{brisset2016economics}.
+} 
+%For example, it has been demonstrated that census can, by introducing statistical categories, play a role in establishing a sense of groupness (as in shared identity) among the people it is supposed to describe \citep{lee1993racial,mora2014making}. In this way, a category that purported to merely describe reality acquired performativity by contributing to to the constitution of this group \citep{gromme2020doing}.
+
+%What then are the implications for machine learning? 
+We propose that insurance can act as a model for the performativity of statistical, ``calculative devices'' \citep{van2014politics} that arise from their social situatedness. In machine learning, performativity shows up in at least two ways: on the one hand, it requires training data, and this training data has been shaped by performative forces in a broader social context --- referring to the quantification and categorization processes. Using the data thus imports this performativity into the model. On the other hand, by deploying a machine learning model its predictions may acquire performative force in both a constitutive and causal sense. The predictions may act as interventions and through responsibilization shape the behaviour of people, who for instance may strategically adapt to the predictions --- this sense of performativity is also referred to as \textit{reactivity} \citep{espeland2007rankings,espeland2008sociology}, and is closer to the formalization proposed by \citet{perdomo2020performative}, which emphasizes the causal dimension, but neglects the constitutive one. The extent of this phenomenon, \ie how much a company can steer a population using a model, has been termed \textit{performative power} \citep{hardt2022performative}.
+
+As explicated in Section~\ref{sec:fairmllink}, depending on the choice of fairness metric (or none) and to which features it is applied (\ie the choice of groups), machine learning can exert responsibilizing and non-responsibilizing force. We suggest that two classes of performative effects can then be broadly distinguished, which is however not a clear dichotomy in light of Section~\ref{sec:contingencies}. When machine learning responsibilizes for a controllable feature, individuals may adapt to the prediction so as to change it --- if they receive feedback; this is the hope of personalized insurance, and this setting also motivates the concept of moral hazard (Section~\ref{sec:moralhazardadverse}). In contrast, blindly applying the principle of actuarial fairness can lead to responsibilizing for non-controllable features, which then runs the risk of reproducing past injustice implicit in the training data. Yet against a background of such past injustice, it is not clear why actuarial \textit{fairness} should be considered as a principle of \textit{justice} --- this argument has been made both in the insurance \citep{daniels1990insurability,lehtonen2015producing,barry2020insurance} as well as the machine learning literature \citep{mitchell2021algorithmic,vredenburghfairness,green2022escaping,kasirzadeh2022algorithmic}; see also \citep{eidelson2021patterned} --- however, the insurance literature provides illuminating examples. In this way, machine learning (resp.\@\xspace insurance) can implicitly responsibilize for sensitive features such as gender or race; the situation is particularly intricate when a feature is considered as controllable which stands in a constitutive relation to a sensitive feature \citep{hu2020s}, for instance due to performativity.
+
+In response to the performativity of machine learning, we advocate for \textit{situated knowledges} \citep{haraway1988situated} by reflecting on the social situatedness of researchers or engineers. We encourage explicit reflection about how performative forces have shaped the present input data, and furthermore how a model in conjunction with a choice of fairness metric might exert performative force by acting on people. Focusing on (non)responsibilization and performativity implies taking a dynamic perspective. Thus, it becomes imperative to foreground and explicitly model the effects of deploying machine learning systems
+ \citep{hu2018short,liu2018delayed,d2020fairness,schwobel2022long}, constrasting with rather static vocabulary such as \textit{bias} or \textit{discrimination}.
+In this process of reflexive inquiry, we suggest to pay more attention to stories about causality, control and responsibility --- framing them as \textit{stories} rather than immutable \textit{facts} implies making them contestable, that is, putting them on the stage for scrutiny \citep{glenn2003postmodernism}. 
+%This does however not imply that we have to accept the arbitrariness of ``anything goes''. 
+%In general, we have illustrated that the relevance of performativity for machine learning is much broader than the causal formulation of \citet{perdomo2020performative} allows to express.
+
+
+
+
+
+\section{Tensions between Aggregate and Individuals}
+\label{sec:aggvsind}
+Another, albeit related thread that runs through the history of insurance, and is also highly relevant to machine learning, are tensions between \textit{aggregate and individual}. The mode of the welfare states operates with the imaginary of a collective, in which the individual is mutualized in solidarity. This aggregate viewpoint, where an individual is always identified with the average of some group, finds continuity in group-based actuarial fairness \citep{thiery2006fairness} --- recall Quetelet's \textit{average man}. Social movements, however, argued that the group-based actuarially fair price is not fair from the viewpoint of the individiual --- the desire was to ``navigate the social world \textit{unmarked} by the social stereotypes (fashioned by actuarial science as `objective' statistical classifications) [..]'' \citep[emphasis in original]{krippner2023unmasked}. This facilitated a fundamental shift in the enactment of actuarial fairness \citep{meyers2018enacting}, giving rise to the individualization and personalization of risk and thereby threatening (risk subsidizing) solidarity by dissolving the aggregate. We have also seen that at the heart of this aggregate \versus individual tension is the multifaceted concept of responsibility; mutualization depends on shared responsibility.
+
+The mode of machine learning is then a paradoxical one: on the one hand, it fits with the mode of individualization and personalization. The goal is to provide highly tailored predictions for the individual. On the other hand, aggregates are central to the workings of machine learning: they appear in the input data due to categorization processes; second, the fairness of machine learning systems is typically evaluated based on groups (with the exception of \textit{individual fairness}, see below); third, machine learning in general, even fairness-unaware, optimizes aggregate criteria such as average training error. We suggest that a large share of the social worries and issues surrounding machine learning can be understood by framing them in the context of the aggregate \versus individual tension.
+
+One crucial aspect to highlight is the \textit{performativity of groups}, alluded to earlier. When we make claims about structural injustice against certain groups in the training data, what do we mean by this? The implication seems to be that groups are the kind of substantial entity that one can ascribe agency to \citep{brubaker2002ethnicity}. And why would we choose certain groups as opposed to others for our fairness metrics?
+The performative character, or constitutive potential, of social categories, was noted already by Pierre \citet{bourdieu1991identity}  and empirically demonstrated by Alain \citet{desrosieres1998politics}: a category can contribute to \textit{constituting} what it purports to describe. \citet{brubaker2002ethnicity} refers to this as the reification of social groups,\footnote{\citet{brubaker2002ethnicity} is careful to distinguish categories and groups; for a category to be a group there needs to be some shared sense of mutuality. We are sloppy about this distinction, for instance when speaking about group-based actuarial fairness we do not demand any mutual recognition.} and warns against uncritically adopting a fundamentally groupist ontology for social analysis. Rather, we should pay attention to the underlying performative processes at play.  In the terminology of \citet{mol2002body}, a group thus becomes a \textit{reality enacted}.
+%Ian Hacking refers to this process as \textit{making up people} \citep{hacking1999social} and speaks of the \textit{looping effects of human kinds} \citep{hacking1995looping}, meaning that people may change their behaviour in response to being classified. 
+We suggest that which groups serve as `sensitive features' (\eg race, gender) in a certain social context may depend on past and ongoing performative processes. 
+% For the example of race, \citet{lee1993racial} have studied the enactment of race as a category, emphasizing the performative power of institutions and authory in shaping it --- this viewpoint of race as performative is aligned with the thick constructivist account of \citet{hu2021race}. 
+For instance, \citeauthor{lee1993racial}'s \citeyearpar{lee1993racial} examination of the performativity of race, highlighting the role of institutions and authority in shaping it, aligns with \citeauthor{hu2021race}'s  \citeyearpar{hu2021race} thick constructivist account.
+% Or consider gender, for which \citet{Butler-trouble} has argued that it is \textit{performative} as opposed to there being an essential backstage identity - ``my argument is that there need not be a ‘doer behind the deed,’ but that the ‘doer’ is variably constructed in and through the deed'' \citep{Butler-trouble}. 
+Similarly, \citet{Butler-trouble} argues that gender is performative, rejecting the notion of an essential backstage identity --- ``my argument is that there need not be a `doer behind the deed,’ but that the `doer' is variably constructed in and through the deed'' \citep{Butler-trouble}.\footnote{Some readers might object that Butler's performativity does not coincide with the performativity concept in economics. We refer to  \citep{butler2010performative} and \citep{callon2010performativity} for a dialog, which motivates us to emphasize commonality over difference. For instance, \citet{butler2010performative} asserts that ``performativity starts to describe a set of processes that produce ontological effects, that is, that work to bring into being certain kinds of realities [..]'' --- compare also \citep[Chapter 2]{mol2002body}.}
+The upshot, then, is that we are right to pay attention to those groups which are at structural disadvantage from past and ongoing performative processes within a given society.
+Arguably, neither race nor gender inherently possess any inherent depth or special status beyond their associated performativity.
+%; there is arguably nothing special or deep about race and gender \textit{but} their associated performativity. 
+Reflecting on performativity also prompts us to consider \textit{what could have been different}; our groups need not carve nature at its joints. This implies also a possibility for intervention, leveraging performative power. We would be interested in seeing future research investigating the constitutive potential of machine learning in group formation, for instance in social networks.
+
+
+
+
+
+As a consequence of the performativity of groups, actuarial fairness is prone to reproduce past injustice (see Section~\ref{sec:performativity}). In contrast, the allure of perfect actuarial fairness associated with the personalization of risk, driven by big data and machine learning, is that it is supposedly \textit{individually fair} --- the goal being `segments of one' and setting the premium as $\E[Y|X=x]$. However, we argue that this elusive goal cannot be reached.
+The problem is that of the `hidden collective'. The working of a neural network is similarity-based computation, arguably interpolation \citep{hasson2020direct}. Predictions are always based on data from individuals \textit{similar to you}, where the similarity is with respect to the opaque nonlinear character of the network. This argument has been made in the context of insurance: `individualized' risk is still relative to the other members of the collective, and thus fails to be genuinely individual \citep{tanninen2020contested,prainsack2020shifting}. Yet individual justice in an Aristotelian tradition requires treating people \textit{as individuals} \citep{thiery2006fairness,jorgensen2022algorithms}, not based on the data of others.\footnote{We leave open the question to what extent this can be realized by human decision makers.} For the same reason, what is called \textit{individual fairness} in machine learning fails to be genuinely individual, as pointed out by \citet{binns2020apparent}. Problematically the collective is implicit, hidden, in the mode of personalization; without transparency and explainability, individuals cannot recognize their own context. Insurance scholars have also argued that this diminishes opportunity for collective action \citep{moor2018price,mcfall2018or,krippner2022person} --- the study of collective action in machine learning has just begun \citep{hardt2023algorithmic}.
+%-- evaluation of fairness again reduces to looking at group-based criteria.
+
+
+
+Another way of framing this consists in problematizing the conceptual foundation of probability and statistics itself. Besides the subjective variant of probability, which we consider unfit for decision making affecting people,\footnote{Setting insurance premia based on subjective probabilities seems objectionable --- recall the historical association with gambling \citep{cooper2009probability}; when machine learning systems affects people, a subjective foundation appears to be similarly questionable.} probability and statistics are fundamentally based on aggregates \citep{desrosieres1998politics}. Currently, no viable concept of individual probability is available \citep{dawid2017individual}; instead, probability relies on a reference class \citep{Reichenbach1949-REITTO-3,hajek2007reference}. While multi-calibration aims at finer aggregates, it is still not individual \citep{dawid2017individual}. Thus, even speaking of an `individual probability', which perfect actuarial fairness aims at, has no sound conceptual basis. 
+In fact, \citet[Chapter 4]{friedman2020probable} provides an insightful account for the close link of frequentist probability and insurance in the solidaristic mode of the welfare state. This account invites us to consider a reference class as a class of solidarity, which implies disregarding the quest for the single `right' reference class and instead recognizing the normative element in this choice. Furthermore, randomness can then also be viewed as a normative assumption in the face of uncertainty, establishing shared responsibility: ``anyone of us could have had the accident''. Thus, the kind of data that \citet{Venn1876} has in mind, combining aggregate regularity with local irregularity (randomness), corresponds to the prerequisites for insurance. As a consequence, we find normative character in frequentist probability itself and a link to aggregate-based solidarity.
+Attempting to individualize frequentist probability then raises a paradox.
+In the context of insurance, \citet{frezal2020fairness} have argued that the actuarially fair expected value is only adequate from the economic, aggregate viewpoint of the insurer, but conceptually inadequate (and hence in particular not necessarily fair) for the individual (see also \citep{frezal2016}). Or, in the words of \citet{abraham1985efficiency}: ``No one has a true expected loss''. When taken to the limit, actuarial fairness thus undermines the logic of insurance itself \citep{martinez2016fair}. In the context of machine learning, we argue that it is problematic to evoke the idea of individual probability (risk), particularly when stakes are high such as in the COMPAS case \citep{machinebias}, even when individual probability is beyond reach and has no conceptual foundation to rest on. We thus encourage more modesty about the epistemic potential of machine learning.
+
+% could cite Probable Justice here somehow: probability has normative character
+
+
+
+
+%\section{Further Lessons}
+
+\section{Related Work}
+Conceptual literature at the intersection of fair machine learning and insurance is sparse. 
+%Within the FAccT community,
+\citet{donahue2021better} study the problem of \textit{externalities of size} by taking inspiration from insurance and challenge the clear distinction between actuarial fairness and solidarity as a consequence. \citet{loi2021choosing} study the interplay of machine learning and (non)discrimination in an insurance setting from a normative, philosophical perspective. \citet{frees2023discriminating} and \citet{charpentier2022} provide broad overviews on discrimination in insurance and consider implications of using machine learning. \citet{xin2022anti} link formal fairness definitions to insurance on a technical level. The closest work to ours that we are aware of is by \citet{barry2022fairness}, who investigate how the use of machine learning in insurance is related to classical fairness debates, but they set other foci. A general difference from ours to related work is that we do not study the use of machine learning \textit{in} insurance, but are interested in a more abstract conceptual linkage. We also note that \citeauthor{frezal2020fairness}'s \citeyearpar{frezal2020fairness} critique of actuarial fairness was a major source of inspiration to us.
+% mention luck egalitarianism!
+
+
+
+\section{Discussion}
+The main claim of our work is that insurance is an insightful analogon for the social situatedness and impact of machine learning systems. By traversing this conceptual bridge, machine learning scholars can make use of the rich and interdisciplinary literature on insurance. In particular, we suggest that the multifaceted concept of responsibility, including the dimensions of causality and control and associated downstream effects, deserves more attention. We have discussed two interrelated threads with relevance to both domains: performativity and tensions between aggregate and individual. 
+%Both have received little attention in machine learning so far; in particular the constitutive dimension of performativity has been neglected.
+%While \citet{perdomo2020performative} has introduced a causal formulation of performativity to machine learning, the constitutive dimension has been neglected so far.
+At a different textual layer, we have leveraged those insights to problematize actuarial fairness as a notion of fairness in the normative sense, or what some prefer to call justice \citep{vredenburghfairness}.\footnote{In fact, for \citet{vredenburghfairness}, leaning on \citet{broome1990fairness}, fairness is a narrower standard than justice: ``fairness requires respecting
+people's claims in proportion to the strength of those claims''.} In this way, our suggestions are in line with others who demand moving beyond formal fairness to substantive equality \citep{green2022escaping} and argue that accurate predictive models need not be `fair' \citep{eidelson2021patterned}.
+
+While in this text we have focused on social issues, there are also technical lessons that machine learning could take from insurance, a technology for making uncertainty manageable. For instance, the problems of \textit{dataset shift} and \textit{model ambiguity} have been recognized in insurance as well as machine learning; for contributions from insurance see \eg \citep{milevsky2006killing,cabantous2007ambiguity,pichler2014insurance,dietz2021pricing}. In this context, the use of \textit{coherent risk measures} has received much attention in insurance \citep{artzner1999application}, and recently also in machine learning \citep{frohlich2022risk,royset2022risk}, where they can replace the expectation as aggregation functional and yield different trade-offs with respect to the aggregate \versus individual tension. On the other hand, the use of machine learning in insurance is increasing. We thus believe that a research agenda linking machine and learning and insurance may lead to a fruitful, two-way interaction of these fields.
+
+In summary, we offer the following take-aways.
+\begin{itemize}
+\item In fair machine learning, reflections on both responsibility and the subtly distinct concept of responsibilization should be foregrounded.
+In particular, control-based responsibility (in contrast to causal) is key. However, what is under control is typically not clear-cut, but itself a normative question.
+\item Calibration maps to responsibilization, while independence maps to non-responsibilization. Conditional independence offers a practical compromise.
+\item Insurance lessons about responsibility can also give insights into how to apply other fair machine learning frameworks such as those of \citet{heidari2019moral} (``accountability features'') and \citet{kilbertus2017avoiding} (``resolving variables'').
+\item A focus on control and responsibilization is also linked to a performativity perspective, where the focus lies on downstream effects of deploying machine learning systems in the world; but performativity (\eg of race and gender) also sheds light on past injustice, which actuarial fairness may reproduce.
+\item Performativity is a general lense through which to view fair machine learning, contrasting with a static perspective. The formalization of performativity by \citet{perdomo2020performative} captures a causal, but not the constitutive dimensions.
+ \item Attempting to individualize frequentist probability is paradoxical, as it is firmly aggregate-based. Actuarial fairness cannot be `truly individual'; we should not make use of the term `individual risk', particularly in high-stakes decision making, as if it was a well-defined concept.
+\end{itemize}
+
+
+
+
+% \begin{table}
+% \centering
+% \caption{Comparison of Issues in Insurance and ML}
+% \label{tab:insurance_ml_comparison}
+% \resizebox{.99\textwidth}{!}{
+% \begin{tabular}{|c c|}
+% \hline
+% \textbf{Issue in insurance} & \textbf{Implications and what to do?} \\
+% \hline
+% Performativity  &  \shortstack{Reflect more on the constitutive dimension, not only causal one. \\ Take a dynamic perspective, focus on downstream effects (causal and even constitutive).} \\
+% \hline
+% Personhood  & Action 1 \\
+% \hline
+% Privacy & Action 2 \\
+% \hline
+% Autonomy & Collective action via explainability \\
+% \hline
+% % Add more rows as needed
+% \end{tabular}
+% }
+% \end{table}
+
+
+
+% \subsubsection*{Author Contributions}
+% If you'd like to, you may include a section for author contributions as is done
+% in many journals. This is optional and at the discretion of the authors. Only add
+% this information once your submission is accepted and deanonymized. 
+
+% \subsubsection*{Acknowledgments}
+% Use unnumbered third level headings for the acknowledgments. All
+% acknowledgments, including those to funding agencies, go at the end of the paper.
+% Only add this information once your submission is accepted and deanonymized. 
+
+%\clearpage 
+
+\bibliography{insurancebib}
+\bibliographystyle{tmlr}
+
+
+\appendix
+\section{Appendix}
+%You may include other additional sections here.
+\subsection{Non-Responsibility Based Reasons for Responsibilization}
+\label{sec:moralhazardadverse}
+ The difference between responsibility and responsibilization can be subtle. In insurance, two classical principles supply reasons for justifying responsibilization \textit{without} being based on responsibility, however. We might also call them ``efficiency-based'' reasons for responsibilization \citep{andersen2015luck}.
+
+\textit{Adverse selection} \citep{george1970market,thiery2006fairness,avraham2013understanding} refers to the informational asymmetry between insurer and insured (policyholder) at the time of underwriting. Typically, the insured is better informed about their risk; higher-risk individuals are more likely to seek insurance for protection. The reasoning is then that without segmentation, insurers are more likely to attract high-risk individuals who profit from the subsidy of the pool; ultimately, leading to bankruptcy of the insurer. Thus competition drives increasing segmentation. Public insurance has the benefit of compulsory participation, so that adverse selection cannot occur and solidarity can be implemented. In contrast, adverse selection is advanced by the industry as a justification for actuarial fairness \citep{miller2009disparate}.
+
+\textit{Moral hazard} \citep{heimer1985reactive,baker1996genealogy,baker2000insuring} on the other hand refers to a \textit{performative}, behaviour-shaping aspect of insurance premia. Simply put, the idea is that policyholders are more inclined to behave in a risky way due to the protection offered by insurance coverage. For instance, there is less incentive to purchase precautionary measures such as alarm systems.
+Like adverse selection, moral hazard is invoked as an argument in favour of actuarial fairness. The welfare state is seen as the ultimate source of moral hazard \citep{ericson2000moral}. For instance, public health insurance might lead to more visits to the doctor.\footnote{Noting the negative connotation in the term \textit{moral hazard}, \citet{baker1996genealogy} asks: ``What, after all, is wrong
+with enabling people to go to the doctor when they feel the need, and why
+should we be concerned when they do so?''}
+Indeed, moral hazard is \textit{the} responsibilization force in the neoliberal era \citep{ericson2000moral}. In particular, moral hazard favours behaviour-based personalization \citep{verbelen2018unravelling}. Insurance companies thus increasingly emphasize loss prevention, that is, acting on behaviour \citep{baker2002embracing,cevolini2022actuarial}.
+Note that the applicability of moral hazard presupposes control for a feedback loop to exist.
+
+%\citet{ericson2000moral}, using a broadened definition of the term, point out that moral hazard can also be attributed to the side of the insurer.
+
+Both adverse selection and moral hazard concern the performative dimensions of ``calculative devices'' \citep{van2014politics}. Hence we suggest that these concepts might be usefully transposed onto machine learning.
+
+
+%But: shaping behaviour threatens autonomy.
+
+\subsection{Proof of Proposition~\ref{prop:actfair}}
+\label{app:actfairproof}
+\begin{proof}
+   
+Plugging in the definition of the actuarially fair predictor, we find that
+        \begin{align}
+        \label{eq:mustbecondexp}
+        &\forall G \in \mathcal{G}: \E[\hat{Y}(X)|X \in G]=\E[Y|X \in G]\\
+\Leftrightarrow &\forall G \in \mathcal{G}: \E[(x \mapsto \E[Y|X \in G_x])(X)|X \in G]=\E[Y|X \in G]\\
+\Leftrightarrow &\forall G \in \mathcal{G}: \E[Y|X \in G] = \E[Y|X \in G],
+\end{align}
+which is true. For the second statement, observe that Equation~\ref{eq:mustbecondexp} implies that a predictor $\hat{Y}$ which is constant on each group $G$ must equal the conditional expectation for that group.
+\end{proof}
+
+\subsection{Independence with respect to all groups implies full solidarity}
+\label{app:solidarityproof}
+\begin{proposition}
+    Assume independence holds with respect to all groups, that is
+    \[
+    \hat{Y} \indep \chi_A, \quad \forall A \subseteq \Omega, A \neq \emptyset.
+    \]
+    Then $\hat{Y}(x)=c$\thinspace for some $c \in \mathbb{R}$.
+\end{proposition}
+\begin{proof}
+    Recall that we assume a finite $\Omega$. Then we can assume without loss of generality that $P(\{\omega\})>0$ $\forall \omega \in \Omega$, otherwise we could work on an altered probability space by discarding sets of measure zero. From the independence assumption it follows that $P(\{\omega \colon \hat{Y}(\omega) = y | A)=P(\{\omega \colon \hat{Y}(\omega)=y)$ for any $y \in \mathbb{R}$ and $A \subseteq \Omega$, $A \neq \emptyset$. Pick any $\omega_1$ so that $\hat{Y}(\omega_1)=y_1$. Then it must hold $P(\{\omega \colon \hat{Y}(\omega)=y_1|\{\omega_1\}) = 1 = P(\{\omega \colon \hat{Y}(\omega)=y_1\})$, from which we conclude that $\hat{Y}$ must be constant on $\Omega$.
+\end{proof}
+
+\end{document}

@@ -1,0 +1,812 @@
+\documentclass[12pt]{article}
+
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsthm,amsmath,amsfonts,amssymb}
+\usepackage{graphicx,float}
+\usepackage{multirow,setspace}
+\usepackage[authoryear]{natbib}
+\usepackage{enumerate}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{bm}
+\usepackage{color}
+\usepackage{url}
+\usepackage[colorlinks,citecolor=blue,urlcolor=blue]{hyperref}
+\usepackage[format=plain, labelfont={bf,it}, textfont=it]{caption}
+\theoremstyle{plain}
+\newtheorem{axiom}{Axiom}
+\newtheorem{claim}[axiom]{Claim}
+\newcommand{\btheta}{\boldsymbol{\theta}}
+
+\setlength{\marginparwidth}{2cm}
+
+\title{\vspace{-40pt}Doubly ranked tests for grouped functional data\vspace{-10pt}}
+\author{Mark J. Meyer \\ Department of Mathematics and Statistics, Georgetown University \\ Washington, DC USA}
+\date{}
+
+\linespread{1}
+
+%\title{Simultaneous Band Scores or SimBaS\\ by Meyer, M.J. and Morris, J.S.}
+%\date{December, 2014}
+%\author{\textbf{Mark J. Meyer$^{1,*}$ and Jeffrey S. Morris$^{2}$}\\
+%$^{1}$Department of Mathematics, Bucknell University, Lewisburg, Pennsylvania, U.S.A. \\
+%$^{2}$The University of Texas M.D. Anderson Cancer Center, Houston, Texas, U.S.A.\\
+%*\emph{email:} mark.meyer@bucknell.edu}
+
+\begin{document}
+
+	\maketitle
+	
+\begin{abstract}
+Nonparametric tests for functional data are a challenging class of tests to work with because of the potentially high dimensional nature of functional data. One of the main challenges for considering rank-based tests, like the Mann-Whitney or Wilcoxon Rank Sum tests (MWW), is that the unit of observation is a curve. Thus any rank-based test must consider ways of ranking curves. While several procedures, including depth-based methods, have recently been used to create scores for rank-based tests, these scores are not constructed under the null and often introduce additional, uncontrolled for variability. We therefore reconsider the problem of rank-based tests for functional data and develop an alternative approach that incorporates the null hypothesis throughout. Our approach first ranks realizations from the curves at each time point, summarizes the ranks for each subject using a sufficient statistic we derive, and finally re-ranks the sufficient statistics in a procedure we refer to as a doubly ranked test. As we demonstrate, doubly rank tests are more powerful while maintaining ideal type I error in the two sample, MWW setting. We also extend our framework to more than two samples, developing a Kruskal-Wallis test for functional data which exhibits good test characteristics as well. Finally, we illustrate the use of doubly ranked tests in functional data contexts from material science, climatology, and public health policy.
+\end{abstract}
+
+	\section{Introduction}
+	\label{s:intro}
+	
+	Expanded research in functional data analysis has produced a variety of tests couched in the framework of classic nonparametric tests including work by \cite{Hall2007, Lopez2009, Lopez2010, Chak2015, PomannStaicu2016, Lopez2017, Abramowicz2018} and \cite{Melendez2021}. These various authors have built out hypothesis testing procedures for functional versions of Mann-Whitney or Wilcoxon Rank Sum and Anderson-Darling tests, among others. The primary feature of functional data that makes the development of such nonparametric tests challenging is that the unit of observation is a curve. For example, $X_1(s), \ldots, X_{n_1}(s)$ are a sample of $n_1$ curves from one group while $Y_1(s), \ldots, Y_{n_2}(s)$ are a sample of $n_2$ curves from another, independent group. Each curve is typically measured on a fine grid, $\{s : s = s_1, \ldots, s_S\}$ for a total of $S$ measurements. Any rank-based procedure must employ a way to rank curves directly or at least rank summary metrics of each subject's curve.
+	
+	Depth is a popular and useful concept for ranking functions and many authors have utilized depth for Mann-Whitney-Wilcoxon (MWW) type tests \citep{Lopez2009,Lopez2010,Lopez2017}, functional boxplots \citep{Sun2011, Genton2014, Wrobel2016}, outlier detection \citep{SunGenton2012, Dai2018, Huang2019, Dai2020, AlemanGomez2022}, and ranking curves \citep{Lopez2009, Lopez2011, Sun2012, Sguera2021}. The basic idea behind depth is to characterize the proportion of time a curve is bounded above and below by another curve in the sample. The resulting scores, when ordered, rank the curves from the inside out with the smallest values representing the extremes, the maximum or minimum, and the largest value representing the median \citep{Lopez2009, Sun2012}. These scores are effectively a measure of the distance a curve is from the middle. MWW-type tests using depth to test for a difference between two groups must construct a third, artificial reference group  \citep{Lopez2009,Lopez2010,Lopez2017}. Depth is first determined by group, then the test procedure counts the number of depth values in each group that are larger than the depth in the reference group. Code is publicly available for the depth-based MWW test, see \cite{Lopez2017}.
+%	when the data are either curves or surfaces
+	
+	Alternative approaches include a spatial sign-based statistic by \cite{Chak2015} and a random projections based approach by \cite{Melendez2021}. In the former,  \cite{Chak2015} develop an MWW-type statistic using the spatial sign for infinite-dimensional data that weakly convergences to a Gaussian distribution under limited assumptions.  The spatial sign is used as a distance metric to construct the test, taking pairwise distances between groups with data assumed to arise from a random variable defined on a separable Hilbert space. The latter alternative approach, a random projection-based test by \cite{Melendez2021}, maps the points from the high dimensional functional space to a randomly chosen low-dimensional space defined using Brownian motion. This approach has application in parametric tests for grouped functional as well, see for example \cite{Cuesta2010}. The random projections-based approach effectively generates scores for each subject via a random basis function and an integral approximation of the subject-specific curve. It then treats these scores as the data in a traditional MWW test, thus the scores are ranked and then summed by group. Neither of these alternative methods have publicly available code.
+	
+	Both depth- and random projection-based approaches perform well in larger samples \citep{Lopez2009,Lopez2010,Melendez2021}. However, each method also introduces an additional and uncontrolled for source of variation: the random artificial reference group for the depth-based approach and the brownian motion-based basis functions for the random projections. While depth is useful for ranking curves particularly when identifying medians and outliers, it does not produce a score that ranks in a traditional fashion, from smallest to largest. When using random projections, the integration is performed before constructing ranks which ignores the fact that rank may be dynamic over time. To handle the curve ranking problem, both procedres rely on subject-specific summary scores, although neither constructs their scores under the null. Thus, the tests are only conducted under the null when comparing the scores between groups. 
+	
+	The spatial sign-based approach differs from the depth- and random projection-based methods in that, for finite-dimensional approximations of functional data, it effectively creates a time-point specific score instead of subject-specific scores over time.
+%	This is because for finite-dimensional approximations of functional data, the test is constructed time-point by time-point, i.e. one statistic at each time-point, with the appropriate norm taken on the resulting vector to obtain the testable statistic.
+	\cite{Chak2015} show that the spatial sign-based test performs well empirically when the underlying data is Gaussian with a relatively small sample. The test does consider the MWW null throughout its construction, but appears to be underpowered when the data is non-Gaussian. While all of these methods are formulated for the MWW or two group case, to our knowledge no prior work considers the Kruskal-Wallis (KW) or three or more group case. Thus, with respect to these authors, we believe that a further examination of this problem is warranted. 
+	
+	In this manuscript, we re-examine rank-based test settings for comparing groups of functional data. We propose a general testing procedure working within the MWW or KW assumptions, developing our tests under the relevant null hypotheses at all stages---a general overview of MWW and KW tests as well as functional data is given in Section~\ref{s:statframe}. Our approach first constructs ranks of either the raw data or preprocessed functional data at each discretely measured time point giving every subject a curve of ranks. Under the MWW and KW null hypotheses, we then derive the exact and approximate distribution of the $r$th ranks at a given time point (Section~\ref{s:drts}) for a single subject. The resulting approximate distribution can be shown to be an exponential family member from which we obtain sufficient statistics for each subject's rank over time. These statistics become our new data, or rank-based scores, which are then ranked and analyzed in the usual way by the relevant tests. Because the MWW and KW tests ultimately re-rank our rank-based scores, we refer to our testing procedures as doubly ranked tests.
+	
+	We empirically demonstrate the power of doubly ranked tests in Section~\ref{s:sim}. Our approach can accommodate curves with a potentially large number of measurements and groups of size $G \geq 2$. Further, we show that doubly ranked tests perform well in both small and larger sample sizes. We illustrate their use with an analysis of data from several different studies across different substantive fields (Section~\ref{s:app}). The illustrations include data on resin viscosity, Canadian weather patterns, and changes in driving requests in the United States prior to and just after the initiation of COVID-19 policy measures in various states. While we formulate doubly ranked tests in the functional data context with the data preprocessed using functional principal components, the tests are applicable to any high dimensional data testing setting. We discuss this, and our work in general, in Section~\ref{s:disc}.
+		
+	\section{Statistical Framework}
+	\label{s:statframe}
+
+	Because our method blends several statistical frameworks, we now briefly describe each beginning with the MWW and KW tests in their scalar forms. We then discuss some general concepts for functional data. Functional data analysis is a large area of research. Review articles by \cite{Morris2015}, \cite{Wang2016}, and \cite{Greven2017}, for example, or the text by \cite{Ramsay2005} will provide more in-depth discussions of this topic.
+	
+	\subsection{Mann-Whitney-Wilcoxon}
+	
+	Let $X_1, \ldots, X_{n_1}$ be observed data from group 1 and $Y_1, \ldots, Y_{n_2}$ be observed data from group 2. Assuming the groups are independent and that the distributions of both groups are the same except possibly for some location parameter, the Mann-Whitney \citep{MannWhitney1947,Kloke2015} test statistic is $T^+ = \#_{i,j}\left\{ Y_j - X_i > 0 \right\}$ where $\#\{\}$ is a counting operator. The test statistic $T^+$ can equivalently be expressed as $T^+ = T - \frac{n_2(n_2 + 1)}{2}$ where $T = \sum_{i=1}^{n_2} R[Y_i]$ for $R[Y_i]$ equal to the rank of $Y_i$ among the combined samples, i.e. among $X_1, \ldots, X_{n_1},$ $Y_1, \ldots, Y_{n_2}$. The sum of the ranks, $T$, is the test statistic for the Wilcoxon rank sum test \citep{Wilcoxon1945,Kruskal1957,Kloke2015}. Consistent with \cite{Kloke2015}, we refer to this test as the MWW test.
+	
+	The exact distribution of $T$ is non-standard but can be easily computed by standard statistical software for samples up to $n = n_1 + n_2 = 50$, provided there are no tied ranks. For larger samples and in the presence of ties, a normal approximation to the distribution of the ranks is used instead, see the \texttt{wilcox.test()} documentation in the \texttt{stats} package in \texttt{R} \citep{Stats2022}. The test statistic based off of the normal approximation is
+	\begin{align*}
+		T_z = \left[T - \frac{n_2(n+1)}{2}\right]\bigg/ \sqrt{\frac{n_1 n_2 (n+1)}{12}},
+	\end{align*}
+	which has a standard normal distribution.
+	
+	Depending on the assumptions, the null and alternative hypotheses can have one of two forms. The first tests for stochastic dominance where the null is $H_0: F_X(x) = F_Y(y)$ and the alternative is $H_A: F_X(x) \leq F_Y(y)$ for the CDFS $F_X(x)$ and $F_Y(y)$ in each group. Assuming these distributions are same up to location shift $\Delta$, i.e. $F_X(x) = F_Y(y-\Delta)$, gives the second form of the hypotheses which is $H_0: \Delta = 0$ and $H_A: \Delta \neq 0$. For more details, see \cite{Kloke2015}.
+
+	\subsection{Kruskal-Wallis}
+	
+	The KW test generalizes the MWW to three or more groups \citep{KruskalWallis1952,Kloke2015}. Let $G$ denote the total number of independent groups with data $X_{g,1}, \ldots, X_{g,n_g}$ for $g = 1, \ldots, G$. The KW test assumes the distributions of the data are the same except possibly for some location parameter or parameter(s). For $n = \sum_{g=1}^G n_g$, the test statistic is
+	\begin{align*}
+		H = \frac{12}{n(n+1)} \sum_{g = 1}^G n_{g} \left( \bar{R}_g - \frac{n+1}{2} \right)^2,
+	\end{align*}
+	where $\bar{R}_g$ is the average rank in group $g$, i.e. $\bar{R}_g = n_g^{-1} \sum_{i=1}^{n_g} R[X_{g,i}]$. The null hypothesis for the KW test generalizes the second MWW null where groups differ only up to some set of location shifts, $\Delta_g$. The null then has the form $H_0 : \Delta_1 = \ldots = \Delta_G = 0$ with the alternative hypothesis, $H_A : \Delta_g \neq \Delta_{g'}$ for some $g \neq g'$. Under $H_0$, $H$ is distribution-free. Tables for its exact distribution do exist, see for example \cite{Hollander1999}, Chapter 6. $H$ is asymptotically $\chi_{G-1}^2$ under $H_0$ as well, see \cite{KruskalWallis1952} or \cite{Kloke2015}.
+	
+	\subsection{Functional Data}
+	
+	Functional data are data observations whose units are curves, often measured over time but they can be measured over location as well. These curves are typically sampled at a high frequency over a pre-defined interval. The data comes sampled on a grid, $\{s : s = s_1, \ldots, s_S\}$ for example as we note in Section~\ref{s:intro}. The data used for analysis may be the raw values themselves, $X_1(s), \ldots, X_{n_1}(s)$, or they may be preprocessed and projected into a well-behaved space using a known basis function. The idea behind preprocessing is to model the underlying function from which the raw data values were observed and then analyze the functions themselves. We denote the preprocessed data with $\tilde{X}_1(s), \ldots, \tilde{X}_{n_1}(s)$. There are many ways to preprocess functional data including functional principal components, wavelet-based techniques, and Fourier transforms \citep{Wang2016}. Our method is compatible with either raw or pre-processed data, but for this work we will preprocess functional data using a sandwich smoother-based approach referred to as Fast Covariance Estimation or FACE \citep{Xiao2013, Xiao2016}. FACE is a nonparametric approach for constructing functional principal components based on a set of curves with a potentially large sampling density. It can be implemented using the \texttt{refund} package in \texttt{R} \citep{Refund2022}.
+	
+	\section{Doubly Ranked Tests}
+	\label{s:drts}
+
+	First, we rank either the raw or preprocessed data at each time point, ignoring group assignment. This results in a curve of ranks for each subject. Using the raw data for example, the rank of subject $j$ in group $Y$ is $R[Y_j(s)]$ while the rank of subject $i$ in group $X$ is $R[X_i(s)]$, at time $s$. For the KW test and at time $s$, the rank of subject $i$ in group $g$ is $R[X_{g,i}(s)]$ for $g = 1, \ldots, G$. Using the preprocessed data, the ranks are $R\left[\tilde{Y}_j(s)\right]$, $R\left[\tilde{X}_i(s)\right]$, and $R\left[\tilde{X}_{g,i}(s)\right]$, depending on the test. For ease of notation and without-loss-of-generality, we develop the exact and approximate distributions from the raw data. However, when conducting the tests on functional data, we use the preprocessed representation.
+	
+%	\subsection{Exact and Approximate Distributions of the Ranks under $H_0$}
+
+Suppose we consider $R[Y_j(s)]$ and $R[X_i(s)]$ to be samples taken at time $s$ from a distribution of ranks over time for a particular subject. In other words, we treat $R[Y_j(s)]$ and $R[X_i(s)]$ as draws from a distribution of subject-specific ranks. We can then derive an exact distribution for the $r$th rank at time $s$ for each subject. Under $H_0$ and ignoring group assignment, the ranks at each $s$ are randomly assigned. Thus, each $R[Y_j(s)]$ and $R[X_i(s)]$ is a realization from a discrete uniform distribution, $\mathcal{U}\{1,n\}$ where $n = n_1 + n_2$. We can characterize the distribution of the $r$th rank at each time point using the discrete rank PMF. For the KW test, we simply replace $R[Y_j(s)]$ and $R[X_i(s)]$ with $R[X_{g,i}(s)]$, $g = 1, \ldots, G$, and let $n = \sum_{g=1}^G n_g$. The ranking then proceeds in a similar fashion since the ranking ignores group assignment.
+
+Let $Z_{(r)}$ be the random variable for a subject's $r$th rank, ignoring group assignment and at a specific value of $s$. For notational ease, we temporarily suppress the $i$ index as well as $Z_{(r)}$'s dependency on $s$. The PMF for $Z_{(r)}$ is given by
+\begin{align}
+	&P\bigg[ Z_{(r)} = z \bigg] = 
+%	&= \sum_{k = r}^n {n \choose k} \left[ \left(\frac{z}{n}\right)^k\left(1-\frac{z}{n}\right)^{n-k} - \left(\frac{z - 1}{n}\right)^k\left(1-\frac{z - 1}{n}\right)^{n-k} \right]\\
+%	= \sum_{k = r}^n {n \choose k} \left(\frac{z}{n}\right)^k\left(1-\frac{z}{n}\right)^{n-k} -  \sum_{k = r}^n {n \choose k} \left(\frac{z - 1}{n}\right)^k\left(1-\frac{z - 1}{n}\right)^{n-k} \nonumber\\
+	1 - \sum_{k = 0}^{r-1} {n \choose k} \left(\frac{z}{n}\right)^k\left(1-\frac{z}{n}\right)^{n-k} \label{eq:pzs}\\
+	&-  \left[1 - \sum_{k = 0}^{r-1} {n \choose k} \left(\frac{z - 1}{n}\right)^k\left(1-\frac{z - 1}{n}\right)^{n-k} \right]. \nonumber
+%	&= 1 - I_{1-z/n}[n - (r-1), r-1+1] -  \left[1 - I_{1-(z-1)/n}\{n - (r-1), r-1+1\}\right]\\
+%	&= 1 - I_{1-z/n}(n - r + 1, r) -  \left[1 - I_{1-(z-1)/n}(n - r + 1, r)\right]\\
+%	&= I_{1-(z-1)/n}(n - r + 1, r) -  I_{1-z/n}(n - r + 1, r)\\
+%	&= \frac{B\left(1-\frac{z - 1}{n}; n - r + 1, r\right)}{B(n - r + 1, r)} - \frac{B\left(1-\frac{z }{n}; n - r + 1, r\right)}{B(n - r + 1, r)}\\
+%	&= \frac{B\left(1-\frac{z - 1}{n}; n - r + 1, r\right) - B\left(1-\frac{z }{n}; n - r + 1, r\right)}{B(n - r + 1, r)}\\
+%	&= I_{z/n}(r, n - r + 1) -  I_{(z-1)/n}(r, n - r + 1),
+%	&= \frac{B\left(\frac{z }{n}; r, n - r + 1\right) - B\left(\frac{z - 1}{n}; r, n - r + 1\right)}{B(r, n - r + 1)}\\
+\end{align}
+	The above summations are the CDFs of binomial random variables with probabilities of success $\frac{z}{n}$ and $\frac{z-1}{n}$, respectively. Let $I_q(a,b)$ denote the regularized incomplete beta function evaluated at $q$ with parameters $a$ and $b$. Equation~\eqref{eq:pzs} can be re-expressed as
+\begin{align}
+	P\bigg[ &Z_{(r)} = z \bigg] \label{eq:pzr} \\
+	&= I_{z/n}(r, n - r + 1) -  I_{(z-1)/n}(r, n - r + 1).\nonumber 
+\end{align}
+
+The distribution in Equation~\eqref{eq:pzr} is non-standard and difficult to work with analytically, although we can compute values from it using standard statistical software. The relationship between the beta and binomial distributions can, however, be exploited to find an approximation of $P\left[ Z_{(r)} = z \right]$ with a more workable form. Specifically, the regularized incomplete beta functions in Equation~\eqref{eq:pzr} are also equivalent to the CDFs of beta random variables evaluated at $\frac{z}{n}$ and $\frac{z-1}{n}$, respectively, with parameters $r$ and $n - r + 1$. After expressing the beta CDFs in their integral form, we re-write $P\left[ Z_{(r)} = z \right]$ as
+
+\begin{align*}
+	P\bigg[ &Z_{(r)} = z \bigg] \\
+%	&= I_{z/n}(r, n - r + 1) -  I_{(z-1)/n}(r, n - r + 1)\\
+%	&= F_{T}(z/n) - F_{T}\left(\frac{z-1}{n}\right)\\
+%	&= P\left(T \leq \frac{z}{n}\right) - P\left(T \leq \frac{z-1}{n}\right)\\
+%	&= P\left(T \leq \frac{\frac{n+1}{2}}{n}\right) - P\left(T \leq \frac{\frac{n+1}{2}-1}{n}\right)\\
+%	&= P\left(T \leq \frac{1}{n}\frac{n+1}{2}\right) - P\left[T \leq \frac{1}{n}\left(\frac{n+1}{2}-1\right)\right]\\
+%	&= P\left(T \leq \frac{1}{2} + \frac{1}{2n}\right) - P\left(T \leq \frac{1}{2} + \frac{1}{2n} - \frac{1}{n}\right)\\
+%	&= \int_0^{\frac{z}{n}} \frac{1}{B(r, n - r + 1)} \left(t\right)^{r-1}\left(1-t\right)^{n-r + 1 - 1} dt \\
+%	&\hspace{40pt}- \int_0^{\frac{z-1}{n}} \frac{1}{B(r, n - r + 1)} \left(t\right)^{r-1}\left(1-t\right)^{n-r + 1 - 1} dt\\
+%	&=  \frac{1}{B(r, n - r + 1)} \left[ \int_0^{\frac{z}{n}} t^{r-1}\left(1-t\right)^{n-r + 1 - 1} dt - \int_0^{\frac{z-1}{n}}t^{r-1}\left(1-t\right)^{n-r + 1 - 1} dt \right]\\
+%	&=  \frac{\Gamma(n+1)}{\Gamma(r)\Gamma(n - r + 1)} \left[ \int_0^{\frac{z}{n}} t^{r-1}\left(1-t\right)^{n-r + 1 - 1} dt - \int_0^{\frac{z-1}{n}}t^{r-1}\left(1-t\right)^{n-r + 1 - 1} dt \right]\\
+%	&=  \frac{\Gamma(n+1)}{\Gamma(r)\Gamma(n - r + 1)} \left[ \int_0^{\frac{z}{n}} t^{r-1}\left(1-t\right)^{n-r + 1 - 1} dt - \int_0^{\frac{z}{n}-\frac{1}{n}}t^{r-1}\left(1-t\right)^{n-r + 1 - 1} dt \right]\\
+	&=  \frac{\Gamma(n+1)}{\Gamma(r)\Gamma(n - r + 1)} \left[ \int_{\frac{z}{n}-\frac{1}{n}}^{\frac{z}{n}} t^{r-1}\left(1-t\right)^{n-r + 1 - 1} dt \right]\\
+	&\approx \frac{\Gamma(n+1)}{\Gamma(r)\Gamma(n - r + 1)}  \frac{1}{n} \left(\frac{z}{n}\right)^{r-1}\left(1-\frac{z}{n}\right)^{n-r}
+%	&= \frac{1}{B(r, n - r + 1)} \int_0^{\frac{z}{n}}  \left(t\right)^{\frac{n}{2} + \frac{1}{2}-1}\left(1-t\right)^{n-\frac{n}{2} - \frac{1}{2} + 1 - 1} dt - \int_0^{\frac{z-1}{n}} \frac{1}{B(r, n - r + 1)} \left(a\right)^{r-1}\left(1-a\right)^{n-r + 1 - 1} da
+\end{align*}
+with the approximation improving as $n$ increases. We can observe this graphically in Section 1 of the Supplementary Material \citep{DRTSup2023}. When $r = \frac{n+1}{2}$, the expected rank under $H_0$, the approximation is quite good. A full derivation of $P\left[ Z_{(r)} = z \right]$ is in Appendix \ref{appA}. 
+
+The advantage of the approximation is that it can be shown to be an exponential family member. Let $q = n-r +1$, the PMF is then
+\begin{align}
+	P\bigg[ &Z_{(r)} = z \bigg] \label{eq:pmf}\\
+	&\approx \frac{\Gamma(r + q)}{\Gamma(r)\Gamma(q)}  \frac{1}{n} \left(\frac{z}{n}\right)^{r-1}\left(1-\frac{z}{n}\right)^{q-1}.\nonumber
+\end{align}
+
+
+\begin{claim}\label{cl1}
+The distribution described by the mass function in Equation~\ref{eq:pmf} is an exponential family member.
+\end{claim}
+
+\begin{proof}
+The proof of Claim~\ref{cl1} is in Appendix \ref{appB}.
+\end{proof}
+
+
+
+
+
+%\begin{theorem}\label{th1}
+%This is the body of Theorem \ref{th1}. Theorem \ref{th1} numbering is
+%dependent on section because we used \verb|[section]| after \verb|\newtheorem|.
+%\end{theorem}
+%
+%\begin{theorem}[Title of the theorem]\label{th2}
+%This is the body of Theorem \ref{th2}. Theorem \ref{th2} has additional title.
+%\end{theorem}
+%
+%\begin{lemma}\label{le1}
+%This is the body of Lemma \ref{le1}. Lemma \ref{le1} is numbered after
+%Theorem \ref{th2} because we used \verb|[theorem]| in \verb|\newtheorem|.
+%\end{lemma}
+%
+%
+%\begin{proof}[Proof of Lemma \ref{le1}]
+%This is the body of the proof of Lemma \ref{le1}.
+%\end{proof}
+%
+%\section{Equations and the Like}
+%
+%Two equations:
+%\begin{equation}
+%    C_{s}  =  K_{M} \frac{\mu/\mu_{x}}{1-\mu/\mu_{x}} \label{ccs}
+%\end{equation}
+%and
+%\begin{equation}
+%    G = \frac{P_{\mathrm{opt}} - P_{\mathrm{ref}}}{P_{\mathrm{ref}}}  100(\%).
+%\end{equation}
+%
+%Equation arrays:
+%\begin{eqnarray}
+%  \frac{dS}{dt} & = & - \sigma X + s_{F} F,\\
+%  \frac{dX}{dt} & = &   \mu    X,\\
+%  \frac{dP}{dt} & = &   \pi    X - k_{h} P,\\
+%  \frac{dV}{dt} & = &   F.
+%\end{eqnarray}
+%One long equation:
+%\begin{eqnarray}
+% \mu_{\text{normal}} & = & \mu_{x} \frac{C_{s}}{K_{x}C_{x}+C_{s}}  \nonumber\\
+%                     & = & \mu_{\text{normal}} - Y_{x/s}\bigl(1-H(C_{s})\bigr)(m_{s}+\pi /Y_{p/s})\\
+%                     & = & \mu_{\text{normal}}/Y_{x/s}+ H(C_{s}) (m_{s}+ \pi /Y_{p/s}).\nonumber
+%\end{eqnarray}
+
+
+%	\subsection{Rank-based Score under $H_0$}
+
+Since the family of pmfs defined by Equation~(\ref{eq:pmf}) is an exponential family, $t(z) = \log\left( \frac{z}{n} \right)$ is a sufficient statistic for $r$. We now reintroduce the dependency on $i$ and $s$ in the notation. Given a sample of ranks, $z_i(s)$, across $s$ for single subject $i$, a sufficient statistics for $r$ is $\frac{1}{S} \sum_{s=1}^S \log\left[ \frac{z_i(s)}{n} \right]$. Exponentiating this average, we can see that the geometric mean is also a sufficient statistic for a subject's rank over time since
+\begin{align*}
+	&\exp\left[ \frac{1}{S} \sum_{s=1}^S \log\left\{ \frac{z_i(s)}{n} \right\} \right] 
+%	&= \exp\left[ \frac{1}{S} \sum_{s=1}^S \log\left\{z(s)\right\} - \frac{1}{S} \sum_{s=1}^S\log(n) \right]\\
+	\propto\exp\left[ \frac{1}{S} \sum_{s=1}^S \log\left\{z_i(s)\right\}\right].
+\end{align*}
+Let $\breve{Z}_i$ denote the geometric mean of the ranks, ignoring group assignment, across $s$ for subject $i$. Expressed another way, our proposed score summarizing subject $i$'s rank under $H_0$ is $\breve{Z}_i = \left\{ \prod_{s=1}^S R\left[ \tilde{X}_i(s) \right] \right\}^{1/S}$ for those in group $X$ and $\breve{Z}_j = \left\{ \prod_{s=1}^S R\left[ \tilde{Y}_j(s) \right] \right\}^{1/S}$ for those in group $Y$. For the KW test, the scores are $\breve{Z}_{g,i} = \left\{ \prod_{s=1}^S R\left[ \tilde{X}_{g,i}(s) \right] \right\}^{1/S}$.
+
+%	\subsection{MWW and KW Tests for Functional Data}
+	
+	Our testing procedure for grouped functional data proceeds as follows: first, we preprocess the data using FACE and generate ranks at each time point $s$, ignoring group assignment. We then calculate $\breve{Z}_i$ for all subjects. Next, we rank the $\breve{Z}_i$s, once again ignoring group assignment. Finally, we construct the relevant test statistic and p-value. The doubly ranked MWW test statistic is $T_{DR}^+ = \sum_{j=1}^{n_2} R\left[ \breve{Z}_{j} \right] - \frac{n_2(n_2 + 1)}{2}$. The doubly ranked KW test statistic is 
+\begin{align*}
+		H_{DR} = \frac{12}{n(n+1)} \sum_{g = 1}^G n_{g} \left( n_g^{-1} \sum_{i=1}^{n_g} R[\breve{Z}_{g,i}] - \frac{n+1}{2}\right)^2.
+\end{align*}
+
+	Our procedure produces a univariate score for each subject which is then used as the data in each test. Thus, the distributional results from Section~\ref{s:statframe} hold for both the doubly ranked MWW and KW tests. That is, $T_{DR}^+$ is approximately normal while $H_{DR}$ is asymptotically $\chi_{G-1}^2$. When $S = 1$, the doubly ranked tests revert to the standard MWW and KW. We can see this by noting that, in that case, $\breve{Z}_{j}$ and $\breve{Z}_{g,i}$ would just be the ranks at a single time point. Re-ranking would not alter the ranks so the doubly ranked tests become equivalent to the standard tests when $S = 1$. To implement our method, we provide publicly available code at \url{https://github.com/markjmeyer/doublyRanked}.
+
+The doubly ranked tests inherit the null and alternative hypotheses from the MWW and KW tests. Under the two sample setting, one version of the null is that the distributions of geometric means are equivalent with the alternative that one distribution is stochastically larger. Assuming the distributions of the geometric means are the same up to some location shift $\breve{\Delta}$ gives the second set of hypotheses whereby $H_0 : \breve{\Delta} = 0$, i.e. the difference in the location parameters for the distributions of geometric means of the ranks is the same in both groups, versus $H_A : \breve{\Delta} \neq 0$. The score we construct is based off of the ranks at each time point which, under the MWW null, are all assumed to have a discrete uniform distribution. Thus, it is reasonable to assume that under $H_0$ the distributions of the geometric means of the ranks in the two groups are the same up to some location shift.
+%Thus, the doubly ranked MWW null is that $\breve{\Delta} = 0$, i.e. the difference in the location parameters for the distributions of geometric means of the ranks is the same in both groups. The natural alternative is then $\breve{\Delta} \neq 0$. 
+
+A more interpretable version of the hypotheses comes by recognizing that the geometric means are sufficient for the ranks over $s$. Thus, no difference in $\breve{\Delta}$ implies that the ranks over $s$ are similar between the groups. And if the ranks are similar, the raw or pre-processed curves should be similar as well. The null can then be that the groups of curves are the same over $s$ versus the alternative that they differ at some $s$. A similar argument can be used for the doubly ranked KW test's hypotheses to arrive at the null representing no difference in the curves between all groups over $s$ versus the alternative that at least one group's set of curves differs at some $s$.
+
+%	\subsection{Alternative Statistic}
+%
+%	Consider each $R[Y_j(s)]$ and $R[X_i(s)]$ a sample rank for the rank of the curve itself. Then, under $H_0$ and ignoring group assignment, the ranks at each $s$ would be randomly assigned. Thus, each $R[Y_j(s)]$ and $R[X_i(s)]$ is a realization from a discrete uniform distribution, $\mathcal{U}\{1,N\}$. Thus, $E\left[ R\{Y_j(s)\} \right] = E\left[ R\{X_i(s)\} \right] = \frac{N + 1}{2}$. It is straightforward to show then that for a fixed $j$, $\frac{1}{S} \sum_{s = 1}^S R[Y_j(s)]$ is an unbiased estimator of the expected value of the distribution of the ranks of $Y_j(s)$ over $s$, under the null. The same holds for a fixed $i$ and the average rank of $X_i(s)$ across $s$, $\frac{1}{S} \sum_{s = 1}^S R[X_i(s)]$. 
+
+%	\subsection{Incomplete Curves}
+
+
+	\section{Simulation Study}
+	\label{s:sim}
+	
+	In our empirical study, we assume a balanced design with groups of size $n_1 = n_2 = 10, 25$ and 50 and, in the KW case, $n_3$ defined similarly. The total sample sizes are $n = 20, 50,$ and 100 (MWW) and $n = 30, 75,$ and 150 (KW). The doubly ranked MWW test is for two groups and we consider the three group case for the doubly ranked KW test. We vary the underlying distribution of the errors in the raw data using multivariate Gaussian, log-normal, and $t_2$ processes where $t_2$ denotes a $t$ distribution with 2 degrees of freedom. The underlying covariance structure is assumed to be auto-regressive 1 and we vary the correlation considering $\rho = 0.25, 0.50,$ and 0.75. The true curves are based on the CDF of the standard normal distribution, denoted with $\Phi$, and the PDF of the gamma distribution, denoted with $\Gamma$, with each curve defined on the unit interval, $[0,1]$---see Section 2.1 of the Supplementary Material for graphs and formulas of the true curves \citep{DRTSup2023}. The sampling density of the curves is set $S = 40, 80, 160,$ or 320. In our power evaluation, we scale down the curve in one group for the MW test and in two groups for the KW test from $\xi = 0.99$ to 0.5 by increments of 0.02. We limit our direct comparison to the depth-based method, since it alone has publicly available code. All curves are preprocessed using FACE, retaining 99\% of the variability.
+	
+%	Of the perviously studied methods, only the depth-based method has publicly available code. Thus, we limit our direct comparison to that approach.
+%	All curves are preprocessed using FACE, retaining 99\% of the variability.
+		
+%	vary sample size (balanced design): $n_1 = 10, 25, 50$ (20, 50, 100 MWW) (30, 75, 150 KW)\\
+%	vary $\rho$: $\rho = 0.25, 0.50, 0.75$\\
+%	vary test: MWW (2 groups), KW (3 groups)\\
+%	vary curve: $\Phi$, $\Gamma$\\
+%	Complete and incomplete ($\sim$80\% of curves are incomplete with around 10\% of the curve missing)
+%	vary error functions: Gaussian, lognormal, $t_2$\\
+
+%	vary sample size: $N = 12, 24, 48, 96$\\
+%	$n_1 = n_2 = 6, 12, 24, 48$\\
+%	$n_1 = n_2 = n_3 = 4, 8, 16, 32$\\
+	
+%	$N = 20, 50, 100$\\
+%	$n_1 = n_2 = 7, n_3 = 6$\\
+%	$n_1 = n_2 = 17, n_3 = 16$\\
+%	$n_1 = n_2 = 33, n_3 = 34$\\
+	
+%	\subsection{Complete Curves}
+
+%\begin{table}
+%\centering
+%\caption{Type I error summary for functional Mann-Whitney-Wilcoxon tests. Each value represents the average size of each method by curve, error (G for Gaussian, L for log-normal, or T for $t$), and $N$, averaged over 1000 simulated datasets and each combination of $\rho$ and $S$. $\Phi$ denotes the normal CDF curve setting while $\Gamma$ denotes the gamma setting. All tests were conducted using $\alpha = 0.05$.   }
+%\vspace{5pt}
+%\begin{tabular}{lllccc}
+%  \hline
+%\multirow{2}{*}{Curve} & \multirow{2}{*}{Error} & \multirow{2}{*}{$N$} &  Doubly & \multirow{2}{*}{Depth-based}  & Random \\
+% &   &  & Ranked &  & Projections \\ 
+%  \hline
+%$\Phi$ & 
+%%C  &  20 & 0.0390 & 0.0303 & 0.0382 \\
+%G  &  20 & 0.0390 & 0.0303 & 0.0382 \\
+% & & 50 & 0.0437 & 0.0441 & 0.0493 \\
+% & & 100 & 0.0482 & 0.0483 & 0.0500 \\
+%\cline{3-6}
+%%& I  &  20 & 0.0432 & 0.0351 & 0.0464\\ %0.0438 & 0.0351 & 0.0464 \\ %
+%% & & 50 & 0.0465 & 0.0473 & 0.0512\\ % 0.0482 & 0.0473 & 0.0512 \\ %
+%% & & 100 & 0.0503 & 0.0501 & 0.0473\\ %0.0511 & 0.0501 & 0.0473 \\ %
+%& L & 20 \\
+% & & 50 & 0.0487 & 0.0429 & 0.0496\\ %& 0.0500 & 0.0418 & 0.0472 \\
+% & & 100 & 0.0448 & 0.0511 & 0.0454 \\
+%\cline{3-6}
+%& T & 20 \\
+% & & 50 \\
+% & & 100 & 0.0457 & 0.0432 & 0.0499 \\
+%\cline{2-6}
+%$\Gamma$ & G  &  20 & 0.0390 & 0.0299 & 0.0382  \\
+% & & 50 & 0.0437 & 0.0442 & 0.0493 \\
+% & & 100 & 0.0482 & 0.0486 & 0.0500 \\
+%\cline{3-6}
+%%& I  &  20 & 0.0428 & 0.0349 & 0.0414\\ %0.0438 & 0.0349 & 0.0414 \\
+%% & & 50 & 0.0470 & 0.0472 & 0.0523\\ %0.0482 & 0.0472 & 0.0523 \\ %
+%% & & 100 & 0.0508 & 0.0497 & 0.0475\\ % 0.0511 & 0.0497 & 0.0475 \\ %
+%& L  &  20  \\ %0.0438 & 0.0349 & 0.0414 \\
+% & & 50  \\ %0.0482 & 0.0472 & 0.0523 \\ %
+% & & 100 & 0.0442 & 0.0500 & 0.0464 \\ % 0.0511 & 0.0497 & 0.0475 \\ %
+%\cline{3-6}
+%& T & 20 \\
+% & & 50 \\
+% & & 100 & 0.0457 & 0.0433 & 0.0499 \\
+%    \hline
+%\end{tabular}
+%\end{table}
+
+%\begin{table}
+%\centering
+%\caption{Type I error summary for functional Mann-Whitney-Wilcoxon tests. Each value represents the average size of each method by curve, error (G for Gaussian, L for log-normal, or T for $t$), and $N$, averaged over 1000 simulated datasets and each combination of $\rho$ and $S$. $\Phi$ denotes the normal CDF curve setting while $\Gamma$ denotes the gamma setting. All tests were conducted using $\alpha = 0.05$.   }
+%\vspace{5pt}
+%\begin{tabular}{lllccc}
+%  \hline
+%\multirow{2}{*}{Curve} & \multirow{2}{*}{Error} & \multirow{2}{*}{$N$} &  Doubly & \multirow{2}{*}{Depth-based}  & Random \\
+% &   &  & Ranked &  & Projections \\ 
+%  \hline
+%$\Phi$ & 
+%G  &  20 & 0.0385 & 0.0303 & 0.0382  \\
+% & & 50 & 0.0422 & 0.0441 & 0.0493  \\
+% & & 100 & 0.0437 & 0.0483 & 0.0500  \\
+%\cline{3-6}
+%& L & 20 & 0.0408 & 0.0329 & 0.0420 \\
+% & & 50 & 0.0487 & 0.0429 & 0.0496\\ 
+% & & 100 & 0.0481 & 0.0511 & 0.0454 \\
+%\cline{3-6}
+%& T & 20 & 0.0375 & 0.0364 & 0.0407 \\
+% & & 50 & 0.0453 & 0.0442 & 0.0496 \\
+% & & 100  & 0.0446 & 0.0432 & 0.0499 \\
+%\cline{2-6}
+%$\Gamma$ & G  &  20 & 0.0388 & 0.0299 & 0.0382   \\
+% & & 50 & 0.0423 & 0.0442 & 0.0493  \\
+% & & 100 & 0.0438 & 0.0486 & 0.0500  \\
+%\cline{3-6}
+%& L  &  20 & 0.0463 & 0.0308 & 0.0437 \\ 
+% & & 50 & 0.0478 & 0.0398 & 0.0477 \\ 
+% & & 100 & 0.0468 & 0.0500 & 0.0464 \\ 
+%\cline{3-6}
+%& T & 20 & 0.0377 & 0.0364 & 0.0407 \\
+% & & 50 & 0.0450 & 0.0445 & 0.0496 \\
+% & & 100 & 0.0446 & 0.0433 & 0.0499  \\
+%    \hline
+%\end{tabular}
+%\end{table}
+
+\begin{table}
+\centering
+\caption{Type I error summary for functional Mann-Whitney-Wilcoxon tests. Each value represents the average type I error of each method by curve, error (G for Gaussian, L for log-normal, or T for $t_2$), and $N$, averaged over 1000 simulated datasets and each combination of $\rho$ and $S$. $\Phi$ denotes the normal CDF curve setting while $\Gamma$ denotes the gamma PDF setting. All tests were conducted using $\alpha = 0.05$. \label{t:mwwe}  }
+\vspace{5pt}
+\begin{tabular}{lllcc}
+  \hline
+\multirow{2}{*}{Curve} & \multirow{2}{*}{Error} & \multirow{2}{*}{$n$} &  Doubly & \multirow{2}{*}{Depth-based}  \\
+ &   &  & Ranked &  \\ 
+  \hline
+$\Phi$ & 
+G  &  20 & 0.0385 & 0.0303   \\
+ & & 50 & 0.0422 & 0.0441   \\
+ & & 100 & 0.0437 & 0.0483   \\
+\cline{3-5}
+& L & 20 & 0.0408 & 0.0329  \\
+ & & 50 & 0.0487 & 0.0429  \\ 
+ & & 100 & 0.0481 & 0.0511  \\
+\cline{3-5}
+& T & 20 & 0.0375 & 0.0364  \\
+ & & 50 & 0.0453 & 0.0442  \\
+ & & 100  & 0.0446 & 0.0432  \\
+\cline{2-5}
+$\Gamma$ & G  &  20 & 0.0388 & 0.0299   \\
+ & & 50 & 0.0423 & 0.0442  \\
+ & & 100 & 0.0438 & 0.0486  \\
+\cline{3-5}
+& L  &  20 & 0.0463 & 0.0308  \\ 
+ & & 50 & 0.0478 & 0.0398  \\ 
+ & & 100 & 0.0468 & 0.0500  \\ 
+\cline{3-5}
+& T & 20 & 0.0377 & 0.0364  \\
+ & & 50 & 0.0450 & 0.0445  \\
+ & & 100 & 0.0446 & 0.0433   \\
+    \hline
+\end{tabular}
+\end{table}
+
+%\begin{table}
+%\centering
+%\caption{Type I error summary for functional Mann-Whitney-Wilcoxon tests. Each value represents the average size of each method by curve, error (G for Gaussian, L for log-normal, or T for $t$), and $N$, averaged over 1000 simulated datasets and each combination of $\rho$ and $S$ ($-$40). $\Phi$ denotes the normal CDF curve setting while $\Gamma$ denotes the gamma setting. All tests were conducted using $\alpha = 0.05$.   }
+%\vspace{5pt}
+%\begin{tabular}{lllccc}
+%  \hline
+%\multirow{2}{*}{Curve} & \multirow{2}{*}{Error} & \multirow{2}{*}{$N$} &  Doubly & \multirow{2}{*}{Depth-based}  & Random \\
+% &   &  & Ranked &  & Projections \\ 
+%  \hline
+%$\Phi$ & 
+%G  &  20 & 0.0376 & 0.0303 & 0.0382   \\
+% & & 50 & 0.0416 & 0.0424 & 0.0486   \\
+% & & 100 & 0.0430 & 0.0467 & 0.0470   \\
+%\cline{3-6}
+%& L &  20 & 0.0423 & 0.0319 & 0.0428   \\
+% & & 50 & 0.0488 & 0.0428 & 0.0494   \\
+% & & 100 & 0.0498 & 0.0499 & 0.0461   \\
+%\cline{3-6}
+%& T &  20 & 0.0381 & 0.0356 & 0.0391   \\
+% & & 50 & 0.0468 & 0.0432 & 0.0492   \\
+% & & 100 & 0.0432 & 0.0443 & 0.0473   \\
+%\cline{2-6}
+%$\Gamma$ & G  &  20 & 0.0377 & 0.0300 & 0.0382   \\
+% & & 50 & 0.0416 & 0.0424 & 0.0486   \\
+% & & 100 & 0.0429 & 0.0470 & 0.0470   \\
+%\cline{3-6}
+%& L &  20 & 0.0478 & 0.0310 & 0.0420   \\
+% & & 50 & 0.0446 & 0.0398 & 0.0487   \\
+% & & 100 & 0.0458 & 0.0506 & 0.0430   \\
+%\cline{3-6}
+%& T &  20 & 0.0383 & 0.0357 & 0.0391   \\
+% & & 50 & 0.0464 & 0.0434 & 0.0492   \\
+% & & 100 & 0.0432 & 0.0446 & 0.0473   \\
+%    \hline
+%\end{tabular}
+%\end{table}
+
+%\begin{table}
+%\centering
+%\caption{Power Tracker for functional Mann-Whitney-Wilcoxon tests. Each value represents the average size of each method by curve, error (G for Gaussian, L for log-normal, or T for $t$), and $N$, averaged over 1000 simulated datasets and each combination of $\rho$ and $S$. $\Phi$ denotes the normal CDF curve setting while $\Gamma$ denotes the gamma setting. All tests were conducted using $\alpha = 0.05$.   }
+%\vspace{5pt}
+%\begin{tabular}{lllccc}
+%  \hline
+%\multirow{2}{*}{Curve} & \multirow{2}{*}{Error} & \multirow{2}{*}{$N$} &  Doubly & \multirow{2}{*}{Depth-based}  & Random \\
+% &   &  & Ranked &  & Projections \\ 
+%  \hline
+%$\Phi$ & 
+%G  &  20 &  &  &   \\
+% & & 50 &  &  &   \\
+% & & 100 &  &  &   \\
+%\cline{3-6}
+%& L &  20 &  &  &   \\
+% & & 50 &  &  &   \\
+% & & 100 &  &  &   \\
+%\cline{3-6}
+%& T &  20 &  &  &   \\
+% & & 50 &  &  &   \\
+% & & 100 &  &  &   \\
+%\cline{2-6}
+%$\Gamma$ & G  &  20 &  &  &   \\
+% & & 50 &  &  &   \\
+% & & 100 &  &  &   \\
+%\cline{3-6}
+%& L  &  20 &  &  &   \\
+% & & 50 &  &  &   \\
+% & & 100 &  &  &   \\
+%\cline{3-6}
+%& T &  20 &  &  &   \\
+% & & 50 &  &  &   \\
+% & & 100 &  &  &   \\
+%    \hline
+%\end{tabular}
+%\end{table}
+
+
+\begin{table}
+\centering
+\caption{Type I error summary for doubly ranked Kruskal-Wallis tests. Each value represents the average type I error by curve, error (G for Gaussian, L for log-normal, or T for $t_2$), and $N$, averaged over 1000 simulated datasets and each combination of $\rho$ and $S$. $\Phi$ denotes the normal CDF curve setting while $\Gamma$ denotes the gamma PDF setting. All tests were conducted using $\alpha = 0.05$.  \label{t:kwe}}
+\vspace{5pt}
+\begin{tabular}{llccc}
+  \hline
+\multirow{2}{*}{Curve} & \multirow{2}{*}{$n$} &  \multicolumn{3}{c}{Error} \\
+  \cline{3-5}
+   &  & G &  L & T \\ 
+  \hline
+$\Phi$ &  30 & 0.0360 & 0.0445 & 0.0432 \\
+ & 75 & 0.0417 & 0.0447 & 0.0446 \\
+ & 150 & 0.0446 & 0.0492 & 0.0481 \\
+\cline{2-5}
+$\Gamma$ &  30 & 0.0359 & 0.0490 & 0.0437 \\
+ & 75 & 0.0417 & 0.0475 & 0.0447 \\
+ & 150 & 0.0447 & 0.0487 & 0.0479 \\
+    \hline
+\end{tabular}
+\end{table}
+
+	Type I error estimates are based off of 1000 randomly generated datasets and presented in Table~\ref{t:mwwe} for the doubly ranked MWW test. Table~\ref{t:kwe} contains type I error for the doubly ranked KW test. Because type I error did not vary significantly by $S$ or $\rho$, both tables are broken down by curve, error distribution, and total sample size with values representing average type I error over $S$, $\rho$, and the 1000 simulated datasets. Under both test settings, MWW and KW, doubly ranked tests maintain the nominal $\alpha$-level, regardless of sample size or error type. Type I error tends to approach nominal as $n$ increases and does not vary much by curve type. In the MW test, the error rates are similar between doubly ranked and depth-based tests.
+
+\begin{figure*}
+	\centering
+	\includegraphics[width = 1.59in, height = 1.59in]{t_mww_phi_n1_10_S40.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_mww_phi_n1_10_S80.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_mww_phi_n1_10_S160.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_mww_phi_n1_10_S320.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_mww_phi_n1_25_S40.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_mww_phi_n1_25_S80.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_mww_phi_n1_25_S160.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_mww_phi_n1_25_S320.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_mww_phi_n1_50_S40.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_mww_phi_n1_50_S80.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_mww_phi_n1_50_S160.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_mww_phi_n1_50_S320.eps}
+	\caption{Power for functional Mann-Whitney-Wilcoxon tests when true curve is $\Phi$ and error is multivariate $t_2$. Rows index total sample sizes, columns index values of $S$. Curves for the doubly ranked test are in shades of blue, curves for depth-based tests are in shades of tan. Solid curves are for when $\rho = 0.25$, dashed curves for when $\rho = 0.50$, and dotted-dashed curves for when $\rho = 0.75$. \label{f:tpmww}}
+\end{figure*}
+
+\begin{figure*}
+	\centering
+	\includegraphics[width = 1.59in, height = 1.59in]{t_mww_gam_n1_10_S40.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_mww_gam_n1_10_S80.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_mww_gam_n1_10_S160.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_mww_gam_n1_10_S320.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_mww_gam_n1_25_S40.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_mww_gam_n1_25_S80.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_mww_gam_n1_25_S160.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_mww_gam_n1_25_S320.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_mww_gam_n1_50_S40.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_mww_gam_n1_50_S80.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_mww_gam_n1_50_S160.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_mww_gam_n1_50_S320.eps}
+	\caption{Power for functional Mann-Whitney-Wilcoxon tests when true curve is $\Gamma$ and error is multivariate $t_2$. Rows index total sample sizes, columns index values of $S$. Curves for the doubly ranked test are in shades of blue, curves for depth-based tests are in shades of tan. Solid curves are for when $\rho = 0.25$, dashed curves for when $\rho = 0.50$, and dotted-dashed curves for when $\rho = 0.75$. \label{f:tgmww}}
+\end{figure*}
+
+Power curves are based on 500 simulated datasets for each combination of $\xi$, $S$, $n$, $\rho$, curve type, and error type. Figures~\ref{f:tpmww} and~\ref{f:tgmww} present the curves for each combination when the error distribution is a $t_2$ process for the MWW test. Solid curves denote the settings where $\rho = 0.25$, dashed where $\rho = 0.5$, and dotted-dashed for when $\rho = 0.75$. Blue curves represent doubly ranked test, tan curves represent the depth-based test. Overall, power is highest when $S$ and $n$ are large and when $\rho$ is small. At large values of $\rho$, power improves with increased sample size and sampling density. The underlying error distribution has some impact on power with the slightly lower power coming when the distribution is $t_2$ and highest when the error is log-normal, with Gaussian error in-between. The type of curve also has some effect on power with the methods performing better for the $\Phi$ setting. Power for the doubly ranked test is, however, overall quite good. Comparing between methods for two samples, the doubly ranked MWW has consistently higher power than the depth-based test. Similar power curves to those in Figures~\ref{f:tpmww} and~\ref{f:tgmww} when the error distribution is Gaussian and log-normal are in Section 2 of the Supplementary Material \citep{DRTSup2023}.
+
+\begin{figure*}
+	\centering
+	\includegraphics[width = 1.59in, height = 1.59in]{t_kw_phi_n1_10_S40.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_kw_phi_n1_10_S80.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_kw_phi_n1_10_S160.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_kw_phi_n1_10_S320.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_kw_phi_n1_25_S40.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_kw_phi_n1_25_S80.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_kw_phi_n1_25_S160.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_kw_phi_n1_25_S320.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_kw_phi_n1_50_S40.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_kw_phi_n1_50_S80.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_kw_phi_n1_50_S160.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_kw_phi_n1_50_S320.eps}
+	\caption{Power for doubly ranked Kruskal-Wallis test when true curve is $\Phi$ and error is multivariate $t_2$. Rows index total sample sizes, columns index values of $S$. Solid curves are for when $\rho = 0.25$, dashed curves for when $\rho = 0.50$, and dotted-dashed curves for when $\rho = 0.75$. \label{f:tpkw}}
+\end{figure*}
+
+\begin{figure*}
+	\centering
+	\includegraphics[width = 1.59in, height = 1.59in]{t_kw_gam_n1_10_S40.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_kw_gam_n1_10_S80.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_kw_gam_n1_10_S160.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_kw_gam_n1_10_S320.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_kw_gam_n1_25_S40.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_kw_gam_n1_25_S80.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_kw_gam_n1_25_S160.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_kw_gam_n1_25_S320.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_kw_gam_n1_50_S40.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_kw_gam_n1_50_S80.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_kw_gam_n1_50_S160.eps}
+	\includegraphics[width = 1.59in, height = 1.59in]{t_kw_gam_n1_50_S320.eps}
+	\caption{Power for doubly ranked Kruskal-Wallis test when true curve is $\Gamma$ and error is multivariate $t_2$. Rows index total sample sizes, columns index values of $S$. Solid curves are for when $\rho = 0.25$, dashed curves for when $\rho = 0.50$, and dotted-dashed curves for when $\rho = 0.75$. \label{f:tgkw}}
+\end{figure*}
+
+Figures~\ref{f:tpkw} and~\ref{f:tgkw} contain the power curves for the doubly ranked KW test under multivariate $t_2$ errors. As with the MWW tests, the curves are based on 500 simulated datasets per combination  $\xi$, $S$, $N$, $\rho$, curve type, and error type. Solid curves again denote the settings where $\rho = 0.25$, dashed where $\rho = 0.5$, and dotted-dashed for when $\rho = 0.75$. Power in the KW case behaves similarly to the MWW where larger $S$ and $n$ as well as smaller $\rho$ leads to improved power. The doubly ranked KW test also performs slightly better for the $\Phi$ curve setting. The error distributions has some impact on power with the test tending to perform slightly better when the error distribution is log-normal, then Gaussian, and finally $t_2$. As with the doubly ranked MW test, power is overall quite good for the doubly ranked KW test. Additional power curves for the Gaussian and log-normal settings are in Section 3 of the Supplementary Material \citep{DRTSup2023}.
+
+%\begin{table}
+%\centering
+%\caption{Type I error summary for functional Kruskal-Wallis tests with complete curves. Each value represents the average size of each method by curve, type (complete or incomplete), and $N$, averaged over 1000 simulated datasets and each combination of $\rho$ and $S$. $\Phi$ denotes the normal CDF curve setting while $\Gamma$ denotes the gamma setting. All tests were conducted using $\alpha = 0.05$.   }
+%\vspace{5pt}
+%\begin{tabular}{lllcc}
+%  \hline
+%\multirow{2}{*}{Curve} & \multirow{2}{*}{Type} & \multirow{2}{*}{$N$} &  Doubly &  Random \\
+% &   &  & Ranked & Projections \\ 
+%  \hline
+%$\Phi$ & C  &  20 & 0.0382 & 0.0370 \\
+% & & 50 & 0.0417 & 0.0428 \\
+% & & 100 & 0.0442 & 0.0439 \\
+%\cline{3-5}
+%& I  &  20 & 0.0404 & 0.0464 \\
+% & & 50 & 0.0480 & 0.0538 \\
+% & & 100 & 0.0505 & 0.0507 \\
+% \cline{2-5}
+%$\Gamma$ & C  &  20 & 0.0382 & 0.0370 \\
+% & & 50 & 0.0417 & 0.0428 \\
+% & & 100 & 0.0442 & 0.0439 \\
+%\cline{3-5}
+%& I  &  20 & 0.0405 & 0.0377 \\
+% & & 50 & 0.0480 & 0.0487 \\
+% & & 100 & 0.0507 & 0.0571 \\
+%    \hline
+%\end{tabular}
+%\end{table}
+
+
+%\begin{table}
+%\centering
+%\caption{Type I error summary for functional Kruskal-Wallis tests with complete curves. Each value represents the average size of each method by curve, type (complete or incomplete), and $N$, averaged over 1000 simulated datasets and each combination of $\rho$ and $S$ (80, 160, 320). $\Phi$ denotes the normal CDF curve setting while $\Gamma$ denotes the gamma setting. All tests were conducted using $\alpha = 0.05$.   }
+%\vspace{5pt}
+%\begin{tabular}{lllcc}
+%  \hline
+%\multirow{2}{*}{Curve} & \multirow{2}{*}{Type} & \multirow{2}{*}{$N$} &  Doubly &  Random \\
+% &   &  & Ranked & Projections \\ 
+%  \hline
+%$\Phi$ & C  &  20 & \\
+% & & 50 & \\
+% & & 100 &  \\
+%\cline{3-5}
+%& I  &  20 & 0.0429 & 0.0481 \\
+% & & 50 & 0.0476 & 0.0561 \\
+% & & 100 & 0.0501 & 0.0529 \\
+% \cline{2-5}
+%$\Gamma$ & C  &  20 & \\
+% & & 50 & \\
+% & & 100 &  \\
+%\cline{3-5}
+%& I  &  20 & 0.0428 & 0.0403 \\
+% & & 50 & 0.0474 & 0.0497 \\
+% & & 100 & 0.0503 & 0.0572 \\
+%    \hline
+%\end{tabular}
+%\end{table}
+
+
+%	\subsection{Incomplete Curves}
+
+%\begin{table*}
+%\caption{The spherical case ($I_1=0$, $I_2=0$)}
+%\label{sphericcase}
+%\begin{tabular}{@{}lrrrrc@{}}
+%\hline
+%Equil. \\
+%points & \multicolumn{1}{c}{$x$}
+%& \multicolumn{1}{c}{$y$} & \multicolumn{1}{c}{$z$}
+%& \multicolumn{1}{c}{$C$} & S \\
+%\hline
+%$L_1$    & $-$2.485252241 & 0.000000000  & 0.017100631  & 8.230711648  & U \\
+%$L_2$    & 0.000000000  & 0.000000000  & 3.068883732  & 0.000000000  & S \\
+%$L_3$    & 0.009869059  & 0.000000000  & 4.756386544  & $-$0.000057922 & U \\
+%$L_4$    & 0.210589855  & 0.000000000  & $-$0.007021459 & 9.440510897  & U \\
+%$L_5$    & 0.455926604  & 0.000000000  & $-$0.212446624 & 7.586126667  & U \\
+%$L_6$    & 0.667031314  & 0.000000000  & 0.529879957  & 3.497660052  & U \\
+%$L_7$    & 2.164386674  & 0.000000000  & $-$0.169308438 & 6.866562449  & U \\
+%$L_8$    & 0.560414471  & 0.421735658  & $-$0.093667445 & 9.241525367  & U \\
+%$L_9$    & 0.560414471  & $-$0.421735658 & $-$0.093667445 & 9.241525367  & U \\
+%$L_{10}$ & 1.472523232  & 1.393484549  & $-$0.083801333 & 6.733436505  & U \\
+%$L_{11}$ & 1.472523232  & $-$1.393484549 & $-$0.083801333 & 6.733436505  & U \\
+%\hline
+%\end{tabular}
+%\end{table*}
+%
+%\begin{table}
+%\tabcolsep=0pt
+%\caption{Sample posterior estimates for each model}
+%\label{parset}
+%%
+%\begin{tabular*}{\columnwidth}{@{\extracolsep{\fill}}lcrcrrr@{}}
+%\hline
+%&& & &\multicolumn{3}{c}{Quantile} \\
+%\cline{5-7}
+%Model &Parameter &
+%\multicolumn{1}{c}{Mean} &
+%Std. dev.&
+%\multicolumn{1}{c}{2.5\%} &
+%\multicolumn{1}{c}{50\%}&
+%\multicolumn{1}{c@{}}{97.5\%} \\
+%\hline
+%{Model 0} & $\beta_0$ & $-$12.29 & 2.29 & $-$18.04 & $-$11.99 & $-$8.56 \\
+%          & $\beta_1$  & 0.10   & 0.07 & $-$0.05  & 0.10   & 0.26  \\
+%          & $\beta_2$   & 0.01   & 0.09 & $-$0.22  & 0.02   & 0.16  \\[6pt]
+%{Model 1} & $\beta_0$   & $-$4.58  & 3.04 & $-$11.00 & $-$4.44  & 1.06  \\
+%          & $\beta_1$   & 0.79   & 0.21 & 0.38   & 0.78   & 1.20  \\
+%          & $\beta_2$   & $-$0.28  & 0.10 & $-$0.48  & $-$0.28  & $-$0.07 \\[6pt]
+%{Model 2} & $\beta_0$   & $-$11.85 & 2.24 & $-$17.34 & $-$11.60 & $-$7.85 \\
+%          & $\beta_1$   & 0.73   & 0.21 & 0.32   & 0.73   & 1.16  \\
+%          & $\beta_2$   & $-$0.60  & 0.14 & $-$0.88  & $-$0.60  & $-$0.34 \\
+%          & $\beta_3$   & 0.22   & 0.17 & $-$0.10  & 0.22   & 0.55  \\
+%\hline
+%\end{tabular*}
+%%
+%\end{table}
+
+\section{Data Illustrations}
+\label{s:app}
+
+To illustrate both doubly ranked MWW and KW tests, we examine functional data from three different substantive fields with varying numbers of observations and differing lengths of functions. Two of the datasets are available in \texttt{R} packages and the third will be made available upon request. Each dataset has at least one factor of interest that may differentiate the outcome curves. While we will draw light conclusions based on the findings, the purpose of these illustrations is to demonstrate the use of doubly ranked tests and not to elaborate on the scientific findings (or lack-thereof) that result from our analysis. Results from all three data sources for various combinations of outcomes and factors are in Table~\ref{t:data}. All outcomes were first pre-processed using FACE, retaining 99\% of the variation within the curves. Graphs of the functional curves from each data source are in Section 4 of the Supplementary Material \citep{DRTSup2023}.
+
+\begin{table}
+\centering
+\caption{ Test statistics and $p$-values for doubly ranked tests applied to the three data illustrations: resin viscosity, Canadian weather, and COVID mobility. Temp. is short for temperature, Cur. for curing, Rot. for rotational, and Precip. for precipitation. Doubly ranked KW tests were performed for both Canadian weather outcomes and the COVID mobility factor MD, VA, \& WV. The remaining tests were doubly ranked MWW tests. \label{t:data}}
+\vspace{5pt}
+\begin{tabular}{lllcc}
+  \hline
+\multirow{2}{*}{Data Set} & \multirow{2}{*}{Outcome} & \multirow{2}{*}{Factor} &  Test & \multirow{2}{*}{$p$-value}  \\
+ &   &  & Statistic &  \\ 
+  \hline
+Resin & 
+Viscosity  &  Resin Temp. & 266 & 0.0010   \\
+ & & Cur. Agent Temp. & 466 & 0.5412   \\
+ & & Tool Temp. & 95 & $<0.0001$   \\
+& & Rot. Speed & 474.5 & 0.6193  \\
+& & Mass Flow  & 534.5 & 0.7677  \\
+\cline{2-5}
+Weather & Temp.  &  Region & 20.08 & 0.0002   \\
+\cline{3-5}
+& Precip.  &  Region & 23.02 & $<0.0001$  \\ 
+\cline{2-5}
+COVID & Requests & IA \& MN & 1878 & $<0.0001$  \\
+ & & CO \& UT & 138 & 0.0007  \\
+ & & MD, VA, \& WV & 3.699 & 0.1573   \\
+    \hline
+\end{tabular}
+\end{table}
+
+\subsection{Resin Viscosity}
+
+The resin viscosity data comes from an experimental setting conducted at the Technical University of Munich's Institute for Carbon Composites and is freely available in the \texttt{R} package \texttt{FDBoost} \citep{FDboost2020}. The data set contains measurements of the viscosity of resin over the course of 838 seconds with the goal assessing factors that influence the curing process in a resin mold. The grid is not equally spaced due to technical reasons whereby viscosity can be measured every two seconds at first but, due to hardening, can only be measured every ten seconds after the 129th second. In total, 64 different molds were poured under five different experimental conditions: temperature of resin, temperature of the curing agent, temperature of the tools, rotational speed, and mass flow. Each condition is a binary factor, with a ``low'' and ``high'' levels.
+
+From Table~\ref{t:data}, we observe that in two of five factors the location parameters in the distributions of geometric means of the ranks differ significantly. Specifically, the resin temperature ($W = 266$, $p = 0.0010$) and tool temperature ($W = 95$, $p < 0.0001$) have $p$-values below nominal. This suggests that the curves that describe the viscosity of the resin differ significantly between the groups defined by these factors. To investigate which levels drive these differences, we turn to the graphs in Section 4 of the Supplementary Material where we see differentiation in the groups based on resin temperature with viscosity curves under the low temperature setting appearing to take longer to cure. The differentiation is even more stark when considering the tool temperature where low temperature tools appear to induce slower curing than high temperature tools. The remaining factors did not significantly distinguish the curves as can also be seen in the graphs in Section 4 of the Supplementary Material \citep{DRTSup2023}.
+
+\subsection{Canadian Weather}
+
+The Canadian weather data is a classic dataset for illustrating functional data analysis techniques having appeared in texts by \cite{Ramsay2005} and \cite{Ramsay2009} as well as in many articles that are too numerous to list here. It contains daily average temperature (C) and precipitation (mm) measurements, averaged over the years 1960 to 1994, taken at 35 different sites across Canada. The factor of interest is the region from which the measurement was taken: Arctic, Atlantic, Continental, or Pacific. It is available in the \texttt{R} package \texttt{fda} \citep{fda2022}. For the purpose of this illustration, the goal of the analysis is to see if the doubly ranked KW test can detect differences in temperature and precipitation curves by region as might be expected given their geographic differences.
+
+Table~\ref{t:data} contains the results of the analysis for both outcomes. We see that the doubly ranked KW returns significant tests at the nominal level for both temperature curves ($X^2 = 20.08$, $p = 0.0002$) and precipitation curves ($X^2 = 23.02$, $p < 0.0001$) differing by region. Formally, we would say the location parameters in the distributions of the geometric means of the ranks for temperature and precipitation over time differ by region. To observe the nature of the difference by group, we examine the graphs in Section 4 of the Supplementary Material \citep{DRTSup2023}. From these graphs, we see that, for example, the temperature curves from the Arctic region are the coldest while those from the Pacific region tend to be warmest. The precipitation curves show inverted patterns based on region with the Pacific region tending to see more precipitation during the winter months while the Continental and Arctic regions experience more during the summer months.
+
+\subsection{COVID Mobility}
+
+The COVID mobility data was extracted from publicly available data provided by Apple Inc. regarding daily mapping requests for driving, walking, and transit directions during the onset of the COVID-19 pandemic and for some time thereafter. A cached version of the data is available from \cite{Gassen2022}. The data itself represents the percent change in requests for directions from a baseline date of January 13, 2020. Requests are categorized by whether they were for driving, walking, or transit directions. In our analysis, we focus on the percent change in daily requests for driving directions. For the United States, the data is available at the county level which is our unit of observation.
+
+Rather than aligning the data by calendar time, we align it by the first date of a major COVID policy implementation at the state level, e.g. shelter-in-place or safer-at-home orders. Policy dates were obtained from the publicly available COVID AMP data \citep{Katz2023}. The timeline is centered at the date of the first COVID-policy implementation in each state and we take 30 days prior and 30 days post. The main objective of this analysis is to compare different states in similar regions to each other, focusing on whether or not there is a difference post-policy implementation. Specifically, we compare county level percent changes in driving requests between counties in Iowa (IA) and Minnesota (MN), Colorado (CO) and Utah (UT), and finally between Maryland (MD), Virginia (VA), and West Virginia (WV).
+
+When comparing the percent change in county-level requests for driving directions between Iowa and Minnesota, we find a significant difference between the groups of curves by state ($W = 1878$, $p < 0.0001$). The graphs comparing Iowa and Minnesota in Section 4 of the Supplementary Material suggests similar trends pre-initial policy implementation until one week prior. Afterward, Minnesota counties tend to see a lower percent change in driving requests which continues until three to four weeks post-implementation. A similar result can be seen when comparing the percent change in driving direction requests between Colorado and Utah: the county-level curves have substantial overlap pre-initial policy implementation. After implementation, however, Colorado counties tend to experience a lower percent change in requests. This is reflected in the doubly ranked MWW test which suggests a significant difference in the location parameters of distributions of the geometric means of the ranks between Colorado and Utah ($W = 138$, $p = 0.0007$). In contrast to the first two comparisons, we see no difference in the location parameters of the distributions of the geometric means of ranks between Maryland, Virginia, and West Virginia ($X^2 = 3.699$, $p = 0.1573$) suggesting no difference in the percent change in driving direction requests over time. The graph of the functional curves for these states supports this conclusions, see Section 4 of the Supplementary Material \citep{DRTSup2023}.
+
+
+	\section{Discussion}
+	\label{s:disc}
+	
+	In this manuscript, we investigate two novel nonparametric tests for comparing groups of functional curves: the doubly ranked MWW test and the doubly ranked KW test. The tests arise from the same sufficient statistic derived using the distribution of the ranks under $H_0$ over time. Treating the ranks from individual curves as a sample over time and using a sufficient statistic to summarize that sample allows us to reduce the dimensionality of the testing problem and improve efficiency. While other approaches reduce dimensionality using a summary score for the data, only ours uses a score that is built under $H_0$. Doubly ranked tests are distribution free, relying on the rank of the geometric means of the ranks over time. We demonstrate empirically that our doubly ranked MWW performs well in terms of type I error and power for a variety of true error distributions. While some power is lost as the underlying correlation in the curves increases, we see gains in power as both $n$ and $S$ increase. These results hold up in the doubly ranked KW test as well.
+	
+	The test procedures we propose here are global tests of differences between curves, as are the other methods by \cite{Hall2007,Lopez2009,Lopez2010,Chak2015} and \cite{Melendez2021}. With any global test, one must be careful to examine the underlying data for where the differences lie. These tests can instruct us that there is difference but can't be used to identify exactly where the difference is nor can they tell us the magnitude of difference. For that, we would need to model the group location curves themselves and rely on point-wise testing, ideally adjusted for multiple testing. See, for example, some of the work on functional regression reviewed in \cite{Morris2015} and \cite{Greven2017}.
+	
+	Point-wise testing is not goal of this work, however our method can be useful as a global test in a variety of data contexts. In our data illustrations, we demonstrate the use of the doubly ranked MWW and KW tests to study problems in material science, climatology, and public health policy. Specifically, we show the doubly ranked tests can detect differences in groups of curves defined by conditions in a resin viscosity experiment, identify differences in temperature and precipitation across Canadian regions, and find differences in population mobility in the surrounding COVID-19 policy implementations. The tests can be performed as a main analysis or a first pass analysis in conjunction with other modeling steps. Our tests are also easy to implement and easy for practitioners to interpret---in particular, for those who are already familiar with univariate MWW and KW tests. Doubly ranked testing is not limited to functional data applications nor is it even limited to FACE-based preprocessed data. The assumptions for the tests apply broadly to both functional and multivariate data. Future work will explore other avenues of research for this framework.
+
+\begin{appendix}
+\section{Derivation of the PMF}\label{appA}
+%If there are more than one appendix, then please refer to it
+%as \ldots\ in Appendix \ref{appA}, Appendix \ref{appB}, etc.
+
+The full derivation of the exact distribution in Equations~\eqref{eq:pzs} and~\eqref{eq:pzr} begins with the discrete PMF:
+\begin{align*}
+	P\bigg[ Z_{(r)} = z \bigg] &= \sum_{k = r}^n {n \choose k} \bigg[ \left(\frac{z}{n}\right)^k\left(1-\frac{z}{n}\right)^{n-k} \\
+	&- \left(\frac{z - 1}{n}\right)^k\left(1-\frac{z - 1}{n}\right)^{n-k} \bigg]\\
+	&= \sum_{k = r}^n {n \choose k} \left(\frac{z}{n}\right)^k\left(1-\frac{z}{n}\right)^{n-k} \\
+	& -  \sum_{k = r}^n {n \choose k} \left(\frac{z - 1}{n}\right)^k\left(1-\frac{z - 1}{n}\right)^{n-k},
+\end{align*}
+from which we obtain Equation~\eqref{eq:pzs}. To get to Equation~\eqref{eq:pzr}, we note that the summations in Equation ~\eqref{eq:pzs} are equivalent to the CDF of the binomial distribution and can be rewritten as regularized incomplete beta functions:
+\begin{align*}
+	P\bigg[ Z_{(r)} = z \bigg] &= 1 - I_{1-z/n}[n - (r-1), r-1+1] \\
+	&-  \left[1 - I_{1-(z-1)/n}\{n - (r-1), r-1+1\}\right],
+\end{align*}
+where $I_q(a,b)$ is as defined in Section~\ref{s:drts}. Regularized incomplete beta functions have the property that $I_q(a,b) = 1 - I_{1-q}(b, a)$. After applying this, we arrive at Equation~\eqref{eq:pzr}. To obtain the approximate PMF in Equation~\eqref{eq:pmf}, we note that the CDF of the beta distribution is also a regularized incomplete beta function giving the expression
+\begin{align*}
+	P\bigg[ &Z_{(r)} = z \bigg] \\
+%	&= I_{z/n}(r, n - r + 1) -  I_{(z-1)/n}(r, n - r + 1)\\
+%	&= F_{T}(z/n) - F_{T}\left(\frac{z-1}{n}\right)\\
+%	&= P\left(T \leq \frac{z}{n}\right) - P\left(T \leq \frac{z-1}{n}\right)\\
+%	&= P\left(T \leq \frac{\frac{n+1}{2}}{n}\right) - P\left(T \leq \frac{\frac{n+1}{2}-1}{n}\right)\\
+%	&= P\left(T \leq \frac{1}{n}\frac{n+1}{2}\right) - P\left[T \leq \frac{1}{n}\left(\frac{n+1}{2}-1\right)\right]\\
+%	&= P\left(T \leq \frac{1}{2} + \frac{1}{2n}\right) - P\left(T \leq \frac{1}{2} + \frac{1}{2n} - \frac{1}{n}\right)\\
+	&= \int_0^{\frac{z}{n}} \frac{1}{B(r, n - r + 1)} \left(t\right)^{r-1}\left(1-t\right)^{n-r + 1 - 1} dt \\
+	& - \int_0^{\frac{z-1}{n}} \frac{1}{B(r, n - r + 1)} \left(t\right)^{r-1}\left(1-t\right)^{n-r + 1 - 1} dt\\
+	&=  \frac{1}{B(r, n - r + 1)} \bigg[ \int_0^{\frac{z}{n}} t^{r-1}\left(1-t\right)^{n-r + 1 - 1} dt \\
+	&- \int_0^{\frac{z-1}{n}}t^{r-1}\left(1-t\right)^{n-r + 1 - 1} dt \bigg].
+%	&=  \frac{\Gamma(n+1)}{\Gamma(r)\Gamma(n - r + 1)} \left[ \int_0^{\frac{z}{n}} t^{r-1}\left(1-t\right)^{n-r + 1 - 1} dt - \int_0^{\frac{z-1}{n}}t^{r-1}\left(1-t\right)^{n-r + 1 - 1} dt \right]\\
+%	&=  \frac{\Gamma(n+1)}{\Gamma(r)\Gamma(n - r + 1)} \left[ \int_0^{\frac{z}{n}} t^{r-1}\left(1-t\right)^{n-r + 1 - 1} dt - \int_0^{\frac{z}{n}-\frac{1}{n}}t^{r-1}\left(1-t\right)^{n-r + 1 - 1} dt \right]\\
+%	&=  \frac{\Gamma(n+1)}{\Gamma(r)\Gamma(n - r + 1)} \left[ \int_{\frac{z}{n}-\frac{1}{n}}^{\frac{z}{n}} t^{r-1}\left(1-t\right)^{n-r + 1 - 1} dt \right]\\
+%	&\approx \frac{\Gamma(n+1)}{\Gamma(r)\Gamma(n - r + 1)}  \frac{1}{n} \left(\frac{z}{n}\right)^{r-1}\left(1-\frac{z}{n}\right)^{n-r}
+\end{align*}
+	Writing the beta function in terms of gamma functions and combining the integrals, we arrive at Equation~\eqref{eq:pmf}.
+%\begin{align*}
+%	P\bigg[ Z_{(r)} = z \bigg] &=  %1 - I_{1-z/n}(n - r + 1, r) -  \left[1 - I_{1-(z-1)/n}(n - r + 1, r)\right]\\
+%% I_{1-(z-1)/n}(n - r + 1, r) -  I_{1-z/n}(n - r + 1, r)\\
+%%	&= \frac{B\left(1-\frac{z - 1}{n}; n - r + 1, r\right)}{B(n - r + 1, r)} - \frac{B\left(1-\frac{z }{n}; n - r + 1, r\right)}{B(n - r + 1, r)}\\
+%%	&= \frac{B\left(1-\frac{z - 1}{n}; n - r + 1, r\right) - B\left(1-\frac{z }{n}; n - r + 1, r\right)}{B(n - r + 1, r)}\\
+% I_{z/n}(r, n - r + 1) -  I_{(z-1)/n}(r, n - r + 1),
+%%	&= \frac{B\left(\frac{z }{n}; r, n - r + 1\right) - B\left(\frac{z - 1}{n}; r, n - r + 1\right)}{B(r, n - r + 1)}\\
+%\end{align*}
+
+
+\section{Proof of Claim~\ref{cl1}}\label{appB}
+%\subsection{First Subsection of Appendix \protect\ref{appB}}
+
+%The proof of Claim~\ref{cl1} is relatively straightforward. 
+
+\begin{proof}
+Consider the mass function in Equation~(\ref{eq:pmf}) and rewrite it as
+\begin{align*}
+	P\bigg[ Z_{(r)} &= z \bigg]  =\frac{\Gamma(r+q)}{\Gamma(r)\Gamma(q)}  \frac{1}{n} \left(\frac{z}{n}\right)^{r-1}\left(1-\frac{z}{n}\right)^{q-1} \\
+%	&= \frac{\Gamma(r+q)}{\Gamma(r)\Gamma(q)}\exp\left[ (r-1)\log\left( \frac{z}{n} \right) + (q - 1)\log\left(1-\frac{z}{n}\right) \right]\\
+%	&= \frac{\Gamma(r+q)}{\Gamma(r)\Gamma(q)}\exp\left[ r\log\left( \frac{z}{n} \right) - \log\left( \frac{z}{n} \right) + q\log\left(1-\frac{z}{n}\right) - \log\left(1-\frac{z}{n}\right) \right]\\
+	&= \frac{\Gamma(r+q)}{\Gamma(r)\Gamma(q)}\exp\left[ - \log\left( \frac{z}{n} \right) - \log\left(1-\frac{z}{n}\right)  \right]\\
+	&\hspace{15pt}\times \exp\left[ r\log\left( \frac{z}{n} \right) + q\log\left(1-\frac{z}{n}\right) \right].
+\end{align*}
+Let $\btheta = [\begin{array}{cc} r & q \end{array}]'$ and define the functions: 
+\begin{align*}
+	c(\btheta) &= \frac{\Gamma(r+q)}{\Gamma(r)\Gamma(q)}, w_1(\btheta) = r, w_2(\btheta) = q,\\
+	h(z) &= \exp\left[ - \log\left\{ \frac{z}{n}\left/ \left(1-\frac{z}{n}\right)\right.\right\}  \right],\\
+	 t_1(z) &= \log\left( \frac{z}{n} \right), \text{and }\\
+	t_2(z) &= \log\left(1-\frac{z}{n}\right).
+\end{align*} 
+The mass function can then be written as
+\begin{align*}
+	P\bigg[ Z_{(r)} = z \bigg]  &= h(z)c(\btheta)\exp\left[ \sum_{i=1}^2 w_i(\btheta)t_i(z) \right],
+\end{align*}
+which is the form of an exponential family. 
+\end{proof}
+
+%Sample of cross-reference to the formula (\ref{path}) in Appendix \ref{appB}.
+\end{appendix}
+
+\bibliographystyle{abbrvnat} % Style BST file (imsart-number.bst or imsart-nameyear.bst)
+\bibliography{fullbib.bib}       % Bibliography file (usually '*.bib')
+
+
+\end{document}

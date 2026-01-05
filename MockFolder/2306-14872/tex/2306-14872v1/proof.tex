@@ -1,0 +1,463 @@
+\section{Discrete Action Space}
+\label{sec:discrete_actions}
+
+In this scenario, we consider upper bounding the sensitivity ratio for discrete action space. Compared with the unit hypersphere $\cS_{d-1}$ considered in Section~\ref{sec:bound_sst_ratio} , the main difference is that the oracle optimal action $\theta/\|\theta\|$ for $\theta$ might not lie in the action space $\cX_t$, so we don't have a closed form for the attainable optimal action $x^\star_t(\theta) \coloneqq \argmax_{x\in \cX_t} \dotp{x}{\theta}$. 
+
+To tackle this problem, we need to characterize the property of all potentially optimal actions. We provide two approaches to solve this problem. This first approach works for the setting where the cardinalities of the action sets are relatively small. The second approach utilizes the statistical properties of the action sets and works for the setting where the cardinalities of the action sets are large. 
+
+\paragraph{Small cardinality setting.} Note that the optimistic reward of POFUL when $\tau_t = 0 $ is $\dotp{x}{ \tilde{\theta}_t} $, where $\tilde{\theta}_t \in \cE^{\PVT}_t$ is an arbitrary pivot parameter. We have $
+L_t (x) \leq\dotp{x}{ \tilde{\theta}_t}    \leq U_t(x)$,
+where we define the confidence lower and upper bounds as 
+\$
+L_t(x) = \dotp{x}{ \hat{\theta}_t}  -  \iota_t \|x\|_{V_t^{-1}}   \beta^{RLS}_t  (\delta^\prime)       , \quad U_t(x) = \dotp{x}{ \hat{\theta}_t}  +  \iota_t \|x\|_{V_t^{-1}}   \beta^{RLS}_t (\delta^\prime) .
+\$
+
+
+
+The potentially optimal $x$ that might optimize $\dotp{x}{ \tilde{\theta}_t} $ should satisfy  
+\$
+U_t(x) \geq \max_{y\in\cX_t} \  L_t(y),
+\$ 
+i.e. $x$ is not dominated by any other action in $\cX_t$. Therefore, define 
+ \$\cC_t(\beta) \coloneqq \{x\in\cX_t: \dotp{x}{ \hat{\theta}_t}  +  \|x\|_{V_t^{-1}}  \beta \geq \max_{y\in\cX_t} \  \dotp{y}{ \hat{\theta}_t}  - \|y\|_{V_t^{-1}}    \beta \}.\$
+
+An upper bound for $\alpha_t$ can be calculated as
+  \# \label{eq:alpha_hat_2}
+ \alpha_t \leq \hat{\alpha}_t\coloneqq \frac{\sup _{x\in \cC_t(\beta_t^{RLS} (\delta^\prime) )}\|x\|_{V_t^{-1}}}{ \inf _{x \in \cC_t(\beta_t^{\PVT} (\delta^\prime) )}\|x\|_{V_t^{-1}}}.
+ \#
+
+
+\paragraph{Large cardinality setting.} In this setting, we characterize the distance between $\theta/\|\theta\|$ and  $x^\star_t(\theta)$. We first introduce the notion of \emph{Euclidean covering radius}.
+\begin{definition} The Euclidean covering radius $\rho_t$ of a set $\cX_t \subseteq  \cS_{d-1}$ is given by 
+	\$\rho_t = \rho(\cX_t, \cS_{d-1}) \coloneqq \max_{y\in \cS_{d-1}} \min_{x \in \cX_t} \| y - x\|.\$
+\end{definition}
+
+With the help of the Euclidean covering radius, we prove the following variant of Theorem~\ref{thm:alpha}. The proof is postponed to Appendix~\ref{sec:other_proofs}  
+
+\begin{theorem}\label{thm:alpha_discrete}
+
+
+	Under Assumpsion~\ref{assump:distinct_eigens}, let $\{\rho_t\}$ be the sequence of  Euclidean covering radius of $\cX_t$,   define $ \Psi_t,\Phi_t$ as in Theorem~\ref{thm:alpha}. Then for all $t \in [1,T]$, conditioned on event $\hat{\cA}_t \cap \tilde{\cA}_t$ , it holds that 	\#\label{eq:alpha_hat_3}
+	\alpha_s\leq \frac{\Phi_s+ \rho_s\lambda_d^{-\frac{1}{2}}(V_s)}{\Psi_s- \rho_s\lambda_d^{-\frac{1}{2}}(V_s)}\#  for all $s \leq t$.
+
+
+\end{theorem}
+
+To justify this new lower bound, it remains to show that $ \rho_t$ is small enough under proper conditions. For the sake of a better illustration, we focus on action sets that consist of uniformly and independently distributed points on $\cS_{d-1}$.   The following proposition shows that the Euclidean covering radius has an high-probability upper bound that decays at the order of $\tilde{\cO}(N^{-1/d+o(1)})$, where $N$ is the cardinality of actions.
+\begin{proposition}[Corollary 2.9 in \cite{reznikov2016covering}]
+	Suppose $\cX$ is a set of $N$ uniformly and independently distributed random points on the unit sphere $\cS_{d-1}$, for any $\kappa>0$, there exist constants $C_{\kappa,d} > 0 $, such that  
+	\$
+	\PP\left[\rho(\cX_t, \cS_{d-1}) \leq  C_{\kappa,d} 	\left(\frac{\log N}{N}\right)^{1/d}  \right] \geq 1 - N^{-\kappa}.
+	\$
+\end{proposition}
+
+
+
+
+
+\section{Sketch of the Proof of Theorem~\ref{thm:alpha}}
+\label{sec:proof_sketch_alpha}
+In this section, we present the proof of Theorem~\ref{thm:alpha}.  In the remaining part of this section, we use a general confidence ellipsoid  $\cE_t  (\delta)\coloneqq \left \{\theta \in \RR^d: \|\theta - \hparam_t\|_{V_t}\leq \beta_t(\delta)\right \}$ to represent $\cE^{\RLS}_t$ and $\cE^{\PVT}_t$, since the proof works for both of them. 
+
+The proof of Theorem~\ref{thm:alpha} decomposes into two steps. First, we cut out a special hypersurface  $\cH_t$ within  $\cE_t$ and show that for all $\theta \in \cH_t$, the corresponding optimal action $x^\star(\theta)$ has $V_t$-norm bounded from above and below. Note that the set of optimal actions for  $\theta \in \cH_t$ coincides with that for  $\theta \in \cE_t$, we get upper and lower bounds for  $V_t$-norm of all potential actions in the ellipsoid. Second, we show that upper and lower bounds for the $V_t$-norm can be transferred into upper and lower bounds for the $V_t^{-1}$-norm. Hence, we get an upper bound for $\alpha_t$ by calculating the ratio of the upper bound to the lower bound. We postpone the detailed proof for all lemmas in this section to Appendix~\ref{sec:proof_alpha}.
+
+
+
+
+
+\paragraph{Step 1. Bounding the $V_t$-norm of actions.}
+We illustrate our geometric approach in $\RR^2$ in Figure~\ref{fig:ellipsoid}. We first upper bound the  $V_t$ norm for optimal actions corresponding to any $\theta\in \cE_t$. In the following, we define
+$
+\phi_t	 = \sqrt{ \|\hparam_t\|_{V_t^2}^2 - \beta_t^2 }
+$.  
+
+
+\begin{lemma}\label{lem:Vt_norm_upper}
+For any $\theta\in \cE_t$, we have
+	$
+	\|x^\star(\theta )\|_{V_t} \leq  \|\hparam_t\|_{V_t^2}/\phi_t$.
+\end{lemma}
+The proof is based on the observation that for any $\theta\in \cE_t$, the line $\{t \theta: t\in\RR \}$ (orange dashed lines in Figure~\ref{fig:ellipsoid}) and ellipsoid $\cE_t$  (in green) must have at least one intersection point.
+
+
+
+In order to lower bound the $V_t$-norm, we define the hypersurface  
+$
+\cH_t \coloneqq \mathcal{E}_t\cap\left\{\theta:\|\theta\|_{V_t}=\phi_t\right\}
+$, 
+i.e., the intersection of the interior of the confidence ellipsoid  $\cE_t$ and the ellipsoid $\left\{\theta:\|\theta\|_{V_t}=\phi_t\right\}$ (blue dashed curve). We can check this intersection is non-empty since $ \phi_t  \hparam_t  /\|\hparam_t\|_{V_t}  \in \cE_t$.  A lower bound for the $V_t$-norm is given by the following lemma.
+
+
+\begin{lemma}
+\label{lem:Vt_norm_lower}
+	For any $\theta\in \cH_t$, we have
+	\$
+	  \|x^\star(\theta )\|_{V_t} \geq \frac{\phi_t}{\|\hat{\theta}_t\| +  \beta_t/\lambda_d(V_t) }.\$
+\end{lemma}
+The proof is based on the fact that for any $ \theta \in \cH_t$, we have $\|\theta\| \leq \|\hparam_t\| +  \beta_t/\lambda_d(V_t)  $ and $\|\theta\|_{V_t}  =  \phi_t$. Also recall  $x^\star(\theta ) = \theta /\|\theta\|$ and hence $\|x^\star(\theta )\|_{V_t} =  \|\theta\|_{V_t} / \|\theta\|$. 
+
+
+\begin{figure}[htp!]
+	\centering
+%	\subfigure{
+		\includegraphics[width=.4\textwidth]{figures/ellipsoid_7}
+	%}
+	\caption{Illustration of Step 1 in $\RR^2$.}
+	\label{fig:ellipsoid}
+\end{figure}
+
+
+
+
+
+
+
+\paragraph{Step 2. Bounding the $V_t^{-1}$-norm of actions}
+
+The following lemma bounds the $V_t^{-1}$-norm of an action $x$ given a range of its $V_t$-norm. 
+
+
+
+
+
+\begin{lemma}
+\label{lem:Vinv_norm}
+	Suppose  $V$ has distinct eigenvalues $\lambda_1( V)> \lambda_2( V) \dots > \lambda_d( V)$
+	and $x\in \cB_d$ satisfies
+	$
+	m \leq \|x\|_{V}^2 \leq M
+	$,
+	where $M\geq 0$ is such that
+	$
+		\lambda_{k}(V) \leq M < \lambda_{k+1}(V)
+	$. We have
+	\#
+	\frac{1}{ \lambda_{k}} + \frac{1}{ \lambda_{k+1}}   - \frac{M}{\lambda_{k}\lambda_{k+1} } \leq \|x\|_{V^{-1}}^2  \leq  \frac{1}{ \lambda_{1}} + \frac{1}{ \lambda_{d}}   - \frac{m}{\lambda_{1}\lambda_{d} }.
+	\#
+\end{lemma}
+
+The proof is based on writing $x$  as a linear combination of the eigenvectors of $V_t$, $x =\sum_{i=1}^d w_i u_i$, and convert the original problem into a linear programming problem with constraints using the expressions $\|x\|_V^2 = \sum_{i=1}^d w_i^2 \lambda_i$ and $
+	\|x\|_{V^{-1}}^2 = \sum_{i=1}^d w_i^2 \lambda_i^{-1}$.
+
+Combining the two steps, we complete the proof of Theorem~\ref{thm:alpha}.
+
+
+
+
+
+\section{Proof of Lemmas for Theorem~\ref{thm:alpha}}
+\label{sec:proof_alpha}
+\subsection{Proof of Lemma~\ref{lem:Vt_norm_upper}}
+
+
+%\begin{proof}
+\proof{Proof.}
+	Let $\theta = t x $ where $x$ is any unit vector in $\RR^d$ and $t\in \RR $ is a scalar. Consider the equation that characterizes the intersection  $\{t x : t\in\RR \}\cap \cE_t $, namely
+	$
+	(t x - \hparam_t)^\top V_t (t x - \hparam_t) = \beta_t^2
+	$.
+	Equivalently, we have
+	$
+	t^2\|x\|_{V_t}^2 - 2 t  x^\top V_t \hparam_t + \phi_t^2 = 0
+	$. This quadratic equation of $t$ has at least one root if the discriminant is non-negative, i.e.
+	$
+	4(x^\top V_t \hparam)^2 \geq 4 \|x\|_{V_t}^2 \phi_t^2 
+	$.
+	Then by direct computation,
+	\$
+	\|x\|_{V_t} \leq \frac{\sqrt{(x^\top V_t \hparam_t)^2}}{\phi_t} \leq \frac{\sqrt{x^\top x}\sqrt{(\hparam_t)^\top V_t^\top V_t \hparam_t }}{\phi_t} =  \frac{ \|\hparam_t\|_{V_t^2}} {\phi_t	}.
+	\$
+
+	Note that $\theta \in \cE_t$ if and only if $\theta = t x $ for some $x$ that satisfies $4(x^\top V_t \hparam)^2 \geq 4 \|x\|_{V_t}^2 \phi_t^2$, we conclude the proof.
+%\end{proof}
+\Halmos 
+\endproof
+\subsection{Proof of Lemma~\ref{lem:Vt_norm_lower}}
+%\begin{proof}
+\proof{Proof.}
+	Note that for any $\theta \in \cH_t \subset\cE_t$, it holds that  $\|\theta\| \leq \|\hparam_t\| +  \beta_t/\lambda_d(V_t)  $. Also, by the construction of $\cH_t$, we have $\|\theta\|_{V_t}  =  \phi_t$. Then we conclude the proof by the definition
+	\$
+	\|x^\star(\theta )\|_{V_t} = \frac{\|\theta\|_{V_t}}{\|\theta\| } \geq \frac{\phi_t}{\|\hat{\theta}_t\| +  \beta_t/\lambda_d(V_t) } .
+	\$
+%\end{proof}
+\Halmos 
+\endproof
+
+
+\subsection{Proof of Lemma~\ref{lem:Vinv_norm}}
+
+
+
+%\begin{proof}
+\proof{Proof.}
+	Let $V = U \Lambda U^\top  $ be the eigendecomposition of $V$, so that  the columns of $U$, $\{u_1,\dots,u_d\}$,   form an orthonormal basis of $\RR^d$ and $\Lambda = \text{diag}(\lambda_1, \dots,\lambda_d)$ is a diagonal matrix.  We can write $x$ as a linear combination of $\Lambda = \text{diag}(\lambda_1, \dots,\lambda_d)$:
+	$
+	x = \sum_{i=1}^d w_i u_i
+	$,
+	where
+	$
+	\sum_{i=1}^d w_i^2 = 1
+	$. By direct computation, we have $\|x\|_V^2 = \sum_{i=1}^d w_i^2 \lambda_i$ and $\|x\|_{V^{-1}}^2 = \sum_{i=1}^d w_i^2 \lambda_i^{-1}$.
+
+	We would like to study the range of $\|x\|_{V^{-1}}^2$ when $\|x\|_{V}^2$ is bounded as $m \leq \|x\|_{V}^2 \leq M$. First, let's focus on  maximizing $\|x\|_{V^{-1}}^2$, it suffices to solve the LP problem
+	\$
+	\text{maximize}& \sum_{i=1}^d a_i\lambda_i^{-1} \quad
+	\text{s.t.} \quad \forall i, a_i\geq 0, \ 
+	\sum_{i=1}^d a_i = 1, \ 
+	\sum_{i=1}^d a_i \lambda_i \geq m,\ 
+	\sum_{i=1}^d a_i \lambda_i \leq M.
+	\$
+	The Lagrangian is given by
+	\$
+	L(d,\mu,\eta) = \sum_{i=1}^d a_i\lambda_i^{-1} + \mu ( 1- \sum_{i=1}^d a_i) + \eta (\sum_{i=1}^d a_i \lambda_i - m)+ \gamma ( M - \sum_{i=1}^d a_i \lambda_i )+\sum_{i=1}^d \kappa_ia_i .
+	\$
+	The KKT conditions are given by
+	\$\begin{cases}
+		 & \nabla_{a_i} L  = \lambda_i^{-1} - \mu + \eta \lambda_i  -  \gamma \lambda_i+ \kappa_i =0,                         \\
+		 & a_i\geq 0, \forall i, \sum_{i=1}^d a_i = 1, \sum_{i=1}^d a_i \lambda_i \geq m, \sum_{i=1}^d a_i \lambda_i \leq M,  \\
+		 & \eta \geq  0,\gamma \geq 0,\kappa_i \geq 0, \forall i,                                                             \\
+		 & \eta(\sum_{i=1}^d a_i \lambda_i - m) = 0, \gamma(M - \sum_{i=1}^d a_i \lambda_i) = 0,\kappa_i a_i = 0,  \forall i.
+	\end{cases}
+	\$
+
+	Since $\lambda_i$'s are distinct, to satisfy the first condition above, $\kappa_i$'s can only be zero for at most two indices.  Hence, $a_i$ can only be non-zero for at most two indices, denoted by $a_i$ and $a_j$. We write $x = a  \lambda_i + (1-a) \lambda_j$ where  $i<j$ and hence $\lambda_i >\lambda_j$. Let $y = \|x\|_V^2 \in [\lambda_j,\lambda_i]$, we have $a\lambda_i + (1-a) \lambda_j =y$ and $a\lambda_i^{-1} + (1-a) \lambda_j ^{-1} = \|x\|_{V^{-1}}^2$.
+
+	By direct computation, 
+	$
+	\|x\|_{V^{-1}}^2 = \frac{1}{ \lambda_{i}} + \frac{1}{ \lambda_{j}}   - \frac{y}{\lambda_{i}\lambda_{j} }\eqqcolon f(y,\lambda_{i},\lambda_{j} )
+	$, and clearly,
+	\$
+	\begin{cases}
+		\frac{\partial f}{\partial y}           & = -\frac{1}{\lambda_{i}\lambda_{j} } < 0,              \\
+		\frac{\partial f}{\partial \lambda_{i}} & = (\frac{y}{\lambda_j} - 1)\frac{1}{\lambda_i^2 } > 0, \\
+		\frac{\partial f}{\partial \lambda_{j}} & = (\frac{y}{\lambda_i} - 1)\frac{1}{\lambda_j^2 } < 0.
+	\end{cases}
+	\$
+
+
+	Then the maximum of $\|x\|_{V^{-1}}^2 $ is obtained by setting $\lambda_i = \lambda_1$, $\lambda_j = \lambda_d$, $y = m$, and we have
+	\$
+	x^*_{\max} &= \frac{m -\lambda_d }{\lambda_1 - \lambda_d }\lambda_1 + \frac{\lambda_1 - m  }{\lambda_1 - \lambda_d } \lambda_d,\quad
+	\|x^*_{\max}\|_{V^{-1}}^2 = \frac{1}{ \lambda_{1}} + \frac{1}{ \lambda_{d}}   - \frac{m}{\lambda_{1}\lambda_{d} }.
+	\$
+
+	Similarly, by investigating the KKT conditions for the LP problem that minimize $\sum_{i=1}^d a_i\lambda_i^{-1}$,   the minimum of $\|x\|_{V^{-1}}^2 $ is obtained by some $x = a  \lambda_i + (1-a) \lambda_j$ where  $i<j$, $\lambda_i >\lambda_j$. Setting $\lambda_u = \min \{\lambda_i  \geq M\}$, $\lambda_l = \max \{\lambda_i  \leq M\}$, $y = M$, and we have
+	\$
+	x^*_{\min} &= \frac{M -\lambda_l}{\lambda_u - \lambda_l }\lambda_u + \frac{\lambda_u - M }{\lambda_u - \lambda_l} \lambda_l,\quad
+	\|x^*_{\min}\|_{V^{-1}}^2 = \frac{1}{ \lambda_u} + \frac{1}{ \lambda_{l}}   - \frac{M}{\lambda_u\lambda_{l} }.
+	\$
+	This concludes the proof.
+%\end{proof}
+\Halmos 
+\endproof
+
+
+
+
+
+\section{Other Proofs}
+\label{sec:other_proofs}
+\subsection{Proof of Proposition~\ref{prop:concentration} }
+\label{proof:concentration}
+\proof{Proof.}
+	\label{pf:prop_rls}
+	By Propostion~\ref{prop:beta}, we have
+	\$
+	\prob{\hat{\cA}_T}
+	& = \prob{\cap_{t = 1}^T \left\{ \|\hparam_t - \param_t\|_{V_t}\leq \beta^{\RLS}_t(\delta^\prime) \right\}
+	}  \\
+	&\geq 1 - \sum_{t = 1}^T \prob{ \|\hparam_t - \param_t\|_{V_t}\leq \beta^{\RLS}_t(\delta^\prime) }\\
+	&\geq 1 - \frac{\delta}{2}.
+	\$
+	
+	Similarly, by Definition~\ref{def:tilde_beta}, we have 
+		\$
+	\prob{\tilde{\cA}_T}
+	& = \prob{\cap_{t = 1}^T \left\{ \tilde{\theta}_t \in \cE_t^{\PVT}(\delta ^\prime) |\mathcal{F}_t\right\}
+	}  \\
+	&\geq 1 - \sum_{t = 1}^T \prob{ \tilde{\theta}_t \in \cE_t^{\PVT}(\delta ^\prime) |\mathcal{F}_t }\\
+	&\geq 1 - \frac{\delta}{2}.
+	\$
+Combining the two inequalities above, we have $\prob{\cA_T} \geq 1 - \delta$.\Halmos 
+\endproof
+
+\subsection{Proof of Proposition~\ref{prop:instantaneous} }
+\label{proof:instantaneous}
+\proof{Proof.}Since ${\theta}^\star \in \cE_t^{RLS}(\delta^\prime) $ and $\tilde{\theta}_t \in \cE_t^{\PVT}(\delta ^\prime)$, it holds that 
+\#\label{eq:two_radius}
+ \|{\theta}^\star - \hparam_t\|_{V_t}\leq \beta_t^{RLS}(\delta^\prime),  \quad \|\tilde{\theta}_t - \hparam_t\|_{V_t}\leq \beta^{\PVT}_t (\delta^\prime)= \iota_t \beta^{RLS}_t(\delta^\prime).
+\#
+
+In the following, we drop the dependence on $\delta^\prime$ for notation simplicity. By direct computation 
+\$
+ \dotp{x_t^\star}{ \theta^{\star}} - \dotp{\tilde{x}_t}{ \theta^{\star}}
+& = \left(\dotp{x^{\star}_t}{ \theta^{\star}} - \dotp{x^{\star}_t}{ \tilde{\theta}_t}\right) + \left(\dotp{x^{\star}_t}{ \tilde{\theta}_t} - \dotp{\tilde{x}_t}{  \tilde{\theta}_t}\right)\\
+& \quad + \left(\dotp{\tilde{x}_t}{\tilde{\theta}_t}-\dotp{\tilde{x}_t}{ \hparam_t}\right) +  \left(\dotp{\tilde{x}_t}{\hparam_t}-\dotp{\tilde{x}_t}{ \theta^{\star}}\right).
+\$
+
+
+To bound the second term on the right hand side, recall by Equation \eqref{eq:POFUL} the POFUL action $\tilde{x}_t$ satisfies 
+\$
+\dotp{x^{\star}_t}{ \tilde{\theta}_t} +  \tau_t  \|x^{\star}_t\|_{V^{-1}_t}\beta_t^{RLS} \leq  \dotp{\tilde{x}_t}{  \tilde{\theta}_t} + \tau_t  \|\tilde{x}_t\|_{V^{-1}_t}\beta_t^{RLS}.
+\$
+Rearranging the ineuqlity, we obtain $\dotp{x^{\star}_t}{ \tilde{\theta}_t} - \dotp{\tilde{x}_t}{  \tilde{\theta}_t} \leq \tau_t\|\tilde{x}_t\|_{V^{-1}_t} \beta_t^{RLS}-\tau_t \|x^{\star}_t\|_{V^{-1}_t} \beta_t^{RLS}$.
+
+
+The other three terms are bounded similarly using the Cauchy-Schwarz inequality,  the triangle ineuqlity of the $V_t^{-1}$-norm,  and the concentration condition \eqref{eq:two_radius}. As a result, we have
+\$
+\dotp{x^{\star}_t}{ \theta^{\star}} - \dotp{x^{\star}_t}{ \tilde{\theta}_t} &\leq (1+\iota_t)\|x^{\star}_t\|_{V^{-1}_t}\beta_t^{RLS} , \\ \dotp{\tilde{x}_t}{\tilde{\theta}_t}-\dotp{\tilde{x}_t}{ \hparam_t}  &\leq  \iota_t \|\tilde{x}_t\|_{V^{-1}_t}\beta^{RLS}_t(\delta^\prime),\\
+\dotp{\tilde{x}_t}{\hparam_t}-\dotp{\tilde{x}_t}{ \theta^{\star}} &\leq  \|\tilde{x}_t\|_{V^{-1}_t}\beta^{RLS}_t(\delta^\prime).
+\$
+Combing all terms above, we have 
+\$
+\dotp{x_t^\star}{ \theta^{\star}} - \dotp{\tilde{x}_t}{ \theta^{\star}}
+ \leq  (1+\iota_t - \tau_t)\|x^{\star}_t\|_{V^{-1}_t}\beta_t^{RLS} + (1+\iota_t + \tau_t) \|\tilde{x}_t\|_{V^{-1}_t}\beta^{RLS}_t.
+\$\Halmos
+\endproof
+
+
+\subsection{Proof of Theorem~\ref{thm:oracle_regret}}
+\label{sec:proof_regret}
+\proof{Proof.}
+We formally prove Theorem~\ref{thm:oracle_regret} for completeness. The proof techniques are developed in previous papers \citep{abbasi2011improved,agrawal2013thompson,abeille2017linear}.
+
+Throughout the proof, we condition on the event $\cA_T$, which holds with probability $1-\delta$ by Proposition~\ref{prop:concentration}. Applying Proposition~\ref{prop:instantaneous}, we obtain
+\$
+\cR(T) 
+& \leq \sum_{t = 1}^T \left( \dotp{x_t^\star}{\theta^{\star}}-\dotp{\tilde{x}_t}{\theta^{\star}} \right)\event{\cA_t}\\
+& \leq  \sum_{t = 1}^T  (1+\iota_t-\tau_t)\|x^{\star}_t\|_{V^{-1}_t}\beta_t^{RLS}(\delta^\prime) +   (1+\iota_t+\tau_t)\|\tilde{x}_t\|_{V^{-1}_t}\beta_t^{RLS}(\delta^\prime).
+\$
+
+Recall $\|x^{\star}_t\|_{V^{-1}_t} = \alpha_t \|\tilde{x}_t\|_{V^{-1}_t}$ and $\mu_t  =  \alpha_t(1+\iota_t -\tau_t)+1+\iota_t+\tau_t$, we have 
+\$
+\cR(T)  \leq \sum_{t = 1}^T   \mu_t \|\tilde{x}_t\|_{V^{-1}_t}\beta_t^{RLS}(\delta^\prime).
+\$ 
+
+Applying the Cauchy-Schwarz inequality and Proposition~\ref{prop:potential}, note that $\max_{t\in[T]}  \beta_t^{RLS}(\delta^\prime) = \beta_T^{RLS}(\delta^\prime)$, we obtain 
+\$
+\cR(T) &\leq   \sqrt{ \sum_{t=1}^T \|\tilde{x}_t\|_{V_t^{-1}} ^2 } \sqrt{\sum_{t=1}^T\mu_t^2 \left(\beta_t^{RLS}(\delta^\prime)\right)^2} \leq \sqrt{2 d \log \left(1+\frac{T}{\lambda}\right)}   \sqrt{\sum_{t=1}^T\mu_t^2 } \beta_T^{RLS}(\delta^\prime).
+\$
+
+
+This concludes the proof.\Halmos
+\endproof
+
+%\paragraph{Bounding $\cR^{RLS}(T)$ and $\cR^{\PVT}(T)$.}
+%Conditioned on $\cA_T$, we have
+%\#\label{eq:regret_rls_ca}
+%\cR^{RLS}(T) +\cR^{\PVT}(T) &\leq \sum_{t=1}^T\left(\dotp{\tilde{x}_t}{\tilde{\theta}_t}-\dotp{\tilde{x}_t}{ \hat{\theta}_t} \right) \event{\cA_t} + \left(\dotp{\tilde{x}_t}{\hat{\theta}_t}-\dotp{\tilde{x}_t}{ \theta^{\star}}\right) \event{\cA_t}  \nonumber\\
+%&\leq \sum_{t=1}^T \|\tilde{x}_t\|_{V_t^{-1}} \|\theta^{\star} - \hat{\theta}_t\|_{V_t}+ \|\tilde{x}_t\|_{V_t^{-1}} \|\hat{\theta}_t - \tilde{\theta}_t\|_{V_t} \nonumber\\
+%& \leq \sum_{t=1}^T \|\tilde{x}_t\|_{V_t^{-1}}  \left( \beta^{\RLS}_t(\delta^\prime)  +  \beta^{\PVT}_t(\delta^\prime)  \right)\nonumber\\
+%& =  \sum_{t=1}^T \|\tilde{x}_t\|_{V_t^{-1}}  (1 + \iota_t)\beta^{RLS}_t(\delta^\prime) \#
+%
+%
+%
+%
+%
+%
+%\paragraph{Bounding $\cR^{PE}(T)$.} 
+%By direct computation,
+% \$
+%\left(\dotp{x^{\star}_t}{ \theta^{\star}} - \dotp{\tilde{x}_t}{  \tilde{\theta}_t} \right)\event{\cA_t}&\leq \left(\dotp{x^{\star}_t}{ \theta^{\star}} - \dotp{x^{\star}_t}{ \tilde{\theta}_t}\right)\event{\cA_t} + \left(\dotp{x^{\star}_t}{ \tilde{\theta}_t} - \dotp{\tilde{x}_t}{  \tilde{\theta}_t}\right)\event{\cA_t} \\
+%%&\leq \|x^{\star}_t\|_{V^{-1}_t}(1+\iota_t)\beta_t^{RLS} +  \left(\dotp{x^{\star}_t}{ \tilde{\theta}_t} - \dotp{\tilde{x}_t}{  \tilde{\theta}_t}\right)\event{\cA_t}\\
+%&\leq\|x^{\star}_t\|_{V^{-1}_t}(1+\iota_t)\beta_t^{RLS} + \|\tilde{x}_t\|_{V^{-1}_t} \tau_t\beta_t^{RLS}- \|x^{\star}_t\|_{V^{-1}_t} \tau_t\beta_t^{RLS}\\
+%&\leq(1+\iota_t-\tau_t)\|x^{\star}_t\|_{V^{-1}_t}\beta_t^{RLS} +   \tau_t\|\tilde{x}_t\|_{V^{-1}_t}\beta_t^{RLS}.
+%\$
+%where the second inequality follows from the Cauchy-Schwarz inequality and the definition of POFUL \eqref{eq:POFUL}. We have 
+%\#\label{eq:regret_pe}
+%\cR^{PE}(T) &\leq \sum_{t=1}^T (1+\iota_t-\tau_t)\|x^{\star}_t\|_{V^{-1}_t}\beta_t^{RLS} +   \tau_t\|\tilde{x}_t\|_{V^{-1}_t}\beta_t^{RLS}\nonumber\\
+%&\leq \sum_{t=1}^T (1+\iota_t-\tau_t)\alpha_t \|\tilde{x}_t\|_{V^{-1}_t}\beta_t^{RLS} +   \tau_t\|\tilde{x}_t\|_{V^{-1}_t}\beta_t^{RLS}.
+%\#
+%
+%Combining  \eqref{eq:regret_rls_ca} and \eqref{eq:regret_pe}, we have
+%\$
+%\cR(T) &\leq  \sum_{t=1}^T \|\tilde{x}_t\|_{V_t^{-1}}  (1 + \iota_t)\beta^{RLS}_t(\delta^\prime) + \sum_{t=1}^T  (1+\iota_t-\tau_t)\alpha_t \|\tilde{x}_t\|_{V^{-1}_t}\beta_t^{RLS}(\delta^\prime) +   \tau_t\|\tilde{x}_t\|_{V^{-1}_t}\beta_t^{RLS}(\delta^\prime)\\
+%& = \sum_{t=1}^T \left( (1+\iota_t-\tau_t)\alpha_t + (1+\iota_t+\tau_t)\right) \|\tilde{x}_t\|_{V^{-1}_t}\beta_t^{RLS}(\delta^\prime) \\
+%& = \sum_{t=1}^T \mu_t \|\tilde{x}_t\|_{V^{-1}_t}\beta_t^{RLS}(\delta^\prime) \\
+%\$
+%
+%Applying the Cauchy-Schwarz inequality and Proposition~\ref{prop:potential}, note that $\max_{t\in[T]}  \beta_t^{RLS}(\delta^\prime) = \beta_T^{RLS}(\delta^\prime)$, we have 
+%\$
+%\cR(T) &\leq   \sqrt{ \sum_{t=1}^T \|\tilde{x}_t\|_{V_t^{-1}} ^2 } \sqrt{\sum_{t=1}^T\mu_t^2 \left(\beta_t^{RLS}(\delta^\prime)\right)^2} \leq \sqrt{2 d \log \left(1+\frac{T}{\lambda}\right)}   \sqrt{\sum_{t=1}^T\mu_t^2 } \beta_T^{RLS}(\delta^\prime).
+%\$
+%
+%
+%This concludes the proof.\Halmos 
+\endproof
+
+
+
+\subsection{Proof of Proposition~\ref{prop:align}}
+%\begin{proof}
+\label{proof:align}
+\proof{Proof.}
+	This corresponds to the case where $m, M \to \lambda_1$ in Lemma~\ref{lem:Vinv_norm}.
+	Without loss of generality, we let $M>\lambda_2$. Then
+	$
+	\hat{\alpha}_t  =(\lambda_{1}^{-1} + \lambda_{d}^{-1}   - m{\lambda_{1}^{-1}\lambda_{d}^{-1} })/(\lambda_{k}^{-1} +  \lambda_{k+1}^{-1}   - {M}{\lambda_{k}^{-1}\lambda_{k+1}^{-1} } ) \to \lambda_{1}^{-1}/\lambda_{1}^{-1} = 1
+	$.\Halmos 
+%	\end{proof}
+\endproof
+
+
+\subsection{Proof of Theorem~\ref{thm:alpha_discrete}}
+\label{proof:alpha_discrete}
+%\begin{proof}
+\proof{Proof.}
+Define $x^\dagger(\theta) \coloneqq \theta/\|\theta\| $. The conclusion of Theorem~\ref{thm:alpha} holds for $x^\dagger(\theta)$, i.e. for all $t \in [1,T]$ and all $s\leq t$, we have 
+$
+\inf _{\theta \in \cE_s^{\PVT}}\|x^\dagger(\theta)\|_{V_s^{-1}} \geq \Psi_s$ and $\sup _{\theta \in \cE_s^{RLS}}\|x^\dagger(\theta)\|_{V_s^{-1}} \leq \Phi_s
+$.
+
+For any $\theta$, the feasible optimal action $x^{\star}_s(\theta)$ is the  point in $\cX_s$ that has the smallest distance from $x^\dagger(\theta)$. Then we have
+$\|x^\dagger(\theta) - x^{\star}_s(\theta)\|\leq \rho_s$
+by the definition of the Euclidean covering radius. Therefore, let $\theta_0$ denote the $\theta$ that attains $\inf _{\theta \in \cE_s^{\PVT}}\|x^\star_s(\theta)\|_{V_s^{-1}}$, it holds that
+\$\inf _{\theta \in \cE_s^{\PVT}}\|x^\star_s(\theta)\|_{V_s^{-1}}  = \|x^\star_s(\theta_0)\|_{V_s^{-1}}&\geq \|x^\dagger(\theta_0)\|_{V_s^{-1}}   - \rho_s \lambda_d^{-\frac{1}{2}}(V_s)\\ 
+&\geq \inf _{\theta \in \cE_s^{\PVT}}\|x^\dagger(\theta)\|_{V_s^{-1}}   - \rho_s \lambda_d^{-\frac{1}{2}}(V_s)\\
+&\geq   \Psi_s - \rho_s\lambda_d^{-\frac{1}{2}}(V_s).\$
+
+Similarly,  we have $ \sup _{\theta \in \cE_s^{RLS}}\|x^\star(\theta)\|_{V_s^{-1}} \leq \Phi_s + \rho_s\lambda_d^{-\frac{1}{2}}(V_s)$.
+As a result, it holds that
+$
+\alpha_s\leq (\Phi_s+ \rho_s\lambda_d^{-\frac{1}{2}}(V_s))/(\Psi_s- \rho_s\lambda_d^{-\frac{1}{2}}(V_s))$.\Halmos 
+%\end{proof}
+\endproof
+
+\section{TS-MR and Greedy-MR Algorithms}
+\label{sec:TS-MR}
+\begin{algorithm}[!htp]
+	\caption{TS-MR (Greedy-MR)}\label{alg:TS-MR}
+	\begin{algorithmic}
+		\REQUIRE $T$, $\delta$,  $\{\iota_t\}_{t\in [T]}$, $\mu$	
+		\STATE Initialize $ V_{0} \leftarrow \lambda \mathbb{I}$,  $\hat{\theta}_{1} \leftarrow 0$, $\delta^\prime \leftarrow \delta/2T$
+		\FOR{t = 1, 2 , \dots, T }
+		\STATE Calculate $\halpha_t$ using Theorem~\ref{thm:alpha}
+		\STATE $\hat{\mu_t} \leftarrow  \hat{\alpha}_t(1+\iota_t )+1+\iota_t$ 
+		\IF{$\hat{\mu}_t \leq \mu$}
+		\STATE Sample $\eta_t\sim \cD^{SA}(\delta^\prime)$ (defined in Section~\ref{sec:POFUL})
+		\STATE $\tilde{\theta}_{t}  \leftarrow \hat{\theta}_t +\iota_t \beta_t^{RLS} (\delta^\prime) V_t^{-\frac{1}{2}} \eta_t$
+		\STATE ${x}_{t} \leftarrow \arg \max _{x \in \mathcal{X}_t}\dotp{ x}{ \tilde{\theta}_{t}}$
+		\ELSE
+		\STATE   ${x}_{t} \leftarrow \arg \max _{x \in \mathcal{X}_t} \arg \max _{\theta \in \cE_t^{RLS}(\delta^\prime) }\dotp{ x}{ \tilde{\theta}_{t}}$
+		\ENDIF
+		\STATE Observe reward $r_{t}$
+		\STATE $V_{t+1} \leftarrow V_{t}+{x}_{t}  {x}_{t}^{\top}$
+		\STATE $\hat{\theta}_{t+1} \leftarrow V_{t+1}^{-1}\sum_{s=1}^{t} x_s r_{s}$.
+		\ENDFOR
+	\end{algorithmic}
+\end{algorithm}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

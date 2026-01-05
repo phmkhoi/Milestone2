@@ -1,0 +1,26 @@
+\section{Uncertainty Estimation Criteria for Molecular Predictions}
+\label{sec:approach}
+
+We consider the task of energy and force predictions on molecules. One molecule is represented as a point cloud of $\natoms$ points (atoms), each associated with a position and a set of rotationally invariant features (e.g., atom types), defined as $\matr X \in \real^{\natoms \times 3}$ and $\matr H \in \real^{\natoms \times \featuredim}$, respectively.
+In addition to learning the molecular energy $\energy \in \real$ and the atom forces $\forces \in \real^{\natoms \times 3}$, we investigate the ability of our approach, \oursacro{},  to quantify energy uncertainty $\uncertainty_{\energy}$ and demonstrate that it can further be used in a variation-based way to quantify force uncertainty $\uncertainty_{\forces}$. 
+In particular, we aim at learning a function $f_\theta$ such that $f_\theta(\pos, \inputfeatures)\approx\energy^{\groundtruth}$ and $\frac{\partial f_\theta}{\partial \matr X}(\pos, \inputfeatures) \approx \forces^{\groundtruth}$ where  $\energy^{\groundtruth}$ and $\forces^{\groundtruth}$ denote the ground-truth molecular energy and forces, respectively. The predicted values are denoted with star subscript, i.e., $\energy_*$ and $\forces_*$. We denote the training set consisting of all molecule positions and features as $\set\dataset = \{(\pos_1, \inputfeatures_1), \dots, (\pos_\ndatapoints, \inputfeatures_\ndatapoints)\}$.
+Stacking the tuples of the dataset into a matrix, we refer to it as $\dataset$ with corresponding target vector of energies $\target$.
+
+\subsection{Desiderata}\label{sec:desiderata}
+Dealing with energy and forces in molecular structures, which are influenced by physical symmetries, poses unique challenges for UE in the context of molecular force fields. To effectively perform UE in this area, it is essential to take into account both \emph{physics-informed} and \emph{application-focused} desiderata. Physics-informed desiderata capture the physical constraints and behavior characteristic of molecular systems. In this work, we identify three main physics-informed desiderata:
+\begin{itemize}
+    \item \desone{}: Symmetries play an essential role in physics. They describe the fundamental behavior of quantities such as energies or forces under euclidean transformations. For instance, the energy of a molecule $\energy$ is invariant to the euclidean group $\delta\in\mathcal{E}(3)$ and permutation group $\pi\in S_n$, i.e., $\energy(\delta\circ\pi\circ\pos,\pi\circ\inputfeatures)=\energy(\pos,\inputfeatures)$, while the associated atomic forces behave equivariantly, $\forces(\delta\circ\pi\circ\pos,\pi\circ\inputfeatures)=\delta\circ\pi\circ\forces(\pos,\inputfeatures)$. 
+    \item \destwo{}: Molecular forces, being the gradient of an energy surface, must form a conservative vector field, i.e., all paths from point a to b have the same integral and the force field must be curl-free.
+    One may obtain all these properties by defining the forces via differentiation of a scalar field $\forces:=\frac{\partial\energy}{\partial\pos}$.
+    \item \desfour{}: As most of the interaction between atoms happens within a short distance, locality plays an important role in molecular force fields~\citep{leachMolecularModellingPrinciples2001}. While there are long-range interactions in molecules, these only account for a small fraction of the total energy and are negligible for molecular forces~\citep{lanAdsorbMLAcceleratingAdsorption2023}.
+    As a consequence of locality, a molecule's energy behaves size-consistently with increased system sizes.
+    Formally, $\energy \approx \sum_{i=1}^n \energy_i$, where $\energy$ is the total energy of $n$ molecules and $\energy_i$ is the energy of the $i$th molecule. Similarly, the energy's uncertainty should behave additive under extension.
+\end{itemize}
+With MD simulations as an application in mind, we identify three key application-focused desiderata:
+\begin{itemize}
+    \item \desfive{}: MD simulations require high precision and are often performed for millions of steps where each step simulates femto seconds ($10^{-15}\si{\second}$)~\citep{stockerHowRobustAre2022}. To keep simulations stable and not accumulate errors, high predictive performance and, thus, accurate reproduction of the QM calculations is essential.
+    \item \dessix{}: During an MD simulation, a structure may move outside of the training domain. In such cases, the surrogate must effectively communicate its uncertainty regarding its predictions. If this aspect is not accounted for, divergence has been observed~\citep{stockerHowRobustAre2022}.
+    \item \desseven{}: Lastly, as MD simulations typically involve millions of steps \cite{Narumi1999}, it is important to preserve the efficient runtime of surrogate methods.
+\end{itemize}
+
+As we discuss in \autoref{sec:survey}, current UE approaches for molecules lack at least one of these desiderata. We address this by introducing \oursacro{}, a GP-based extension to existing GNNs that satisfies all desiderata.

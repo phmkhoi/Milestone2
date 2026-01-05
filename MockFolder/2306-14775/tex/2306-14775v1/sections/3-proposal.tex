@@ -1,0 +1,104 @@
+\section{Proposed SPG} 
+
+\input{figtab/fig_spg.tex}
+
+As discussed in \cref{sec:introduction}, the current parameter isolation approaches like HAT~\citep{hat} and SupSup~\citep{supsup} are very effective for overcoming CF, but they hinder knowledge transfer and/or consume too much learning capacity of the network.
+For such a model to improve knowledge transfer, it needs to decide which parameters can be shared and updated for a new task. That is the approach taken in CAT~\citep{cat}. CAT  finds similar tasks and removes their masks for updating, but may find wrong similar tasks, which causes CF.
+Further, parameters are the atomic information units, not neurons, which HAT masks. If a neuron is masked, all parameters feeding into it are masked, which costs a huge amount of learning capacity. 
+SPG directly soft-masks parameters based on their importance to previous tasks, which is a more flexible and uses much less learning space. 
+Soft-masking clearly enables automatic knowledge transfer. 
+
+
+\input{figtab/alg_spg.tex}
+
+
+\cref{fig:spg} and \cref{alg:spg} illustrate how SPG works.
+In SPG, the importance of a parameter to a task is computed based on its gradient. We do so because gradients of parameters directly and quantitatively reflect how much changing a parameter affects the final loss.
+Additionally, we normalize the gradients of the parameters within each layer to make relative importance more reliable as gradients in different layers can have different magnitude.
+The normalized importance scores are accumulated by which the corresponding gradients are reduced in the optimization step to avoid forgetting the knowledge learned from the previous tasks.
+
+
+
+
+
+
+
+
+
+
+\subsection{Computing the Importance of Parameters} \label{sec:computing_gradients}
+
+
+This procedure corresponds to \cref{fig:spg}(b).
+The importance of each parameter to task $t$ is computed right after completing the training of task $t$ following these steps.
+Task $t$'s training data, $(\bm{X}_t, \bm{Y}_t)$, is given again to the trained model of task $t$, and the gradient of each parameter in $i$-th layer (i.e., each weight or bias of each layer) is then computed and used for computing the importance of the parameter. Note that we use $\bm{\theta}_i$ (a vector) to represent all parameters of the $i$-th layer. This process does not update the model parameters. 
+The reason that the importance is computed after training of the current task has converged is as follows. Even after a model converges, some parameters can have larger gradients, which indicate that changing those parameters may take the model out of the (local) minimum leading to forgetting. On the contrary, if all parameters have similar gradients (i.e, balanced directions of gradients), changing the parameters will not likely to change the model much to cause forgetting.
+Based on this assumption, we utilize the normalized gradients after training as a signal to indicate such dangerous parameter updates.
+The proposed mechanism in SPG has the merit that it keeps the model flexible as it does not fully block parameters using an importance threshold or binary masks.
+While HAT completely blocks important neurons, which results in the loss of trainable parameters over time, SPG allows most parameters remain ``alive'' even when most of them do not change much.
+
+
+
+\input{figtab/fig_chi.tex}
+
+
+Additionally, computing the gradients based only on the model ($\mathcal{M}_t$) of the current task $t$ does not deal with another issue. 
+We use an example illustrated in \cref{fig:chi}.
+For example, just after learning task $\tau$, the gradient of a parameter is computed and normalized among the same layer's parameters to be accumulated.
+Even though during learning task $t$ ($t > \tau$), the parameter is not much changed considering its accumulated importance, at the end of learning task $t$, the state of related parameters might have been changed, by which the normalized importance may become less useful. To reflect the parameter's importance to task $\tau$ again in the current network state, we introduce \textit{cross-head importance} (CHI) mechanism. In particular, an additional loss, $\mathrm{Sum}(\mathcal{M}_\tau(\bm{X}_t))$, is computed with each previous task's head by substituting task $t$'s data as unlabeled data for the previous tasks. By taking this loss, parameters affecting the logits more  for previous tasks are regarded more important.
+Finally, both the normalized importance computed for the current task's head and the ones for previous tasks' heads in CHI are considered by taking element-wise maximum, as shown in \cref{eq:gamma_i_t}.
+
+To put things together, the proposed method computes the normalized importance, $\bm{\gamma}_i^t$, of the parameters of the $i$-th layer, $\bm{\theta}_i$, using each task $\tau$'s model ($1\!\le\!\tau\!\le\!t$), $\mathcal{M}_\tau$. 
+\begin{gather}
+\bm{\gamma}_i^{t, \tau} = \left| \tanh{\left( \mathrm{Norm} \left( \frac{\partial \mathcal{L}^{t, \tau}}{\partial \bm{\theta}_i} \right) \right)} \right|, \label{eq:gamma_i_t_tau} \\
+\mathcal{L}^{t, \tau} = 
+\begin{cases}
+\mathcal{L}\left( \mathcal{M}_\tau\left(\bm{X}_t\right), \bm{Y}_t \right) & (\tau = t) \\
+\mathrm{Sum}\left( \mathcal{M}_\tau\left(\bm{X}_t\right) \right) & (\tau < t)
+\end{cases}, \label{eq:loss} \\
+\mathrm{Norm}(\bm{x}) =  \frac{\bm{x} - \mathrm{Mean}(\bm{x})}{\sqrt{\mathrm{Var}(\bm{x})}}, \label{eq:norm} \\
+\bm{\gamma}_i^t = \max{\left( \bm{\gamma}_i^{t,1}, \cdots, \bm{\gamma}_i^{t,t} \right)}, \label{eq:gamma_i_t}
+\end{gather}
+where $\max{(\cdot)}$ and $\mathcal{L}$ mean element-wise maximum and a loss function, respectively. 
+\cref{eq:gamma_i_t_tau} normalizes the gradients over the same layer to avoid the discrepancies caused by large differences of gradient magnitudes in different layers.
+For the current task's head (i.e., $\tau\!=\!t$), a normal loss function (e.g., cross entropy) is used as $\mathcal{L}^{t,t}$ in \cref{eq:loss}. 
+However, for each previous task’s head (when $\tau\!<\!t$), since the current task data do not belong to any previous classes, 
+the loss $\mathcal{L}^{t,\tau}$ is defined by $\mathrm{Sum}(\mathcal{M}_\tau(\bm{X}_t))$ over previous classes' logits in the proposed CHI mechanism. 
+Essentially, this operation computes the importance of parameters based on the data of task $t$'s impact on all tasks learned so far.
+Finally, to prevent forgetting as much as possible, we take the accumulated importance, $\bm{\gamma}_i^{\le t}$, as follows:
+\begin{gather}
+\bm{\gamma}_i^{\le t} = \max{\left( \bm{\gamma}_i^t, \bm{\gamma}_i^{\le t-1} \right)}, \label{eq:gamma_i_le_t}
+\end{gather}
+where an all-zero vector is used as $\bm{\gamma}_i^{\le 0}$. This $\bm{\gamma}_i^{\le t}$ depicts how important each parameter is to all the learned tasks.
+
+
+\textbf{Memory needed to save parameter importance}: 
+Regardless of the number of tasks, at any time only the accumulated importance $\bm{\gamma}_i^{\le t}$ is saved after the learning of each task so that it can be used again in the next task for \cref{eq:gamma_i_le_t}. $\bm{\gamma}_i^{\le t}$ has the same size as the number of parameters, $|\bm{\theta}_i|$.
+
+
+
+
+
+\subsection{Soft-Masking of Feature Extractor} \label{sec:training_phase}
+This procedure appears in \cref{fig:spg}(a).
+To suppress the update of important parameters in the backward pass in learning task $t$, the gradients of all parameters in the shared feature extractor are modified (i.e., \textit{\textbf{soft-masked}}) based on the accumulated importance as follows (i.e., each parameter is soft-masked by a different amount according to its accumulated importance): 
+\begin{gather}
+\bm{g}_i' = \left( 1 - \bm{\gamma}_i^{\le t-1} \right) \bm{g}_i, \label{eq:g_i_prime}
+\end{gather}
+where $\bm{g}_i$ and $\bm{g}_i'$ represent the original gradients of the parameters of the $i$-th layer (i.e., $\bm{\theta}_i$) and the modified ones, which will be used in the actual optimization, respectively.
+
+
+\subsection{Soft-Masking of Classification Head}
+We found that the above soft-masking may induce another problem.
+If only the feature extractor's parameters are soft-masked, the model will try to find an optimal solution mainly by updating the classification head since its parameters are not masked and thus can be updated more easily than the feature extractor. However, this discourages the learning of the feature extractor, which hinders knowledge transfer.
+
+To achieve a balanced training of the feature extractor and the classification head,
+we need to \textbf{slow down} the learning of the head by reducing the gradients of the head's parameters based on how much the feature extractor's parameters are soft-masked. 
+We still use the soft-masking idea, but all parameters in the head are soft-masked by an equal amount.
+Specifically, the gradients of all parameters in task $t$'s head, $\bm{g}_{H_t}$, are soft-masked by the average ($\bar{\bm{\gamma}}^{\le t-1}$) of the accumulated importance of all the parameters in the feature extractor (i.e., $\{ \bm{\gamma}_i^{\le t-1} \}$). The modified gradients, $\bm{g}_{H_t}'$, are used in optimization. 
+ \begin{gather}
+\bm{g}_{H_t}' = \left( 1 - \bar{\bm{\gamma}}^{\le t-1} \right) \bm{g}_{H_t} \label{eq:g_ht_prime}
+ \end{gather}
+ 
+Note that SPG has no specific hyper-parameter and does not employ anything special in the forward pass except it needs the task id to locate the correct head, which follows the standard TIL scenario.  
+To our knowledge, neither soft-masking of the parameters in the feature extractor nor in the classification head has been done by any existing work.

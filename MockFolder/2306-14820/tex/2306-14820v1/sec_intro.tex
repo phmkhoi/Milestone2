@@ -1,0 +1,178 @@
+\section{Introduction}\label{section:intro}
+In a weighted, undirected graph $G$ the \emph{effective resistance} between a pair of vertices $a$ and $b$, denoted $\rGab$, is the energy of a unit of electric current sent from $a$ to $b$ in the natural resistor network induced by $G$. Effective resistances arise for a broad set of graph processing tasks and have multiple equivalent definitions. For example, $\rGab$ is proportional to the expected roundtrip commute time between $a$ and $b$ in the natural random walk induced on the graph and when $\{a,b\}$ is an edge in the graph, it is proportional to the probability that the edge is in a random spanning tree.
+
+Effective resistances are also a metric on the vertices \cite{Madry_2014, Devriendt_2022} and are a key measure of proximity between vertex pairs. Correspondingly, effective resistances can arise in a variety of data analysis tasks. For example, effective resistances have been used in social network analysis for measuring edge centrality in social networks \cite{kirchoff} as well as for measuring chemical distances \cite{Klein_1993}.  
+
+Effective resistances have a broad range of algorithmic implications. Sampling edges of a graph using effective resistance is known to efficiently produce cut and spectral sparsifiers (sparse graphs which approximately preserve cuts, random walk properties, and more) \cite{spielman2009graph, lee2015constructing, durfee2019fully}. Effective resistance-based graph sparsifiers have also been applied to develop fast graph attention neural networks \cite{srinivasa2020fast}, to design graph convolutional neural networks for action recognition \cite{AHMAD2021389}, to sample from Gaussian graphical models \cite{pmlr-v40-Cheng15}, and beyond \cite{pmlr-v80-calandriello18a, Mercier_2022}. Effective resistances have been used in algorithms for maximum flow problems, \cite{christiano2010electrical, madry2013navigating, madry2016computing, van2022faster, van2021minimum, lee2014path, van2022faster}, sampling random spanning trees \cite{durfee2017sampling,schild2018, madry2014fast}, and graph partitioning \cite{alev2017graph, zhao2019}. More recently, effective resistances have also been used to analyze the problem of oversquashing in GNNs and in designing algorithms to alleviate oversquashing \cite{digiovanni2023oversquashing, Banerjee2022, black2023understanding} and have been applied to increase expressivity when incorporated as edge features in certain GNNs \cite{velingker2022affinityaware}.
+
+\paragraph{Algorithms.}
+Given the broad utility of effective resistances, there have been many methods for estimating and  approximately compressing them \cite{JS2018, li2022new, chu2018graph, spielman2009graph, goranci2018dynamic}. In this paper, our main focus is the following effective resistance estimation problem. (We use $x \approx_\epsilon y$ as shorthand for $(1 - \epsilon) y \leq x \leq (1 + \epsilon) y$ and assume all edge weights in graphs are positive. See Section~\ref{section:preliminaries} for notation more broadly.)
+
+\begin{definition}[Effective Resistance Estimation Problem]
+\label{def:effres_est}
+In the \emph{effective resistance estimation problem} we are given an undirected, weighted graph $G = (V,E,w)$, a set of vertex pairs $S \subseteq V \times V$, and $\epsilon \in (0, 1)$ and must output $\tilde{r} \in \R^{S}$ such that whp., $\tilde{r}_{(a,b)} \approx_\epsilon \rGab$ for all $(a,b) \in S$. 
+\end{definition}
+
+The state-of-the-art runtimes for solving the effective resistance estimation problem on $n$-node, $m$-edge graphs are given in Table~\ref{table:estimate}. To contextualize these results, consider the special case of estimating the effective resistance of a graph's edges, i.e., when $S = E$. This special case appears in many of the aforementioned applications, e.g., \cite{christiano2010electrical, schild2018, madry2013navigating, madry2016computing,durfee2017sampling}. The state-of-the-art runtimes for this problem are an $\Otilde{n^2 \epsilon^{-1}}$ time algorithm \cite{JS2018} and an $\Otilde{m \epsilon^{-1.5}}$ algorithm \cite{chu2018graph}. A major open problem is whether improved runtimes, e.g., $\Otilde{m \epsilon^{-1}}$ (which would subsume prior work), are attainable.
+
+One of the main results of this paper is resolving this open problem in the case of well-connected graphs, i.e., expanders.
+Formally, we parameterize our bounds in terms of the graph's expansion $\pcondOf{G}$, defined in Section~\ref{sec:preliminaries} and provide a number of results for \emph{expander graphs}, i.e., when $\pcondOf{G} = \Otilde{1}$. In particular, we provide an $\Otilde{m \epsilon^{-1} \pcondOf{G}}$ time algorithm for effective resistance estimation when $S = E$. Previously, the only non-trivial improvement in this setting was an independently obtained runtime of  $\Otilde{m + n\epsilon^{-2} (\pcondOf{G})^{3}}$.\footnote{While our algorithms for the effective resistance estimation problem (Definition~\ref{def:effres_est}) were obtained indpendently, our writing and discussion of effective resistance sketch algorithms (Definition~\ref{def:eff_res_sketch}) was informed by their paper. We provide a more complete comparison in Table~\ref{table:sketch}.} Expanders are a non-trivial, previously studied special case that is often the first step or a key component for developing more general algorithms \cite{dinitz2015resistance}. 
+
+Interestingly, we obtain our main result by providing new effective resistance sketch algorithms.
+
+\begin{definition}[Effective Resistance Sketch]
+\label{def:eff_res_sketch}
+
+We call a randomized algorithm an \emph{$(\timeSketch, \timeQuery, s)$-effective resistance sketch algorithm} if given an input $n$-node, $m$-edge  undirected, weighted graph $G = (V,E,w)$ and $\epsilon \in (0, 1)$ in time $O(\timeSketch(G,\epsilon))$ it creates a binary string of length $O(s(G,\epsilon))$ from which when queried with any $a,b\in V$, it outputs $\tilde{r}_{a,b} \approx_\epsilon \rGab$ whp.\ in time $O(\timeQuery(G,\epsilon))$. 
+\end{definition}
+
+Effective resistance sketching algorithms immediately imply algorithms for the effective resistance estimation problem. We obtain our result by obtaining an $(\Otilde{n \epsilon^{-1}}, \Otilde{m\epsilon^{-1}})$-effective resistance sketch algorithm for expanders (see Section~\ref{section:intro_results} for a comparison to prior work). 
+
+\paragraph{Lower Bounds.} Given the central role of the effective resistance estimation and the challenging open-problem of determining its complexity, previous work has sought complexity theoretic lower bounds for the problem. \cite{musco2017spectrum} showed a conditional lower bound of $\Omega(n^2\epsilon^{-1/13})$ for the problem by showing that an algorithm that computes effective resistances in $O(n^2\epsilon^{-1/13 + \delta})$ time for some $\delta > 0$ could be used to obtain a subcubic algorithm for triangle detection in undirected graphs.
+
+This \emph{triangle detection problem} is the problem of determining whether an undirected, unweighted graph contains a triplet of edges $(\{a, b\}, \{b, c\}, \{c, a\})$. Currently, the only known subcubic algorithms for the triangle detection problem leverage fast matrix multiplication (FMM) and therefore their practical utility (in the worst case) is questionable. Meanwhile, there are no known deterministic or randomized algorithms for the triangle detection problem that do not use FMM. \cite{william_williams2018} showed that any algorithm which solves this triangle detection problem in subcubic time could be used to obtain a subcubic algorithm for Boolean matrix multiplication (BMM) and additional problems which currently are only known to be solvable subcubically with FMM. 
+Consequently, subcubic triangle detection is a common hardness assumption used to illustrate barriers towards improving non-FMM based methods, e.g., the effective resistance estimation algorithms of this paper.
+ 
+In this paper we take a key step towards closing the gap between the best known running times for effective resistance estimation and lower bounds by improving the conditional lower bound of $\Omega(n^2\epsilon^{-1/13})$ to $\widetilde{\Omega}(n^2 \epsilon^{-1/2})$ for randomized algorithms. We show this lower bound holds \emph{even for expander graphs}, and hence our effective resistance estimation algorithm (as well as \cite{JS2018}) are optimal up to an $\epsilon^{-1/2}$-factor among non-FMM based algorithms, barring a major breakthrough in BMM.
+
+\paragraph{Broader Linear Algebraic Tools.}
+The effective resistance between vertex $a$ and vertex $b$ in a graph $G$ has a natural linear algebraic formulation. For all $a,b \in V$ it is known that $r_G(a,b) = \deltaab \laplacian{G}^\dagger \deltaab$, where $\laplacian{G} \in \R^{V \times V}$ is a natural matrix associated with $G$ known as the \emph{Laplacian matrix} and $\deltaab = e_a - e_b$ (see Section~\ref{section:preliminaries} for notation). Thus, sketching effective resistances can be viewed as problems of preserving information about subsets of entries of the pseudoinverse of a Laplacian. 
+
+To obtain our algorithms and lower bounds we develop tools that apply to related problems for more general (not-necessarily Laplacian) matrices. In terms of algorithms, we show our techniques lead to algorithms and data structures for computing certain quadratic forms involving well-conditioned SDD and PSD matrices. In terms of hardness, we show our techniques improve triangle detection hardness bounds for estimating various properties of the singular values of a matrix. 
+
+\paragraph{Paper Organization.} 
+
+In the remainder of the introduction we provide a more precise statement and comparison of our results in Section~\ref{section:intro_results}. 
+In the remainder of the paper we cover preliminaries in Section~\ref{sec:preliminaries}, present upper bounds in Section~\ref{section:upper_bounds}, and present lower bounds in Section~\ref{sec:lower_bounds}. 
+
+\subsection{Our Results}\label{section:intro_results}
+
+\paragraph{Algorithms.} { Here we outline our main algorithmic results pertaining to effective resistance sketching and estimation, and in Section~\ref{section:upper_bounds} we describe some extensions of our work to broader linear algebraic problems involving SDD and PSD matrices. Our main algorithmic result is a new efficient effective resistance sketch for \textit{expanders}, a term which is used to refer to graphs with $\widetilde{\Omega}(1)$-expansion. 
+
+\begin{definition}[Expander]\label{def:expander} For $\alpha > 0$, we say that a graph $G = (V, E, w)$ has $\alpha$-expansion if $\alpha \leq \phi(G)$, where $\phi(G)$ denotes the conductance of $G$ and is defined as
+\begin{align*}
+    \phi(G) := \min_{S \subseteq V, S\notin \{0, V\}} \frac{\sum_{\{u, v\} : u \in S, v \in V\setminus{S}} w_{u, v}}{\min\left(\sum_{u \in S} d_u, \sum_{v \in V\setminus{S}} d_u\right)}, \text{ where } d_u := \sum_{\{u, v\} \in E} w_u.
+\end{align*}
+We say a graph is an expander if it has $\widetilde{\Omega}(1)$-expansion. 
+\end{definition}
+
+\begin{theorem}\label{thm:ub_main_informal} There is an $(\Otilde{m\epsilon^{-1}}, \Otilde{1}, \Otilde{n\epsilon^{-1}})$ effective resistance sketch algorithm for expanders.
+\end{theorem}
+}
+
+Table~\ref{table:sketch} summarizes and compares our Theorem~\ref{thm:ub_main_informal} to previous work on effective resistance sketches, including naive algorithms to explicitly compute the pseudoinverse of the Laplacian of $G$, which can be computed in $O(n^\omega)$ time using FMM or $\Otilde{mn}$ time using a Laplacian system solver (labeled Solver).\footnote{$\omega \leq n^{2.37188}$ \cite{duan2023faster} denotes the fast matrix multiplication constant. } A $(\timeSketch, \timeQuery, s)$
+effective-resistance sketch algorithm implies an $O(\timeSketch + |S| \timeQuery )$ algorithm for the effective resistance estimation problem. Hence, Theorem~\ref{thm:ub_main_informal} implies the following. 
+\begin{theorem}[Effective Resistance Estimation on Expanders] \label{thm:ub_main_informal2} There is an $\Otilde{m\epsilon^{-1} + |S|}$ time algorithm which solves the effective resistance estimation problem for expanders whp.
+\end{theorem}
+
+Effective resistance sketches are a common approach to solving the effective resistance estimation problem; but there are also approaches to the problem that do not explicitly construct effective resistance sketches. Table~\ref{table:estimate} summarizes prior work on effective resistance estimation more broadly.
+
+There has been a long line of research on the problem of computing sketches and sparsifiers of graph Laplacians \cite{andoni2015sketching, spielman2009graph, JS2018, chu2018graph} (i.e., computing a sparse graph $G'$ such that quadratic forms in the Laplacian of $G'$ approximate quadratic forms in the Laplacian of $G$). Building on this work, \cite{chu2018graph} showed there is an algorithm which processes a graph $G$ on $n$ nodes and $m$ edges in $O(m^{1 + o(1)})$ time and produces a sparse sketch graph $H$ with only $\Otilde{n\epsilon^{-1}}$ edges such that $r_G(a,b)\approx r_H(a, b)$ for all $a, b \in V$. Consequently, any algorithm which runs in $\Otilde{m\epsilon^{-c}}$ on expanders can be improved to run in $\Otilde{m^{1+o(1)} + n\epsilon^{-(c+1)}}$ time on expanders simply by running the algorithm on $H$ instead of $G$.
+
+\begin{table}[ht]
+\hrule
+\centering
+\begin{minipage}[t]{.45\linewidth}
+    \centering
+    \caption{Sketch}
+    \label{table:sketch}
+    \begin{tabular}{c c c c c c }
+    \toprule
+    Method & $\mathcal{T}_p$ & $\mathcal{T}_q$ & $s$ \\
+    \midrule
+    FMM & $ n^\omega $ & $1$ & $n^2$ \\
+    Solver & $ nm $ & $1$ & $n^2$ \\
+    \cite{spielman2009graph} & $m\epsilon^{-2}$ & $\epsilon^{-2}$ & $n\epsilon^{-2}$ \\
+    \cite{JS2018} & $n^2\epsilon^{-1}$ & 1 & $n\epsilon^{-1}$ \\
+    \cite{li2022new} & $m + n \epsilon^{-2}$ & $1$ & $n\epsilon^{-1}$ \\
+    Ours & $m \epsilon^{-1}$ & $1$ & $n\epsilon^{-1}$ \\
+    \end{tabular}
+\end{minipage}%
+\begin{minipage}[t]{.55\linewidth}
+    \centering
+    \caption{Effective Resistance Estimation}
+    \label{table:estimate}
+    \begin{tabular}{c c c  }
+    \toprule
+     Method & Runtime & \makecell{\makecell{Restriction}} \\
+    \midrule
+    FMM & $n^\omega + \abs{S}$ & None \\
+    Solver & $n m + \abs{S}$ & None \\
+    \cite{spielman2009graph} & $n^2\epsilon^{-2}$ & $S = V \times V$ \\
+    \cite{JS2018} & $n^2\epsilon^{-1}$ & $S = V \times V$\\
+    \cite{durfee2017sampling} & $m + (n + \abs{S})\epsilon^{-2}$ & None \\
+    \cite{HuanSchild2018} & $m + \abs{S}\epsilon^{-2}$ & None \\
+    \cite{chu2018graph} & $m\epsilon^{-1.5}$ & $S = E$ \\
+    \cite{li2022new} & $m + n\epsilon^{-2} + \abs{S}$ & None \\
+    Ours & $m\epsilon^{-1} + \abs{S}$ & None \\
+    \end{tabular} \\
+\end{minipage}
+\\[1ex]
+\hrule 
+\vspace*{.2cm}
+\parbox{\linewidth}{\textbf{Prior work on Effective Resistance Sketches (Table~\ref{table:sketch}) and Estimation (Table~\ref{table:estimate}).} Time and space complexities are reported for $n$-node, $m$-edge expanders
+up to $\widetilde{O}(\cdot)$. Our results and \cite{li2022new} apply only to expanders; however, the remaining works apply to general graphs. As discussed, when $m^{1 + o(1)} + n \epsilon^{-(c+1)} = o(m\epsilon^{-c})$, any runtime dependence on $m\epsilon^{-c}$ in the table can be improved to a dependence on $m^{1 + o(1)} + n \epsilon^{-(c+1)}$.
+} 
+\vspace{-1em}
+\end{table}
+
+\paragraph{Lower Bounds} 
+For the effective resistance estimation problem, \cite{musco2017spectrum} showed that any algorithm which solves the effective resistance estimation problem for $S = V \times V$ in $\Otilde{n^2\epsilon^{-1/13 + \delta}}$ for some $\delta > 0$, would imply a combinatorial subcubic deterministic algorithm which detects a triangle in an $n$-node undirected unweighted graph. We improve on their result, as follows. 
+
+\begin{theorem}\label{thm:reff_lb_main_result} Given an algorithm which solves the effective resistance estimation problem for $S = V\times V$ on graphs with $\widetilde{\Omega}(1)$-expansion in $\Otilde{n^2\epsilon^{-1/2 + \delta}}$ time for $\delta > 0$, we can produce a randomized algorithm that solves the triangle detection problem on an $n$-node graph in $\Otilde{n^{3-2\delta}}$ time whp. 
+
+\end{theorem}
+Theorem~\ref{thm:reff_lb_main_result} implies an $\widetilde{\Omega}(n^2\epsilon^{-1/2})$ randomized conditional lower bound for the problem of estimating effective resistances of all pairs of nodes in an undirected unweighted expander graph, while \cite{musco2017spectrum} shows only an $\Omega(n^2\epsilon^{-1/13})$ lower bound. 
+
+In addition to conditional lower bounds for effective resistance estimation, we also improve on existing conditional lower bounds for the problem of estimating spectral sums that we define below. The definition is inspired by Theorem 15 of \cite{musco2017spectrum}.
+
+\begin{definition}[Spectral Sum]\label{def:spectral_sum} For $f:\R^+ \to \R^+$ and $\A \in \R^{n \times n}$ with singular values $\sigma_1(\A) \leq \sigma_2(\A) \leq \cdots \leq \sigma_n(\A)$, we define the spectral sum $\mathcal{S}_f : \R^{n \times n} \to \R^+$ as $\mathcal{S}_f (\A) := \sum_{i=1}^n f (\sigma_i(\A))$.
+\end{definition}
+
+\cite{musco2017spectrum} showed that for several spectral sums $\mathcal{S}_f$, any algorithm that outputs $Y \approx_\epsilon \mathcal{S}_f(\A)$ in $O(n^\gamma\epsilon^{-c})$ time for $\gamma \geq 2$ on an $n \times n$ PSD matrix would imply an $O(n^{\gamma + \alpha c})$ time algorithm which solves the triangle detection problem, where the scaling $\alpha$ varies depending on the specific $\mathcal{S}_f$ (see Table~\ref{table:spectral_sum_hardness}). We build on their results to show improved randomized conditional lower bounds for several spectral sum estimation problems, as presented in Theorem~\ref{thm:our_results_spectralsums_lowerbound} below. 
+
+\begin{restatable}{theorem}{thmOurResultsSpectralSumsLowerBound}\label{thm:our_results_spectralsums_lowerbound}
+Given an algorithm which on input $\B \in \R^{n \times n}$ outputs a spectral sum estimate $Y \approx_\epsilon \mathcal{S}_f(\B)$ in $O\pars{n^\gamma \epsilon^{-c}}$ time with $\gamma \geq 2$ for the spectral sums in Table~\ref{table:spectral_sum_hardness}, we can produce an algorithm that can detect a triangle in an n-node graph whp.\ in $\widetilde{O}\pars{n^{\gamma + \alpha c}}$ time, where $\alpha$ is a scaling that depends on properties of the function $f$ (see Table~\ref{table:spectral_sum_hardness} for values of $\alpha$ for several spectral sums.)
+\end{restatable}
+
+\newcolumntype{Y}{>{\centering\arraybackslash}X}
+\newcolumntype{Z}{>{\centering\arraybackslash}XX} 
+
+\begin{table}[ht]
+\centering
+\begin{tabularx}{\textwidth}{c Y Y Y Y}
+\toprule
+& \multicolumn{2}{ c }{\cite{musco2017spectrum}} & \multicolumn{2}{ c }{This Paper} \\
+\cmidrule(lr){2-3} \cmidrule(lr){4-5}
+Spectral Sum & TD Runtime & Lower Bound & TD Runtime & Lower Bound \\
+\midrule
+Schatten 3-norm & $n^{\gamma + 4c}$ & $n^2 \epsilon^{-1/4}$ & $n^{\gamma + 5c/2}$ & $n^2 \epsilon^{-2/5}$ \\
+Schatten p-norm, $p\neq 1,2$, &  $n^{\gamma + 13c}$ & $n^2 \epsilon^{-1/13}$ & $n^{\gamma + 10c}$ & $n^2 \epsilon^{-1/10}$ \\
+SVD Entropy & $n^{\gamma + 6c}$ & $n^2 \epsilon^{-1/6}$ & $n^{\gamma + 5c}$ & $n^2 \epsilon^{-1/5}$ \\
+Log Determinant &$n^{\gamma + 6c}$ & $n^2 \epsilon^{-1/6}$ & $n^{\gamma + 5c}$ & $n^2 \epsilon^{-1/5}$ \\
+Trace of Exponential & $n^{\gamma + 13c}$ & $n^2 \epsilon^{-1/13}$ & $n^{\gamma + 10c}$ & $n^2 \epsilon^{-1/10}$ \\
+\bottomrule \\ 
+\end{tabularx} \\
+\caption{\textbf{Runtimes for the triangle detection (TD) problem in an $n$-node graph using algorithms that produce $(1\pm\epsilon)$ multiplicative approximations to various spectral sums in $O(n^\gamma \epsilon^{-c})$ time}. The second columns contain the best achievable runtimes for $\gamma = 2$ that do not use FMM, barring a breakthrough in subcubic triangle detection. Runtimes are reported up to $\Otilde{\cdot}$.} 
+\label{table:spectral_sum_hardness}
+\end{table}
+
+\subsection{Additional Related Work}\label{sec:additional_related_work}
+
+Here we briefly discuss additional work related to the effective resistance estimation problem and provide a more detailed comparison of our results to \cite{li2022new}. 
+
+\paragraph{Dynamic effective resistance estimation.}{ Effective resistance estimation and sketching are part of a broader family of previously studied problems involving graph compression and effective resistance estimation. For example, there is a related line of work on dynamically maintaining effective resistance  estimates in dynamic graphs, e.g., \cite{durfee2017sampling, goranci2018dynamic}, which in turn is related to problems of dynamically maintaining electric flows in graphs, e.g., \cite{maxflow,BrandGJLLPS22}. Whether our techniques have ramifications for these related problems is an interesting question for future work. 
+}
+
+\paragraph{Fine-grained complexity analysis.}{Our effective resistance estimation lower bounds fall under a broader topic of fine grained complexity analysis, i.e., the problem of characterizing the optimal complexity of problems which are known to have polynomial time solutions. Here, we provide references to a few examples. \cite{william_williams2018} showed subcubic equivalences between the problem of triangle detection, Boolean matrix multiplication, and several other graphical problems. As discussed, \cite{musco2017spectrum} utilize the results of \cite{william_williams2018} to obtain conditional lower bounds on several spectral sum approximation problems -- many of which we also study in this paper. Similarly, \cite{garciamarco2017complexity, Mor73, shpilka2002lower} provided several conditional complexity lower bounds for linear algebraic problems, conditional on the use of particular computational models. \cite{williams2022algorithms} and \cite{boroujeni2019subcubic} also provide fine grained lower bounds for the fault replacement paths problem, problems on graph centrality measures, and complementary problems. Making connections between our techniques for our effective resistance estimation lower bounds and these prior works in fine-grained complexity analysis is an interesting open problem. 
+
+\paragraph{Comparison to \cite{li2022new}.}{ Effective reisistance sketching and estimation for expanders was previously studied in \cite{li2022new}. \cite{li2022new} produces an $(\Otilde{m + n\epsilon^{-2}}, \Otilde{1}, \Otilde{n\epsilon^{-1}})$} effective resistance sketch for expanders. Our work provides a different, independently obtained runtime for effective resistance estimation by producing an $(\Otilde{m\epsilon^{-1}}, \Otilde{1}, \Otilde{n\epsilon^{-1}})$} effective resistance sketch for expanders. Additionally, our work can be applied to produce an $(\Otilde{m^{1+o(1)} + n\epsilon^{-2}}, \Otilde{1}, \Otilde{n\epsilon^{-1}})$ effective resistance sketch, by running on a sparse graphical sketch, such as that guaranteed by \cite{chu2018graph} (see Section~\ref{section:intro_results}). Consequently, our results match those of \cite{li2022new} up to an $m^{o(1)}$ factor, and improve for sufficiently high accuracy on sparse graphs.  
+
+Given an expander $G$, \cite{li2022new} considers storing $\Otilde{\epsilon^{-1}}$-sparse approximations to the columns of $\laplacian{G}^\dagger$, which would clearly be sufficient for querying effective resistances of $G$ in $\Otilde{1}$ time. However, it is unclear whether the columns of $\laplacian{G}^\dagger$ have small $\ell_1$ norm, and consequently, it is unclear how to obtain these sparse approximations. Consequently, their algorithm instead estimates the following vector $\sigma_u$ for each $u \in V$,
+\begin{align*}
+    \sigma_u = \frac{1}{2} \sum_{t=0}^\infty \left(\left(\frac{1}{2} \I + \frac{1}{2} \adjacency{G}\diagonal{G}^{-1} \right)^t e_u - \pi\right), 
+\end{align*}
+where $\pi = \frac{\diagonal{\laplacian{G}} \one}{\one^\top \diagonal{\laplacian{G}} \one}$. They show that $\sigma_u$ is closely related to $\diagonal{G} \laplacian{G}^\dagger e_u - \pi$, and consequently access to $\sigma_u$ is sufficient for estimating effective resistances. Additionally, they use structural properties of expanders to show that each $\sigma_u$ must have small $\ell_1$ norm and that it can be computed efficiently by running lazy random walks on $G$ (i.e., the random walk which, at each step follows the natural random walk on $G$ with probability 1/2 and stays idle with probability 1/2). These key properties of $\sigma_u$ enable their result. 
+
+Our approach is similar to that of \cite{li2022new} in that we also reformulate the effective resistance between two vertices as an inner product between two vectors whose $\ell_1$ norm we can bound; however, the vectors we consider are not the $\sigma_u$ vectors considered in \cite{li2022new}. Instead, we rewrite $\rGij$ as the inner product of $\diagonal{\laplacian{G}}^{-1} \deltaij$ with $\diagonal{\laplacian{G}}^{1/2}(\normalized{\laplacian{G}}/2)^{\dagger} \diagonal{\laplacian{G}}^{-1/2} \deltaij$. Similar to \cite{li2022new}, we then use similar underlying structural properties of expanders to argue that the $\ell_1$ norms of these vectors is not too large. However, instead of using random walks to estimate these vectors, we use sketching techniques (specifically, CountSketch) and Laplacian system solvers to estimate them, an idea which is inspired by the work of \cite{spielman2009graph}.  The differences in the specific effective resistance vectors we estimate 
+and the different technique of estimating them is what leads to the difference in runtime between \cite{li2022new} and our own work. \cite{li2022new} also provide extensions of their effective resistance sketch techniques to well-conditioned SDD matrices, which we also obtain in our generalized Theorem~\ref{theorem:theoremSDDMain}; our lower bounds on the SDD effective resistance estimation problem (see Section~\ref{sec:improved_lower_bounds_effres}) therefore also apply to the work of \cite{li2022new}. 

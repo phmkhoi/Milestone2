@@ -1,0 +1,37 @@
+% \section{Software Infrastructure}
+
+\section{Software Implementation}
+\label{sec:softwareinfrastructure}
+\label{sec:softwarecomponents}
+
+\textbf{Security Monitor}
+The SM does not allocate any resources, this task is left to the OS, but it interposes between each security-sensitive operation (like a resource allocation) and checks that the operating system performed the task without violating the high-level security policies (e.g., it is allocating a memory region to an existing enclave).
+As a result, the SM is mostly responsible for bookkeeping operations, performing security checks and setting up the hardware mechanisms to enforce isolation between the running security domains.
+It will not only systematically intervene on any security-sensitive operations, but will also play the role of a small kernel and link the OS to the hardware on some non-security-sensitive operations, like sending inter-process interrupts (IPI).
+A more detailed description of the SM data structures and API, can be found in \cite{lebedev2019sanctorum}.
+
+\textbf{The SM Kernel Module}
+The main SM should not be possibly made unavailable to the OS by a user-level program.
+Furthermore, no resource should be allocated to a user-level program without OS approval.
+As a result, to create an enclave or perform other operations,
+a user-application needs to interact with the SM through the SM Kernel Module.
+Because the SM Kernel Module is part of the OS, it can refuse requests if needed.
+
+\textbf{Mini-SM}
+Because the SM is a shared resource, its sharing might leak some sensitive information. For instance, an enclave might call the SM at particular times and in a pattern that might leak sensitive information regarding the enclave's secrets.
+As a result, each enclave uses its own private copy of the SM.
+This "mini-SM" is smaller than the one accessible to the OS and only contains the code corresponding to the subset of the SM API accessible by the enclave.
+It also uses its own private stack.
+This mini-SM is located in private enclave memory (not accessible nor visible by the OS) and protected using physical memory isolation (hence is neither modifiable nor accessible by the enclave).
+The enclave interacts with its mini-SM through the ecall API.
+Note that some of these ecalls might touch shared global SM state and locks.
+As a result, an enclave should be careful when interacting with the SM and be aware that it might still leak timing information to other programs.
+We emphasize that an enclave binary does not go through the SM Kernel Module and directly interacts with its mini-SM through ecalls.
+
+\textbf{Companion User-Level Application}
+The companion user-level application runs on top of the OS and requests to start the enclave, and interacts with the enclave.
+It does not benefit from any integrity or privacy guarantees, unlike its enclave counterpart.
+However, it has access to a rich interface with the outside world (like the file system or the network) through all the usual OS services implemented through system calls.
+Even if not required for an enclave to work, the companion user-level application is a good ally to an enclave program.
+It can, for instance, fetch encrypted private data and forward it to the enclave or perform many other non-security-sensitive tasks.
+As a result, it is important for an enclave to have a rich interface with its user program counterpart using shared memory (see Section \ref{sec:sharedmemory}).

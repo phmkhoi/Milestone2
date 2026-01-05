@@ -1,0 +1,212 @@
+\section*{Appendix}
+\begin{figure*}[h!]
+    \centering
+    \includegraphics[width=0.75\textwidth]{figs/FR_examples.png}
+    \caption{Examples of different types of forward references. Words highlighted in orange are the main characteristics.}
+    \label{fr-demo}
+\end{figure*}
+
+\section{Debiasing Faithfulness Scorer}
+We observe that lexical bias affects our faithfulness scorer. In particular, many verified headlines entailed by their contents
+contain the words ``verification'' or ``rumor'' which results in a shortcut
+model, i.e., the NLI model tends to classify samples as entailment based simply
+on the existence of these certain words. 
+In addition, the word-overlap bias (WOB)---classifying hypothesis and
+premise as entailment because of high
+word overlap~\cite{naik-etal-2018-stress}---also harms our entailment task to
+ensure faithfulness. 
+% This is especially true when the fake headline in the WSDM dataset also has high word overlap with the verified content (and vice versa, real headline with fake content,) as they concern the same specific event or person. 
+% Based on the above observations, we focus on eliminating following two lexical biases,
+% \begin{itemize}
+%     \item Prevent the model to yield prediction simply based on the existence of certain words.
+%     \item Prevent word-overlap bias, that highly-overlapped pair will easily fall into the category of entailment.
+% \end{itemize}
+Thus, we follow~\citet{debias} in adopting a model-level debiasing module for 
+pretraining entailment. A bag-of-words
+(BoW) sub-model is deployed to capture superficial features, since it has the
+least reasoning ability, and is more likely to use shortcuts to make
+predictions. 
+The main NLI model, in turn, consists of two bi-LSTM networks
+that are capable of reasoning over deeper semantics. 
+During training, HEX projection~\cite{wang2018learning} is used to screen out
+superficial features by making the hidden state of the main NLI model and the
+BoW sub-model orthogonal, forcing the main classifier to focus on deeper
+semantic features.
+% its workflow is illustrated in the right part of Fig.~\ref{fig_model}. A bag-of-words sub-model is deployed to capture superficial
+% features, since it has the least reasoning ability, and is more likely to use
+% shortcuts to make predictions. The main model, in turn, consists of
+% two bi-LSTM~\cite{1997lstm} networks that are capable of reasoning over deeper
+% semantics. During training, HEX projection~\cite{wang2018learning} is used to
+% screen out superficial features by making the hidden state of main model and
+% the BoW sub-model orthogonal, allowing the main classifier to focus on deeper
+% features. Following \citet{debias}, we use a self-attention layer as the
+% bag-of-words sub-model encoder, and a 3-layer bi-LSTM  with skip connections
+% and residuals as the main model encoder:
+% \begin{equation}
+%     \begin{aligned}
+%         \textbf{F}_A = & f([u_{\mathit{bow}}; u_{\mathit{main}}],\xi), \\
+%         \textbf{F}_P = & f([0; u_{\mathit{main}}], \xi), \\
+%         \textbf{F}_G = & f([u_{\mathit{bow}}; 0], \xi), 
+%     \end{aligned}
+% \end{equation}
+% where $f$ denotes the final MLP classifier, $u_{\mathit{bow}}$ and $u_{\mathit{main}}$ denote
+% the sentence embeddings encoded with Eq.~\ref{infersent}, and $\xi$ denotes the
+% classifier parameters.
+% \begin{equation}
+%     \textbf{F}_L = (I - \textbf{F}_G (\textbf{F}_G^T \textbf{F}_G)^{-1} \textbf{F}_G^{T}) \textbf{F}_A,
+% \end{equation}
+% where $\textbf{F}_L$ is projected to the orthogonal space of $\textbf{F}_G$.
+%We use the same training objective as \citet{debias}. 
+% After pretraining, the lexical-debiased NLI model is ready to calculate the faithfulness score. 
+%We also add synthetic data for a simple stress test~\cite{naik-etal-2018-stress}; this is discussed in the experiments section. 
+
+% \section{FR Examples}
+% In Fig.~\ref{fr-demo}, we provide some headlines exhibiting different types of FR.
+% \begin{table*}
+% \small
+% \begin{CJK*}{UTF8}{gbsn}
+% \centering
+% \caption{Examples of different types of forward references
+% used in headlines. Words highlighted in orange are the main characteristics of
+% a type of FR.}
+% \label{fr-demo}
+% \begin{tabular}{ c | c }
+% \Xhline{1.0pt}
+% \textbf{FR type} & \textbf{Example headlines} \T\B \\
+% \hline
+% \makecell[c]{1. Demonstrative pronouns}& \makecell[c]{这是今年最大的养生谣言！\T\T \\ \textcolor{goodorange}{\textbf{This}} is the biggest regimen rumor in the year!} \B \\
+% \hline
+% \makecell[c]{2. Personal pronouns} & \makecell[c]{
+% 据说这是他最后一部参与表演的电影\T \\It is said that this is the last movie \textcolor{goodorange}{\textbf{he}} participated in.}\B \\
+% \hline
+% \makecell[c]{3. Define articles} & \makecell[c]{Apple Logo 来自图灵咬一口的「苹果」？ \T \\The logo of Apple Inc.\ comes from \textcolor{goodorange}{\textbf{“the apple”}} that Alan Turing bit?
+% } \B \\
+% \hline
+% \makecell[c]{4. Ellipses} & \makecell[c]{接听了陌生Facetime，结果... \T \\After answering the unfamiliar Facetime, \textcolor{goodorange}{\textbf{it turns out... }}} \B \\
+% \hline
+% \makecell[c]{5. Imperatives} & \makecell[c]{我的天！雪糕二次冷冻会产生 \textbf{可溶性毒蛋白？} \T \\\textcolor{goodorange}{\textbf{OMG!}} Will a second freezing of ice cream produce \textcolor{goodorange}{\textbf{soluble toxic protein}}?} \B \\
+% \hline
+% \makecell[c]{6. Interrogatives} & \makecell[c]{微波炉加热食物会致癌吗？\T \\Does microwaved food cause cancer\textcolor{goodorange}{\textbf{?}}}\B \\
+% \hline
+% \makecell[c]{7. General nouns} & \makecell[c]{\textbf{天再冷也不能吃辣的 5种人}，吃了等于慢性自杀！\T \\
+% \textcolor{goodorange}{\textbf{5 kinds of people}} who can't eat spicy food no matter how \\ cold it is outside: eating it is tantamount to slow suicide!}\B \\
+% \hline
+% \makecell[c]{8. Location Adverbs} & \makecell[c]{经常吃方便面真的会致癌吗？正确的解释在这里 \T \\ Does eating instant noodles often really cause cancer?\\ \textcolor{goodorange}{\textbf{Here}} is the correct explanation.} \B \\
+% \Xhline{1.0pt}
+% \end{tabular}
+% \end{CJK*}
+% \clearpage
+% \end{table*}
+
+
+
+% \section{Stress Test of Faithfulness Scorer}
+% To evaluate the robustness of the proposed faithfulness scorer to lexical
+% bias, we conducted a stress test~\cite{naik-etal-2018-stress} by choosing samples (a)~with high
+% word overlap between headline and content but that are unfaithful, and (b)~with headlines
+% that contain certain cue words but are unfaithful. These two types of samples are
+% biased but unfaithful, which is the most difficult scenario for a faithfulness scorer.
+% We selected (a) by taking fake news headlines with $>$85\% word overlap with the 
+% verified contents. We then picked four word cues that contain the word ``rumor''.
+% %(\begin{CJK*}{UTF8}{gbsn}``辟谣'',``谣言'',``传谣'',``谣传''\end{CJK*})
+% which we
+% randomly added before or after headlines randomly chosen from 
+% LCSTS~\cite{hu-etal-2015-lcsts}, after which we randomly selected other content from
+% \dataset to pair with the headlines to form (b). We thus collected a total of 80
+% samples for (a) and 200 samples for~(b). Note that headlines or contents
+% selected from \dataset are 
+% % in 
+%   drawn from   % AMH: check
+% the validation and test sets. Accuracy results are
+% 0.78 on (a) and 0.85 on (b), indicating an ability to reason semantically
+% instead of taking shortcuts to determine faithfulness. Additionally, after
+% applied a biased faithfulness scorer (faithfulness scorer without debiasing) on
+% HonestBait, we discovered that the only things it generates are
+% ``clarification'' and ``rumor'', which shows the importance of debiasing
+% mechanism in this framework.
+
+% \section{Headlines with FR Techniques}
+
+% In Table ~\ref{fr-demo}, we provide sample headlines exhibiting different types of FR. 
+
+% \section{Preview Sample in PANCO Dataset}\label{sec-PANCO-example}
+% In Table~\ref{PANCO_sample}, we also provide a sample in the PANCO dataset, to better understand this work. 
+
+\section{Analysis of Hyperparameters}\label{lam-anal}
+% \begin{CJK*}{UTF8}{gbsn}
+\begin{table}[h]
+\small
+\begin{tabular}{c|c}
+\bottomrule 
+\\[-1em]
+\textbf{$\lambda$} & \textbf{Generated sample headlines}             \\ \\[-1em] \hline
+% \textbf{Gold}      & \begin{tabular}[c]{@{}c@{}}又在说苹果滞销，这种打悲情牌的或是\\制造谣言的要歇歇了 Saying apples are \\unsalable again, this kind of playing victim \\or spreading rumors should stop.\end{tabular}               \\ \hline
+\\[-1em]
+0.2                & \begin{tabular}[c]{@{}c@{}}Apples from Linyi county are unsalable? Linyi \\
+county government clarifies: \textcolor{goodorange}{\textbf{over-exaggerating}}.
+\end{tabular} \\ \\[-1em] \hline \\[-1em]
+0.6                & \begin{tabular}[c]{@{}c@{}}Are apples from the county of Linyi unsellable? \\  \textcolor{goodorange}{\textbf{This story is a rumor!}}\end{tabular} \\ \\[-1em] \hline \\[-1em]
+1.0                & \begin{tabular}[c]{@{}c@{}}Apples from Linyi county are unsalable? \\ e-commerce's customer service: \\ the merchant may violate portrait rights. \end{tabular} \\[-1em] \\  \toprule    % AMH: not sure what "portrait rights" means
+\end{tabular}
+\caption{Headlines generated with different $\lambda$. Orange words are more sensational expressions.}
+\label{tab:examp_lamb}
+\end{table}
+% \end{CJK*}
+
+Here we provide a qualitative analysis to examine the sensitivity of $\lambda$
+and $\alpha$; recall that $\lambda$ balances MLE loss and RL loss, and $\alpha$
+influences the sensationalism. In a sense, a higher $\lambda$ leads to robust yet
+boring generation, as a higher $\lambda$ relies more on MLE, and MLE loss is
+calculated according to the gold title. Table~\ref{tab:examp_lamb} summarizes
+title generation with different $\lambda$.
+Note that $\lambda=0.0$ is ignored, as it completely relies on RL loss, which
+often leads to broken generation results and is not practical in general. When
+$\lambda=1.0$, the model relies completely on MLE loss and is identical to
+using only Ptr-G. A smaller $\lambda$ creates more diversity, and $\lambda=0.2$
+balances diversity, attractiveness, and fluency. Also, in $\lambda=0.2$ and
+$\lambda=0.6$, more sensational or eye-catching words are used (highlighted in
+orange in Table~\ref{tab:examp_lamb}), whereas $\lambda=1.0$ shows a 
+plain, ordinary tone. When $\lambda=1.0$, the generated results are unrelated
+and unintelligible, which also shows that our faithfulness scorer helps align
+headline to content, since there is no faithfulness reward when $\lambda=1.0$.
+
+We also conducted an analysis of how different values of $\alpha$ affect the
+generated headline. In Table~\ref{tab:examp}, a lower $\alpha$ indicates that a greater
+emphasis is put on sensationalism.
+A higher $\alpha$ yields a relatively simple and monotonous sentence structure.
+In Table~\ref{tab:examp}, $\alpha=1.0$ predominantly generates affirmative
+sentences including ``can'', ``is'' or ``will'', which are highlighted in red.
+On the other hand, a less dominant $\alpha$ provides more flexibility with
+respect to the sentence structure and adds diversity. 
+When the reward is completely provided by the sensation scorer and the FR type
+reward ($\alpha = 0.0$), it seems that the model generates headlines from a
+different aspect and focuses on different keywords (highlighted in blue).
+However, such diversity comes at the risk of spurious invention. When $\alpha =
+0.0$, the generated result is similar to the tone of fake news, which creates a
+clickbait without specifying the facts.
+When $\alpha = 0.4$, the generated headlines maintain high veracity while
+improving attractiveness. Accordingly, we use $\lambda=0.2$ and $\alpha=0.4$ as
+our default setting.
+%We hypothesize that a lower $\alpha$ also decrease the probability to use copy mechanism. 
+% To better show these above-mentioned phenomena, we provide three examples here.
+%Another interesting observation is that when the reward was completely provided by sensation scorer ($\alpha = 0.0$), it seems that the model generates headlines from a different aspect and focuses on different keywords (highlighted in blue). 
+
+% \begin{CJK*}{UTF8}{gbsn}
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{c|c}
+\bottomrule
+\\[-1em]
+\textbf{$\alpha$} & \textbf{Generated sample headlines}         \\ \\[-1em] \hline \\[-1em]
+0.0               & \begin{tabular}[c]{@{}c@{}}\textcolor{goodblue}{\textbf{How much harm}} will new clothes do to our body?!\end{tabular}                            \\ \\[-1em] \hline \\[-1em]
+0.4               & \begin{tabular}[c]{@{}c@{}} Rumor has it that formaldehyde\\in new clothes causes cancer.\end{tabular}                     \\ \\[-1em] \hline \\[-1em]
+0.8               & \begin{tabular}[c]{@{}c@{}}Formaldehyde \textcolor{goodred}{\textbf{can}} cause cancer. \end{tabular}                      \\ \\[-1em] \hline \\[-1em]
+1.0               & \begin{tabular}[c]{@{}c@{}}Formaldehyde \textcolor{goodred}{\textbf{is}} a carcinogen.\end{tabular} \\[-1em] \\ \toprule
+\end{tabular}
+\caption{Generated headlines with different $\alpha$. Blue words are more
+diversified expressions, and red words are monotonic affirmatives.}
+\label{tab:examp}
+\end{table}
+% \end{CJK*}
+

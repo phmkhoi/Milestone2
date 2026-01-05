@@ -1,0 +1,157 @@
+\section{Secure Shared Memory}
+
+In this section, we first describe our baseline microarchitecture, and how it enforces strong isolation between security domains with shared memory disabled. 
+We then describe how to enable shared memory, how it opens the door to Spectre-like attacks, and why existing mechanisms are insufficient to address them. 
+We then describe SafeSpec and Burst Mode, our two complementary mechanisms to securely and efficiently enable shared memory on speculative microarchitectures.
+
+\subsection{Strong Microarchitectural Isolation}
+\label{sec:hardwareisolation}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/partitioning_mem.pdf}
+\caption{Resource Partitioning Between Security Domains}
+\label{fig:partitioning_all}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/context_switch.pdf}
+\caption{Context Switching Between Security Domains}
+\label{fig:context_switch}
+\end{figure}
+
+\textbf{Memory Isolation}
+Sanctum \cite{costan2016sanctum} introduces hardware mechanisms for memory isolation in the context of an untrusted OS.
+Like RISC-V Physical Memory Protection (PMP) \cite{waterman2015risc}, Sanctum introduces a mechanism to partition physical memory and prevent unprivileged security domains (OS or enclave) from accessing the private memory regions of another security domain (OS, enclave or SM).
+At its core, the mechanism uses two 64-bit registers per core (one for trusted memory and one for untrusted/shared memory) as memory bitmaps.
+Each bit represents a fixed-size physical memory region (typically 32MB) and functions as an access-rights flag for the currently-running security domain.
+Citadel borrows this mechanism for its simplicity and enforces these checks on every memory access, including speculative accesses and on accesses performed during page walks.
+Memory isolation is illustrated in Figure \ref{fig:partitioning_all}, where the coloring highlights that only currently running security domains can access corresponding DRAM memory regions. 
+
+\noindent\textbf{Microarchitectural Isolation}
+Following MI6 \cite{bourgeat2019mi6}, we enforce strong microarchitectural isolation through partitioning, flushing and by disabling speculation in the SM.
+First, we partition all spatially-shared microarchitecture including the LLC, the LLC pipeline and Miss Status Handling Registers (MSHRs) and other resources as illustrated in Figure \ref{fig:partitioning_all}.
+In particular, the LLC is statically partitioned into 64 regions to match the 64 DRAM memory regions -- we will improve on this scheme in Section \ref{sec:dynamiccache}.
+We pad the timing of DRAM requests to a constant, which eliminates DRAM controller side channels.
+When context switching between security domains, we leverage interrupt logic to interpose the SM and enforce the flushing of temporally-shared microarchitecture such as all cores' pipeline state, L1 caches, TLBs, Translation Caches and MSHRs (see Figure \ref{fig:context_switch}).
+The processor does not support hyper-threading and therefore is not vulnerable to related side channels such as port contention.
+The processor does not include a prefetcher so we are not susceptible to Spectre variants exploiting them.
+Finally, Citadel is not susceptible to Meltdown-style attacks, as the processor does not speculate across privilege levels (switching to a different privilege mode flushes the re-order buffer, making sure it never contains two instructions from different privilege levels).
+The exhaustive list of side channels and defense mechanisms covered by MI6 can be found in \cite{bourgeat2019mi6}.
+
+\noindent\textbf{Disabling Speculation in the SM}
+The SM executes in machine mode (see Figure \ref{fig:context_switch}) which gives it access to all physical memory, making it vulnerable to Spectre-like attacks.
+Following \cite{bourgeat2019mi6}, we disable speculation in the SM to prevent these attacks. 
+
+\subsection{Enabling Shared Memory}
+\label{sec:vmanddualpt}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/dual_page_table.pdf}
+\caption{The Dual Page Table Mechanism + Restricting Speculative Access to Shared Memory}
+\label{fig:dual_pt}
+\end{figure}
+
+
+Sanctum, a non-speculative design, proposed a dual-page-table mechanism (see Figure \ref{fig:dual_pt}) to differentiate between trusted and untrusted memory based on virtual addresses and enable shared memory.
+We adopt this dual-page-table mechanism in Citadel. 
+Two new registers (equivalent to base and bounds) are used to define the trusted virtual memory range (i.e., the enclave's virtual memory).
+The SM enforces the invariant that the physical memory mapped as trusted is owned by the corresponding enclave.
+When a memory access to a virtual address is performed by a program, one of the two page tables needs to be picked to translate the virtual address.
+If the virtual address falls within the trusted range, the translation is performed using the \emph{enclave page table}.
+Another important invariant enforced by the SM is that the enclave page table is always stored within enclave private memory.
+If the virtual address falls outside the trusted range, it corresponds to an untrusted or shared memory access and the translation is performed using the \emph{OS page table}.
+The OS page table is untrusted and stored in OS memory.
+Note that for every physical address used during address translation, additional bound checks are performed to ensure they belong to the same security domain (enclave or OS memory) as the translated address.
+This mechanism is especially handy to eliminate speculative transmitters,
+as there is no need to perform any speculative address translation (which could leak information) to know whether a memory access is trusted or not.
+
+\subsection{Attacks and Reusing Existing Mechanisms}
+\label{sec:attackandexisting}
+
+Shared memory implies that security domains now share some microarchitectural state, specifically a shared LLC partition.
+This effectively breaks Strong Microarchitectural Isolation and opens the door to LLC side channels and Spectre-like attacks.
+Anecdotally, we have successfully mounted such an attack against an enclave on our insecure baseline running on an FPGA.
+We were not able to successfully mount the attack on our final secure design.
+To thwart these attacks, we need to achieve SNI
+(see Section \ref{sec:threatmodel}) i.e., prevent speculative accesses to shared memory from leaking enclave secrets, for instance, by preventing speculative accesses to shared memory altogether (see Figure \ref{fig:dual_pt}).
+Nevertheless, building such a mechanism is not trivial.
+For instance, existing mechanisms that prevent some speculative memory accesses (MMIO accesses or non-cacheable memory \cite{schwarz2020context}) cannot be repurposed.
+Indeed, they rely on physical addresses or page table entries to identify memory regions, implying that they allow some speculative memory accesses to page tables, already leaking part of the address.
+Instead, we propose to design new mechanisms for speculation-safe shared memory to balance security and performance.
+
+\subsection{SpecSafe: Speculatively Safe Shared Memory}
+\label{sec:mechanism1}
+
+In the baseline out-of-order processor we are hardening, memory instructions are decoded, renamed and then simultaneously queued in the reorder buffer (ROB) and the memory reservation station (\MemRS{}).
+When an instruction's operands are ready, it is dispatched to the memory execution pipeline (\MemExePipeline{}).
+Our approach identifies instructions that access untrusted memory early in the \MemExePipeline{} and delay the translation and processing of the memory accesses until the instruction is no longer speculative, i.e.,  when it reaches the head of the ROB.
+These changes require the modification of \MemRS{} and \MemExePipeline{}. 
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/MemExePipeline.pdf}
+\caption{Changes to the Memory Execution Pipeline to enable SpecSafe. New elements are shown in blue.}
+\label{fig:MemExe}
+\end{figure}
+
+\noindent\textbf{Modifying the Memory Execution Pipeline}
+Upon entry into the \MemExePipeline{}, checks are performed on the memory instruction to decide if the memory operation is safe to translate and then issue, or not.
+It is important to perform these checks very early as 
+the next steps in the \MemExePipeline{} touch shared microarchitecture (through address translation and cache hierarchy for instance) potentially transmitting information to an attacker.
+A memory access is deemed safe if it accesses trusted memory OR if it is non-speculative.
+Because the enclave trusted memory range is defined in virtual memory, this check can be performed as soon as operands (i.e., virtual addresses) are available.
+If an instruction tries to access untrusted or shared memory, we check that it is non-speculative by conservatively checking if it has reached the head of the ROB.
+If the instruction is safe, it is dispatched to the next stage of the \MemExePipeline{}.
+If it is not safe, the instruction is squashed and a signal is sent to the \MemRS{} indicating that it should re-dispatch it once it reaches the head of the ROB.
+
+\noindent\textbf{Modifying the Memory Reservation Station}
+Our mechanism requires \MemRS{} being able to re-dispatch some instructions, once they become non-speculative -- untrusted memory loads will indeed typically need to get dispatched twice.
+
+\noindent\textbf{Disabling the Mechanism for the OS}
+Blocking speculation on memory access can have a significant performance impact.
+The SM makes sure that non-enclave programs (typically the OS and standard user mode programs) are still allowed to speculate when accessing their own memory by disabling the trusted memory mechanism.
+Note that untrusted code is still barred form (speculatively) accessing enclave or SM memory, thanks to memory isolation (see Section \ref{sec:hardwareisolation}).
+
+\subsection{Burst Mode: Pipelined Shared Memory Accesses}
+\label{sec:mechanism2}
+
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/FetchPipeline.pdf}
+\caption{Changes to the Fetch Pipeline to enable Burst Mode. New elements are shown in blue.}
+\label{fig:fetchpipe}
+\end{figure}
+
+We observe that SpecSafe performs poorly on code that performs back-to-back accesses to shared memory.
+This is mainly because shared memory accesses
+ cannot be pipelined, as each instruction needs to wait to reach the head of the ROB to be sent. 
+This serialization problem is exacerbated as we cannot use the L1-D cache for security reasons (see Section \ref{sec:l1bypass}), increasing latency of responses.
+In some cases, this behavior is even exacerbated by the compiler, trying to optimize the code by placing all the load instructions to shared memory, one after the other.
+This is especially costly during burst accesses. 
+The LLC supporting 16 outstanding requests and with a 10 cycle latency, means that 16 memory accesses should be pipelined to take a total of $10 + 16 = 26$ cycles.
+Without pipelining, they will now take $10 \times 16 = 160$ cycles.
+
+As a result, we designed a complementary mode where we temporarily change the execution mode to allow shared memory burst accesses, but without enabling any type of attacker-controlled speculation.
+For instance, we don't want our program to speculatively jump to a Spectre-like gadget and transmit secrets to our attacker.
+To avoid this, we restore speculative accesses to shared memory, but disable the use and training of all predictors, besides ``\texttt{pc+4}''.
+Specifically, we modify the Fetch pipeline in order to disable the Branch Target Buffer (BTB), the Branch History Table (BHT) and the Return Address Stack (RAS) (see Figure \ref{fig:fetchpipe}).
+This is commonly referred to as \emph{straight-line} speculation \cite{straightlinespecARM, guarnieri2021hardware}.
+Note that, for security, we still need to bypass the L1-D (see Section \ref{sec:l1bypass}).
+
+\noindent\textbf{Proper Usage}
+The switch between SafeSpec and Burst mode is triggered by writing to a specific Control Status Register (CSRs).
+Note that CSR reads and writes cannot be performed speculatively, and the corresponding instructions effectively act as speculation barriers by flushing the processor pipeline.
+The right way to use this mode is on small code snippets that perform back-to-back accesses to shared memory, as shown in Figure \ref{fig:memcpyasm} or Listing \ref{lst:codesnippet} (full code and assembly in supplementary material).
+The programmer or compiler only needs to identify these series of in-lined burst accesses and guard them with the CSR write instructions activating and deactivating burst mode, effectively isolating the code snippets.
+Modifying the execution mode also modifies the requirements on the software.
+In Figure \ref{fig:memcpyasm}, we highlight how the two mechanisms change the (speculative) control flow for the same assembly snippet from \texttt{memcpy}.
+The programmer now needs to ensure that the victim program does not leak secrets under straight-line speculation.
+More details and examples on how to verify a program's compliance can be found in Section \ref{sec:secannalysis}.
+We observe significant performance improvement when using Burst on our small code snippets.
+Interestingly enough, we also observe that (insecurely) activating burst mode on the whole enclave code leads to disastrous performance as it completely pollutes the TLB.
+More results and details are presented in Section \ref{sec:evalsharedmemory}.
+This highlights how Burst mode is complementary to SpecSafe and the importance of software-exposed controls for execution modes.

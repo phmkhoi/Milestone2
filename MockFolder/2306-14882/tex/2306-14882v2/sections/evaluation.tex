@@ -1,0 +1,218 @@
+\section{Evaluation}
+\label{sec:eval}
+
+We note that part of these results are preliminary, as we did not evaluate the performance impact of performing shared memory access through DMA.
+In these experiments, shared memory accesses are going through the L1.
+
+
+\subsection{Experimental Setup}
+
+\begin{figure}
+\begin{tabular}{ | m{5em} | m{17em} | } 
+  \hline
+  Frontend & 2-way superscalar, 256 entries BTB, 8 entries RAS, tournament predictor \\
+  \hline
+  Reorder Buffer &  64 entries, 2-way insert/commit \\
+  \hline
+  Reservation Stations & 2 stations for ALU (16 entries), 1 for FPU (16 entry), 1 for memory (16 entries) \\
+  \hline
+  L1 (I/D) &  32KB, 8 ways, 8 outstanding requests \\
+  \hline
+  Load-Store Unit & 24 LdQ entries, 14 StQ entries, 4 SB entries\\
+  \hline
+  LLC (L2) & 1MB, 10 cycles latency, 16 ways, max 16 outstanding requests \\
+  \hline
+  Memory &  120 cycles latency (24 outstanding requests) \\
+  \hline
+\end{tabular}
+    \caption{Citadel's microarchitectural configuration.}
+    \label{tab:mi6param}
+\end{figure}
+Citadel's processor is a modified out-of-order 2-core MI6 machine~\cite{bourgeat2019mi6}.
+The parameters used for the cores and the memory subsystem are given in Figure~\ref{tab:mi6param}.
+Citadel runs on an AWS EC2 F1 instance, equipped with a Virtex UltraScale+ FPGA. 
+On this FPGA board, Citadel can be clocked at $30$ MHz, which is similar to the baseline design.
+We use the RISC-V tool chain with GCC 12.2.0.
+We compile all software with the -O3 flag. 
+We run Linux Kernel 6.2.0.
+Unless mentioned differently, all performance numbers are collected by running the benchmark on the FPGA using performance counters and an average of ten runs. 
+
+\subsection{Implementation Data and TCB Breakdown}
+\begin{table}
+    \centering
+    \begin{tabular}{|p{2.35cm}|r|r|}
+        \hline
+         Component & LOC & Size\\
+         \hline\hline
+         Processor \cite{bourgeat2019mi6} (+ modification) & $\sim60$ KLOC (+ 150 ) & N/A \\
+         \hline
+         Bootloader & 5236 & 55KB\\
+         \hline
+         Security Monitor & 9147 & 97KB\\
+         \hline
+         \rowcolor{LightRedbis}
+         Mini-SM & 2301 & 5.6KB\\
+         \hline
+         \rowcolor{LightRed}
+         Linux & $\sim20$ MLOC & 157MB\\
+         \hline
+         \rowcolor{LightRed}
+         SM Kernel Mod. & 507 & 505KB\\
+         \hline
+         \hline
+         TCB Software & 14383 & 152KB \\
+         \hline
+         TCB Total & $\sim75$ KLOC & N/A \\
+         \hline
+    \end{tabular}
+    \caption{Software Component Size and TCB Breakdown. Mini-SM is a subset of the SM code. 
+    Lines in red correspond to elements excluded from the TCB.}
+    \label{tab:tcbloc}
+\end{table}
+
+Number of lines of code (LOC) and binary size of Citadel's components are presented in Table \ref{tab:tcbloc}.
+Due to their limited functions, the SM and the Bootloader can be kept small and the total software Trusted Code Base (TCB) is less than 15K LOC.
+This helps to minimize potential bugs and reduce the software attack surface.
+It can also help to make future formal verification efforts tractable.
+Final TCB size needs to include the enclave's binary, which depends on what is being run. 
+
+\subsection{Evaluating the End-to-End Platform}
+
+\textbf{MicroPython Runtime}
+We do a minimal port of MicroPython \cite{microphython} inside one of our enclaves.
+We start with the bare-metal ARM implementation.
+We modify the configuration files and the linker script so our binary can run in the \emph{virtual memory layout} provided by our enclave.
+We only need to implement a few functions by hand.
+For instance, we redirect the console to print to shared memory and need to write a bit of assembly for the \texttt{setjmp} and \texttt{longjmp} functions used for exception handling.
+We also add a cryptographic library so the enclave can sign the console output using its own private keys.
+A hash of the standard output is extended on each character print and signed on the enclave exit.
+We cross-compile MicroPython using the RISC-V tool-chain, making sure to deactivate compressed instructions, build without standard library, and generate position independent code.
+In total, we need to manually modify 128 LOC for the port and add the 5K LOC cryptographic library. 
+The final compiled binary measures
+180KB.
+With the enclave's code added, the TCB is now 65,174 LOC, most of it (70\%) being MicroPython.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/runtime_breakdown.png}
+\vspace{-20pt}
+\caption{MicroPython Enclave Execution Breakdown.}
+\vspace{-8pt}
+
+\label{fig:micro-pythonenclave}
+\end{figure}
+
+We use a simple primality test as a benchmark where a number is found to be prime if none of the numbers smaller than it can divide it. 
+We test the primality of an arbitrary small prime number: $19,531$.
+The tests takes an average of $4.1\times10^7$ cycles to execute, with 51\% of the time spent within the Python program.
+This means the enclave and attestation mechanism add 94\% overhead for this small computation.
+We show a visual breakdown of the running time in Figure \ref{fig:micro-pythonenclave}.
+We note that most of this overhead comes from hashing  enclave code (25\% of the total running time) but also generating the enclave keys and signing the certificate (10\% of the running time). These two numbers are especially high since this code is run non-speculatively inside the SM.
+On another hand, hashing and signing the output inside of enclave takes a negligible amount of time (less that 1\% of the total running time).
+Because this cost is fixed, it could definitely be amortized for bigger applications.
+
+\textbf{Securing a Cryptographic Library}
+\label{sec:evalcrypto}
+We write a wrapper around an ED2556 RISC-V library \cite{ed25519github}.
+The wrapper makes it possible to keep the keys used by the library inside of the enclave and for the library functions to be accessed in a Remote Procedure Call style (RPC).
+We add a queue to shared memory so untrusted applications can send requests to the library to generate keys (that will stay in enclave memory), or to sign messages using previously generated keys.
+In total, we need to implement 334 LOC of C, which is to be compared to the 4,514 LOC of the crypto library (7\% overhead).
+With the enclave's code added, the total TCB is now 19,231 LOC.
+The final crypto-enclave binary is 71KB.
+
+We compare performance between three scenarios.
+In each of these scenarios, we measure the number of cycles required to sign randomly generated messages.
+We split \texttt{1MB} of randomly generated data into $\approx 3000$ packets of various lengths following the arbitrary Internet Mix distribution \cite{imix}.
+In the first setup, which corresponds to our insecure baseline, we do not use any enclave as we directly link the cryptographic library to our user-level application.
+In the second scenario, termed ``multi-core'', the enclave constantly runs on a dedicated core and programs running on other cores can forward requests through the shared memory mechanism.
+In the third scenario, termed ``re-entry'', the enclave is re-entered every single time an application calls the cryptographic library on the same core as that of the application.
+We see very little difference (1.5\%) between the first two setups and a more important 27.6\% slowdown between the first and third scenario.
+Indeed, our cryptographic algorithm is compute-heavy, making the communication overhead negligible in the second scenario.
+Nevertheless, context-switching in and out of an enclave is expensive as it requires flushing the microarchitectural state, which makes the slowdown more important in the re-entry scenario.
+These two secure solutions highlight an interesting tradeoff between resource occupation (one core and a DRAM region vs. only a DRAM region) and performance.
+
+\subsection{Evaluating Secure Shared Memory}
+
+\begin{table}[]
+    \newcolumntype{C}[1]{>{\centering\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+     \begin{flushleft}\textbf{Normalized Runtime} \end{flushleft}
+     \begin{NiceTabular}{|C{1.4cm}|C{.6cm}|C{1.8cm}|C{2.3cm}|}[hvlines, corners=NW]
+        \CodeBefore
+        \rectanglecolor[gray]{0.9}{1-2}{1-4}
+        \rectanglecolor[gray]{0.9}{2-1}{5-2}
+        \Body
+            \multicolumn{1}{c|}{}& Q & Signature & Hash \\
+            
+            \Block{2-1}{SecShMem} & 1 & 1.024 & 1.320 \\
+            & 64 & 1.024 & 1.319\\
+            \Block{2-1}{SecDraw} & 1 & 1.559 & 21.628\\
+            & 64 & 1.018 & 1.746\\
+    \end{NiceTabular}
+     \begin{flushleft}\textbf{Communication Overhead} \end{flushleft}
+    \begin{NiceTabular}{|C{1.4cm}|C{.6cm}|C{1.8cm}|C{2.3cm}|}[hvlines, corners=NW]
+        \CodeBefore
+        \rectanglecolor[gray]{0.9}{1-1}{5-2}
+        \Body
+            \Block{2-1}{SecShMem} & 1 & 1.5\% & 4.4\%\\
+            & 64 & 1.5\% & 4.5\%\\
+            \Block{2-1}{SecDraw} & 1 & 51.6\% & 1925\%\\
+            & 64 & 0.8\% & 86.7\%\\
+    \end{NiceTabular}
+    \caption{Normalized runtime and communication overheads for the Secure Shared Memory and Secure Drawer mechanisms for signing or hashing a thousand random messages sent by the OS. We vary the size of the communication queue between the enclave and the OS.}
+    \label{tab:resultcrypto}
+\end{table}
+        
+
+We use a similar setup as Section \ref{sec:evalcrypto}.
+The enclave performs $1000$ cryptographic operations (signature or cryptographic hash) over random inputs provided by the OS.
+We compare two versions.
+The first one uses shared memory to send requests to the enclave along with pointers to the data.
+The second one uses secure drawers (see Section \ref{sec:secdrawer}) to pass the requests and the data that needs to be copied inside the secure drawer. 
+The LLC slice corresponding to the drawer needs to be flushed.
+LLC-slice flush is currently not implemented in our prototype; we model the performance overhead by writing a fresh region that is the size of the LLC slice.
+
+Our results are presented in Table \ref{tab:resultcrypto}.
+In the first table, we report the runtime normalized to the insecure baseline (directly linked library without LLC partitioning).
+We also measure the communication overhead, comparing 1) the number of cycles between the first request being sent by the OS and the last response being received by the OS and 2) the number of cycles spent running the cryptographic function inside the enclave.
+In general, we observe that the signature is computationally heavy and amortizes the communication costs compared to the hashing operation.
+We also observe that batching requests with a larger queue generally improves performance, even if it might not be possible in some interactive scenarios.
+We also see a huge difference in performance overhead between the secure drawer mechanism and our secure shared memory.
+This is because secure drawer requires many context switches.
+Finally, we observe that despite small communication overhead, the runtime of the secure shared memory is still impacted (23\% overhead) for the hashing operation. This is because the enclave cannot speculate on shared memory accesses.
+
+\textbf{Enclave Expressivity}
+Beyond the performance improvements, secure shared memory greatly simplifies communication between an enclave and the outside world.
+Indeed, mechanisms like secure drawers require typical applications to be modified.
+Instead, shared memory is a common abstraction to exchange data between an application and a library.
+As a result, it greatly simplifies enclave implementations.
+
+
+\subsection{Evaluating LLC Dynamic Partitioning}
+
+We evaluate the advantage of dynamically partitioning the LLC. To do so, we evaluate two benchmarks, our cryptographic enclave performing signing operations, and running 2000 iterations of the Coremark \cite{gal2012exploring} benchmark wrapped inside an enclave.
+We compare three different LLC configurations:
+an insecure baseline where the LLC is not partitioned, a configuration where the LLC is statically partitioned into uniform slices of 16KB (MI6 scheme) and a last configuration where we use our scheme to partition the LLC non-uniformly.
+For the non-uniform partition, we split the 1MB as follows: we give 512KB to the enclave, 128KB to the SM, 128KB to the OS, 128KB to shared memory and 1KB each to every other region.
+For the Coremark benchmark, the uniform partitioning induces a 3.2\% overhead while the non-uniform partitioning induces 0\% overhead. 
+This indicates that the memory footprint of Coremark is smaller than 16KB.
+For the Signature benchmark, we observe a 104\% overhead for the uniform partitioning and 0\% overhead for the non-uniform partitioning.
+These last results highlight the benefits of dynamic partitioning, which provides security for no cost, whereas static partitioning more than doubles the total runtime of our application.
+This is especially important as the benefits of dynamic partitioning are felt by both the enclave and untrusted applications.
+
+
+\subsection{Evaluating the Relaxed Flushing Policy}
+\label{sec:evalhsmecha}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/timer_interrupt_coremark.png}
+\caption{Normalized Execution Time for Coremark in the presence of periodic timer interrupts. MI6 flushed on every interrupt; Citadel does not.}
+\label{fig:coremark_timer}
+
+\end{figure}
+
+To evaluate the performance of the relaxed flushing policy, we run Coremark while triggering periodic timer interrupts at different time intervals to model frequent traps.
+We do not perform any computation inside the trap handler and only measure the overhead due to context switching.
+Results are provided in Figure \ref{fig:coremark_timer}.
+By testing a range of interrupt periods, we confirm that flushing on each trap like in MI6 results in significant overheads.
+However, the cost is greatly reduced when using the relaxed flushing policy, with a maximum of 7\% overhead measured for interrupts every 0.4ms.

@@ -1,0 +1,202 @@
+\begin{algorithm}
+  \caption{\primitive implementation.}
+  \label{alg:bbca-pt1}
+  \scriptsize
+
+  \label{alg:sb-impl}
+  \begin{algorithmic}[1]
+    \Implements
+      \State \primitive \textsc{\primitivesmall} with external validity predicates $\mathcal{P}$ and $\mathcal{Q}$.
+    \EndImplements
+    \Uses
+      \State Byzantine reliable broadcast, \textsc{\brbsmall}
+      \State Point-to-point links, \textsc{pl}
+    \EndUses
+    
+    \Parameters
+      \State $\numprocesses$
+      \Comment{Number of nodes}
+      \State $\numfaults$
+      \Comment{Maximum number of faulty nodes}
+      \State $N$
+      \Comment{Set of all $\numprocesses$ nodes}
+      \State $\Delta$ 
+      \Comment{Progress timeout period}
+      \State $T\gets\{\}$
+      \Comment{Map of timers per instance label}
+      \State \textit{sentecho}$\gets\{\}$
+      \Comment{Map of boolean values per instance label}
+      \State \textit{sentready}$\gets\{\}$
+      \Comment{Map of boolean values per instance label}
+      \State \textit{delivered}$\gets\{\}$
+      \Comment{Map of boolean values per instance label} 
+      \State \textit{yielded}$\gets\{\}$
+      \Comment{Map of boolean values per instance label} 
+      \State \textit{echos}$\gets\{\}$
+      \Comment{Map of maps of $(sn,b)$ tuples per sender per instance label}
+      \State \textit{readys}$\gets\{\}$
+      \Comment{Map of maps of $(sn,b)$ tuples per sender per instance label}
+      \State \textit{yields}$\gets\{\}$
+      \Comment{Map of maps of $(sn,b)$ tuples per sender per instance label}
+      \State \textit{checkpoints}$\gets\{\}$
+      \Comment{Map of maps of $(sn,b)$ tuples per sender per instance label}
+      \State \textit{readyCertPerId}$\gets\{\}$
+      \Comment{Map ready certificates per sender per instance label}
+      \State \textit{readyCertPerSn}$\gets\{\}$
+      \Comment{Map ready certificates per sender per sequence number}
+      \State \textit{seqnos}$\gets\{\}$
+      \Comment{Map of boolean values per sequence number}
+      \State \textit{finlalized}$\gets\{\}$
+      \Comment{Map of boolean values per sequence number}
+    \EndParameters
+
+	\UponEvent{\bbcacast(id, sn, b, \mathcal{P})}
+	\Comment{Triggered only by the dedicated sender $s$ of instance with label $id$}
+		\If{\textit{finalized}$[sn]=\false$}
+		\State $\sigma_s\gets\operatorname{sign}(s,(id, sn, b))$
+		\ForAll{q}{N}
+			\State\textbf{trigger} $\plsend(q, \langle \initiate, id, sn, b, \sigma_s \rangle)$
+		\EndForAll
+		\EndIf
+	\EndUponEvent
+
+	\UponEvent{\pldeliver(q, \langle \initiate, id, sn, b, \sigma_q\rangle)  \textbf{ and } \mathcal{P}(b)=\true}
+	\Comment{Executed by node $p$}
+		\If{$q$ is the sender of instance with label $id$}
+			\State $T[id].\operatorname{settimer}(\Delta)$
+        		\Comment{Set a progress timer}
+			\If{\textit{sentecho}$[id]=\false$ \textbf{and} \textit{yielded}$[id]=\false$ \textbf{and} \textit{finalized}$[sn]=\false$ \textbf{and} \textit{seqnos}$[sn]=\false$\textbf{and} $\operatorname{valid}(q,(id, sn, b), \sigma_q)$}
+				\label{ln:integrity}
+				\State\textit{sentecho}$[id]\gets\true$
+				\State\textit{seqnos}$[sn]\gets\true$
+				
+        		\State $\sigma_p\gets\operatorname{sign}(p,(id, sn, b))$
+ 				\ForAll{q}{N}
+					\State\textbf{trigger} $\plsend(q,\langle \echo, id, sn, b, \sigma_p\rangle)$
+				\EndForAll
+			\EndIf
+		\EndIf
+	\EndUponEvent
+	
+	\UponEvent{\pldeliver(q, \langle \echo, id, sn, b, \sigma_q\rangle)}
+	\Comment{Executed by node $p$}
+		\If{\textit{yielded}$[id] = \false$  \textbf{and} \textit{finalized}$[sn]=\false$ \textbf{and} $\operatorname{valid}(q,(id, sn, b), \sigma_q)$ \textbf{and} \textit{echos}$[id][q]=\bot$}
+			\State\textit{echos}$[id][q]\gets (sn,b) $
+		\EndIf
+	\EndUponEvent	
+	
+	\UponExists{(id,sn,b)}{|\{p\in N | \operatorname{\textit{echos}}[id][p]=(sn,b)\}|>2f \operatorname{\textbf{and}}  \operatorname{\textit{sentready}[id]=\false }}
+	\Comment{Executed by node $p$}
+		\State\textit{sentready}$[id]\gets\true$
+		\State \textit{readyCertPerId}$\gets\operatorname{\textit{echos}}[id]$
+		\State \textit{readyCertPerSn}$\gets\operatorname{\textit{echos}}[id]$
+		\State $\sigma_p\gets\operatorname{sign}(p,(id, sn, b))$
+		\ForAll{q}{N}
+			\State\textbf{trigger} $\plsend(q,\langle \ready, id, sn, b, \sigma_p\rangle)$
+		\EndForAll
+	\EndUponExists
+	
+	\UponEvent{\pldeliver(q, \langle \ready, id, sn, b, \sigma_q\rangle)}
+	\Comment{Executed by node $p$}
+		\If{\textit{yielded}$[id] = \false$  \textbf{and} \textit{finalized}$[sn]=\false$ \textbf{and} $\operatorname{valid}(q,(id, sn, b), \sigma_q)$ \textbf{and} \textit{readys}$[id][q]=\bot$}
+			\State\textit{ready}$[id][q]\gets (sn,b) $
+		\EndIf
+	\EndUponEvent
+	
+	\UponExists{(id,sn,b)}{|\{p\in N | \operatorname{\textit{readys}}[id][p]=(sn,b)\}|>2f \operatorname{\textbf{and}}  \operatorname{\textit{delivered}[id]=\false }}
+	\label{ln:no-duplication-1}
+	\Comment{Executed by node $p$}
+		\State\textit{delivered}$[id]\gets\true$
+		\State $T[id].\operatorname{cancel}()$
+		\Comment{Cancel progress timer with with timeout duration $\Delta$}
+		\State\textbf{trigger} $\bbcadeliver(p, id, sn, b)$
+		\State $\sigma_p\gets\operatorname{sign}(p,(id, sn, b))$
+		\ForAll{q}{N}
+			\State\textbf{trigger} $\plsend(q,\langle \checkpoint, id, sn, b, \sigma_p\rangle)$ 
+		\EndForAll
+	\EndUponExists
+	
+		\algstore{bbca}
+  \end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}
+    \scriptsize
+    \ContinuedFloat
+    \begin{algorithmic}[1]
+    \algrestore{bbca}
+    
+    \UponEvent{T[id].\operatorname{timeout}}
+	\Comment{Executed by node $p$}
+		\State\textit{yielded}$[id]\gets\true$
+		\State $C_R\gets\operatorname{\textit{readyCertPerId}}[id]$
+		\State $\sigma_p\gets\operatorname{sign}(p,(id, sn, b, C_R))$
+		\ForAll{q}{N}
+			\State\textbf{trigger} $\plsend(q,\langle \abort, id, sn, b, C_R,\sigma_p\rangle)$ 
+		\EndForAll
+	\EndUponEvent
+	
+	\UponEvent{\bbcaabort(sn)}
+	\Comment{Executed by node $p$}
+		\State\textit{finalized}$[sn]\gets\true$
+		\State $C_R\gets\operatorname{\textit{readyCertPerSn}}[sn]$
+		\State\textbf{trigger} $\bbcaannounce(p, sn, b, C_R)$ 
+		\label{ln:announcement}
+	\EndUponEvent
+	
+	\UponEvent{\pldeliver(q, \langle \abort, id, sn, b, C_R, \sigma_q\rangle)}
+	\Comment{Executed by node $p$}
+		\If{$\operatorname{valid}(q,(id, sn, b, C_R), \sigma_q)$ \textbf{and} \textit{yields}$[id][q]=\bot$}
+			\State\textit{yields}$[id][q]\gets sn, b, C_R $
+		\EndIf
+	\EndUponEvent
+	
+	\UponExists{(id,sn,b)}{|\{p\in N | \operatorname{\textit{yields}}[id][p]=(sn,b,\_)\}|>2f \operatorname{\textbf{and}}  \operatorname{\textit{delivered}[id]=\false }}
+	\Comment{Executed by sender $s$}
+	\State $\mathcal{C}\gets$ \textit{yields}$[sn]$
+		\State \textbf{if exists} $(sn,b,C_R)\in\mathcal{C}$  \textbf{such that} $C_R\neq\emptyset$ \textbf{then}
+		\State \hskip \algorithmicindent \textbf{trigger} $\brbcast((id, sn, b,\mathcal{C}),\mathcal{Q})$
+				\State{else}
+		\State \hskip \algorithmicindent \textbf{trigger} $\brbcast((id, \emptyslot, b, \mathcal{C}), \mathcal{Q})$
+		\State{end if}
+	\EndUponExists
+	
+	\UponExists{(id,sn,b)}{|\{p\in N | \operatorname{\textit{yields}}[id][p]=(sn,b,\_)\}|>f \operatorname{\textbf{and}}  \operatorname{\textit{yielded}[id]=\false }}
+				\State\textit{yielded}$[id]\gets\true$
+		\State $C_R\gets\operatorname{\textit{readyCertPerId}}[id]$
+		\State $\sigma_p\gets\operatorname{sign}(p,(id, sn, b, C_R))$
+		\ForAll{q}{N}
+			\State\textbf{trigger} $\plsend(q,\langle \abort, id, sn, b, C_R, \sigma_p\rangle)$ 
+		\EndForAll
+	\EndUponExists
+
+	
+	\UponEvent{\brbdeliver(p, (id, sn, b), \mathcal{Q})}
+		\If{\textit{delivered}[id]=\false }
+		 \label{ln:no-duplication-2}
+			\State\textit{delivered}$[id]\gets\true$
+			\State\textbf{trigger} $\bbcadeliver(p, id, sn, b)$
+			\State $\sigma_p\gets\operatorname{sign}(p,(id, sn, b))$
+			\ForAll{q}{N}
+				\State\textbf{trigger} $\plsend(q,\langle \checkpoint, id, sn, b, \sigma_p\rangle)$ 
+			\EndForAll
+		\EndIf
+	\EndUponEvent
+	
+	\UponEvent{\pldeliver(q, \langle \checkpoint, id, sn, b, \sigma_q\rangle)}
+	\Comment{Executed by node $p$}
+	\If{$\operatorname{valid}(q,(id, sn, b), \sigma_q)$ \textbf{and} \textit{checkpoints}$[id][q]=\bot$}
+		\State\textit{checkpoints}$[id][q]\gets (sn,b)$
+	\EndIf
+	\EndUponEvent	
+	
+	\UponExists{(id,sn,b)}{|\{p\in N | \operatorname{\textit{checkpoints}}[id][p]=(sn,b)\}|>f \operatorname{\textbf{and}}  \operatorname{\textit{delivered}[id]=\false }}
+		\State\textit{delivered}$[id]\gets\true$
+		\State\textbf{trigger} $\bbcadeliver(p, id, sn, b)$
+	\EndUponExists
+	
+	\caption{\primitive implementation (continues).}	
+  	\label{alg:bbca-pt2}
+   \end{algorithmic}
+\end{algorithm}  
+

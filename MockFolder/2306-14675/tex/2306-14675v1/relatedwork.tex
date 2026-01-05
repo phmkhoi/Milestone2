@@ -1,0 +1,47 @@
+\section{Related Work}
+\subsection{License Detection and Semantic Extraction}
+%To facilitate the process of understanding and choosing appropriate licenses, m
+Much research has been done to automatically identify official licenses and extract the semantics from license texts. 
+
+\noindent \textbf{License detection}. %Many studies have been conducted to identify the versions and names of some commonly-used licenses. 
+Gobeille et al.~\cite{msr`08-Gobeille-fossology} presented the first study on license detection. They exploited a binary Symbol Alignment Matrix algorithm to identify OSS licenses.
+Tuunanen et al.~\cite{ase`09-Timo-ASLA} designed license templates and identified some well-known licenses based on regular expressions. %They considered both the license texts at the beginning of each source code file and the licenses referenced from the source code. %Similarly, Xu et al.~\cite{cise`10-Xu-OSLC} utilized regular matching to identify licenses including their names and versions. 
+Ninka~\cite{ase`10-German-Ninka}, a notable tool for automated license identification, was implemented based on sentence-matching. %It identified licenses through four types of prior knowledge, i.e., filtering keywords, equivalence phrases, known sentence-token expressions, and  a set of license rules. 
+%Ninka covers 112 popular OSS licenses, but its recognition range is relatively limited due to the increasing new or custom licenses.
+%that continue to appear today. 
+On this basis, Higashi et al.~\cite{IWESEP`16-Higashi-clusteringForNinka} employed a clustering algorithm to further identify licenses that could not be handled by Ninka. %Despite being time-efficient, these studies are limited to certain licenses and rely on prior knowledge from experts. This paper enlarges the range of licenses that can be handled automatically.
+
+\noindent \textbf{Semantic extraction}. 
+%License texts are typically long and complicated, which motivated some studies on automatic semantic extraction. 
+To extract license semantics, many studies conducted the ontology study on licenses~\cite{IREC`09-Alspaugh-Intellectual,AIS`10-Alspaugh-Challenge,Qualipso`10-gordon-prototype,ICAIL`11-Gordon-Analyzing,ICAIL`13-Gordon-Introducing,COMMA`14-Gordon-Demonstration}. For example, Alspaugh et al.~\cite{IREC`09-Alspaugh-Intellectual}~\cite{AIS`10-Alspaugh-Challenge} extracted tuples from licenses to model 10 licenses. 
+%Gordon et al.~\cite{Qualipso`10-gordon-prototype} used the Web Ontology Language to build the ontology for 8 OSS licenses. 
+Unlike the ontology-based approaches that required much prior knowledge, Kapitsaki et al.~\cite{APSEC`17-Kapitsaki-termsIdentifying} proposed FOSS-LTE to identify license terms with a topic model. %\revise{Specifically}, they first mapped licenses terms with sentences, and then mapped sentences with topics via Latent Dirichlet Allocation (LDA). %By this means, it built the relations between terms and topics. 
+Despite the progress, the topic model might induce much noise and cause low accuracy~\cite{xu2021lidetector}. 
+
+
+\subsection{License Incompatibility Detection}
+%To avoid legal and financial risks induced by copyright infringement, much works has been done to detect license incompatibility. 
+A major of studies on license incompatibility detection are the graph-based approaches~\cite{jss`17-Kapitsaki-SPDX,SRDSCB`14-Kapitsaki-SPDX,Wheeler`07-Wheeler,paschalides2016validate}. 
+%such as Kapitsaki et al.~\citep{jss`17-Kapitsaki-SPDX}~\citep{SEKE`12-Kapitsaki-SPDX}~\citep{SRDSCB`14-Kapitsaki-SPDX} and Wheeler’s~\citep{Wheeler`07-Wheeler}.
+Generally, these studies manually constructed a directed graph to represent the compatibility relationships between licenses. %, where a node represents a license and its version, and an edge represents the transitive relation between two adjacent licenses. %The directionality in the graph describes the ``one-way compatbility'' relations between licenses, i.e., compatibility stems from a less restrictive license to amore restrictive one. 
+Then, they detected license incompatibility issues by examining the graph to determine whether two licenses can reach the same node. %, which means these licenses can be combined in a new software product under an alternative license. %{For instance, Kapitsaki et al.~\cite{paschalides2016validate} proposed a tool named SLVT, which is based on the directed acyclic license graph, to examine license violations that may exist in a single or multiple SPDX files.} 
+Despite being strict, %the performance of these methods depends on the presence of target licenses in a hand-crafted graph. However, 
+there are only a small number of licenses are supported (e.g., 20 licenses and their versions supported by SPDX-VT~\cite{jss`17-Kapitsaki-SPDX}). %Actually, there are various licenses in the real-word OSS, including many commonly-used licenses, their versions, exceptions, and even custom licenses. Hence, i
+It is difficult to manually analyze all the compatibility relations between licenses. Unlike these approaches, \tool provides a flexible solution that can be applied for arbitrary licenses without prior knowledge. %, which makes it more feasible for detecting and fixing license incompatibility issues.
+
+LiDetector~\cite{xu2021lidetector} was the first work that proposed a machine learning-based method for license incompatibility detection. \revise{The main differences between \tool and LiDetector range from license understanding to incompatibility detection. \textbf{(1)} Different granularities of entities. LiDetector regarded each right/obligation as a single entity, while \tool splits it into four types of entities, followed by a relation extraction model to organize them. By this means, \tool models a regulation more accurately, which as a result benefits license incompatibility detection and resolution. \textbf{(2)} Different models. \tool first embeds words with a roberta-base model, and then feeds them into a transition-based parser. In addition, LiDetector regarded each entity independently, while \tool employs a prompt-based model to extract the relations between entities. \textbf{(3)} Different licensing scopes. LiDetector treated all licenses except the project license equally and independently, while \tool observes that the location of a license determines its scope of licensing, and thus extracts license hierarchy for license incompatibility detection and resolution. \textbf{(4)} Different detection strategies. Based on license hierarchy extraction, \tool obtains \textit{parent-child} pairs of licenses from the license hierarchy, and defines that a license is compatible with its child nodes if {anyone who complies with the license will not violate any of its child nodes}. On this basis, \tool detects license incompatibility from bottom to up, layer by layer according to license hierarchy. Moreover, the detection strategy of \tool is more fine-grained than LiDetector, which benefits from its fine-grained license understanding.}
+
+\subsection{License Recommendation}
+%Another aspect is license recommendation or prediction.
+%The findOSSLicense tool~\citep{tse`18-Kapitsaki-findOSSLicense} of Kapitsaki et al. 
+Based on the aforementioned graph-based methods for license incompatibility detection, Kapitsaki et al.~\cite{kapitsaki2019modeling} proposed FindOSSLicense to recommend OSS licenses. It considered user requirements through a set of answers to questions, the licenses used by  similar users or similar projects, and also license compatibility information according to the directed graph proposed in~\cite{jss`17-Kapitsaki-SPDX}. To this end, a hybrid approach was proposed to combine the content-based, constraint-based, and
+collaborative filtering techniques in the recommendation system. 
+%Although FindOSSLicense took license incompatibility into consideration when recommending licenses, 
+However, the license graph only covered a small number of licenses. Licenses not covered in the license graph were marked with ``caution''. %Moreover, it did not take into account licenses accompanied with third-party components which are not explicitly declared in the OSS. 
+Liu et al.~\cite{liu2019predicting} observed that software changes might lead to license updates. Based on this observation, they proposed to predict source code
+file-level licenses in the
+presence of software changes. % Specifically, they collected a large corpus of changed files with their licenses and leveraged machine learning techniques to predict license conflicts and the resolutions. 
+However, the license prediction tool is only applicable for software changes, which limits its application scope. %Moreover, it only considered 25 licenses in the prediction models, leading to the performance degradation when faced with other licenses.
+Compared with these approaches,
+\tool automatically models license texts in a fine-grained way, analyzes the inherent reasons of license incompatibility for arbitrary licenses, and provides flexible solutions for resolving license incompatibility issues. %such as recommending a commonly-used license and generating custom licenses for users to choose.} 
+%the method in this paper has realized the automatic extraction of the license terms and their authorization types. Therefore, we can automatically analyze the compatibility relationship among the licenses in a OSS project and are not restricted by the scope of the license, which has wider application scenarios and higher effectiveness. 

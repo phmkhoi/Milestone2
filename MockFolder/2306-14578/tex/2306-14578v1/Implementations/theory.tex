@@ -1,0 +1,199 @@
+\subsection{Overview of theoretical tools}
+
+For now we will focus on tailor-made event generators for $\ell$$p$ experiments even though much effort has also been devoted to the development of generators at high energy (see \cite{Campbell:2022qmc} for a recent and comprehensive review).
+However, we will revisit a potential synergy in Sec.~\ref{sec:mc:synergy}.
+For $\ell$$p$ scattering, the most notable tools are {\sc ELRADGEN}~\cite{Afanasev:2003ic,Akushevich:2011zy}, {\sc ESEPP}~\cite{Gramolin:2014pva}, and {\sc Simul++}~\cite{Vanderhaeghen:2000ws,A1:2013fsc,Mihovilovic:2016rkr}.
+Another tool in this context is {\sc McMule}~\cite{Banerjee:2020rww,Ulrich:2020frs} (as part of this topical collection, a simple TPE model is compare to the effect of NNLO corrections using McMule~\cite{McMule})  which currently cannot generate events.
+However, work is underway to address this in a way that is convenient for experiments.
+Looking slightly beyond $\ell p$ scattering, we have
+the code by Epstein and Milner (EM)~\cite{Epstein:2016lpm} for Bhabha and M\o{}ller scattering;
+{\sc MERADGEN}~\cite{Afanasev:2006xs} for M\o{}ller scattering;
+{\sc MESMER}~\cite{CarloniCalame:2019mbo,CarloniCalame:2020yoz,Budassi:2021twh,Budassi:2022kqs} for muon-electron scattering;
+and {\sc BabaYaga} for Bhabha scattering and photon pair production~\cite{CarloniCalame:2000pz,CarloniCalame:2001ny,CarloniCalame:2003yt,Balossini:2006wc,Balossini:2008xr}.
+While these generators are not directly applicable for $\ell p$ scattering experiments, they could either be adapted into (trivially in the case of {\sc MESMER}) or help inspire new $\ell p$ generators.
+Hence, we will still include them in our comparison as shown in Tab.~\ref{tab:mc}.
+
+When we compare MC codes, we consider the order in perturbation theory they implement, whether they use resummation.
+Another important point is whether they use any further approximations such as as an ultra-relativistic approximation (which treats the electron as nearly massless $E\gg m$) or the soft-photon approximation (which assumes $E,\sqrt{s} \gg E_\gamma$, also known as eikonal or peaking approximation).
+We stress that the order in perturbation theory is always relative to the listed process, usually $ep\to ep$.
+This means that an NLO calculation of $ep\to ep$ includes an LO calculation of $ep\to ep\gamma$ as a subset (cf. Sec.~\ref{Sec:RadCorrAdrian}).
+If one wishes higher accuracy, i.e. NLO, for the latter process, more complicated calculations are required which, if properly implemented, would allow the implementation of an NNLO code.
+
+As discussed in Sec.~\ref{Sec:RadCorrAdrian} there are two commonly used methods: slicing (cf. Eq.~\ref{slicing}) and subtraction (cf. Eq.~\ref{subtraction}).
+Slicing tends to be more commonly used in NLO QED calculation as it is simpler to implement and use to generate events.
+
+While most MC generators discussed here are fixed order, either at NLO or NNLO, some also include a resummation.
+We will discuss the different strategies relevant here in Sec.~\ref{sec:mc:resum}.
+Since the ability to produce unweighted events is very important from an experimental point of view, we will discuss different strategies in Sec.~\ref{sec:mc:unweight}.
+Finally, while Table~\ref{tab:mc} focuses on purpose-built tools for low-energy experiments, one should not forget about the generalist tools that were developed for the LHC and other high-energy experiments.
+In Sec.~\ref{sec:mc:synergy} we will discuss some potential synergies.
+
+
+\begin{table*}[t]
+    \centering
+    % \newcommand{\pol}[1]{\underline{#1}}
+    \newcommand{\pol}[1]{{#1}}
+     \caption{
+        An overview of MC codes that are relevant for $ep$ scattering experiments.
+        (N)NLO codes that use slicing are indicated with {\it w/ sl.} while codes that use subtraction are indicated with {\it w/ su.}
+    }
+    \scalebox{0.9}{
+    \begin{tabular}{l|p{2.4cm}|l|l|p{3.0cm}|p{3.0cm}}
+        \bf Name                     & \bf Process                             & \bf Order  & \bf Resummation & \bf Approximation       & \bf Unweighting \\\hline
+
+        \sc ELRADGENv2               & polarised\qquad $\pol{e}\pol{p} \to ep$ & NLO w/ sl. & YFS exp.   & leptonic                     & flat weights for rad. events \\
+        \sc ESEPP                    & $ep\to ep$                              & NLO w/ sl. & none       & $E\gg m$ for virtual, \cite{Maximon:2000hm} for TPE & Foam~\cite{Jadach:2005ex} \\
+        \sc Simul++                  & $ep\to ep$                              & NLO w/ sl. & exp.       & none                         & reduced-variance weights \\
+        {\sc OLYMPUS} & $ep\to ep$                              & NLO (w/ sl. opt.) & none/exp.       & single photon kinematics                         & multiple modes \\
+        \sc McMule                   & $ep\to ep $              & NNLO w/ su.& planned    & point-like proton & planned \\
+        & \& others & & & beyond NLO &\\
+        \hline
+
+        EM                           & $ee\to ee$                              & NLO w/ sl. & none       & none                         & Foam~\cite{Jadach:2005ex} \\
+        \sc MERADGEN                 & polarised\qquad $\pol{e}\pol{e}\to ee$  & NLO w/ sl. & none       & none                         & flat weights for rad. events \\
+        \sc BabaYaga                 & $e^+e^- \to e^+e^-$                     & NLO w/ sl. & matched PS & none                         & only pos. + hit-and-miss \\
+        \hline
+
+        \sc MESMER                   & $e\mu\to e\mu$                          & NNLO w/ sl.& planned    &  electronic at NNLO          & mostly pos. + hit-and-miss \\
+
+    \end{tabular}}
+   
+    \label{tab:mc}
+\end{table*}
+
+
+\subsubsection{Parton shower and resummation}
+\label{sec:mc:resum}
+
+When calculating higher-order corrections, be it at NLO or NNLO, one often finds that the corrections are enhanced by the presence of large logarithms $L$ between disparate scales such as $\ln(m_e^2/s)$, $\ln(m_e^2/m_p^2)$, or $\ln(Q^2/m_p^2)$.
+These logarithms somewhat spoil the perturbative convergence since we usually get at least one such logarithm per order in $\alpha$.
+This means that NLO, and sometimes even NNLO, is insufficient.
+One way out of this problem is just to compute even higher orders in $\alpha$.
+However, this quickly becomes infeasible, with partial N$^3$LO corrections just about feasible.
+Luckily, there is rarely a need to compute the full corrections since typically only the logarithmically enhanced matter.
+These terms follow a very predictable structure and can often be calculated to all orders in $\alpha$.
+This process is called resummation and it introduces its own counting.
+Accounting for all terms of the form $\alpha^n L^n$ is referred to as leading logarithm (LL), the second ``tower'' $\alpha^n L^{n-1}$ is called next-to-leading logarithm (NLL) and so on.
+
+When combining a calculation at a given level of resummation, say LL, with a fixed order calculation at e.g. NLO, one must take care to avoid double-counting.
+Both calculations include the same $\mathcal{O}(\alpha L)$ term, albeit in different forms.
+Ensuring that this does not spoil the result requires the two calculations to be matched at the given order.
+
+In QED we have two main sources of large logarithms: those related to the smallness of the electron mass (usually called collinear logarithms) and those related to restricting real radiation, either through explicit cuts on the phase space integration or by considering the endpoints of distributions (usually called soft logarithms).
+
+Logarithms can either be resummed using a numerical algorithm such as a parton shower (see below) or analytically.
+A parton shower resummation contains the full LL but may contain partial results of the NLL as well, depending on method and implementation.
+The development of an exact NLL parton showers is an area of very active research at the high-energy frontier.
+Analytic resummation can be performed well beyond LL with state-of-the-art calculations reaching next-to-next-to-next-to-leading logarithm (N$^3$LL).
+However, these calculations are observable dependent and cannot easily be used to generate events.
+
+\paragraph{YFS exponentiation}
+The simplest way to resum soft logarithms is Yennie-Frautschi-Suura (YFS) exponentiation, a procedure that is based on the universality of soft singularities in QED~\cite{Yennie:1961ad}.
+In its simplest form, this accounts for large logarithms near the endpoints of differential distributions e.g. by exponentiating the singular behaviour of the distributions.
+This approach has been considered long ago for LEP~\cite{Kuraev:1985hb, Skrzypek:1992vk, Cacciari:1992pz} at LL.
+However, the same strategy has recently been used to calculate soft logarithms up to next-to-next-to-leading logarithm (NNLL) in the electron spectrum of muon decay.
+
+\paragraph{YFS shower}
+This form of YFS exponentiation can be used to obtain very precise results for single distributions.
+However, without modification, it cannot be used to generate events.
+By using the YFS approximation on both real and virtual corrections, we can construct a locally finite prescription to generate an event with an arbitrary number of real but soft photons~\cite{Schonherr:2011vna}
+This shower reproduces the soft LL for any observable as the resummation happens for each phase space point.
+Further, matching a YFS shower to a fixed-order calculation is relatively straightforward since one can relatively easily incorporate the fixed-order calculation in the YFS shower~\cite{Schonherr:2011vna}.
+
+\paragraph{DGLAP-based parton showers}
+An alternative resummation approach is based on the structure function approach. 
+Given an electron with a fixed momentum $p$, the structure function $D(x, Q^2)$ is the probability density of observing an electron with momentum $xp$ and virtuality $Q^2$.
+Convoluting a structure functions for each external electron with the fixed-order cross section then resums the collinear logarithms to LL accuracy.
+The structure functions themselves are governed by the Dokshitzer-Gribov-Lipatov-Altarelli-Parisi (DGLAP) evolution equation~\cite{Gribov:1972ri,Altarelli:1977zs,Dokshitzer:1977sg}
+\begin{align}
+    Q^2 \frac{\partial}{\partial Q^2} D(x,Q^2) = \frac{\alpha}{2\pi} \int_x^1 \frac{\dd y}{y} P_{ee}(y) D\Big(\frac xy, Q^2\Big)\,,
+\end{align}
+where $P_{ee}(x)$ is the (regularised) kernel that is known up to two-loop accuracy.
+A parton shower is an algorithm of solving the DGLAP equation numerically using MC methods~\cite{Ellis:1996mzs}.
+This allows us not only to obtain an exact numerically solution for the structure functions but also to generate approximate photon momenta.
+The latter can be improved by using the YFS theorem~\cite{CarloniCalame:2001ny}.
+
+Work is still ongoing to reach NLL accuracy with a general parton shower.
+However, analytic solution of the DGLAP equation at NLL are already possible in QED~\cite{Bertone:2019hks}.
+
+\subsubsection{Unweighting procedures}
+\label{sec:mc:unweight}
+So far, we have only discussed the generation of weighted events.
+This means that we generate a set of random momenta $\{p_i^\mu\}$ and use them to calculate an event weight $w_i$ that is comprised of the matrix element (squared) and a phase space mapping that accounts for the way we have generate the momenta.
+We then use this event to perform some sort of histogramming, potentially involving a detector simulation.
+The event weight itself may vary across many orders of magnitude and even be negative.
+This increases the number of events that need to be generated to obtain a reasonable uncertainty on the final histogram since negative events will lead to (potentially severe) cancellations.
+
+If the histogramming step is comparatively fast, one would normally stop here and just increase the number of events generated.
+However, a realistic detector simulation can be extremely complicated and require hours of CPU time which is expensive even compared to the matrix element evaluation that usually takes less than a second.
+Hence, our goal needs to be the reduction of the number of events that need to be passed to the detector simulation.
+The easiest way to do this, is to generate events with uniform weight even if this requires the evaluation of many more events on the theory side.
+Even in the absence of negative weights, this is a non-trivial task:
+given a probability distribution function (PDF) that we in general only know numerically, we want to generate variables that follow this distribution.
+
+In simple cases, it is possible to generate the event directly without weight; the energy of an emitted photon can be sampled as
+\begin{align}
+    E = E_\text{min} \Big(\frac{E_\text{max}}{E_{\text{min}}}\Big)^\#,
+\end{align}
+where $0<\#<1$ represents a uniformly distributed random number and $E_\text{min}$ some cut-off parameter.
+This is possible because soft photons are distributed following the eikonal approximation.
+However, this fails as soon as one considers higher-order corrections as the distribution becomes much more complicated.
+
+A more complicated method is called \emph{hit-and-miss}:
+we generate a set of weighted events with weights $w_i$ and find the maximum weight $W=\max |w_i|$.
+A given event is rejected with probability $p=1-|w_i|/W$, otherwise it is accepted with weight ${\rm sign}(w_i)\times W$.
+At this stage we have significantly fewer events than we started with but their weights are all $\pm W$.
+
+This strategy can be somewhat improved upon by sampling the original distribution using an adaptive MC sampler rather than naively using uniformly distributed random numbers.
+The simplest such sampler is VEGAS~\cite{Lepage:1980dq} which will sample regions with large weights more often than those of low weight, improving efficiency.
+It does this by splitting each axis of the integration into (by default) 50 subdivisions that are each sampled the same.
+The sizes of divisions are than adjusted to sample regions of large integrand more finely.
+Note that this relies on the behaviour of the integrand being reasonably well aligned with the axis of the integration.
+This has been improved upon by cells instead of a grid in FOAM~\cite{Jadach:2002kn}.
+More recently, machine learning techniques were investigated for even more efficient sampling methods, e.g.~\cite{Gao:2020vdv,Bothmann:2020ywa,Gao:2020zvv}.
+
+Much effort has been dedicated to improve unweighting procedures as hit-and-miss is very inefficient, especially in the presence of many events with negative weights $w_i<0$.
+This can for example be done by optimising the event generation, i.e. ensure that fewer event with negative weights are generated in the first place by modifying the parton shower matching procedure~\cite{Danziger:2021xvr,Frederix:2020trv}.
+Alternatively, one can carefully remove the events with negative weight without affecting physical observables~\cite{Andersen:2020sjs,Nachman:2020fff,Stienen:2020gns}.
+
+Recently, this led to the development of cell resampling~\cite{Andersen:2021mvw} which works process independently and preserves all physical observables.
+The idea here is to utilise the experiment's finite resolution that is anyway required to IR finiteness.
+We now create a small sphere around every event with negative weight, ensuring that the sphere is smaller than the experimental resolution and cannot be probed.
+Assuming enough event were generated, the sum of all weights in this sphere is positive since experiments always measure a positive cross section. 
+We now replace all events by their absolute value, taking care not to disturb the sum of weights.
+
+
+\subsubsection{Synergy with high energy}
+\label{sec:mc:synergy}
+
+Many MC generators were developed for the LHC physics program.
+While some of these are purposed-built for certain high-energy processes, other are more general.
+Some of the most mature, general-purpose tools are {\sc Sherpa}~\cite{Gleisberg:2008ta,Sherpa:2019gpd}, {\sc Herwig}~\cite{Bahr:2008pv,Bellm:2015jjp}, {\sc Pythia}~\cite{Bierlich:2022pfr}, and {\sc MadGraph\_aMC@NLO}~\cite{Bertone:2022ktl}.
+While these tools were designed for hadron colliders, they could be extended for low-energy elastic $e$-$p$ scattering.
+In the following, we briefly summarise the four main codes and what they could offer without major modifications.
+
+While {\sc Sherpa} usually generates its own NLO matrix elements, it can be fed the required expressions in through a shared library.
+This means that once provided with all matrix elements (including the TPE) as some kind of callable routine, it would be able to generate events at NLO accuracy out of the box.
+Further, it provides a full YFS shower~\cite{Schonherr:2008av} that can resum soft logarithm; collinear contributions are taken at fixed order.
+
+{\sc Pythia} itself is not a program but rather a library that can be used for event generation.
+As such, it is trivial to link to an external matrix element provider and it could then be used for the generation of NLO events.
+While naturally focused on QCD showers and hadronisation, it does include a QED shower that includes a fully coherent multiple treatment of photon radiation beyond the YFS approximation.
+Further, the resummation of initial-state collinear log is possible using a lepton parton distribution function.
+
+{\sc MadGraph\_aMC@NLO} is mainly designed for the automatic generation of NLO matrix elements which are then used in a QCD parton shower.
+The automatic generation is less helpful for our purposes but could be side-stepped with some effort.
+The code further provides a QED shower for final states and, similar to {\sc Pythia}, can use a lepton parton distribution function for the inclusive resummation of ISR.
+Weight reduction to unit weights $w=\pm1$ is only available when combined with the parton shower to avoid the introduction of an IR cut-off.
+
+{\sc Herwig} is a Monte Carlo event generator with QED showering.
+In normal operations for LHC physics, amplitudes are included up to NLO.
+However, for more complicated processes {\sc Herwig} is already set up to obtain amplitudes from external libraries.
+This feature could be used to provide the generator with matrix elements relevant for $\ell$-$p$ scattering.
+
+Facilitated by the development of many different generators, the high-energy community was forced to develop standardised interfaces for generators and event formats.
+The most commonly used ones are LHEF~\cite{Alwall:2006yp} and HepMC3~\cite{Buckley:2019xhk}.
+These standards are used in conjunction with the {\sc Rivet} framework~\cite{Bierlich:2019rhm}.
+{\sc Rivet} supports the development of generators by encouraging experimentalists to share their analyses in a common framework that can be applied both on data and Monte Carlo samples.
+New generators (at both the high-energy and low-energy frontier) will probably interface to these standards to cut down on complexity.
+

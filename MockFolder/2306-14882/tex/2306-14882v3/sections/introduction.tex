@@ -1,0 +1,62 @@
+\section{Introduction}
+Secure Enclaves or Trusted Execution Environments (TEEs) \cite{costan2016sanctum, aegis, ferraiuolo2017komodo, lee2020keystone,  bahmani2021cure, feng2021scalable}, are trusted-hardware primitives used to protect the execution of sensitive programs.
+They make it possible to run sensitive computations in isolation with strengthen privacy and integrity properties.
+Academic TEE proposals date back twenty years to XOM \cite{xom} and AEGIS \cite{aegis} and industry implementations include ARM TrustZone \cite{trustzone04, pinto2019demystifying}, Intel SGX \cite{mckeen2013sgx, costan2016intel} and AMD SEV \cite{sev2020strengthening}.
+
+Unfortunately, these kinds of platforms have been shown to be vulnerable to microarchitectural side channels and transient execution attacks \cite{chen2019sgxpectre, koruyeh2018spectre, ryan2019hardware, van2020lvi}. In particular, attacks such as those in \cite{van2018foreshadow, van2020sgaxe} were able to not only extract sensitive data from Intel SGX enclaves, but also managed to break the security of the remote attestation mechanism.
+
+One academic proposal \cite{bourgeat2019mi6} has looked at securing enclaves in the context of microarchitectural side channels and transient execution attacks.
+They aim for a strong security guarantee where a potential attacker can only observe the enclave's output.
+Unfortunately, this extreme isolation strongly restricts the class of programs that can be run, as no communication with the outside world is allowed except when entering or exiting the enclave.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/Stack.png}
+\caption{Citadel's Computing Stack}
+\label{fig:computing_stack}
+\end{figure}
+
+We are not the first to observe that restrictive enclave execution models limit the programmability and the performance of enclave programs\cite{van2023cheri, yu2022elasticlave, li2021confidential, lee2022cerberus, park2020nested, steinegger2021servas} but those work ignore security challenges introduced by microarchitectural side-channels and transient execution attacks. 
+When considering those challenges, even basic communication primitives like public shared memory with the operating system are not straightforward to implement efficiently and securely.
+
+
+In this paper, we try to fill the gap between platform that have strong security but restrict enclave programs to the extreme and platforms that allow better enclave execution models but ignore side channels and transient execution attacks.
+
+We first define our relaxed security goal: an attacker should only be able to observe the transcript of non-speculative accesses to a shared memory region.
+We then craft requirements for the hardware and the software so that, together, they can prevent secrets from leaking through speculative access to shared memory.
+In practice, the hardware will isolate private microarchitectural state and restrict the victim program speculation model to help it achieve the just described security guarantee.
+Intuitively, the more restrictive the speculation model, the lighter the requirements on the program, but the least performance we get.
+
+In our case, we first consider a very conservative speculation model where no speculative shared accesses are allowed.
+This effectively prevents the existence of any speculative transmitters between the victim and the attacker.
+We describe how to enable shared memory securely for the specific open-source out-of-order design we used, while disabling speculative shared accesses.
+We also make sure to not enable any new speculative transmitters by bypassing the L1 D cache, and to not break address translation by tagging the TLB's and the Address Translation Cache's entries.
+Finally, we give a brief overview of the software infrastructure we have implemented in order to boot Linux and run enclaves from user programs on our FPGA prototype.
+
+We use this secure baseline to evaluate the performance of the kind of programs that one could be interested in putting in an enclave.
+Out-of-the-box, we obtain an underwhelming $120.6\%$ performance overhead for a cryptographic library.
+We identify and analyze the performance bottlenecks to design a series of hardware-software mechanisms to improve both enclaves' and unprotected processes' performance.
+More precisely, we develop a reconfigurable Last Level Cache (LLC) partitioning scheme, a performance necessity for our small LLC.
+This reduces our overhead from $120.6\%$ to $19.4\%$.
+We also introduce software controls to enable a slightly less conservative enclave speculation model, where pipelined accesses to shared memory are allowed but predictors are hardwired to $pc + 4$.
+The efficient way to use this mode is on code segments with burst accesses to shared memory.
+Under this less conservative speculation model, the programmer needs to make sure that straight-line speculation ($pc+4$) within these segments will not leak any secrets.
+This mechanism reduces overheads from $19.4\%$ to $2.7\%$ on our cryptographic benchmark.
+
+Our final prototype is a modified out-of-order RISC-V 2-core processor synthesized to run on an AWS F1 FPGA.
+It fully implements all our security and dynamic resizing mechanisms, boots (untrusted) Linux and makes it possible for user-level applications to launch and safely communicate with secure enclaves executing real applications such as a lightweight Python runtime, a cryptographic library or a private inference application running a small neural network.
+We also implement an end-to-end attestation mechanism, making it possible for an enclave to identify itself independently of where the OS placed it in physical memory, enabling enclaves to act as a trusted third party.
+We implement and make all the pieces of software and modified hardware available, such as our secure bootloader, our security monitor and a Linux kernel module to interact with the security monitor.
+We summarize the different elements implemented for this paper in Figure \ref{fig:computing_stack}.
+This makes our platform a unique environment for research in the domain of microarchitectural side channels, transient execution attacks and secure enclaves.
+We hope researchers will take ownership of the platform, attack it, modify it to prototype and test complex hardware-software mechanisms and research ideas.
+
+To summarize, the main contributions of the paper are:
+\begin{itemize}
+\itemsep-0.1em
+\item To our knowledge, we show the first end-to-end enclave platform running securely on an FPGA implementation of a speculative out-of-order processor.
+\item We show how to build a shared memory mechanism while guaranteeing an attacker will only observe non-speculative accesses to shared memory.
+\item Guided by early performance evaluation, we propose a series of hardware-software mechanisms to make the platform more configurable and improve both enclaves' and unprotected processes' performance.
+\end{itemize}
+
+We open-source our hardware, software and debugging infrastructure at \url{https://github.com/mit-enclaves/citadel}.

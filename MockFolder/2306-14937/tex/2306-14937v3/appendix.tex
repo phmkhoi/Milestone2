@@ -1,0 +1,291 @@
+\section{Proof of Correctness on White Noise}
+In this section, we prove that the expected DDL of white noise under a GMM is a monotonically increasing function of the number of components in the GMM. 
+
+\begin{lemma} \label{lemma:r}
+When clustering white noise on $[0,1]^m$, with a $k$-component GMM, the radius $r$ of each cluster is approximated by 
+ \begin{equation} \label{eq:r}
+\frac{1}{\sqrt{3}\sqrt[m]{k}}\left(\frac{2}{\sqrt{3}}\right)^{1/m} \,.
+\end{equation}
+\end{lemma}
+\begin{proof}
+For balls of radius $r$, the distance along each coordinate axis between their centres will be $2r$ for one of the dimensions and $2r\frac{\sqrt{3}}{2}$ for all other dimensions. This is because the centres of each 3 touching balls will form the vertices of an equilateral triangle with side length $2r$, which will then have height $2r\frac{\sqrt{3}}{2}$. Thus, the number of balls of radius $r$ that can fit inside each axis is $\frac{1}{2r}$ for the first axis and $\frac{1}{2r}\frac{2}{\sqrt{3}}$ for all other axes. The total number of balls that can fit inside $[0,1]^m$ is, therefore 
+\[
+\frac{1}{(2r)^m}\left(\frac{2}{\sqrt{3}}\right)^{m-1}\,.
+\]
+Conversely, given that the GMM will have $k$ clusters, we can approximate the radius of each cluster using 
+\begin{gather*}
+\frac{1}{(2r)^m}\left(\frac{2}{\sqrt{3}}\right)^{m-1} = k \\
+(2r)^m = \frac{1}{k}\left(\frac{2}{\sqrt{3}}\right)^{m-1}  \\
+2r = \frac{1}{\sqrt[m]{k}}\left(\frac{2}{\sqrt{3}}\right)^{\frac{m-1}{m}}  \\
+r = \frac{1}{\sqrt{3}\sqrt[m]{k}}\left(\frac{\sqrt{3}}{2}\right)^{1/m}  \\
+\end{gather*}
+\end{proof}
+
+\begin{proposition} \label{proposition:m-ball-pdf}
+For uniformly distributed points in an $m$-dimensional hyperball of radius $r$, the pdf of the distance of a point from the centre is given by
+\[
+p(x) = m \frac{x^{m-1}}{r^m}
+\]
+\end{proposition}
+\begin{proof}
+The probability density is clearly proportional to $x^{m-1}$, thus we need only to find the constant $c$ such that the pdf is appropriately normalized. 
+\begin{gather*}
+    c\int_{0}^r x^{m-1}dx = 1 \\
+    c \frac{x^m}{m} \big |_0^r = 1\\
+    c \frac{r^m}{m} = 1\\
+    c = \frac{m}{r^m} \,.
+\end{gather*}
+\end{proof}
+
+\begin{lemma} \label{lemma:a}
+ When clustering white noise in $[0,1]^m$ dimensions, with a $k$-component GMM, the expected squared distance of a point from the centroid of its cluster, denoted $a$, is given by
+ \begin{equation} \label{eq:a}
+a = \frac{m}{3(m+2)}\left(\frac{\sqrt{3}}{2}\right)^{2/m}\frac{1}{k^{2/m}}\,,
+\end{equation}
+\end{lemma}
+\begin{proof}
+Using Proposition \ref{proposition:m-ball-pdf}, the expected squared distance from the centroid can be calculated directly from the pdf as
+\begin{gather*}
+    a = \frac{m}{r^m}\int_{0}^r x^{m+1}dx \\
+    a = \frac{m}{r^m} \frac{x^{m+2}}{m+2} \big |_0^r = 1\\
+    a = r^2\frac{m}{m+2}
+\end{gather*}
+Substituting $r$ from Lemma \ref{lemma:r} we get
+\[
+a = \frac{m}{3(m+2)}\left(\frac{\sqrt{3}}{2}\right)^{2/m}\frac{1}{k^{2/m}}\,,
+\]
+as desired.
+\end{proof}
+
+\begin{lemma} \label{lemma:variance}
+When clustering white noise in $[0,1]^m$ dimensions, with a $k$-component GMM, the fit covariance matrix will $\Sigma$ will satisfy $\Sigma = \sigma I$, where 
+\[
+\sigma = \frac{1}{3(m+2)}\left(\frac{\sqrt{3}}{2}\right)^{2/m}\frac{1}{k^{2/m}}
+\]
+\end{lemma}
+
+\begin{proof}
+It is clear that $\Sigma$ will be of the form $\sigma I$ for some $\sigma$, as the clusters will all be identical by symmetry (up to approximation at the boundary of the hyperbox, but this is small for more than a few clusters). 
+
+Next, observe that the expected squared distance of a point from the centroid of its cluster is, by linearity of expectation, equal to the sum of the expected squared distances in each coordinate, i.e. $m\sigma$. Then, by Lemma \ref{lemma:a}, we get 
+\[
+\sigma = \frac{1}{3(m+2)}\left(\frac{\sqrt{3}}{2}\right)^{2/m}\frac{1}{k^{2/m}}
+\]
+as desired.
+\end{proof}
+
+\begin{proposition} \label{proposition:fx}
+The DDL of a point under the distribution of its cluster depends only on its distance from the centroid of its cluster.
+\end{proposition}
+\begin{proof}
+
+The probability density of a point $z$ under a cluster with centroid $\mu$ is
+\begin{align*}
+p(z)    =& \frac{1}{\sqrt{2\pi |\Sigma|}}\exp{\left(\frac{-1}{2}(z-\mu)^T\Sigma^{-1}(z-\mu)\right)} \\
+        =& \frac{1}{\sqrt{2\pi |\Sigma|}}\exp{\left(\frac{-|(z-\mu)|^2}{2\sigma}\right)} \,.
+\end{align*}
+Thus, the DDL under the cluster distribution, which we denote $\bar{D}$, is given by
+\begin{gather*}
+ -\ln{\left(\frac{1}{\sqrt{2\pi |\Sigma|}}\exp{\left(\frac{-|(z-\mu)|^2}{2\sigma}\right)}\right)} \\
+        = \frac{1}{2} \ln{(2\pi |\Sigma|}) + \frac{|(z-\mu)|^2}{2\sigma} \,.
+\end{gather*}
+In what follows, we will use the function $f(x)$ to denote the DDL under the cluster distribution of a point a distance $x$ from its centroid, where
+\[
+f(x) = \frac{1}{2} \ln{(2\pi |\Sigma|}) + \frac{x^2}{2\sigma} \,.
+\]
+\end{proof}
+
+\begin{definition}
+Denote as outliers, those points with greater DDL under their cluster distribution than under the prior distribution.
+\end{definition}
+ 
+%To compute $\bar{D}$, we consider separately the cases where there are outliers and where there are no outliers. 
+\begin{lemma} \label{lemma:d}
+When clustering white noise, so that the prior distribution is $[0,1]^m$, a point is an outlier if and only if it is greater than a distance $d$ from is centroid, where $d=\sqrt{\sigma \ln{\frac{1}{2\pi |\Sigma|}}}$.
+\end{lemma}
+\begin{proof}
+The DDL of a point treated as an outlier on the uniform $m$-box $[0,1]^m$ is 0, because treating as an outlier means using the prior distribution, which is uniform $p(x)=1$, giving DDL of $\ln{1} = 0$. Thus, a point a distance $x$ from its centroid is not an outlier if and only if its DDL under the distribution of its cluster is strictly negative:
+\begin{gather*}
+    DDL(x) < 0 \\
+    \frac{1}{2} \ln{(2\pi |\Sigma|}) + \frac{x^2}{2\sigma} < 0 \\
+    \frac{x^2}{\sigma} < -\ln{(2\pi |\Sigma|}) \\
+    x^2 < \sigma \ln{\frac{1}{2\pi |\Sigma|}} \\
+    x < \sqrt{\sigma \ln{\frac{1}{2\pi |\Sigma|}}} \,.
+\end{gather*}
+We refer to this distance $d$ as the inlier radius.
+\end{proof}
+
+\begin{lemma} \label{lemma:saturating-k}
+When clustering white noise in $m$ dimensions using a GMM with $k$ components, some points will be classed as outliers if and only if $k$ satisfies
+\[
+k < \frac{2e\sqrt{\pi}}{\sqrt{3}}\left(\frac{e}{3(m+2)}\right)^{m/2} \\
+\]
+\end{lemma} \label{lemma:k-at-which-contained}
+\begin{proof}
+A point will be an outlier if and only if it is within the cluster, i.e. with a distance $r$ from its centroid, but outsider the inlier radius $d$. This is possible if and only if 
+\begin{gather*}
+    d < r \\
+    \sqrt{\sigma \ln{\frac{1}{2\pi |\Sigma|}}} <\frac{1}{\sqrt{3}\sqrt[m]{k}}\left(\frac{\sqrt{3}}{2}\right)^{1/m} \\
+    \sigma \ln{\frac{1}{2\pi |\Sigma|}} < \frac{1}{3k^{2/m}}\left(\frac{\sqrt{3}}{2}\right)^{2/m} \,.
+\end{gather*}
+As $\Sigma = \sigma I$, we can sub in $|\Sigma| = \sigma^m$, and also sub in $\sigma$ from Lemma \ref{lemma:variance}:
+\begin{gather*}
+    \frac{1}{3(m+2)}\left(\frac{\sqrt{3}}{2}\right)^{2/m}\frac{1}{k^{2/m}}\ln{\frac{1}{2\pi \sigma^m}} < \frac{1}{3k^{2/m}}\left(\frac{\sqrt{3}}{2}\right)^{2/m} \\
+    \frac{1}{(m+2)}\ln{\frac{1}{2\pi \sigma^m}} < 1 \\
+    \ln{\frac{1}{2\pi \sigma^m}} < m+2 \\
+    \ln{\frac{1}{\sigma^m}} < m+2 + \ln 2{(\pi)} \\
+    m\ln{\frac{1}{\sigma}} < m+2 + \ln 2{(\pi)} \\
+    \ln{\frac{1}{\sigma}} < 1 + \frac{2 + \ln 2{(\pi)}}{m}   \\
+    \sigma > \frac{1}{e^{1 + \frac{2 + \ln 2{(\pi)}}{m}}}   \\
+    \frac{1}{3(m+2)}\left(\frac{\sqrt{3}}{2}\right)^{2/m}\frac{1}{k^{\frac{2m-2}{m}}} > \frac{1}{\sqrt[m]{\pi}e^{1 + \frac{2}{m}}}   \\
+    \frac{\sqrt[m]{\pi}e^{1 + \frac{2}{m}}}{3(m+2)}\left(\frac{\sqrt{3}}{2}\right)^{2/m} > k^{2/m} \\
+    k^{2/m} < \frac{\sqrt[m]{\pi}e^{1 + \frac{2}{m}}}{3(m+2)}\left(\frac{\sqrt{3}}{2}\right)^{2/m} \\
+    k < \frac{\sqrt{\pi}e^{\frac{m}{2} + 1}}{(3(m+2))^{m/2}}\left(\frac{2}{\sqrt{3}}\right) \\
+    k < \frac{\sqrt{\pi}e^{\frac{m}{2} + 1}}{(3(m+2))^{m/2}}\frac{\sqrt{3}}{2} \\
+    k < \frac{\sqrt{\pi}e\sqrt{3}}{2}\frac{e^{m/2}}{(3(m+2))^{m/2}} \\
+    k < \frac{e\sqrt{3\pi}}{2}\left(\frac{e}{3(m+2)}\right)^{m/2} \\
+\end{gather*}
+\end{proof}
+
+\begin{lemma} \label{lemma:form-of-EDDL}
+For a $k$-component GMM fit on $m$-dimensional white noise, the expected DDL of a point is 
+\[
+\frac{m}{r^m}\int_0^x x^{m-1} \min(\{0,f(x)\}) dx + \ln{k} \,.
+\]
+with $f(x)$ defined as in Proposition \ref{proposition:fx}.
+\end{lemma}
+\begin{proof}
+The DDL of a point can be decomposed as the number of bits needed to specify which cluster the point belongs to, plus the DDL of the point under that cluster. The former is equal to $\ln{k}$, because each cluster will, by symmetry, be equally sized. The latter, we denote $\bar{D}$, and is given by
+\[
+\bar{D} = \int_0^r p(r) \min(\{0,f(x)\}) \,,
+\]
+where $p(r)$ is the probability density function of the distance of a point from its centroid and $f(x)$ specifies the DDL of a point in terms of the distance from its centroid. 
+
+Substituting for $p(x)$ from Proposition \ref{proposition:m-ball-pdf} gives 
+\[
+\bar{D} = \frac{m}{r^m}\int_0^x x^{m-1} \min(\{0,f(x)\}) dx \,.
+\]
+%As we define outliers to be those points with greater DDL under their cluster distribution than under the prior distribution, and as the DDL under the prior distribution is $0$, we have that $g(x) = \min(\{0,f(x)\})$, with $f(x)$ defined as in Proposition \ref{proposition:fx}.
+\end{proof}
+
+\begin{lemma} \label{lemma:increasing-when-outliers}
+When clustering white noise on $[0,1]^m$ with a $k$-component GMM, for $k \leq d$, the expected DDL is an increasing function of $k$. 
+\end{lemma}
+\begin{proof}
+When some points are outliers, we have, using Lemma \ref{lemma:form-of-EDDL}
+\begin{align*}
+    \bar{D} &= \frac{m}{r^m}\int_0^r x^{m-1} \min(\{0,f(x)\}) dx \\
+            &= \frac{m}{r^m}\int_{\{x \in [0,r] | f(x) < 0\}} r^{m-1} f(x) dx \,.
+\end{align*}
+By Lemma \ref{lemma:d}, $\{x \in [0,r] | f(x) < 0\} = [0,d)$, giving
+\begin{align*}
+     \bar{D} &= \frac{m}{r^m}\int_0^d x^{m-1} f(x) dx \\
+\end{align*}
+Substituting $f(x)$ from Proposition \ref{proposition:fx} and integrating:
+\begin{align*}
+    \bar{D} &= \frac{m}{r^m}\int_0^d x^{m-1} \left(\frac{1}{2} \ln{(2\pi |\Sigma|}) + \frac{x^2}{2\sigma}\right)  dx \\
+            &= \frac{m}{r^m}\int_0^d \frac{1}{2} \ln{(2\pi |\Sigma|})x^{m-1}  + \frac{x^{m+1}}{2\sigma}  dx \\
+            &= \frac{m}{r^m} \left(d^{m} \frac{1}{2m} \ln{(2\pi |\Sigma|}) + \frac{d^{m+2}}{2\sigma(m+2)} \right) \\ 
+            &= \frac{d^{m}}{2r^m}  \left(\ln{(2\pi |\Sigma|}) + d^{2}\frac{m}{\sigma(m+2)} \right) \,.
+\end{align*}
+Substituting $d$ from Lemma \ref{lemma:d}:
+\begin{align*}
+     \bar{D} &= \frac{(\sigma \ln{\frac{1}{2\pi |\Sigma|}})^{m/2}}{2r^m}  \left(\ln{(2\pi |\Sigma|}) + (\sigma \ln{\frac{1}{2\pi |\Sigma|}})\frac{m}{\sigma(m+2)} \right) \\
+            &= \frac{(\sigma \ln{\frac{1}{2\pi |\Sigma|}})^{m/2}}{2r^m}  \left(\ln{(2\pi |\Sigma|}) + (\ln{\frac{1}{2\pi |\Sigma|}})\frac{m}{m+2} \right) \\
+            &= \frac{(\sigma \ln{\frac{1}{2\pi |\Sigma|}})^{m/2}}{2r^m}  \left(\ln{\frac{1}{2\pi |\Sigma|}}\frac{-2}{m+2} \right) \\
+            &= \frac{-\sigma ^{m/2}}{r^m(m+2)}  \left(\ln{\frac{1}{2\pi |\Sigma|}} \right)^{\frac{m}{2}+1} \,.
+\end{align*}
+Substituting $\sigma$ from Lemma \ref{lemma:variance}:
+\begin{align*}
+      \bar{D} &= -\left(\frac{1}{3(m+2)}\left(\frac{\sqrt{3}}{2}\right)^{2/m}\frac{1}{k^{2/m}}\right)^{m/2} \frac1{r^m(m+2)} \left(\ln{\frac{1}{2\pi |\Sigma|}} \right)^{\frac{m}{2}+1} \\
+            &= -\left(\frac{1}{(3(m+2))^{m/2}}\left(\frac{\sqrt{3}}{2}\right)\frac{1}{k}\right) \frac{1}{r^m(m+2)} \left(\ln{\frac{1}{2\pi |\Sigma|}} \right)^{\frac{m}{2}+1} \\
+            &= -\left(\frac{1}{(3(m+2))^{m/2}}\right) \left(\frac{\sqrt{3}}{2}\right) \frac{1}{kr^m(m+2)} \left(\ln{\frac{1}{2\pi |\Sigma|}} \right)^{\frac{m}{2}+1} \\
+            &=  \frac{-3 \sqrt{3}}{r^m2(3)^{m/2}k(m+2)} \left(\frac{1}{(m+2)}\ln{\frac{1}{2\pi |\Sigma|}} \right)^{\frac{m}{2}+1} \,.
+\end{align*}
+Substituting $r$ from Lemma \ref{lemma:r}:
+\begin{align*}
+       \bar{D} &= -\left(\sqrt{3}\sqrt[m]{k}\left(\frac{2}{\sqrt{3}}\right)^{1/m} \right)^m\frac{-3 \sqrt{3}}{2(3)^{m/2}k(m+2)} \left(\frac{1}{(m+2)}\ln{\frac{1}{2\pi |\Sigma|}} \right)^{\frac{m}{2}+1} \\
+       \bar{D} &= -(\sqrt{3})^m k\frac{2}{\sqrt{3}} \frac{-3 \sqrt{3}}{2(3)^{m/2}k(m+2)} \left(\frac{1}{(m+2)}\ln{\frac{1}{2\pi |\Sigma|}} \right)^{\frac{m}{2}+1} \\
+       \bar{D} &= \frac{-3}{(m+2)^{\frac{m}{2}+2}} \left(\ln{\frac{1}{2\pi |\Sigma|}} \right)^{\frac{m}{2}+1} \,.
+\end{align*}
+Substituting $\Sigma=\sigma I$, with $\sigma$ from Lemma \ref{lemma:variance}:
+\begin{align*}
+       \bar{D} &= \frac{-3}{(m+2)^{\frac{m}{2}+2}} \left(\ln{\frac{1}{2\pi}} + \ln{\frac{1}{|\Sigma|}} \right)^{\frac{m}{2}+1} \\
+            &= \frac{-3}{(m+2)^{\frac{m}{2}+2}} \left(\ln{\frac{1}{2\pi}} + \ln{\frac{1}{\sigma^m}} \right)^{\frac{m}{2}+1} \\
+            &= \frac{-3}{(m+2)^{\frac{m}{2}+2}} \left(\ln{\frac{1}{2\pi}} + \ln{\left(3^m(m+2)^m\frac{4}{3}k^2\right)} \right)^{\frac{m}{2}+1} \\
+            &= \frac{-3}{(m+2)^{\frac{m}{2}+2}} \left((m)\ln{3} +m\ln{(m+2)} + \ln{\tfrac{4}{3}} + 2 \ln{k} - \ln{2\pi} \right)^{m/2} \\
+            &= \frac{-3}{(m+2)^{\frac{m}{2}+2}} \left(m\ln{(3m+6)} + 2 \ln{k} + \ln{\tfrac{2}{3\pi}} \right)^{\frac{m}{2}+1} \\
+            &= \frac{-3}{(m+2)^{\frac{m}{2}+2}} \left(m\ln{(3m+6)} + 2 \ln{k} + \ln{\tfrac{2}{3\pi}} \right)^{\frac{m}{2}+1} \\
+\end{align*}
+Differentiating, with respect to $k$, the total DDL of $\bar{D} + \ln{k}$:
+\begin{align*}
+    &\frac{d}{dk}\left(\frac{-3}{(m+2)^{\frac{m}{2}+2}}(m \ln{(3m+6)}+\ln{\tfrac{2}{3\pi}}+2\ln{k})^{\frac{m}{2}+1} + \ln{k}\right) \\
+    &=\frac{-3}{(m+2)^{\frac{m}{2}+2}}\frac{d}{dk}\left((m \ln{(3m+6)}+\ln{\tfrac{2}{3\pi}}+2\ln{k})^{\frac{m}{2}+1}\right) + \frac{1}{k} \\
+    &=\frac{-3}{(m+2)^{\frac{m}{2}+2}}\left((\frac{m}{2}+1)(m \ln{(3m+6)}+\ln{\tfrac{2}{3\pi}}+2\ln{k})^{m/2}\frac{2}{k}\right) + \frac{1}{k} \\
+    &=\frac{-3}{(m+2)^{\frac{m}{2}+2}}\frac{(m+2)}{k}\left(m \ln{(3m+6)}+\ln{\tfrac{2}{3\pi}}+2\ln{k}\right)^{m/2} + \frac{1}{k} \\
+    &=\frac{-3}{k(m+2)^{\frac{m}{2}+1}}\left(m \ln{(3m+6)}+\ln{\tfrac{2}{3\pi}}+2\ln{k}\right)^{m/2} + \frac{1}{k} \,.
+\end{align*}
+We want to show this derivative is positive:
+\begin{align*}
+    &\frac{-3}{k(m+2)^{\frac{m}{2}+1}}^{\frac{m}{2}+2}\left(m \ln{(3m+6)}+\ln{\tfrac{2}{3\pi}}+2\ln{k}\right)^{m/2} + \frac{1}{k} > 0\\
+    &\iff \frac{1}{k} > \frac{3}{k(m+2)^{\frac{m}{2}+1}}\left(m \ln{(3m+6)}+\ln{\tfrac{2}{3\pi}}+2\ln{k}\right)^{m/2}\\
+    &\iff \frac{3}{(m+2)^{\frac{m}{2}+1}}\left(m \ln{(3m+6)}+\ln{\tfrac{2}{3\pi}}+2\ln{k}\right)^{m/2} < 1\\
+\end{align*}
+As, by assumption, some points are outliers, we can use the upper bound on $k$ from Lemma \ref{lemma:k-at-which-contained}:
+\begin{align*}
+    &\frac{3}{(m+2)^{\frac{m}{2}+1}}\left(m \ln{(3m+6)}+\ln{\tfrac{2}{3\pi}}+2\ln{k}\right)^{m/2} \\
+    &= \frac{3}{(m+2)^{\frac{m}{2}+1}}\left(m \ln{(3m+6)}+\ln{\tfrac{2}{3\pi}}+\ln{k^2}\right)^{m/2} \\
+    &\leq \frac{3}{(m+2)^{\frac{m}{2}+1}}\left(m \ln{(3m+6)}+\ln{\tfrac{2}{3\pi}}+\ln{\left(\frac{4\pi e^2}{3}\left(\frac{e}{3(m+2)}\right)^m\right)}\right)^{m/2} \\
+    &= \frac{3}{(m+2)^{\frac{m}{2}+1}}\left(m \ln{(3m+6)} + \ln{\tfrac{2}{3\pi}} + 2 + \ln{\tfrac{4\pi}{3}} + m - m\ln{(3m+6)}\right)^{m/2} \\
+    &= \frac{3}{(m+2)^{\frac{m}{2}+1}}\left(2 + \ln{\tfrac{2}{3\pi}} + \ln{\tfrac{4\pi}{3}} + m\right)^{m/2} \\
+    &= \frac{3}{(m+2)^{\frac{m}{2}+1}}\left(m + 2 + \ln{\tfrac{8}{9}}\right)^{m/2} \\
+    &< \frac{3}{(m+2)^{\frac{m}{2}+1}}(m + 2)^{m/2} \\
+    &= \frac{3}{m+2} \leq 1 \,,
+\end{align*}
+where the last inequality holds because the dimension $m$, is $\geq 1$.
+\end{proof}
+
+\begin{lemma} \label{lemma:constant-when-no-outliers}
+When clustering white noise on $[0,1]^m$ with a $k$-component GMM, for $k>d$, the expected DDL is independent of $k$. 
+\end{lemma}
+\begin{proof}
+When no points are outliers, $f(x) = g(x)$ for all $x$, so, using Lemma \ref{lemma:form-of-EDDL}
+\begin{align*}
+    \bar{D} &= \frac{m}{r^m}\int_0^r x^{m-1} f(x) dx \\
+            &= \frac{m}{r^m}\int_0^r x^{m-1} \left(\frac{1}{2} \ln{(2\pi |\Sigma|}) + \frac{x^2}{2\sigma}\right)  dx \\
+            &= \frac{m}{r^m} \left(\frac{r^m}{2m} \ln{(2\pi |\Sigma|}) + \frac{r^{m+2}}{2\sigma(m+2)}\right) \\
+            &= \frac{1}{2} \ln{(2\pi |\Sigma|}) + \frac{r^2 m}{\sigma(m+2)} \,.
+\end{align*}
+Substituting $r$ from Lemma \ref{lemma:r}:
+\begin{align*}
+    \bar{D} &= \frac{1}{2} \left(\ln{(2\pi |\Sigma|}) + \frac{1}{3k^{2/m}}\left(\frac{\sqrt{3}}{2}\right)^{2/m}\frac{m}{\sigma(m+2)}\right)  dx \\
+\end{align*}
+Substituting $\sigma$ from Lemma \ref{lemma:variance}:
+\begin{align*}
+    \bar{D} &= \frac{1}{2} \left(\ln{(2\pi |\Sigma|}) + \frac{1}{3k^{2/m}}\left(\frac{\sqrt{3}}{2}\right)^{2/m}3(m+2)\left(\frac{2}{\sqrt{3}}\right)^{2/m}k^{2/m}\frac{m}{m+2}\right)  dx \\
+    \bar{D} &= \frac{1}{2} \left(\ln{(2\pi |\Sigma|}) + m \right) \,.
+\end{align*}
+Substituting $\Sigma=\sigma I$, with $\sigma$ from Lemma \ref{lemma:variance}:
+\begin{align*}
+    \bar{D} &= \frac{1}{2} \left(\ln{(2\pi |\Sigma|}) + m \right) \\
+            &= \frac{1}{2} \left(\ln{(2\pi)} + m \ln{{\sigma}} + m \right) \\
+            &= \frac{1}{2} \left(\ln{(2\pi)} + m \ln{\left(\frac{1}{3(m+2)}\left(\frac{\sqrt{3}}{2}\right)^{2/m}\frac{1}{k^{2/m}}\right)} + m \right) \\
+            &= \frac{1}{2} \left(\ln{(2\pi)} - m \ln{\left(3(m+2)\left(\frac{2}{\sqrt{3}}\right)^{2/m}k^{2/m}\right)} + m \right) \\
+            &= \frac{1}{2} \left(\ln{(2\pi)} - m \ln{(3m+6)} + 2\ln{\tfrac{2}{\sqrt{3}}} -2\ln{k} + m \right) \\
+            &= \frac{1}{2} \left(\ln{\frac{4\pi}{\sqrt{3}}}+ m \ln{\left(1+\frac{1}{3m+6}\right)} - 2\ln{k} + m \right) \\
+\end{align*}
+The full DDL is then
+\begin{align*}
+    & \bar{D} + \ln{k} \\
+    &= \frac{1}{2} \left(\ln{\frac{4\pi}{\sqrt{3}}}+ m \ln{\left(1+\frac{1}{3m+6}\right)} - 2\ln{k} + m \right)  + \ln{k} \\
+    &= \frac{1}{2} \left(\ln{\frac{4\pi}{\sqrt{3}}}+ m \ln{\left(1+\frac{1}{3m+6}\right)} + m \right) \\
+\end{align*}
+\end{proof}
+
+
+\begin{theorem}
+When clustering white noise in $[0,1]^m$, using a GMM with $k$ components, the expected DDL of a point is a monotonically increasing function of $k$.
+\end{theorem}
+\begin{proof}
+By Lemma \ref{lemma:increasing-when-outliers}, the expected DDL is strictly increasing in $k$ up to $k=d$. By Lemma \ref{lemma:constant-when-no-outliers}, the expected DDL is constant in $k$ for $k > d$.
+\end{proof}

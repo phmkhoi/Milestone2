@@ -1,0 +1,66 @@
+\section{Discussion} \label{sec:priority}
+%\subsection{Priority settings}
+%In this section, we discuss the developer feedback, lessons learned, and the limitations and threats to validity.
+\subsection{Developer Feedback}
+\revise{To evaluate the usefulness of \tool, we also collected the feedback from OSS developers with regard to the incompatibility detection results and suggestions. Since there exist 33,340 license incompatibility issues in the dataset described in \Cref{sec:evaluation} and it is impractical to report all of them, we systematically selected and reported 50 issues according to the following rules. {(1)} We selected active and popular repositories with high stars in GitHub, which had discussions or active issues within two months before we reported the issues. {(2)} We only selected issues that could be fixed by \tool. For instance, it is difficult to resolve issues caused by licenses of two third-party components unless at least one of the components are replaced by others. {(3)} The selected issues covered most popular licenses such as {the MIT License}, {Zope Public License 2.1}, {Apache License 2.0}, {GPL 3.0}, and {BSD 3-Clause License}. The size of selected projects ranged from 100K to 1G. For each issue, we reported the licenses involved in the incompatibility issues, their locations, the inherent reason for license incompatibility, and the suggestions to resolve this issue. So far, 14 reported issues have been responded as shown in \Cref{tab:FeedBack}. Although the remaining issues have been confirmed by ourselves, they are still waiting for responses from OSS developers.}
+
+\begin{table}
+\centering
+ \caption{\revise{Feedback from OSS Developers}}
+ %\footnotesize
+  \label{tab:FeedBack}
+\scalebox{0.58}{
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Project} &\textbf{\#Stars} & \textbf{Parent License} & \textbf{Child License} & \textbf{Issue State} \\ \midrule
+cookiecutter & 10.2k & BSD-3-clause (/LICENSE) & GPL3.0 (/project\_slug/LICENSE) &{{Ignored}} \\ \hline
+\multirow{2}{*}{bypy} & \multirow{2}{*}{6.7k} & MIT (/LICENSE) & GPL3.0 (bypy/gui.py)  &\textcolor{springgreen}{\textbf{Fixed}} \\
+& & MIT (/LICENSE) & GPL3.0 (bypy/\_\_init\_\_.py)  &\textcolor{springgreen}{\textbf{Fixed}} \\\hline
+%peewee & 9.8k & 2667 & tests/libs/mock.py &{Ignored} \\ \hline
+hypnotix & 798 & GPL3.0 (/README.md) & AGPL3.0 (usr/lib/hypnotix/mpv.py) &{{Denied}} \\ \hline
+\multirow{3}{*}{mitmproxy} & \multirow{3}{*}{30.1k} & \multirow{3}{*}{MIT (/LICENSE)} & LGPL2.1 (../../raw\_display.py) &\textcolor{springgreen}{\textbf{Fixed}} \\ 
+ &  &  & Apache2.0 (../tornado/\_\_init\_\_.py) &\textcolor{springgreen}{\textbf{Fixed}} \\ 
+  &  &  & BSD-3-clause (../click/\_\_init\_\_.py) &\textcolor{springgreen}{\textbf{Fixed}} \\ \hline
+webssh & 3.4k & MIT (/LICENSE) & LGPL2.1 (tests/sshserver.py) &\textcolor{springgreen}{\textbf{Fixed}} \\ \hline
+\multirow{4}{*}{OpenNRE} & \multirow{4}{*}{3.9k} & \multirow{4}{*}{MIT (/LICENSE)} & Apache2.0 (../word\_piece\_tokenizer.py) &\textcolor{springgreen}{\textbf{Confirmed}} \\ 
+ &  &  & Apache2.0 (../bert\_tokenizer.py) &\textcolor{springgreen}{\textbf{Confirmed}} \\ 
+ &  &  & Apache2.0 (../word\_tokenizer.py) &\textcolor{springgreen}{\textbf{Confirmed}} \\ 
+ &  &  & Apache2.0 (../basic\_tokenizer.py) &\textcolor{springgreen}{\textbf{Confirmed}} \\ \hline
+ \multirow{2}{*}{websockets} & \multirow{2}{*}{879} & \multirow{2}{*}{MIT (/LICENSE.txt)} & Apache2.0 (ws4redis/websocket.py) &{{Denied}} \\ 
+ &  &  & Apache2.0 (ws4redis/utf8validator.py) &{{Denied}} \\ 
+ 
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\revise{As shown in~\Cref{tab:FeedBack}, 10/14 responses confirmed or fixed the reported issues. One developer ignored the reported issue and 3/14 responses denied that there existed license incompatibility in their projects. Moreover, we also investigate the reasons that prevent some developers from fixing license incompatibility issues and obtain several findings. \textbf{(1)} OSS developers have different awareness and knowledge about OSS licenses. For example, one developer believed that the MIT license and the Apache 2.0 license were two similar licenses and thus should be compatible with each other. Actually, the Apache 2.0 license is more restrictive than the MIT license in several aspects such as \textit{Use Trademarks} and \textit{State Changes}. As a result, when the project license is the MIT license and its child license is the Apache 2.0 license, there exists license incompatibility which might bring legal risks to the users of this project. \textbf{(2)} It is inconvenient for some large-scale projects with many contributors and users to fix license incompatibility issues, since every contributor should be contacted for the agreement to change the licenses which may also affect many users. Therefore, paying attention to the license incompatibility problem especially at an early stage of software development is necessary. \textbf{(3)} There exist different opinions towards the licenses of imported packages. Some developers believed that there was no need to consider the licenses of imported packages, which was actually against the intentions of some licenses (e.g., the Apache 2.0 license, the GPL 3.0 license, and the MPL 2.0 license)}.
+
+
+
+
+
+
+\subsection{Lessons Learned}
+We summarize several lessons that might be learned from this work. \textbf{First}, developers should pay more attention to the licenses when reusing OSS code. One reason is that the incorporated licenses might be more restrictive than the project license, and thus developers have to modify the regulations for the whole project to comply with the incorporated licenses. The second reason is that licenses accompanied with different third-party software packages might be incompatible with each other. In this case, developers are enforced to either replace the incompatible package with an alternative one, which requires substantial efforts due to the complex package dependency, or attach an exception to the project license that states different regulations towards different source code, which might not be encouraged by the community.
+%
+\textbf{Second}, not all license incompatibility issues can be resolved. Among the investigated 230 incompatible projects, {37.39\%} of them cannot be resolved unless developers replace the involved third-party packages. The main reason is that a project owner has no rights to change the licenses accompanied with the integrated third-party packages. Another reason is that the constraints from the license hierarchy cannot be resolved in some cases. For instance, given a license, when its parent license is more permissive than one of its child licenses, the constraints from the parent and child nodes cannot be resolved.
+%
+\textbf{Third}, official licenses can only resolve a small part of license incompatibility issues. It can be seen that only {34.52\%} of the incompatibility issues can be addressed by recommending a new official license. Sometimes developers have to create their own licenses (i.e., custom licenses) to satisfy the requirements of all incorporated OSS licenses. Otherwise, they have to migrate the packages whose licenses are involved in incompatibility issues.
+%
+\textbf{Finally}, although it is a common practice for developers of large-scale OSS to place their own licenses in the modules implemented by themselves, developers should be aware of the license hierarchy that represents the licensing scope of each license, where a module license should not be more permissive than all the licenses in this module, and should not be more restrictive than the licenses in the upper-level module that contains this module simultaneously.
+
+
+\subsection{Limitations and Threats to Validity}
+The limitations are from two aspects. %\textbf{First}, in the phase of license understanding, we construct two probabilistic models to extract fine-grained entities and their relations based on sequence labelling and prompts, respectively. For this reason, we cannot theoretically ensure that all entities and relations can be extracted by \tool. However, it can be seen that the performance of \tool is superior to that of four baselines in license understanding. 
+%
+\textbf{First}, given an arbitrary project, if it has no project license or its project license does not state its copyright holder, \tool cannot find any internal licenses (also known as component licenses) that can be changed according to the copyright holder. %In this case, \tool only assumes that the project license can be modified or replaced by the project owner.
+%
+\textbf{Second}, \tool has not taken into consideration irrelevant licenses (e.g., licenses only for testing purposes). Besides, multiple project licenses in the root directory of the project {are considered as the supplements of each other}, which might also affect the performance of \tool on license incompatibility localization and resolution. 
+
+%\subsection{Threats to Validity}
+Threats that may affect the results of evaluation include the following two aspects. \textbf{First}, the quality of manual labelling could be a threat to validity. The performance of \tool on license understanding and incompatibility resolution was evaluated on the ground-truth datasets comprising {21,844} license sentences and {300} real-world OSS, the labelling quality of which may
+threaten the results. To mitigate this problem, three authors and a lawyer manually verified and cross-validated the datasets. %We made the datasets publicly available for further studies~\cite{ourwebsite}. 
+%
+\textbf{Second}, as previous studies~\cite{tldrlegal,xu2021lidetector}, we categorized \textit{actions} into 23 types. However, there could be a few cases where special requirements outside the scope of these actions are claimed by the licensor, which might influence the results of \tool.
+%
+%\textbf{Third}, for recommending official licenses, although \tool can automatically understands the regulations stated by official licenses, \tool utilizes a database constructed in the preparation phase to find the ones that satisfy the constraints for incompatibility resolution. Nevertheless, there might be some official licenses not collected by the database, and thus will be omit by \tool when recommending existing licenses. To mitigate this issue, more than {200} widely-used official licenses are considered when recommending licenses, and the database can be further improved in the future work. 

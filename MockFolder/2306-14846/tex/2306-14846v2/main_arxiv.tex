@@ -1,0 +1,511 @@
+\documentclass{article}
+
+\usepackage[table, dvipsnames]{xcolor}
+\usepackage[font=small, labelfont=bf]{caption}
+\usepackage{multicol}
+\usepackage[bookmarks=true, pagebackref]{hyperref}
+\usepackage[square, numbers, sort&compress]{natbib}
+\usepackage{lipsum}
+\usepackage{xspace}
+\usepackage{todonotes}
+\usepackage{amsmath}
+\usepackage{mathtools}
+\usepackage{enumitem}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{algorithmic}
+\usepackage[toc,page,header]{appendix}
+\usepackage{minitoc}
+\usepackage[ruled, vlined, linesnumbered]{algorithm2e}
+\usepackage{wrapfig}
+\usepackage{array}
+\usepackage{xcolor, soul}
+\usepackage{subcaption}
+\usepackage{multirow}
+\usepackage{fontawesome5}
+\usepackage{pifont}
+\usepackage{tabularx}
+\newcommand{\cmark}{\ding{51}}%
+\newcommand{\xmark}{\ding{55}}%
+\input{math_commands}
+\usepackage[most]{tcolorbox}
+
+\newtcolorbox{myBox}[2][]{
+arc=5mm,
+lower separated=false,
+colbacktitle=green!10,
+coltitle=green!50!black,
+enhanced,
+attach boxed title to top left={xshift=0.5cm,
+        yshift=-2mm},
+colframe=green!50!black,
+colback=green!10,
+title=#2,#1}
+
+
+
+\usepackage[final]{corl_2023} %
+
+\title{\ModelName: A Foundation Model for Visual Navigation}
+
+
+\newcommand{\ModelName}{ViNT\xspace}
+
+\newcommand\blfootnote[1]{%
+  \begingroup
+  \renewcommand\thefootnote{}\footnote{#1}%
+  \addtocounter{footnote}{-1}%
+  \endgroup
+}
+
+
+\author{
+  \textbf{Dhruv Shah$^\dagger$,
+  Ajay Sridhar$^\dagger$,
+  Nitish Dashora$^\dagger$,} \\
+  \textbf{Kyle Stachowicz,
+  Kevin Black,
+  Noriaki Hirose,
+  Sergey Levine} \\
+  UC Berkeley
+  \vspace*{-15pt}
+}
+
+\newcommand{\temp}[0]{{\color{red}\xspace TODO}\xspace}
+\newcommand{\tempnote}[1]{{\color{red}\xspace [TODO #1]}\xspace}
+\newcommand{\badnote}[1]{{\color{BurntOrange}\xspace [\faThumbsDown~#1]}\xspace}
+\newcommand{\goodnote}[1]{{\color{PineGreen}\xspace [\faThumbsUp~#1]}\xspace}
+\newcommand{\pointer}[1]{\todo[color=red!30!white]{TODO: #1}}
+\newcommand{\noteSL}[1]{\todo[inline,color=green!30!white]{\textbf{Note to Sergey:} #1}}
+\newcommand{\noteAS}[1]{\todo[inline,color=magenta!30!white]{\textbf{Note to Ajay:} #1}}
+\newcommand{\noteND}[1]{\todo[inline,color=blue!30!white]{\textbf{Note to Nitish:} #1}}
+\newcommand{\noteKS}[1]{\todo[inline,color=yellow!30!white]{\textbf{Note to Kyle:} #1}}
+\newcommand{\noteKB}[1]{\todo[inline,color=orange!30!white]{\textbf{Note to Kevin:} #1}}
+\newcommand{\ours}[0]{\rowcolor{LimeGreen!30}}
+\newcommand{\basement}{foundation\xspace}
+\newcommand{\MyPara}[1]{\noindent\textbf{#1}}
+\newcommand{\Astar}[0]{A$^*$\xspace}
+\newcommand{\projectpage}[0]{\href{https://general-navigation-models.github.io}{general-navigation-models.github.io}}
+
+\begin{document}
+\maketitle
+
+
+\begin{abstract}
+General-purpose pre-trained models (``foundation models'') have enabled practitioners to produce generalizable solutions for individual machine learning problems with datasets that are significantly smaller than those required for learning from scratch. Such models are typically trained on large and diverse datasets with weak supervision, consuming much more training data than is available for any individual downstream application. In this paper, we describe the Visual Navigation Transformer (ViNT), a \emph{foundation model} that aims to bring the success of general-purpose pre-trained models to vision-based robotic navigation. ViNT is trained with a general goal-reaching objective that can be used with any navigation dataset, and employs a flexible Transformer-based architecture to learn navigational affordances and enable efficient adaptation to a variety of downstream navigational tasks. ViNT is trained on a number of existing navigation datasets, comprising hundreds of hours of robotic navigation from a variety of different robotic platforms, and exhibits \emph{positive transfer}, outperforming specialist models trained on narrower datasets. ViNT can be augmented with diffusion-based goal proposals to explore novel environments, and can solve kilometer-scale navigation problems when equipped with long-range heuristics. ViNT can also be adapted to novel task specifications with a technique inspired by prompt-tuning, where the goal encoder is replaced by an encoding of another task modality (e.g., GPS waypoints or turn-by-turn directions) embedded into the same space of goal tokens. This flexibility and ability to accommodate a variety of downstream problem domains establish ViNT as an effective foundation model for mobile robotics.
+\end{abstract}
+
+
+\blfootnote{$^\dagger$ Lead Authors. Videos, code, and models: \projectpage.}
+
+\vspace*{-2em}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.94\textwidth]{figures/teaser.pdf}
+    \caption{\textbf{Overview of the \ModelName foundation model.} \ModelName generalizes zero-shot across environments and robot embodiments, and can be directly applied to tasks including exploration and navigation around humans. \ModelName can also be fine-tuned with a small amount of data to expand its capabilities to new tasks.}
+    \label{fig:teaser}
+    \vspace{-11pt}
+\end{figure}
+
+\section{Introduction}
+\label{sec:introduction}
+
+
+
+
+Recently, machine learning methods have achieved broad success in natural language processing~\cite{Radford2018ImprovingLU}, visual perception~\cite{deng2009imagenet, carreira2017kinetics, grauman2022ego4d}, and other domains~\cite{ramesh2022dalle2, chen2021codex} by leveraging Internet-scale data to train general-purpose ``foundation'' models that can be adapted to new tasks by zero-shot transfer, prompt-tuning, or fine-tuning on target data~\cite{chen2020simple, shah2022robotic, liu2021power, lester2021power}. Although this paradigm has been successful in many domains, it is difficult to apply in robotics due to the sheer diversity of environments, platforms, and applications. In this paper we ask the question: \emph{what is required of a \basement model for mobile robotics?}
+
+In this paper, we define a \emph{robot foundation model} as a pre-trained model that can be (i) \emph{deployed zero-shot} in novel, useful settings (e.g., different sensors, robot embodiments, environments etc.), and (ii) \emph{adapted} to a downstream task of choice (e.g., different objectives, goal specification types, behaviors etc.).
+We specifically consider the problem of visual navigation, where the robot must navigate its environment solely using egocentric visual observations. A general pre-trained robot navigation model should enable a wide range of navigation applications, readily allow fine-tuning to downstream tasks, and generalize to a broad range of environments and robotic platforms. Such a model should provide a broadly capable navigation policy on top of which applications to specific domains can be constructed, giving a base level of generalization and capabilities to new robotic platforms in zero shot that can be further improved after fine-tuning with a small amount of data. %
+
+To this end, we propose the \textbf{Vi}sual \textbf{N}avigation \textbf{T}ransformer, or \ModelName: a cross-embodiment \basement model for visual navigation with strong zero-shot generalization.
+We train \ModelName to reach goals specified by camera images, providing a very general pre-training objective that can be applied to almost any mobile robot dataset.
+We propose a novel exploration algorithm for the visual navigation paradigm using a diffusion model to propose short-horizon goals, and demonstrate that it enables \ModelName to navigate in novel environments.
+\ModelName can control new robots in zero-shot, explore previously unseen environments, perform indoor mapping, and navigate kilometer-scale outdoor environments without interventions.
+Furthermore, we show that \ModelName can be fine-tuned on a small amount of data to achieve high performance with new task specification modalities -- such as GPS waypoints or high-level routing commands -- allowing \ModelName to serve as a \basement for a wide variety of navigation applications. Lastly, we qualitatively analyze some emergent behaviors exhibited by \ModelName, such as implicit preferences and navigation around dynamic pedestrians.
+
+We hope that \ModelName represents a step towards such general-purpose \emph{robot foundation models} that can be deployed on a wide range of robots, and on a wide range of tasks, and serve as a \basement for diverse mobile robotic applications.
+Model weights for \ModelName as well as training and deployment code will be released on our project page: \projectpage.
+
+\vspace*{-0.5em}
+\section{Related Work}
+\label{sec:related_work}
+\vspace*{-0.5em}
+
+
+Learning from large, diverse robotic datasets has been studied for various robotic applications where data sharing across \emph{similar} robots provides a larger training set for more generalizable models~\cite{devin2017multi, dasari2020robonet, Yu2020bdd100k}. However, for applications in mobile robotics, with varying dynamics and camera configurations (e.g., focal length, field of view, and extrinsics),
+current approaches tend to rely on learning either from small real-world datasets, which are only representative of a single robotic platform, or from simulation, with paired robot and environment models to transfer learned policies~\cite{anderson2020simtoreal, truong2023i2o, kadian2020sim2real}. Instead, our paper follows the paradigm of learning navigation behavior from data collected across multiple different real-world robotic systems~\cite{loquercio2018dronet, hirose2022exaug, shah2022gnm}, while focusing on training a \basement model that can be adapted for a variety of downstream tasks in zero shot or with small amounts of data.
+
+Our goal is to train an effective visual navigation policy that can solve a range of downstream tasks, such as navigating to GPS goals~\cite{savva2019habitat}, goal images~\cite{zhu2016targetdriven}, and skill-conditioned driving~\cite{Codevilla2017CIL}.%
+Following a large body of research in visual navigation, we use a combination of topological graphs for maintaining a spatial representation of the environment and learned policies for low-level control~\cite{savinov2018sptm, bruce2018deployable, faust2018prm, meng2020scaling, shah2020ving, hirose2019deep}, and use learned heuristics to guide the robot in novel environments~\cite{truong2023i2o,shah2022viking}. But unlike these works, our goal is to train a single generalist model rather than specialist solutions to each of these problems, showing how a single high-capacity model can be adapted for diverse tasks.
+
+
+The closest related works to \ModelName are RT-1, I2O, and GNM~\cite{truong2023i2o, shah2022gnm,brohan2022rt1}, which study broad generalization across environments and embodiments for robots deployed in real-world settings. While RT-1 demonstrates impressive performance in following diverse instructions, our focus is on adapting a single model across \emph{many} robots to solve \emph{different tasks}, by fine-tuning with small amounts of data. I2O and related efforts~\cite{truong2023i2o,kadian2020sim2real} show impressive transfer from simulation to real-world environments, but we emphasize that our aim is orthogonal to the specific choice of algorithm: we focus on learning a capable navigation policy that can be efficiently adapted to solve different downstream tasks.  %
+GNM~\citep{shah2022gnm} demonstrates policy learning from heterogeneous RGB datasets, but focuses on the singular task of reaching image goals in the zero-shot setting.
+Instead, \ModelName trains a single generalist policy with an emphasis on adaptation to new embodiments and tasks in downstream applications, though it can also be used zero-shot to great effect (Sec.~\ref{sec:exploration-results}).
+
+\section{The \ModelName Model}
+\label{sec:model_core}
+\begin{figure}
+    \centering
+    \includegraphics[width=0.95\textwidth]{figures/architecture.pdf}
+    \caption{\textbf{\ModelName Model Architecture.} \ModelName uses two EfficientNet encoders $\psi, \phi$ to generate input tokens to a Transformer decoder. The resulting sequence is concatenated and passed through a fully-connected network to predict (temporal) distance to the goal as well as a sequence of $H=5$ future actions.}
+    \label{fig:model_architecture}
+\end{figure}
+
+Our model is trained for image-goal navigation, providing general navigational capabilities that can then either be utilized directly, or serve as a pre-trained \basement for downstream fine-tuning with other task specifications. In the image-goal navigation task, the robot is tasked with navigating to a subgoal specified by an image observation $s$ (i.e., the robot's observation at the goal).
+Unlike alternative mechanisms for goal specification such as PointGoal~\cite{anderson2018evaluation}, GPS navigation, or semantic objectives~\cite{wani2020multi}, a model can be trained for image-goal navigation with minimal assumptions, utilizing any data that contains videos and actions, without requirements on ground-truth localization, semantic labels, or other metadata. This makes it practical to train on a large and diverse dataset sourced from many different robots, facilitating broad generalization.
+
+\ModelName takes as input current and past visual observations $o_{t-P:t}$ and a subgoal image $o_s$,
+and predicts (i) the number of time steps needed to reach the subgoal (the \emph{dynamical} distance), and (ii) a sequence with length $H$ of future actions leading towards the subgoal.
+Our 31M-parameter model, \ModelName, is built on the Transformer architecture~\cite{vaswani2017attention} and is optimized for: (i) fast and efficient inference on resource-constrained robots, and (ii) the ability to prompt and fine-tune for downstream tasks. We initialize all networks from scratch and train them end-to-end with the training objective in Eqn.~\ref{eq:training_objective}. The model architecture is summarized in Figure~\ref{fig:model_architecture}, and described in detail in Appendix~\ref{sec:app:architecture}.
+
+\MyPara{Tokenization:} The \ModelName architecture (Fig.~\ref{fig:model_architecture}) first tokenizes its inputs into an embedding of size $d_\text{model} = 512$. \ModelName independently tokenizes current and $P=5$ past visual observations by encoding them with an EfficientNet-B0~\cite{tan2020efficientnet} model, which takes $85 \times 64 \times 3$ images as input and outputs a flattened feature vector $\psi(o_{i})$ from the final convolutional layer \cite{brohan2022rt1}.
+
+\MyPara{Goal fusion:} 
+We found that na\"{i}vely extracting features from the goal image $\phi(o_s)$ using an EfficientNet encoder $\phi$ led to poor performance, often ignoring the goal entirely (see Appendix~\ref{sec:app:architecture}). We hypothesize that effective features for image-based goal-reaching tasks are often \emph{relative}, encoding the \emph{difference} between the current observation and the goal rather than an absolute representation of the goal itself. Hence, we use a separate \emph{goal fusion} encoder $\phi(o_t, o_s)$ to jointly encode the current and goal observations. We stack the two images along their channel dimensions, pass them through a second EfficientNet-B0 encoder, and flatten to obtain the goal token.
+
+\MyPara{Transformer:} The $P+2$ observation and goal tokens are combined with a positional encoding and fed into a Transformer backbone $f$. We use a decoder-only Transformer with $n_L=4$ multi-headed attention blocks, each with $n_H=4$ heads and $d_\text{FF}=2048$ hidden units.
+
+\MyPara{Training objective:}
+During training, we first sample a minibatch of trajectories $\tau$ from the dataset $\gD$. We then choose $P$ consecutive observations to form the temporal context $o_{t:t-P}$ and randomly select a future observation $o_s \coloneqq o_{t+d}$, with $d$ sampled uniformly from $[l_\text{min}, l_\text{max}]$, to serve as the subgoal~\cite{hartikainen2020}. The corresponding $H$ future actions $\hat{a}\coloneqq a_{t:t+H}$ and the distance $d$ are used as labels and trained with a maximum likelihood objective:
+\begin{equation}
+    \gL_\text{\ModelName}(\phi, \psi, f) = \mathbb{E}_{\tau} {\mathbb{E}}_t {\mathbb{E}}_d \,\, \left[\log p(\hat{a} | f(\psi(o)_{t:t-P}, \phi(o_t,o_s)) + \lambda \log p(d | f(\psi(o)_{t:t-P}, \phi(o_t,o_s))\right]
+    \label{eq:training_objective}
+\end{equation}
+where $\phi,\psi,f$ are as defined above, and $\lambda$ balances the two losses.
+
+\MyPara{Embodiment-agnostic action space:} To effectively train a single model across robots of varying sizes, speeds, and dynamics, we follow \citet{shah2022gnm} and choose an embodiment-agnostic action space for \ModelName. To abstract away low-level control, \ModelName uses relative waypoints as its action space $\hat{a}$; to account for the large variance in speeds and sizes of the robots, we normalize these waypoints by scaling them according to the robot's top speed. During deployment, a robot-specifc controller is used to un-normalize and \emph{track} these waypoints using low-level control.
+
+\MyPara{Training data:} We train \ModelName using a large-scale dataset of heterogeneous navigation trajectories from a diverse set of environments and robotic platforms with varying dynamics, camera parameters, and behaviors. The training dataset contains over 100 hours of real-world trajectories sourced entirely from existing datasets, spanning 8 distinct robotic platforms with varying speeds and dynamics. For more details about the dataset, see Appendix~\ref{sec:app:dataset}.
+
+\MyPara{Deployment:} \ModelName can run on any robot equipped with an onboard camera and a low-level velocity tracking controller.
+Given a subgoal image $s$ at time $t$, we run the model at 4Hz, and use a PD controller to track the predicted waypoints $\hat{a}$ in a receding-horizon fashion.
+
+
+\section{Long-Horizon Navigation with \ModelName}
+\label{sec:method_viking}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/search_overview.pdf}
+  \caption{\textbf{Long-horizon navigation in unseen environments with \ModelName.} We use physical search with a topological graph-based planner to explore the environment. An image-to-image diffusion model proposes diverse exploration targets which are spatially grounded using \ModelName (yellow), and scored using a goal-directed heuristic $h$. Subgoals are added to the topological graph $\gM$ and executed using the \ModelName policy.}
+  \label{fig:overview}
+\end{figure}
+
+While the goal-conditioned policy learned by \ModelName captures a general understanding of navigational affordances and obstacles, it has limited applicability on its own. Many practical tasks are either not defined by goal images, or require a much longer horizon than what \ModelName directly supports.
+We apply \ModelName to several downstream applications by combining it with an episodic memory formed by a topological graph, which provides short-horizon subgoals for reaching faraway locations. In previously unseen environments, we can further augment this graph-based planner with exploratory subgoal proposals, which can drive \ModelName to explore a new environment and discover a path to the goal. We consider multiple such proposal mechanisms and find that maximum performance is attained by an \emph{image diffusion model} that samples diverse future subgoal candidates conditioned on the current observation.
+
+
+These subgoals are scored with a goal-directed heuristic to identify the best subgoal that makes progress towards the goal using a process akin to \emph{physical A$^*$ search}~\cite{shah2022viking}. Past observations in the environment and unexplored frontiers are stored as nodes in a topological graph, with their connectivity determined by the distances predicted by \ModelName. During exploration, we build this topological graph on the fly as the robot explores the environment. During later deployments it may be used for discovering shortcuts to arbitrary goals in the environment. We first describe the high-level algorithm that plans on top of subgoal candidates, and then discuss the process for obtaining these subgoal candidates.
+
+\subsection{High-Level Planning and Exploration}
+\label{sec:method_graph}
+
+Let's assume that we have access to subgoal candidates $o_{s_i} \in \gS$
+available to \ModelName for planning. We incorporate these subgoal candidates into an exploration framework for goal-directed exploration in novel environments, where the user provides a high-level goal $G$, which may be arbitrarily far away.
+We largely follow prior work~\cite{shah2022viking}, but swap out the learned models with \ModelName and the diffusion model. We summarize the system here, and provide a more complete discussion in Appendix~\ref{sec:app:implementation_graph}.
+
+We construct a topological graph $\gM$ online to act as episodic memory, with each node as an individual subgoal observation and edges representing paths between two subgoals, added when the path is taken by the robot, or the model predicts a subgoal to be \emph{reachable} from another node.
+We frame goal-directed exploration as a search problem, where the robot incrementally builds $\gM$ while searching for the goal. To guide search towards the goal, the robot uses a goal-directed heuristic $h(o_t, o_{s_i}, G, \gM, C)$ to \emph{score} subgoal candidates according to their likelihood of reaching the goal, given additional context $C$ --- for example, a floor plan or satellite imagery~\cite{shah2022viking, truong2023i2o}. This heuristic may be geometric (e.g., Euclidean distance) or learned (see Appendix~\ref{sec:app:implementation_graph}).
+
+During deployment in a new environment, the robot uses the diffusion model to generate subgoal candidates $\gS$ from $o_t$, spatially grounds them using \ModelName,
+and scores them using the goal-directed heuristic $h(.)$. The robot then selects the best subgoal $o_{s^*}$ according to this heuristic using an \Astar-like planner, adds it to $\gM$, and drives towards it using \ModelName (Figure~\ref{fig:overview}). During subsequent deployments in the same environment, the robot can use $\gM$ to discover shortcuts to arbitrary goals in the environment.
+Please see Appendix~\ref{sec:app:implementation_graph} for more details about the planner and heuristics. In our experiments, we consider two candidate search heuristics: a geometric heuristic based on positions of the robot and the goal, and a learned heuristic based on additional context in the form of a satellite image.
+
+\subsection{Subgoal Generation with Diffusion}
+\label{sec:method_diffusion}
+
+
+The physical search algorithm presented above relies on the ability to propose subgoal candidates $\gS$ that are both diverse and reachable from the current observation of the robot $o_t$. This amounts to sampling from a high-dimensional, multimodal distribution of RGB images.\footnote{Prior work has also studied sampling subgoals in a \emph{latent} space~\cite{shah2021rapid}, which may require simpler density models to learn the latent distribution. However, directly implementing this idea in our framework leads to optimization challenges and poor performance (see Section~\ref{sec:exploration-results}). Learning a sampling distribution directly in the latent space \cite{rombach2022highresolution} is an exciting future direction, but orthogonal to the contributions of this work.}
+
+To do so, we train a conditional generative model $g(o_{s_i} | o_t)$ on the \ModelName training data. Specifically, we apply an image-to-image diffusion model~\cite{ho2020denoising, saharia2022palette}, a generative model class that is well-suited for producing diverse samples over high-dimensional spaces such as RGB images. We train the model using randomly-sampled future observations from trajectories in the \ModelName dataset (Appendix~\ref{sec:app:implementation_diffusion}), and sample $K$ subgoal candidates $\gS = \{s_1, \ldots, s_K\}$ from the model at inference time. 
+
+However, these subgoal generations are not \emph{spatially grounded}: they do not include an actionable relationship to $o_t$. We ground these candidates by using \ModelName to compute temporal distances $d(s_i, o_t)$ and action rollouts $a(s_i, o_t)$, yielding a set of grounded subgoals as in Fig.~\ref{fig:filmstrip}. While the samples generated by the diffusion model do not necessarily match any real observation (see Figure~\ref{fig:overview}),
+they preserve sufficient relative features from $o_t$ to be plausible, and we find that \ModelName generalizes well to generated subgoals. We further study the behavior of this diffusion model in Section~\ref{sec:emergent}.
+
+
+\section{\ModelName: A Foundation Model For Downstream Tasks}
+\label{sec:method_finetuning}
+
+
+Beyond its core functionality as an image goal-conditioned model, we show that the strong navigational priors learned by \ModelName can be adapted to a variety of downstream tasks, beyond navigating to image goals, by fine-tuning part or all of the model in novel environments or with new modalities of data.
+
+\begin{wrapfigure}[18]{r}{0.25\textwidth}
+    \centering
+    \includegraphics[width=0.25\textwidth]{figures/adaptation.jpg}
+    \caption{Adapting \ModelName to different goals using a new tunable goal token.}
+    \label{fig:adaptation}
+\end{wrapfigure}
+
+\MyPara{Full model fine-tuning:} While \ModelName demonstrates strong zero-shot generalization to new environments and robots, we can further improve on-task performance by fine-tuning the entire model with the same objective but using on-task data. This allows \ModelName to quickly learn new skills, forming a continually improving model. \ModelName can master new environments and embodiments with as little as 1 hour of navigation data, transferring the capabilities of the original model to a new setting without retraining from scratch.
+
+\MyPara{Adapting to new modalities:} While specifying image goals gives a general pre-training objective, \ModelName can easily be \emph{adapted} to other common forms of goal-specification by learning a ``soft prompt'' mapping from the desired goal modality to the \ModelName goal token~\cite{lester2021power}. We build on the Transformer architecture's ability to attend to multimodal inputs projected into a shared token space~\cite{driess2023palme, jiang2023vima}. Given a subgoal $\sigma$ in a new modality (such as 2D coordinates or high-level routing directions \cite{Codevilla2017CIL}), we train a small neural network $\tilde{\phi}$ that maps the subgoal to this shared token space as shown in Figure~\ref{fig:adaptation}, and replace $\phi(o_t,o_s)$.
+We fine-tune \ModelName with on-task data $\gD_F$ using the modified objective:
+\begin{equation}
+    \gL_\text{adapt} = {\mathbb{E}}_{\tau \in \gD_F} {\mathbb{E}}_t {\mathbb{E}}_d \,\, \left[\log p(\hat{a} | f(\psi(o)_{t:t-P}, \tilde{\phi}(\sigma)) + \lambda \log p(d | f(\psi(o)_{t:t-P}, \tilde{\phi}(\sigma)))\right]
+    \label{eq:adaptation_objective}
+\end{equation}
+This allows adaptation to new tasks with minimal data, while still leveraging the performance and generalization of \ModelName. %
+Appendix~\ref{sec:app:implementation_finetuning} includes additional details.
+
+
+
+\section{Real-world Evaluation}
+\label{sec:evaluation}
+
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{figures/exploration_qualitative.pdf}
+    \caption{\ModelName accomplishes long-horizon navigation with a variety of objectives in indoor and outdoor environments; example trajectories between start (orange) and goal (green) visualized here. Goal-reaching behavior can be achieved with a goal-directed heuristic (optionally guided by satellite imagery), while removing this heuristic allows for undirected exploration to maximally cover a workspace.}
+    \label{fig:exploration_qualitative}
+\end{figure}
+
+We deployed our \ModelName \basement model on five distinct robotic platforms, including a drone, a quadruped, and two other \emph{novel} robots which are not present in the training data. We designed our experiments to answer the following questions:
+
+\begin{enumerate}[label=\textbf{Q\arabic*.}]
+    \item Can \ModelName efficiently explore previously unseen environments and incorporate heuristics?
+    \item Does \ModelName generalize to \emph{novel} robots, environments, and obstacles?
+    \item Can \ModelName be fine-tuned to improve performance in out-of-distribution environments?
+    \item Can the \ModelName policy be adapted to handle new task specification and modalities?
+\end{enumerate}
+
+Please see Appendix~\ref{sec:app:robots} for more details on platforms used in the training data and in evaluation. We did not perform any careful system identification or homogenization of sensors across the robots and datasets; all datasets are used as obtained from their original sources, and every robot platform has its own low-level controller and onboard stack.
+
+
+
+
+\subsection{Navigation Performance}
+\label{sec:exploration-results}
+
+
+\begin{figure}
+    \begin{minipage}{0.51\textwidth}
+    \centering
+    {\footnotesize
+    \begin{tabular}{lcc}
+        \toprule
+        & \multicolumn{1}{c}{\bf Indoor} & \multicolumn{1}{c}{\bf Outdoor} \\
+        \cmidrule(lr){2-2} \cmidrule(lr){3-3} Method & Success  & Success \\
+        \midrule
+        End-to-End BC & 0.72 & 0.44 \\
+        End-to-End GCG~\cite{kahn2018gcg} & --- & 0.61  \\
+        RECON & 0.19 & 0.23 \\
+        \ours \ModelName-R (Random Subgoals) & 0.81 & --- \\
+        \ours \ModelName & \textbf{0.94} & \textbf{1.00} \\
+        \bottomrule  \\
+    \end{tabular}}
+    \end{minipage} \,
+    \begin{minipage}{0.48\textwidth}
+        \centering
+        \includegraphics[width=0.9\textwidth]{figures/exploration_compare_all.pdf}
+    \end{minipage}
+    \captionof{table}{\ModelName paired with our physical search algorithm    consistently outperforms baselines for the task of undirected goal-reaching in indoor and outdoor environments (\emph{left}). By effectively planning over diffusion subgoal proposals, \ModelName is able to find an efficient path to the goal. Other baselines struggle to explore large indoor environments, shown by trajectories overlaid on an indoor floor plan (\emph{right}).}
+    \label{tab:exploration-coverage-results}
+    \vspace{-1em}
+\end{figure}
+
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{figures/filmstrip.pdf}
+    \caption{Visualizing \ModelName exploration rollouts in challenging indoor environments using the Vizbot (top) and LoCoBot (bottom) robotic platforms. Future action samples $\hat{a}$ obtained by \emph{spatially grounding} the subgoal candidates are shown in yellow, with the best actions corresponding to the best candidate marked in blue.}
+    \label{fig:filmstrip}
+\end{figure}
+
+
+
+
+Towards understanding \textbf{Q1}, we deploy our full graph-based navigation pipeline (Section~\ref{sec:method_graph}) in a variety of challenging indoor and outdoor environments, previously unseen in the training data. We evaluate the performance of \ModelName on two challenging tasks: (i) coverage exploration, where the objective is maximally explore an environment in search of a goal whose location is unknown, and (ii) guided exploration, where the objective is to reach a goal using contextual information such as GPS coordinates or a satellite image (see Figure~\ref{fig:exploration_qualitative} for task examples). We compare \ModelName to a variety of baselines, including end-to-end policies trained with imitation or RL~\cite{kahn2018gcg,truong2023i2o}, a prior graph-based approach using a VIB for exploration~\cite{shah2021rapid}, and an ablation of \ModelName that samples random images from the training set to use as goals rather than generating subgoals with a diffusion model. See Appendix~\ref{sec:app:evaluation_real} for details about the experimental setup.
+
+\begin{table}
+    \centering
+    \vspace{-1em}
+    {\footnotesize
+    \begin{tabular}{lccccccccc}
+        \toprule
+        & \multicolumn{2}{c}{\bf Indoor: Position} & \multicolumn{3}{c}{\bf Outdoor: GPS} & \multicolumn{3}{c}{\bf Outdoor: Satellite} \\
+        \cmidrule(lr){2-3} \cmidrule(lr){4-6} \cmidrule(lr){7-9} Method & Success & Distance & Success & SPL & Distance & Success & SPL & Distance \\
+        \midrule
+        ViKiNG~\cite{shah2022viking} & 0.60 & 56m & 0.64 & 0.42 & 720m & 0.77 & 0.68 & 780m \\
+        \ours \ModelName & \textbf{0.90} & \textbf{91m} & \textbf{0.95} & \textbf{0.84} & \textbf{1270m} & \textbf{1.00} & \textbf{0.94} & \textbf{1040m} \\
+        \bottomrule \\
+    \end{tabular}}
+    \caption{\ModelName can effectively utilize goal-directed heuristics, such as 2D goal positions and satellite images, to explore novel kilometer-scale environments successfully and without interventions.}
+    \label{tab:viking-results}
+\end{table}
+
+For the coverage exploration task, the agent is placed in an unknown environment and tasked with exploring the environment maximally in search of the goal without any additional cues. Table~\ref{tab:exploration-coverage-results} summarizes the success rates for this task in indoor and outdoor environments. We find that, while end-to-end baselines avoid collisions with their surroundings, they fail to explore new areas and often get stuck in small areas of the environment. Graph-based methods avoid this trap by explicitly reasoning about coverage with the search objective, leading to a high success rate for \ModelName. Qualitative analysis (Table~\ref{tab:exploration-coverage-results}-\emph{right}) shows that planning over the diverse subgoals proposed using diffusion leads to more efficient paths, whereas other baselines take winding paths while exploring. Figure~\ref{fig:exploration_qualitative} illustrates the egocentric rollouts of the coverage exploration task in challenging indoor environments. \ModelName-R performs respectably despite the lack of valid subgoal proposals. See Section~\ref{sec:emergent} for a discussion on this observation.
+
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\textwidth]{figures/qualitative_search_outdoor.pdf}
+    \caption{\textbf{Satellite-guided physical search with \ModelName.} We visualize a 765m rollout of \ModelName with a satellite image-based heuristic from start (orange) to goal (green). The future action samples $\hat{a}$ obtained by \emph{spatially grounding} the subgoal candidates for five instances in the trajectory are shown in yellow. An \Astar-like planner uses the heuristic to pick the best subgoal (corresponding $\hat{a}$ marked in blue), guiding the robot to the goal.}
+    \vspace*{-1em}
+    \label{fig:search_qualitative}
+\end{figure}
+
+
+This observation extends to the position-guided navigation task (Table~\ref{tab:viking-results}), where the robots are tasked with reaching a \emph{2D goal position} in a previously unseen environment. The robots have access to onboard wheel odometry (indoors), GPS coordinates (outdoors), or passive satellite imagery (outdoors), to track their position and use as a goal-directed heuristic. Compared to a baseline of the previous state of the art~\cite{shah2022viking}, we find that the various sub-goal predictions from the diffusion model paired with the graph-based scoring scheme lead to a higher success rate and a greater distance traveled without collisions. \ModelName is also more effective at avoiding collisions in crowded indoor spaces, and more efficient at reaching goals in outdoor spaces (captured by the SPL metric), owing to the implicit affordances and preferences learned by the large-scale pre-training (see further analysis in Section~\ref{sec:emergent}. \ModelName also requires fewer interventions, observed by the larger distance before observed collisions. Figure~\ref{fig:search_qualitative} illustrates a rollout of physical search in an outdoor environment with \ModelName using satellite image as context (also see Figure~\ref{fig:exploration_qualitative}).
+
+
+
+\subsection{Zero-Shot Generalization: a Single Policy to Drive Any Robot}
+\label{sec:multirobot-results}
+
+
+
+Towards answering \textbf{Q2}, we deploy the \emph{same} pre-trained \ModelName policy on four distinct robotic platforms \emph{without} any fine-tuning for the task of undirected exploration. We report the maximum displacement of the robot (in meters) from its starting position, without interventions, as a proxy for reaching arbitrarily distant goals in complex environments in Table~\ref{tab:multirobot-exploration}. Most notably, \ModelName successfully generalizes zero-shot to control a Go 1 quadruped, which does not appear during training.
+
+
+\begin{wrapfigure}[11]{r}{0.46\textwidth}
+    \centering
+    {\footnotesize \setlength{\tabcolsep}{3pt}
+    \begin{tabular}{lcccc}
+        \toprule
+        Model & LoCoBot & Go 1 & Vizbot & Jackal \\
+        \midrule
+        Single-Robot & 40 & 12 & 40 & 184 \\
+        GNM~\cite{shah2022gnm} & 60 & 8 & 20 & \textbf{427} \\
+        \ours \ModelName & \textbf{120} & \textbf{45} & \textbf{110} & \textbf{438} \\
+        \bottomrule
+    \end{tabular}}
+    \captionof{table}{In coverage tasks, \ModelName drives different robots for 100s of meters (reported maximum displacement without intervention), beating lower-capacity models (GNM) and specialist models trained on a single robot dataset.}
+    \label{tab:multirobot-exploration}
+\end{wrapfigure}
+
+We compare \ModelName trained across all the combined datasets and robots to the best single-robot baseline --- a model trained using data only from the target environment --- as well as the GNM model~\cite{shah2022gnm} trained on all datasets. We observe that policies trained across robot embodiments can not only match, but also \emph{outperform}, single-robot models across all the embodiments we studied. We also find that the larger capacity of \ModelName leads to improved generalization compared to the smaller GNM model, especially on robots that do not appear in the training dataset (e.g., Go 1). Crucially, we also find that \ModelName demonstrates \emph{positive transfer} for in-domain robots (Vizbot), greatly outperforming a specialist model trained on only the target robot and setting, an emergent phenomenon not present in smaller models. This indicates that the model generalizes between tasks to improve performance, a key property of a \basement model.
+
+\subsection{Broader Generalization via Fine-Tuning}
+\label{sec:ood-results}
+
+To answer \textbf{Q3}, we consider the problem of fine-tuning \ModelName in the low data regime. In this setting, the entire \ModelName model is fine-tuned end-to-end with a reduced learning rate of $1\times10^{-4}$ over $n_\text{ep}=5$ epochs (Section~\ref{sec:method_finetuning}). We assume access to a small amount of on-task data (at most 5 hours, with successful results in 1-2 hours of data), and study the the efficiency of learning from subsets of this data using \ModelName.
+We study fine-tuning for the task of autonomous driving in the CARLA simulator for two reasons: (i) the simulated CARLA environment is perceptually distinct from the real-world data used to train \ModelName (Fig.~\ref{fig:carla}), and (ii) the on-road driving task requires very specific semantic behavior, i.e., driving in a lane and making smooth turns, that is not present in our real-world training data. We show that \ModelName can be fine-tuned on a small amount of data (under 1 hour)
+to achieve strong performance by effectively leveraging the navigational priors encoded in the model.
+
+\begin{wrapfigure}[20]{r}{0.4\textwidth}
+    \centering
+    \vspace*{-1em}
+    \includegraphics[width=0.4\textwidth]{figures/carla_exp.png}
+    \caption{The CARLA test environment (\emph{top}), and a bird's eye view showing high-level routing commands for the routing task.}
+    \label{fig:carla}
+\end{wrapfigure}
+
+We compare the \ModelName backbone to several alternatives, including visual representations trained with supervised learning~\cite{deng2009imagenet}, unsupervised objectives~\cite{chen2020simple, radosavovic2022realworld, majumdar2023vc1}, and an embodiment-agnostic navigation policy~\cite{shah2022gnm}. We use the same fine-tuning data and procedure for all models (see Section~\ref{sec:method_finetuning}); please see Appendix~\ref{sec:app:evaluation_carla} for more details.
+
+Table~\ref{tab:carla-finetuning} summarizes our findings. We report fractional progress towards the goal as ``success'', and the fraction of trajectories where the agent drives within the driving lane as ``in lane''. While pre-trained visual representations significantly improve task performance over a policy trained entirely from scratch, we observe that the learned policies suffer from frequent collisions and poor performance. GNM \cite{shah2022gnm} outperforms these baselines due to its strong navigation prior, but the lower-capacity model is unable to generalize fully to the task. \ModelName, on the other hand, is able to achieve strong performance, achieving substantially higher success rate than the next best baseline. Sweeping over fine-tuning dataset size (Table~\ref{tab:carla-finetuning}-right) shows that \ModelName achieves strong performance with as little as 1 hour of fine-tuning data, demonstrating its ability to generalize to new environments with very little data.
+
+\setcounter{table}{2}
+\begin{table}
+    \footnotesize
+    \begin{minipage}{0.58\textwidth}
+    {\footnotesize
+    \begin{tabular}{lcccc}
+        \toprule
+        & \multicolumn{2}{c}{\bf Images} & \multicolumn{1}{c}{\bf Positions} & \multicolumn{1}{c}{\bf Routing} \\
+        \cmidrule(lr){2-3} \cmidrule(lr){4-4} \cmidrule(lr){5-5} Method & Success & In Lane & Success  &  Success  \\
+        \midrule
+        Scratch & 0.45 & 0.74 & 0.79  & 0.43 \\
+        ImageNet & 0.22 & 0.71 & 0.59 & 0.45 \\
+        SimCLR~\cite{chen2020simple} & 0.21 & 0.63 & 0.70 & 0.64 \\
+        VC-1~\cite{majumdar2023vc1} & 0.19 & 0.65 & 0.49 & 0.38 \\
+        GNM~\cite{shah2022gnm} & 0.49 & 0.66 & 0.45 & 0.49 \\
+        \ours \ModelName & \textbf{0.82} & \textbf{0.82} & \textbf{0.89} & \textbf{0.72}\\
+        \bottomrule  \\
+    \end{tabular}}
+    \end{minipage}%
+    \begin{minipage}{0.42\textwidth}
+        \centering
+        \includegraphics[width=0.9\textwidth]{figures/datasweep.png}
+    \end{minipage}%
+    \captionof{table}{\emph{Left:} \ModelName can be fine-tuned end-to-end (\textbf{Images}) or adapted to downstream tasks (\textbf{Positions} and \textbf{Routing}), and outperforms training from scratch and other pre-training methods. \emph{Right:} \ModelName can transfer navigational affordances to novel tasks (40\% success without fine-tuning), and efficiently masters the task (80\% success) with less than 1 hour of fine-tuning data. \ModelName fine-tuning (green) outperforms a single-domain model trained with $5\times$ data (orange).}
+    \label{tab:carla-finetuning}
+    \vspace{-1.5em}
+\end{table}
+
+
+\subsection{Adapting \ModelName to Downstream Tasks}
+\label{sec:adaptation-results}
+
+To evaluate \textbf{Q4}, we investigate whether \ModelName can serve as a \basement model for a broader range of downstream tasks by considering goal modalities beyond subgoal images (see Section~\ref{sec:adaptation-results}). We consider the same CARLA driving task but with two different high-level planners: (i) a position-based planner that commands a sequence of GPS waypoints, and (ii) a routing planner with similar functionality to Google Maps that commands high-level navigation directions (left/right/straight) to the policy \cite{Codevilla2017CIL}.
+We compare the pre-trained navigational priors learned by \ModelName to the baselines discussed earlier, corresponding to pre-trained visual representations and policies, each adapted to the downstream task using the same on-task data (see Appendix~\ref{sec:app:evaluation_carla} for more details).
+
+
+
+Table~\ref{tab:carla-finetuning} summarizes our results for the two tasks. We again find that general pre-trained visual representations, such as ImageNet or VC-1, are not sufficient to extract navigational affordances for challenging downstream tasks, suggesting that effective generalization requires more than general visual representations~\cite{parisi2022unsurprising, majumdar2023vc1}. We also find that unlike fine-tuning, GNM \cite{shah2022gnm} struggles with the adaptation task, suggesting that the architecture and increased capacity of \ModelName are essential for broad generalization and adaptation. \ModelName achieves strong performance on both tasks, demonstrating its ability to serve as a \basement model for downstream tasks.
+
+
+\subsection{Emergent Behaviors}
+\label{sec:emergent}
+
+One of the most exciting aspects of large-scale machine learning is the potential for emergent behavior that arises from the training of large models on diverse datasets. Despite the simple self-supervised training objective used by \ModelName (Equation~\ref{eq:training_objective}), it shows a number of emergent behaviors, which we describe qualitatively in this section and present as examples on the project page and supplemental videos: \projectpage.
+
+
+\begin{wrapfigure}[10]{r}{0.65\textwidth}
+    \centering
+    \includegraphics[width=0.65\textwidth]{figures/diffusion_samples.pdf}
+    \caption{\textbf{Samples from the diffusion model} may be invalid subgoals, but \ModelName is robust to such proposals.}
+    \label{fig:diffusion_samples}
+\end{wrapfigure}
+
+\MyPara{Implicit navigation affordances:} Ideally, we would like a robot foundation model to exhibit some desirable ``default'' behavior, while providing a mechanism for downstream applications to adapt this behavior as needed. We find that \ModelName has this property vis-a-vis collision-avoidance. One piece of evidence is its behavior when provided with \emph{random} subgoals from locations that are not reachable by the robot, studied quantatively via the \ModelName-R baseline in Table~\ref{tab:exploration-coverage-results}. In this case, despite the subgoals being invalid and out-of-distribution (\ModelName was only trained to reach subgoals), \ModelName succeeds at exploring the environment and reaches the goal 80\% of the time, outperforming all baselines. This suggests that \ModelName takes collision-free actions when provided with meaningless goals (i.e. the above ``default''), while still attempting to follow reachable subgoals.
+
+\begin{wrapfigure}[11]{r}{0.5\textwidth}
+    \centering
+    \includegraphics[width=0.5\textwidth]{figures/emergent_lane.jpg}
+    \caption{\ModelName exhibits an implicit preference for following paved roads (\emph{left}) and hallways (\emph{right}).}
+    \label{fig:emergent_lane}
+\end{wrapfigure}
+
+Indeed, although the ``full'' version of our method augmented with the diffusion model performs better, the subgoals generated by this model are often of low quality with many artifacts, and sometimes do not match any real reachable state (Figure~\ref{fig:diffusion_samples}). Nonetheless, because of this ``default'' behavior, \ModelName is able to successfully leverage the valid subgoals, while ignoring the bad ones, and demonstrate collision-free navigation in previously unseen environments.
+
+
+\MyPara{Implicit navigation preferences:} Yet another interesting property exhibited by \ModelName is its implicit preference to follow paved roads (outdoors), and drive smoothly in the middle of hallways (indoors), as demonstrated in Figure~\ref{fig:emergent_lane} and in the supplemental video. This is particularly interesting since a large chunk of the pre-training dataset contains suboptimal, weavy trajectories, and suggests that \ModelName can learn ``good'' default behavior from the diverse training behaviors. This preference helps \ModelName efficiently explore previously unseen environments, where other baselines tend to explore the environment haphazardly (see Table~\ref{tab:exploration-coverage-results} (\emph{right})).
+
+\MyPara{Robustness to dynamic pedestrians:} While \ModelName is trained only on offline data with a simple, self-supervised training objective, we find that its collision avoidance capabilities generalize to dynamic obstacles and pedestrians.
+Figure~\ref{fig:pedestrians} exhibits an instance where the robot is tasked with navigating to a goal behind two pedestrians. \ModelName selects actions that avoid the pedestrians and recovers to the original path, successfully reaching the goal.
+
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{figures/pedestrian_filmstrip.pdf}
+    \caption{\textbf{Robustness to dynamic pedestrians.} \ModelName can successfully navigate around a crowd of dynamic pedestrians and reach the goal behind them, despite its simple self-supervised training objective.}
+    \label{fig:pedestrians}
+\end{figure}
+
+\section{Discussion}
+\label{sec:discussion}
+
+We presented \ModelName, a robot \basement model that is trained for a generic image-goal navigation task on diverse data from many different robots, and can then support a variety of different navigation functionalities. \ModelName can be deployed for long-horizon navigation in combination with a topological graph planning method, explore new environments with goals proposed by a diffusion model, be fine-tuned to new domains (such as autonomous driving), and be adapted to new task specification methods, such as GPS coordinates or turn-by-turn routing commands. Our results show that \ModelName can successfully generalize across robots and environments, outperforms prior navigational models, can be efficiently fine-tuned to new domains and tasks, and shows promising emergent behaviors such as navigating through dynamic pedestrians.
+
+\subsection*{Limitations and Future Work}
+As with many large-scale models, \ModelName carries a heavier computational burden at inference time, which can present a challenge for power-constrained platforms such as quadcopters. While our design aims to enable efficient inference, our Transformer-based model is still significantly costlier to run at deployment time than simpler feedforward convolutional networks. Additionally, although \ModelName generalizes effectively across robots in our experiments, it assumes a degree of structural similarity. For example, it cannot control the altitude of a quadcopter or handle other changes in the action representation, nor accommodate new sensors such as LIDAR. Training on a variety of modalities and action spaces in future work could unlock this capability. More broadly, while \ModelName illustrates the promise of a general-purpose and broadly reusable navigational \basement model, we believe that the most exciting developments for general-purpose cross-robot models are still ahead: as larger and larger multi-robot datasets are assembled, perhaps we will see even broader generalization and more flexible specification with increasingly powerful and general-purpose robotic models. We hope that \ModelName represents a step in this direction.
+
+\newpage
+\acknowledgments{This research was partly supported by ARL DCIST CRA W911NF-17-2-0181, ARO W911NF-21-1-0097, IIS-2150826, and compute from Google TPU Research Cloud, NVIDIA, NSF CloudBank, and the Berkeley Research Computing program. The authors would like to thank Yunhao Cao, Seung-Hyun Kwon, Hrish Leen, Laura Smith, Medini Tolpadi, and Christopher Yu, for help with setting up experiments; Ted Xiao, for help with reproducing RT-1; Chethan Bhateja, Devendra Singh Chaplot, Kuan Fang, Adrien Gaidon, Dibya Ghosh, Saurabh Gupta, Haresh Karnan, Vijay Kumar, Hrish Leen, Fangchen Liu, Arjun Majumdar, Carlos Nieto, Aravind Rajeswaran, Ethan Stump, Jie Tan, Joanne Truong, and Tingnan Zhang, for useful discussions and feedback during various stages of this research. The authors would also like to thank Byron Boots, Gregory Kahn, Haresh Karnan, Xiangyun Meng, and Xuesu Xiao, for their help in aggregating the dataset used for training \ModelName.}
+\section*{Author Contributions}
+
+
+\MyPara{DS:} Designed and trained the \ModelName architecture, investigated goal-fusion challenges, conceptualized prompt-tuning for adaptation, integrated diffusion-based sampling and scoring with \ModelName, gathered heterogeneous datasets, implemented baselines, conducted all outdoor experiments on Jackal, wrote key sections of the paper, led and coordinated the project.
+
+\MyPara{AS:} Implemented graph-based search, investigated goal-fusion challenges, implemented and trained different goal-fusion architectures, integrated diffusion-based sampling and scoring with \ModelName, investigated emergent behaviors, processed datasets, implemented baselines, conducted indoor experiments on LoCoBot and Go 1.
+
+\MyPara{ND:} Conceptualized and implemented prompt-tuning for adaptation, wrote data-collection and labeling pipeline for CARLA, implemented baselines, conducted all fine-tuning and adaptation experiments in CARLA.
+
+\MyPara{KS:} Investigated emergent behaviors, supported indoor experiments, wrote and edited key sections of the paper.
+
+\MyPara{KB:} Conceptualized diffusion-based sampling and scoring, implemented and trained the diffusion model, helped write related sections of the paper.
+
+\MyPara{NH:} Advised on various aspects of the project, conducted indoor experiments on Vizbot.
+
+\MyPara{SL:} Advised, set direction, wrote and edited key sections of the paper.
+
+\bibliography{references}  %
+
+\clearpage
+\input{appendix}
+
+\end{document}

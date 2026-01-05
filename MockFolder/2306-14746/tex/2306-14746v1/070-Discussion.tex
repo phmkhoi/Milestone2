@@ -1,0 +1,43 @@
+\section{Discussion}
+\label{sec:discussion}
+
+Since their introduction in 2002, deterministic password generators have been categorically rejected by consumers and researchers alike as being a viable alternative to conventional password managers, with even the most popular DPGs having a negligible market share of overall password management usage. Our survey of 45 existing DPGs shows that this decision is not entirely without merit, with current DPGs demonstrating an array of issues hindering their security, privacy, and usability.
+
+It does not, however, follow from this that DPGs should be entirely discarded as a meritorious field of study.
+In light of new cryptographic primitives, we hope to revive academic interest in DPGs as a password management approach.
+
+While the MFDPG does not necessarily rise to the level of a production-ready system, it nevertheless constitutes a significant improvement over existing DPG proposals. By strategically combining relevant data structures, such as Cuckoo filters, algorithms, such as DFA traversal, and cryptographic primitives, such as MFKDF, we have presented a serious attempt at building a modern-day DPG, and hope to demonstrate that most of the issues surrounding DPGs are not intrinsic, and can in fact be addressed by diligent engineering.
+
+In light of the recent massive data breach associated with LastPass \cite{toubba_notice_2022} and previous string of incidents associated with major password managers \cite{lastpass_security}, there has been an uptick in academic research and discussion around secure cryptography and system designs for password management. Due to the fundamental appeal of not storing passwords, neither in plaintext nor encrypted, in any location, we hope DPGs, such as MFDPG, remain a part of this conversation.
+
+One final advantage of MFDPG worthy of highlighting is its ability to progressively upgrade weak password-only websites to effectively use strong MFA, simply by using an MFDPG-generated password on the client side. When configured with authentication factors like HOTP, TOTP, or YubiKeys, the master key, and thus the site-specific password, cannot be derived without using multiple strong authentication factors, even if the site itself does not accept factors other than the generated password. Moreover, MFDPG links the ability to derive the site-specific password to the correctness of these multiple factors in a strong cryptographic sense, unlike password managers that may support MFA, but ultimately encrypt credentials with a password-derived key.
+This, on its own, constitutes a significant advantage of MFDPG, particularly for those who frequently interact with legacy systems with limited multi-factor authentication support, but still require trustless cryptographic enforcement of multiple strong factors. 
+
+\subsection{Limitations}
+
+There are a number of trade-offs associated with MFDPG, both in comparison with prior DPGs, as well as in comparison with conventional password managers.
+
+First, unlike some DPGs, MFDPG is not completely stateless, storing both a Cuckoo filter for revocation and public parameters for certain MFKDF factors. This is a necessary concession to support multi-factor authentication and password revocation, and because these parameters require no trust assumptions, they can be stored locally or in the cloud without weakening the security of the scheme. Still, the need to store any information at all may be viewed as a drawback compared to the simplest forms of deterministic password generation.
+Also, while not vulnerable to a breach of the stored materials, the system may still be vulnerable to active spyware that can obtain the master key from system memory; however, this limitation likely applies to DPGs and password managers alike.
+
+With respect to revocation, the use of Cuckoo hashing also has potential drawbacks, being a probabilistic data structure. Namely, there is a potential for a credential revocation to incorrectly revoke another credential that is actively in use. Correctly configuring the parameters can make the probability of this small, but non-zero. Alternatively, the Cuckoo filter could be replaced with another construction that supports set addition, subtraction, and membership testing.
+
+Furthermore, if a credential has indeed been revoked, the current construction suggests repeating the KDF invocation to create a new preimage. While this is advantageous from a security perspective, in the event that a credential has been revoked many times, generating that credential may be very slow due to the need to repeatedly invoke the adaptive KDF.
+
+Finally, the MFDPG scheme depends on the security properties of MFKDF, and thus also inherits many of its limitations. In particular, MFKDF supports a limited set of authentication factors, and implementing new factors requires a specific, purpose-built factor constriction. While the supported factors include popular factors like HOTP, TOTP, YubiKey, etc., schemes relying on MFKDF may not be able to support as many authentication factors as a typical centralized password manager.
+Further, these factors must be entered and verified simultaneously, rather than sequentially, in order to achieve the ``exponential security'' of MFKDF. While this provides a significant security advantage in resisting brute-force attacks, it may somewhat degrade the usability of the system.
+
+Some of the limitations presented in this section are intrinsically implicated in deterministic password generation, but many can be rectified, at least in part, with further cryptographic or system design improvements over time.
+
+\subsection{Future Work}
+
+Currently, the generation algorithm requires a password policy to be specified as a regular expression. While these policies can be saved for popular services in a central database, the significant effort would be required to update and maintain such a database, and less popular services would inevitably be excluded. In the future, researchers could investigate an approach that automatically determines the password policy for a given service, such as through the use of language models.
+
+The revocation component of the system could also potentially be improved. For example, some form of multi-party computation, such as a private set intersection algorithm, could perhaps be used to communicate with a central server to check whether a credential has been revoked on any device without revealing the identity of the credential being checked.
+
+One major criticism of DPG schemes not discussed thus far is the lack of support for existing credentials. Currently, DPG systems, including MFDPG, have a high upfront adoption cost, as they essentially require a user to change every password for all of their existing services to the DPG-generated password.
+Instead of this, a hybrid implementation, supporting both deterministic password generation and conventional password storage may be more user-friendly in the short term.
+
+Finally, we hope to see usable security or HCI research that evaluates the usability of DPGs, such as MFDPG, in comparison with conventional password managers, via a controlled user study. As usability is likely as significant a factor in hindering DPG adoption as are security and privacy concerns, further advancements in this area are greatly encouraged.
+
+\eject

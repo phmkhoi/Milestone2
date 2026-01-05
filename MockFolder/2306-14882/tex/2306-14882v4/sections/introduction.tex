@@ -1,0 +1,59 @@
+\section{Introduction}
+Hardware isolation primitives such as Secure Enclaves or Trusted Execution Environments (TEEs) \cite{costan2016sanctum, aegis, ferraiuolo2017komodo, lee2020keystone,  bahmani2021cure, feng2021scalable} are used to run sensitive computations in isolation with strengthen privacy and integrity properties, even in the presence of a malicious Operating System (OS) or hypervisor (see Figure \ref{fig:computing_stack}).
+Academic TEE proposals date back twenty years to XOM \cite{xom} and AEGIS \cite{aegis} and industry implementations include ARM TrustZone \cite{trustzone04, pinto2019demystifying}, Intel SGX \cite{mckeen2013sgx, costan2016intel} and AMD SEV \cite{sev2020strengthening}.
+Unfortunately, these kinds of platforms have been shown to be vulnerable to microarchitectural side channels and transient execution attacks \cite{chen2019sgxpectre, koruyeh2018spectre, ryan2019hardware, van2020lvi, van2018foreshadow, van2020sgaxe}. 
+One academic proposal \cite{bourgeat2019mi6} has looked at securing enclaves in the context of microarchitectural side channels and transient execution attacks.
+They aim for total microarchitectural isolation between a (victim) enclave and the other security domains collocated on the same machine, leaving out shared memory, a commonplace mechanism at the center of many software and applications.
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/Stack.pdf}
+\caption{Citadel's Computing Stack}
+\label{fig:computing_stack}
+\end{figure}
+
+On the other hand, mechanisms for secure speculation \cite{ainsworth2020muontrap, cheang2019formal, canella2019systematic, barber2019specshield, fustos2019spectreguard, yan2018invisispec, yu2019speculative, saileshwar2019cleanupspec, weisse2019nda, khasawneh2019safespec, guarnieri2020spectector, guarnieri2021hardware, mosier2022axiomatic} can thwart these types of attacks while enabling shared resources but are not yet practical.
+Solutions that are purely hardware are complex: none has been implemented beyond simulators, and attacks have been found for the majority of schemes.
+Hardware-software co-design approaches simplify that problem by only providing guarantees for some programs, but they make strong assumptions on the type of speculative execution, the exposed microarchitectural state, and the software, which are hard to support for the entire software stack.
+
+We propose that processors expose microarchitectural isolation primitives \emph{and} mechanisms for controlled speculation.
+Indeed, we believe these two approaches go hand-in-hand as isolation makes it possible to constrain the problem of secure-speculation enough so hardware-software co-design solutions only require minimum hardware changes and a tractable program analysis component.
+To demonstrate this idea, we present two mechanisms that securely enable shared memory between an enclave and an untrusted OS on an out-of-order processor.
+Together, the enclave program and the hardware achieve Speculative Non-Interference (SNI) \cite{guarnieri2020spectector, guarnieri2021hardware, behnia2021speculative, fabian2022automatic, yu2019speculative, yu2019speculative2} i.e., a victim program running in an enclave does not leak more secret information when running speculatively using our mechanisms than when running non-speculatively (one-instruction-at-a-time and in-order).
+For the rest of this paper, we will refer to non-speculative execution as \emph{sequential} execution.
+Our security argument leverages hardware software contracts for security \cite{guarnieri2021hardware, mosier2022axiomatic}.
+Through microarchitectural isolation, the attacker observations are restricted to the addresses of victim accesses to shared memory.
+The hardware can then enforce some controlled speculative execution mode for the enclaves, such that an analyzed program can be run securely with regard to that mode.
+Intuitively, the more restrictive the execution mode, the lighter the requirements on the program, but the least performance we get.
+
+Concretely, we first propose and build \emph{SpecSafe}, a hardware mechanism that enforces an execution mode for the enclave where most instructions can be run speculatively, but no speculative shared accesses are allowed.
+This effectively prevents the existence of any speculative transmitters between the victim and the attacker without requiring any program modification or analysis.
+Unfortunately, we show it has limited performance on code that perform back-to-back accesses to shared memory.
+As a result, we present \emph{Burst Mode}, a second enclave execution mode.
+We introduce software controls to enable Burst Mode where pipelined accesses to shared memory are allowed, but 
+all the predictors of the executing core are hardwired to $pc + 4$.
+This speculation model is usually referred to as ``straight-line speculation'' \cite{straightlinespecARM} and we explain under which conditions a program can use it securely. 
+We show that program analysis is tractable by hand on small straight-line code segments with back-to-back accesses to shared memory (e.g., a \texttt{memcopy} function).
+Our two execution modes are complementary, achieving SNI with a reasonable performance impact, while requiring minimal code annotation and simple program analysis doable by hand. 
+To our knowledge, we are the first to prototype this type of security contract on a full platform, i.e., implemented on a processor running on FPGA booting Linux.
+
+While building this prototype, we uncovered a few implementation subtleties and potential security issues that had been overlooked in the past, and we prototyped and run a simple-to-implement and effective Last Level Cache (LLC) isolation technique.
+Those side quests, though more implementation-centered, would be especially important to potential industrial deployment.
+
+Our final prototype is a modified out-of-order RISC-V 2-core processor synthesized to run on an AWS F1 FPGA.
+It fully implements all our security and performance mechanisms at the microarchitectural level, along with an end-to-end attestation mechanism.
+It boots (untrusted) Linux and user-level applications can safely launch and communicate with secure enclaves, executing applications such as a lightweight Python runtime, a cryptographic library or a private inference application running a small neural network.
+We implement and make all the pieces of software and modified hardware available, such as our modified processor, our secure bootloader, our security monitor and a Linux kernel module to interact with the security monitor.
+We summarize the different elements implemented for this paper in Figure \ref{fig:computing_stack}.
+Citadel offers a unique environment for testing complex hardware-software mechanisms, making it ideal for research into microarchitectural side channels, transient execution attacks, and secure enclaves.
+
+To summarize, the main contributions of the paper are:
+\begin{itemize}
+\itemsep-0.1em
+\item To our knowledge, we show the first implementation leveraging hardware-software contracts to guarantee well-defined security properties.
+\item We demonstrate how microarchitectural isolation goes hand-in-hand with controlled-speculation by presenting two mechanisms for public shared memory on enclaves running speculatively.
+\item To our knowledge, we show the first end-to-end enclave platform prototype running securely on an FPGA implementation of a speculative out-of-order machine.
+\item We show a hardware-software mechanism for cache partitioning that makes the platform more configurable and improves both enclaves' and unprotected processes' performance.
+\item Through our case study, we provide important takeaways for commercial enclave offerings.
+\end{itemize}
+
+We open-source our hardware, software and debugging infrastructure at \url{https://github.com/mit-enclaves/Citadel}.

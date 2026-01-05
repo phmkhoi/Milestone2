@@ -1,0 +1,245 @@
+\section{Implementation details}\label{app:implementation_details}
+\subsection{\ours{}}
+To avoid constant cross-referencing, we recap essential parts of Section \ref{sec:method} here. Our model predicts a distribution for the energy value $\energy_*$ as: 
+\begin{align}
+    p(E_\star \vert \pos, \inputfeatures) &= \sum_i^\natoms \gp_\phi \circ h_{\text{rep}}(\pos, \inputfeatures)_{i}\\ 
+    &\sim \normal\left(E_\star \,\vert\,\sum_i^\natoms \EX [\energy_\star]_i, \sum_{ij}^\natoms \Cov(\energy_\star)_{ij}\right).\nonumber
+\end{align}
+Here $h_{\text{rep}}$ is a GNN backbone while $\gp_\phi$ is the gaussian process with parameters $\phi$ and $n$ is the number of atoms of the molecule. Any GNN that implements atom-wise embeddings qualifies as backbone. However, to fulfill the desiderata we use recent approaches for ML force fields that implement \desone{} and \destwo{}. We show the schematic depiction of our model in Figure \ref{fig:model_figure}. For one molecule one obtains $n$ different embeddings. For each we use the same GP to predict an energy distribution. The final predictive distribution is the sum of the individual distributions. 
+
+As we use an approximate GP with inducing points we have the following additional hyperparameters we consider: number of inducing points, inducing point initialization and kernel lengthscale initialization. For the mean value of the GP prior we used a standard learn-able constant. For the number of inducing points we tested multiple different values in $\{10, ,25, 50, 100, 256, 512\}$. We choose 100 for MD17 as the training set only consists of 1000 data points and more inducing points lead to overfitting. For QM7X we used 256 as we have more data points. 
+
+For the inducing point initialization we tested three different options: first, we use randomly generated points. Secondly, we use the k-means algorithm to find multiple cluster centers within the training embeddings and choose these. Lastly, we take the first $\lfloor N_{\text{ind pnts}} / N_{\text{atoms}}\rfloor$ training embeddings for the atom embeddings. As we noticed no significant difference between the second and the third we use the last one as it is faster to compute. 
+
+For the fixed-LNK a crucial hyperparameter is the lengthscale initialization. As the inducing points might be far apart in a high-dimensional embedding space, such as for DimeNet++ with 256 dimensions, a too small initial lengthscale leads to sparse gradients and poor to no optimization of the GP posterior. Thus, we use the mean distance within all clusters of inducing points which are $N_{\text{atoms}}$ many. If we have varying number of atoms it will $N_{\text{atoms}}$ refers to the maximum number of atoms of a molecule in the training dataset. 
+
+\begin{table}[!h]
+    \centering
+    \input{tables/lnk_details}
+    \caption{Caption}
+    \label{tab:lnk_hyperparameters}
+\end{table}
+
+\subsection{Baseline details}\label{app:baselinedetails}
+\textbf{Backbones.} We use three different model architectures: DimeNet++ \citep{klicpera2020Fast}, SchNet \citep{schuttSchNetDeepLearning2018}, and NequIP \cite{batznerEquivariantGraphNeural2022}. Unless otherwise stated, we use the default hyperparameters of each model architecture and training as stated in the original works. For DimeNet++ and SchNet, specific hyperparameters used for training are listed in Table \ref{tab:training_details}. For NequIP we used exactly the same hyperparameters as the original implementation and we omit the details here. The hyperparameters specific to the datasets and that are used with all models are listed in Table \ref{tab:data_hyperparameters}. Unless otherwise specified, we train the backbones the standard combined energy and force loss~\citep{gasteigerDirectionalMessagePassing2019}:
+
+\begin{align}
+    \mathcal{L}_\text{total} =& (1-\rho)\mathcal{L}_\text{energy} + \rho\mathcal{L}_\text{force},\\
+    \mathcal{L}_\text{energy} =& \frac{1}{\ndatapoints}\sum_{i=1}^\ndatapoints \vert f_\theta(\pos, \inputfeatures) - \energy^*\vert, \\
+    \mathcal{L}_\text{force} =& \frac{1}{\ndatapoints}\sum_{i=1}^\ndatapoints \sum_{j=1}^{\natoms} \sqrt{\sum_{k=1}^3 \left( \frac{\partial}{\partial \pos_i}f_\theta(\pos_i, \inputfeatures_i) - \forces_i^*\right)_{jk}^2}.
+\end{align}
+
+
+\begin{table}[h!]
+\centering
+\caption{Hyperparameters of DimNet++ and SchNet}\label{tab:training_details}
+\input{tables/training_details.tex}
+\end{table}
+
+
+\begin{table}[h!]
+\centering
+\caption{Hyperparameters of the datasets used with all models}\label{tab:data_hyperparameters}
+\input{tables/data_hyperparams.tex}
+\end{table}
+
+\subsection{Monte Carlo Dropout: implementation details}
+\textbf{DimeNet++.} This architecture only uses representations of dimension 0, so we use standard dropout. We apply it across different blocks after every fully-connected layer that uses an activation function. One exception is the directional message passing block, where we apply dropout after the two Hadamard product operations and once after the final fully-connected layer. Note that applying dropout separately on the two operands of the Hadamard product would result in effectively more dropped neurons than applying it after.
+
+\textbf{SchNet.} Similar to DimeNet++,  we here also apply dropout after each linear layer that is followed by an activation function. Specifically, we use dropout inside the interaction, convolution, and output layers.
+
+\textbf{NequIP.} This architecture uses higher representations of dimension 1. Therefore, in order to preserve the equivariance property, we apply dropout at every layer of the radial network inside the interaction block which uses only representations of dimension 0. We also drop representations of dimensions 1 by applying the MCD layer described above after each convolution layer.
+
+\clearpage
+\section{Complexity details}\label{app:complexity}
+In \cref{tab:num_parameters} we show the number of parameters for each model. We used the default parameter settings of the respective paper. Notably, our model \oursacro{}, introduces only a marginal increase in additional parameters compared to existing models. As seen in \cref{tab:speed}, the slight increase in parameters translates to a minimal decrease in computational speed compared to the Evidential model.
+
+We observe that Ensembles have five times more parameters than the other models. An interesting future work may be investigating whether the Ensembles can be reduced in their number of parameters to have the same computational demand as the single model. However, according to research conducted by \citet{batatia2022design}, a reduction in the number of channels on NequIP is reduced from 32 to 16 (which is only a reduction of about 2.6), resulted in $8.4\%$ decrease in force prediction performance and a $19.35\%$ decline in energy prediction performance. 
+
+\begin{table}[h!]
+    \centering
+    \begin{tabular}{l|rrr}
+\toprule
+Approach & DimeNet++ & SchNet & NequIP\\
+\midrule
+MCD & 1,885,830 & 455,809 & 189,080\\
+Evidential & 1,889,670 & 456,004 & 189,128\\
+\oursacro{} & 1,920,150 & 468,263 & 197,567\\
+Ensemble & 9,429,150 & 2,279,045 & 1,119,800\\
+\bottomrule
+    \end{tabular}
+    \caption{Number of parameters for each UE approach and backbone. SchNet is the version of Pytorch-Geometric with 6 interaction blocks.}
+    \label{tab:num_parameters}
+\end{table}
+
+
+
+\section{Additional Experiments} \label{app:additional_experiments}
+In the following we list additional experiments, i.e., evaluating different backbones or approaches.
+
+\subsection{\oursacro{} vs. SVGP-DKL}\label{app:svgp_vs_lnk}
+To analyze the improvement from the localization of \oursacro{}, we compare the performance of \oursacro{} against SVGP-DKL on MD17 and QM7X. The results are listed in \cref{tab:lnk_vs_svgpdkl}. For MD17 We observe that \oursacro{} decreases the error by $5\%$ on average for the energy prediction and by $28\%$ for forces. For QM7X we decrease the error by $99.3\%$ for energy but increase the forces slightly by $6.5\%$.
+\begin{table}[h!]
+    \centering
+    \input{tables/svgpdkl_vs_lnk}
+\caption{Comparison of LNK vs SVGP-DKL with DimeNet++ as backbone.}
+\label{tab:lnk_vs_svgpdkl}
+\end{table}
+
+\subsection{Graph Mixture Density Network}\label{app:gmdn}
+In the following we investigate the performance of the Graph Mixture Density Network (GMDN) \cite{errica2021graph}. This network outputs a mixture of distributions as resulting predictive distribution. Each individual distribution is learned by a neural network head. Here we investigate \desfive{} and \dessix{}. In \cref{app:locality_consideratins}, we show that the network is not necessarily fulfilling \desfour{}.
+
+In \cref{tab:gmdn_vs_lnk}, we observe that \oursacro{} is outperforming GMDN on every single target. For aspirin and napthalene the model did not learn to predict the energy properly. As GMDN was not tested for molecular property prediction by the authors, trained for different hyperparamters for the number of hidden units, the number of mixture components and the number of output layers, see \cref{app:locality_consideratins} for a detailed model description. For each target we used the best performing setting, i.e., not a fix hyperparameter setting for all molecules on MD17 as done for all other baselines but the best set for each target. However, there might be hyperparameter sets where this network yields better results and we leave it for future work to adapt GMDN to this setting.
+
+In \cref{fig:gmdn_md17_ood}, we see the OOD detection performance we use to measure \dessix{}. Compared to MCD or Evidential, the method has higher separation for most of the OOD molecules. However, it is not close to the results of Ensemble or \oursacro{}.
+
+\begin{table}[h!]
+    \centering
+    \input{tables/gmdn}
+\caption{Comparison of LNK vs GMDN with SchNet as backbone. For MD17 We observe that \oursacro{} outperforms GMDN on every target.}
+\label{tab:gmdn_vs_lnk}
+\end{table}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=.3\textwidth]{figures/GMDN_md17_schnet.pdf}
+    \caption{OOD detection with GMDN and SchNet as backbone model.}
+    \label{fig:gmdn_md17_ood}
+\end{figure}
+
+\subsection{Additional experiments on MD17}
+In the following we list the experimental results for the other backbones. We use either 69 samples or 5 samples for MCD evaluation. 
+
+\begin{table}[h!]
+\centering
+\caption{MAE of Dimenet++ on MD17 with different uncertainty estimation methods. MCD stands for MC-Dropout (energies in $\si{\kcal\per\mole}$, forces in $\si{\kcal\per\mole\per\angstrom}$)}
+\include{tables/md17/dimenet_combined.tex}
+\end{table}
+
+
+\begin{table}[h!]
+\centering
+\caption{MAE of NequIP on MD17 with different uncertainty estimation methods (energies in $\si{\kcal\per\mole}$, forces in $\si{\kcal\per\mole\per\angstrom}$)}
+\include{tables/md17/nequip_combined.tex}
+\end{table}
+
+\begin{table}[h!]
+\centering
+\caption{MAE of SchNet on MD17 with different uncertainty estimation methods (energies in $\si{\kcal\per\mole}$, forces in $\si{\kcal\per\mole\per\angstrom}$)}\label{tab:schnet_more_samples}
+\include{tables/md17/schnet_combined.tex}
+\end{table}
+
+
+\begin{figure}[h!]
+\centering
+\includegraphics[width=1.0\textwidth]{figures/NEW_dimenetpp_md17_all_methods.pdf}
+\caption{Heatmap of AUC-ROC on MD17 values based on different UE methods with DimeNet++ as backbone. Each row corresponds to a separate model trained on the molecule written on the left and tested on all other molecules.}
+\end{figure}
+
+\begin{figure}[h!]
+\centering
+\includegraphics[width=1.0\textwidth]{figures/NEW_nequip_md17_all_methods.pdf}
+\caption{Heatmap of AUC-ROC on MD17 values based on different UE methods with NequIP as backbone. Each row corresponds to a separate model trained on the molecule written on the left and tested on all other molecules.}
+\end{figure}
+
+\subsection{Additional experiments on QM7X}
+In the following we show the experimental results for QM7X for other backbones and for dropout with 5 and 69 samples respectively.
+
+\begin{table}[h!]%
+    \caption{MAE of Dimenet++ trained on QM7X-Equilibrium with different uncertainty estimation methods (energies in $\si{\eV}$, forces in $\si{\eV\per\angstrom}$)}
+    \include{tables/qm7x/qm7x_dimenet.tex}
+\end{table}
+\begin{table}[h!]%
+\caption{MAE of Dimenet++ ($N=69$ samples) trained on QM7X-Equilibrium with different uncertainty estimation methods (energies in $\si{\eV}$, forces in $\si{\eV\per\angstrom}$)}
+    \include{tables/qm7x/qm7x_dimenet_69.tex}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{MAE of SchNet, and NequIP trained on QM7X-Equilibrium with different uncertainty estimation methods (energies in $\si{\eV}$, forces in $\si{\eV\per\angstrom}$). The numbers marked with a star denote that they were  obtained after removing 7 out of the 1537 test molecules that were causing numerical instability of the NequIP model.}
+\include{tables/qm7x/qm7x_other_models.tex}
+\end{table}
+\begin{table}[h]
+\centering
+\caption{MAE of SchNet, and NequIP ($N=69$ samples) trained on QM7X-Equilibrium with different uncertainty estimation methods (energies in $\si{\eV}$, forces in $\si{\eV\per\angstrom}$). The numbers marked with a star denote that they were  obtained after removing 7 out of the 1537 test molecules that were causing numerical instability of the NequIP model.}
+\include{tables/qm7x/qm7x_other_models_69samples.tex}
+\end{table}
+
+
+\subsection{Dropout Rate Experiment}\label{app:dropout_exp}
+We compare different dropout probabilities for MCD on QM7X for DimeNet++ and SchNet. 
+\begin{table}[h]
+\centering
+\caption{MAE and uncertainty metrics of MC-Dropout Dimenet++ ($N=5$ samples) trained on QM7X-Equilibrium with different dropout rates (energies in $\si{\eV}$, forces in $\si{\eV\per\angstrom}$)}
+\include{tables/qm7x/dropout_exp_dimenet.tex}
+\end{table}
+\begin{table}[h]
+\centering
+\caption{MAE and uncertainty metrics of MC-Dropout SchNet ($N=5$ samples) trained on QM7X-Equilibrium with different dropout rates (energies in $\si{\eV}$, forces in $\si{\eV\per\angstrom}$)}
+\include{tables/qm7x/dropout_exp_schnet.tex}
+\end{table}
+
+
+
+\clearpage
+\section{\desfour{} consideration of baseline methods} \label{app:locality_consideratins}
+\textbf{Ensemble}
+As written above, we estimate the uncertainty of a molecule for an ensemble ${f_1, \dots, f_5}$ of five models $f_i$ as:
+\begin{equation}
+    \mathbf{u}_E(\molecule) = \sqrt{\text{Var}\left(f_1(\molecule), \dots, f_N(\molecule)\right)}.
+\end{equation}
+If we duplicate the molecule and have it sufficiently far apart, then we get: 
+\begin{equation}
+    f_i(\{\molecule, \molecule\}) = 2 * f_i(\molecule),
+\end{equation}
+as the embeddings of the respective molecules do not influence each other and the final result is the sum over the atom predictions. Hence, we can derive that the uncertainty estimate of the ensemble is satisfies \desfour{}:
+\begin{equation}\begin{aligned}
+    \uncertainty_{\energy}(\{\molecule, \molecule\}) &= \sqrt{\variance\left(f_1(\{\molecule, \molecule\}), \dots, f_N(\{\molecule, \molecule\})\right)}\\ &= \sqrt{\variance\left(2f_1(\molecule), \dots, 2f_N(\molecule)\right)}\\ &= \sqrt{4 \cdot \text{Var}\left(f_1(\molecule), \dots, f_N(\molecule)\right)}\\ &= 2\uncertainty_{\energy}(\molecule).
+\end{aligned}\end{equation}
+
+
+\textbf{Graph Mixture Density Networks} \cite{errica2021graph} can be formulated as: 
+\begin{equation}
+    \sum_{i=1}^CP(y_g| Q_g^i, g) P(Q_g^i|g)
+\end{equation}
+
+where C is the number of mixing components (experts), $g$ is the graph, $Q_g^i$ is the mixing weight $i$ for graph $g$. It is modelled by a network $\Phi_i$. $y_g$ is the target we want to model, i.e. $P(y_g | g)$.  Given the node embeddings
+
+\begin{equation}
+    \mathbf h_v^{l+1} = \phi^{l+1}\left(\mathbf h_v^l, \Psi(\{\psi^{l+1}(\mathbf h_u^l) | u \in \mathcal N_v\})\right), \forall l = 1 \dots L
+\end{equation}
+
+The final node representation is given by $\mathbf h_v :=  \mathbf h_v^L$. $P(Q_g^i|g)$ models a mixing weight by a neural network. The interesting part is the emission $P(y_g| Q_g^i, g)$, i.e. the distribution parameters. They are compute as: 
+
+\begin{equation}
+\mathbf \mu_i, \mathbf \Sigma_i = \Phi_i(\mathbf h_g) = f_i(r_g^i(\mathbf h_{\mathcal V_g})).
+\end{equation}
+
+Here, $\mathbf h_g$ is the aggregated embedding for the full graph, $\Phi_i$ is a sub-network to compute the individual distributional parameter, $f_i$ is a neural network, $r_g^i$ is the readout network and $\mathcal V_g$ is the set of nodes of graph g.
+
+If we now construct a graph $\hat g := \{g, g\}$ whithout edges between the individual graphs $g$, then, due to the non-linearity of $f_i$ (or $\Phi_i$), we would have:
+
+\begin{equation}
+\Phi_i(\mathbf h_{\hat g}) = \hat \mu_i, \hat{\mathbf \Sigma}_i \neq 2\mu_i, 2\Sigma_i = \Phi_i(\mathbf h_g).
+\end{equation}
+Hence, GMDN is not necessarily fulfilling \desfour{}.
+
+
+
+\clearpage
+\section{Metrics}
+\subsection{Calibration}
+We use the calibration score introduced by \citet{accurate-uncertainties-deep-learning-regression}. It computes the difference between the percentage of targets lying in a certain confidence region and the corresponding percentile p. In mathematical notation, the calibration metric is: 
+
+\begin{equation}
+    p_{pred} = \frac{1}{N} \sum_i \mathbb{I}\left[\mathbb{P}\left(y \leq y^{*, (i)}| \theta^{(i)}\right) \in I_p\right],
+\end{equation}
+
+where $I_p = [0, \frac{p}{2}] \cup [1-\frac{p}{2}, 1]$. To obtain a single score we compute the norm:
+\begin{equation}
+    \text{s}_{\text{calib}} := \sqrt{\sum\nolimits_p (p - p_{\text{pred}})^2}\;\; , \quad p \in \{0.1, \dots, 0.9\}
+\end{equation}
+
+
+\subsection{OOD Detection}
+The OOD detection task can be viewed as a binary classification task. We assign class 1 to ID data and class 0 to OOD data and use the predicted uncertainty values as scores, based on which we want to distinguish between ID and OOD data. This enables to compute UE metrics using, for instance, the area under the receiver operating characteristic curve (AUC-ROC). We obtain numbers in [0,1], where higher values indicate better performance. For the MC-Dropout and the ensemble methods, we use the variance of the energy samples as the uncertainty estimate corresponding to the energy prediction and the trace of the sample covariance matrix of the forces samples as the uncertainty estimate corresponding to the forces prediction. We found that the trace is more stable than taking the determinant and leads to good results. For the evidential models, we use the analytic variance of the energy prediction, which we can compute in closed form based on the parameters of the evidential distribution, as the uncertainty estimate corresponding to the energy prediction. We don't use any uncertainty estimates for the forces prediction, because there is no obvious way how to do that.

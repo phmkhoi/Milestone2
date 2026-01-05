@@ -1,0 +1,88 @@
+In many applications, one assumes the time-dependent system under consideration satisfies a Markov property; that is, future states of the system are entirely defined from the current state and are independent of the past. In this case, the system is satisfactorily described by an ordinary or a partial differential equation. However, the principle of Markovianity is often only a first approximation to the true situation and a more realistic model would include past states of the system. Describing such systems has fueled the extensive development of the theory of delay differential equations (DDE) \citep{minorksy,Myshkis,Hale1963}. This development has given rise to many practical applications: in the modelling of molecular kinetics \citep{Roussel1996} as well as for diffusion processes \citep{Epstein1990DifferentialDE}, in physics for modeling semiconductor lasers \citep{laser}, in climate research for describing the El Nin\~o current \citep{nino,nino2} and tsunami forecasting \citep{wu2022mining}, to list only a few.
+
+At the same time, the blooming of machine learning in recent years boosted the development of new algorithms aimed at modelling and predicting the behaviour of dynamical systems governing phenomena commonly found in a wide variety of fields ranging from physics to engineering or medicine. Among these novel strategies, the introduction of Neural Ordinary Differential Equations (NODEs) \citep{node} has contributed to further deepening the analysis of continuous dynamical systems modelling based on neural networks. Indeed, NODEs are a family of neural networks that can be seen as the continuous extension of Residual Networks \citep{resnet}, where the dynamics of a vector -- hereafter often identified with the state of a physical system -- $\mathbf{x}(t) \in \mathbb{R}^d$ at time $t$ is given by the parameterized network $\mathbf{f}_{\theta}$:
+%
+\begin{equation}
+\begin{aligned}
+&\frac{d \mathbf{x}(t)}{dt} \equiv \dot{\mathbf{x}}(t) = \mathbf{f}_{\theta}(\mathbf{x}(t),t), \quad \mathbf{x}(0) = \mathbf{x}_0.
+\end{aligned}
+\end{equation}
+%
+NODEs have been successfully applied to various tasks, such as normalizing flows \citep{node_easy_to_solve,free_nf}, handling irregularly sampled time data \citep{latent_ode,kidger_irregular}, and image segmentation \citep{node_image_segmentation}.
+
+\input{paper_sections/possible_delays_table}
+
+
+\subsection{Related works} Starting from this groundbreaking work, numerous extensions of the NODE framework enabled to extend the range of applications; among them, the augmented version, usually referred to as Augmented Neural ODEs (ANODEs) by \cite{dupont2019augmented}, was able to alleviate NODEs' expressivity bottleneck by augmenting the dimension of the space allowing the model to learn more complex functions using simpler flows \citep{dupont2019augmented}. Let $\mathbf{a}(t) \in \mathbb{R}^p$ denotes a point in the augmented space, the ODE problem is formulated as 
+%
+\begin{equation}
+\begin{aligned}
+&\frac{d}{dt}
+\begin{bmatrix} 
+	\mathbf{x}(t)\\
+	\mathbf{a}(t)
+\end{bmatrix} = \mathbf{f}_{\theta} 
+\left( 
+\begin{bmatrix} 
+	\mathbf{x}(t)\\
+	\mathbf{a}(t)
+\end{bmatrix}
+, t \right), \quad 
+\begin{bmatrix} 
+	\mathbf{x}(0)\\
+	\mathbf{a}(0)\\
+\end{bmatrix} = 
+\begin{bmatrix} 
+	\mathbf{x}_0\\
+	\mathbf{0}
+\end{bmatrix}.
+\end{aligned}
+\end{equation} 
+%
+By introducing this new variable $\mathbf{a}(t)$ ANODE overcomes the inability of NODE to represent particular classes. However, this comes with the cost of lifting the data into a higher dimensional space, hence losing its interpretability. Among the techniques proposed for circumventing the limitations rising from the modelling of non-Markovian systems, the Neural Laplace model \citep{neural_laplace} proposes a unified framework that solves differential equations (DE): it learns DE solutions in the Laplace domain. The Neural Laplace model cascades 3 steps: first a network $\mathbf{h}_{\gamma}$ encodes the trajectory, then the so-called Laplace representation network $\mathbf{g}_{\beta}$ learns the dynamics in the Laplace domain to finally map it back to the temporal domain with an inverse Laplace transform (ILT). With the state $\mathbf{x}$ sampled $T$ times at arbitrary time instants, $\mathbf{h}_{\gamma}$ gives a latent initial condition representation vector $\mathbf{p} \in \mathbb{R}^K$:
+%
+\begin{equation}
+\begin{aligned}
+& \mathbf{p} = \mathbf{h}_{\gamma}((\mathbf{x}(t_1), t_1), \dots, (\mathbf{x}(t_T), t_T)),
+\end{aligned}
+\end{equation}
+%
+that is fed to the network $\mathbf{g}_{\beta}$ to get the Laplace transform 
+%
+\begin{equation}
+\begin{aligned}
+& \mathbf{F}(\mathbf{s}) = v\left( \mathbf{g}_{\beta}(\mathbf{p}, u(\mathbf{s})) \right),
+\end{aligned}
+\end{equation}
+%
+with $u$ a stereographic projector and $v$ its inverse. Ultimately, an ILT step is applied to reconstruct state $\widehat{\mathbf{x}}$ from the learnt $\mathbf{F}(\mathbf{s})$. 
+
+
+\subsection{Delay differential equations through neural networks and present work} 
+
+In alternative to the aforementioned techniques, one may directly attack the DDE problem by working within the framework of neural network-based DDEs. Despite the success of the NODEs philosophy, the extension to DDEs has barely been studied yet, possibly owing to the challenges in applying backpropagation through DDE solvers due to the discontinuities. Very recently, \cite{first_neural_dde} first introduced a neural network based DDE with one single constant delay:
+%
+\begin{equation}
+\begin{aligned}
+& \dot{\mathbf{x}}(t) = \mathbf{f}_{\theta}(t, \mathbf{x}(t), \mathbf{x}(t-\tau)), \quad \tau \in \mathbb{R} \\
+& \mathbf{x}(t<0) = \mathbf{\phi}(t),
+\end{aligned}
+\label{eqn:first_neural_dde}
+\end{equation}
+%
+where $\phi(t)$ is the system's history function, $\tau$ a constant delay and $ \mathbf{f}_{\theta}$ a parameterized network. Soon after, the same authors proposed Neural Piece-Wise Constant Delays Differential Equations (NPCDDEs) model in \cite{neural_piece_wise_dde}, where the problem is defined as 
+%
+\begin{equation}
+\begin{aligned}
+&\dot{\mathbf{x}}(t) = \mathbf{f}_{\theta_{k}}(t, \mathbf{x}(t), \mathbf{x}(t-\lfloor \frac{t-\beta_1}{\beta_1} \rfloor \beta_1),\dots,  \mathbf{x}(t-\lfloor \frac{t-\beta_k}{\beta_k} \rfloor \beta_k), \quad 
+\\
+& \mathbf{x}(t<0) = \mathbf{\phi}(t), \quad \forall i \in \{1, 2, \ldots, k\}, \, \beta_i \in \mathbb{R}.
+\end{aligned}
+\label{eqn:npcddes}
+\end{equation}
+%
+Compared to NODE and its augmented counterpart, neural network-based DDEs do not require an augmentation to a higher dimensional space in order to be a universal approximator, thus preserving physical interpretability of the state vector and allowing the detection of the time delays. Nonetheless, the current declination of Neural DDE models only deals with a single constant delay or several piece-wise constant delays, thus lacking generalization since it does not handle arbitrary delays. Moreover, to the best of our knowledge, no machine learning library or open-sourced code exists to model not only these very specific types of DDEs but also any generic DDEs. 
+
+In this work, we introduce Neural State-Dependent DDE (SDDDE) model: an open-source, robust python DDE solver \footnote{Release of DDE solver and code will be made public once published}. Neural SDDDE is written in JAX (which is auto-differentiable and hardware agnostic) and is based on a general framework that pushes the envelope of Neural DDEs by handling DDEs with several delays in a more generic way. The implementation further encompasses general time- and state-dependent delay systems which extends the reach of \cite{neural_piece_wise_dde}. 
+
+In the remainder of the paper, we briefly introduce the framework in \S{}\ref{sec:dde}, together with a brief overview of the algorithms. Implementation and methodologies are further discussed in \S{}\ref{sec:methods}. Experiments and comparisons with the state-of-the-art techniques are detailed in \ref{sec:experiments}, using as benchmark numerous time-delayed models of incremental complexity. Our solver is shown below to compare favorably with the current models on DDEs systems. Conclusions and outlook finalize the article in \S{}\ref{sec:conclusions}.

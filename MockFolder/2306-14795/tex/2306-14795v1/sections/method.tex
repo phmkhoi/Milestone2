@@ -1,0 +1,98 @@
+\section{Method}
+\label{method}
+To involve large language data and models in the motion generation tasks, we propose a unified motion-language framework named MotionGPT. As illustrated in \cref{fig:pipeline}, MotionGPT consists of a motion tokenizer responsible for converting raw motion data into discrete motion tokens (\cref{sec:method:vqvae}), as well as a motion-aware language model that learns to understand the motion tokens from large language pre-training \ct{models} by corresponding textual descriptions (\cref{sec:method:lm}). To address motion-relevant tasks, we introduce a three-stage training scheme (\cref{sec:method: strategy}) of MotionGPT for the training of motion tokenizer, motion-language pre-training, and instruction tuning.
+
+We first propose the motion tokenizer consisting of a motion encoder $\mathcal{E}$ and a motion decoder $\mathcal{D}$, to encode a $M$ frame motion ${m}^{1:M}=\{{x}^i\}_{i=1}^{M}$ into $L$ motion tokens ${z}^{1:L}=\{{z}^i\}_{i=1}^{L}, L=M/l$, and decode ${z}^{1:L}$ back into the motion $\hat{m}^{1:M} = \mathcal{D}(z^{1:L}) = \mathcal{D}(\mathcal{E}(m^{1:M}))$, where $l$ denotes the temporal downsampling rate on motion length. Then, given an $N$ length sentence ${w}^{1:N}=\{w^i\}_{i=1}^{N}$ describing a motion-related question or demand, MotionGPT aims to generate its answer as $L$ length tokens $\hat{x}^{1:L}=\{\hat{x}^i\}_{i=1}^{L}$. It could be the human motion tokens $\hat{x}_m^{1:L}$ or the text tokens $\hat{x}_t^{1:L}$, which results in a motion ${\hat{m}}^{1:M}$ or a sentence $\hat{{w}}^{1:L}$
+%
+like a description of the given motion.
+
+\subsection{Motion Tokenizer}
+\label{sec:method:vqvae}
+
+To represent motion in discrete tokens, we pre-train a 3D human motion tokenizer $\mathcal{V}$ based on the Vector Quantized Variational Autoencoders (VQ-VAE) architecture used in \cite{van2017vqvae,siyao2022bailando,chuan2022tm2t,zhang2023generating}. 
+%
+Our motion tokenizer consists of an encoder $\mathcal{E}$ and a decoder $\mathcal{D}$. The encoder generates discrete motion tokens with high informative density, while the decoder is able to reconstruct the motion tokens into motion sequences $\hat{m}^{1:M}$. This approach enables us to efficiently represent motion as a language, facilitating the integration of motion and language for various motion-related tasks.
+
+% encoder, decoder
+Specifically, the motion encoder $\mathcal{E}$ first applies 1D convolutions to given frame-wise motion features $m^{1:M}$ along the time dimension, to obtain latent vectors $\hat{z}^{1:L}=\mathcal{E}(m^{1:M})$. 
+%
+Next, we transform $\hat{z}$ into a collection of codebook entries $z$ through discrete quantization. The learnable codebook $Z=\{{z}^i\}_{i=1}^{K} \subset \mathbb{R}^{d}$ consists of $K$ latent embedding vectors, each of dimension $d$. The process of quantization $Q(\cdot)$ replaces each row vector $b$ with its nearest codebook entry $b_k$ in $Z$, written as 
+\begin{equation}
+z_i=Q(\hat{z}^i):={\arg \min }_{z_k \in Z}\left\|\hat{z_i}-z_k\right\|_2.
+\end{equation}
+After quantization, the motion decoder $D$ project ${z}^{1:L}=\{{z}^i\}_{i=1}^{L}$ back to raw motion space as the motion $\hat{m}^{1:M}$ with $M$ frames. 
+%
+To train this motion tokenizer, we follow \cite{chuan2022tm2t,zhang2023generating} to utilize three distinct loss functions for training and optimizing the motion tokenizer: $ \mathcal{L}_\mathcal{V} = \mathcal{L}_{r} + \mathcal{L}_{e} + \mathcal{L}_{c}\label{eq:loss:vq},$ where the reconstruction loss $\mathcal{L}_{r}$, the embedding loss $\mathcal{L}_{e}$, and the commitment loss $\mathcal{L}_{c}$. To further improve the generated motion quality, we follow \cite{zhang2023generating} to utilize L1 smooth loss and velocity regularization in the reconstruction loss, as well as exponential moving average (EMA) and codebook reset techniques~\cite{razavi2019vqvae2} to enhance codebook utilization during training. We provide more details about the architecture and the training of our motion tokenizer in the supplement.
+% \begin{equation}
+    
+\subsection{Motion-aware Language Model}
+\label{sec:method:lm}
+\iffalse
+    1 diffusion in latent space
+    2 Loss in latent z
+\fi
+Employing this motion tokenizer, a human motion $m^{1:M}$ can be mapped to a sequence of motion tokens $z^{1:L}$, allowing for joint representation with similar vocabulary embedding in language models~\cite{kudo2018sentencepiece,raffel2020t5,ouyang2022instructgpt}. By combining them in the unified vocabulary, we then learn motion and language jointly. 
+%
+% unified vocabulary
+We first represent motion tokens $z^{1:L}$ as a sequence of indices ${s}^{1:L}=\{{s}^i\}_{i=1}^{L}$, where ${s}^i$ corresponds to the index number of motion tokens ${z}^{1:L}$. On the other hand, previous language models, such as T5~\cite{raffel2020t5}, encode text as WordPiece tokens. They utilized a vocabulary of $K_t$ word pieces and trained the SentencePiece~\cite{kudo2018sentencepiece} model on a mixture of language datasets.
+
+Most previous text-to-motion~\cite{chuan2022tm2t, chen2023mld, zhang2023generating} or motion-to-text~\cite{chuan2022tm2t} approaches employ different modules to handle text and motion individually, while we aim to model text and human motion \ct{together and in the same way.} 
+%
+To achieve this, we combine the original text vocabulary $V_t=\{{v}_t^i\}_{i=1}^{K_t}$ with motion vocabulary $V_m=\{{v}_m^i\}_{i=1}^{K_m}$, which is order-preserving to our motion codebook $Z$. 
+Moreover, $V_m$ includes several special tokens like boundary indicators, for example, \textcolor{orange}{</som>} and \textcolor{orange}{</eom>} as the start and end of the motion.
+%
+Thus, we employ a new unified text-motion vocabulary $V = \{V_t, V_m\}$, and can formulate diverse motion-related tasks in a general format, where both input "words" and output "words" are from the same $V$.
+%
+These "words" can represent natural language, human motion, or even a mixture of two, depending on the specific task to be solved.
+%
+Therefore, our MotionGPT allows for the flexible representation and generation of diverse motion-related outputs within a single model.
+
+% "text" as context or conditioning and is tasked with producing an output "text." Here, the term "text" refers to an item within the unified vocabulary $V$, 
+
+To address the conditioned generation task, we employ a transformer-based model based on the architecture proposed in \cite{raffel2020t5}, which effectively maps the input sequences to the output.
+%
+Our source input consists of a sequence of tokens ${X_s}=\{{x_s}^i\}_{i=1}^{N}$, where $x_s\in V$ and $N$ represents the input length. Similarly, the target output is ${X_t}=\{{x_t}^i\}_{i=1}^{L}$, where $x_t\in V$ and $L$ denotes the output length.
+%
+As shown in \cref{fig:pipeline}, the source tokens are fed into the transformer encoder, and the subsequent decoder predicts the probability distribution of the potential next token at each step $p_\theta(x_t \mid x_s)=\prod_i p_\theta\left(x_t^i \mid x_t^{<i}, x_s\right)$ in an autoregressive manner. Therefore, during the training process, the objective is to maximize the log-likelihood of the data distribution:
+\begin{equation}
+    \mathcal{L}_{LM}=-\sum_{i=0}^{L_t-1} \log p_\theta\left(x_t^i \mid x_t^{<i}, x_s\right) .
+    \label{eq:loss:lm}
+\end{equation}
+By optimizing this objective, MotionGPT learns to capture the underlying patterns and relationships from the data distribution, facilitating the accurate and meaningful generation of the target "words".
+% infer
+During the inference process, the target tokens are sampled recursively from the predicted distribution $p_\theta\left(\hat{x_t}^i \mid \hat{x_t}^{<i}, x_s\right)$ until the end token (i.e., \textcolor{NavyBlue}{</s>}). This sampling strategy enables the generation of the target sequence in a step-by-step manner, where each token is probabilistically determined based on the previously generated tokens and the given source input.
+
+
+\subsection{Training Strategy}
+\label{sec:method: strategy}
+Since T5s have only been exposed to language data, represented within a text vocabulary $V_t$, we thus bridge motion and language and enable this language model to comprehend human motion concepts, by learning the motion vocabulary $V_m$. As shown in \cref{fig:training}, our training scheme includes three stages: (1) Training of motion tokenizer, which focuses on learning the motion codebook to represent human motion as discrete tokens. (2) Motion-language pre-training stage, which includes unsupervised and supervised objectives to learn the relationship between motion and language. (3) Instruction tuning stage, \ct{which tunes the model based on} prompt-based instructions for different motion-relevant tasks.
+
+\textbf{Training of Motion Tokenizer.} We first learn the motion tokenizer using the objective defined in Equation \ref{eq:loss:vq}. This training process allows any human motion sequence $\hat{x}^{1:L}$ to be represented as a sequence of motion tokens, enabling seamless integration with textual information. Once optimized, the motion tokenizer remains unchanged throughout the subsequent stages of the pipeline.
+
+\textbf{Motion-language Pre-training Stage.} The T5 models \cite{raffel2020t5,chung2022flant5} are trained and fine-tuned on natural language datasets with instruction-based phrasing \cite{chung2022flant5,ouyang2022instructgpt}. We continue to pre-train this model using a mixture of language and motions data in both unsupervised and supervised manners:
+% unsupervisedç
+1) To generalize to various downstream tasks like~\cite{devlin2018bert,radford2019gpt2,raffel2020t5,ouyang2022instructgpt}, we follow \cite{raffel2020t5} to design an objective, where a certain percentage (15\%) of tokens in the input tokens $X_s$ are randomly replaced with a special sentinel token.
+%
+% The previous language models~\cite{devlin2018bert,radford2019gpt2,raffel2020t5,ouyang2022instructgpt} have demonstrated that employing objectives that do not heavily rely on explicit labels is crucial for imparting generalizable knowledge to the model, which can subsequently be leveraged for various downstream tasks. Motivated by this insight, we follow \cite{raffel2020t5} to design an objective where a certain percentage (15\%) of tokens in the input sequence $X_s$ are randomly replaced with a special sentinel token. 
+%
+On the other side, the corresponding target sequence is constructed by extracting the dropped-out spans of tokens, delimited by the same sentinel tokens used in the input sequence, along with an additional sentinel token to indicate the end of the target sequence.
+% supervised
+2) We then learn the motion-language relation by the supervision of paired text-motion datasets \cite{Guo_2022_CVPR_humanml3d,Plappert2016kit}. We train MotionGPT on the supervised motion-language translation, where the input is either a human motion or a text description.% and the target is to corresponds results. 
+After unsupervised and supervised training processes, we aim to equip our model with the understanding of text and motion relationships.
+
+\textbf{Instruction Tuning Stage.} We construct a multi-task text-motion dataset by formulating it as instructions, building upon the foundation of existing text-to-motion datasets such as HumanML3D \cite{Guo_2022_CVPR_humanml3d} and KIT \cite{Plappert2016kit}. Specifically, we define 15 core motion tasks, such as motion generation with text, motion captioning, motion prediction, and others. For each task, we compose dozens of different instruction templates, resulting in more than one thousand different tasks, each having a unique instruction prompt.
+%
+For example, an instruction prompt for motion generation task could be ``\textcolor{NavyBlue}{
+Can you generate a motion sequence that depicts `a person emulates the motions of a waltz dance'?}''. Similarly, for the motion captioning task, the instruction prompt could be ``\textcolor{NavyBlue}{Provide an accurate caption describing the motion of \textcolor{orange}{<motion\_tokens>}}'', where \textcolor{orange}{<motion\_tokens>} represents a sequence of motion tokens generated by our motion tokenizer.
+%
+We have demonstrated the efficacy of instruction tuning in \cref{sec:ablation:strategy}, which leads to improvement across various tasks and enhances the model performance for unseen tasks or prompts. More examples of prompts are provided in the supplements.
+% These instruction templates are quite important for our model to understand and generate appropriate motion or text outputs for diverse tasks.
+
+\begin{figure*}[t]
+	\centering
+	\includegraphics[width=\linewidth]{training.pdf}
+\vspace{-18pt}
+\caption{ Training Scheme. We introduce three training steps for our MotionGPT (\cref{sec:method: strategy}): First $\mathcal{V}$ learn a codebook for discrete motion representation. Then we train language using a mixture of language and motion data to learn the semantic coupling between text and motion. Finally, we fine-tune the model in a multi-task text-motion dataset with instructions.}
+	\label{fig:training}
+ \vspace{-15pt}
+\end{figure*}
