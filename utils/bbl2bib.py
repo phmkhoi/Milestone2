@@ -50,7 +50,9 @@ def parse_bbl(bbl_content):
         raw_body = match.group(2).strip()
         
         raw_body_flat = raw_body.replace('\n', ' ').replace('\r', ' ')
+        
         blocks = re.split(r'\\newblock', raw_body_flat)
+        
         if not blocks:
             continue
         blocks = [b.strip() for b in blocks if b.strip()]
@@ -125,10 +127,10 @@ def parse_bbl(bbl_content):
                 fields['journal'] = source_name
 
         elif fields.get('pages'):
-             ENTRYTYPE = "article"
-             remaining = clean_text(info_text)
-             if remaining and len(remaining) > 3: 
-                 fields['journal'] = remaining
+            ENTRYTYPE = "article"
+            remaining = clean_text(info_text)
+            if remaining and len(remaining) > 3: 
+                fields['journal'] = remaining
 
         if key == "Mat":
             ENTRYTYPE = "misc"
@@ -170,13 +172,13 @@ def read_bibs_in_dir(dir_path: str):
 
 
 def deduplicate_reference(results: list[str], folder_path:str) -> list[dict]:
-    title_map = {obj['title']: obj for obj in results[0]}
-    ID_map = {obj['ID']: obj for obj in results[0]}
+    title_map = {str(obj['title']): obj for obj in results[0]}
+    ID_map = {str(obj['ID']): obj for obj in results[0]}
         
     for i in range(1, len(results)):
         for j in range(len(results[i])):
-            title = results[i][j]['title']
-            ID = results[i][j]['ID']
+            title = str(results[i][j]['title'])
+            ID = str(results[i][j]['ID'])
             #Title trùng thì chắc chắn đúng.
             if title in title_map:
                 for key in results[i][j]:
@@ -211,9 +213,9 @@ def deduplicate_reference(results: list[str], folder_path:str) -> list[dict]:
             year = 0
         
         temp_dict = {
-            'cite_key': fields['ID'].lower(),
-            'authors': fields['author'].lower().strip(),
-            'title': fields['title'].lower().strip(),
+            'cite_key': str(fields['ID']).lower(),
+            'authors': str(fields['author']).lower().strip(),
+            'title': str(fields['title']).lower().strip(),
             'year': int(year),
             'path': folder_path
         }
@@ -258,11 +260,13 @@ def extract_references(folder_path: str) -> None:
         # print(references)
         result = deduplicate_reference(references, folder_path)
         
+        return result
+        
     # for r in result:
     #     if not isinstance(r, dict):
     #         print(f'Error: "{r}"')
     
-    return result
+    return None
 
 def convert_references_to_objects(folder_path: str):
     ref_path = os.path.join(folder_path, 'references.json')
@@ -333,7 +337,7 @@ def get_dataset(folder_path, threshold=0.9, nums=1500):
             # print(f'[ERROR][prepare_dataset]: {os.path.join(path, 'references.json')} Not Existed')
             continue
         
-        print(path)
+        # print(path)
         
         converted_refs, extract_refs = get_reference_objects(path)
         

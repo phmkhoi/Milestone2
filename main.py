@@ -4,14 +4,17 @@ from tqdm import tqdm
 import os
 from utils.feature_engineering import khong_biet_dat_ten_gi
 from models.model import Model
+import logging
 def main_function(folder_path):
+    logger = logging.getLogger('bibtexparser')
+    logger.setLevel(logging.ERROR)
     dirs = os.listdir(folder_path)
 
     # for dir in tqdm(dirs):
     #     path = os.path.join(folder_path, dir)
     #     parse_paper(path)
         
-    entries, refs, tool_groundtruth = get_dataset(folder_path, threshold=0.8, nums=10)
+    entries, refs, tool_groundtruth = get_dataset(folder_path, threshold=0.8, nums=1500)
     entries_train = entries[:-4]
     refs_train = refs[:-4]
     entries_valid = entries[-4:-2]
@@ -30,7 +33,6 @@ def main_function(folder_path):
     print(f'Train Refs = {len(refs_train)}')
     print(f'Test Entries = {len(entries_test)}')
     print(f'Test Refs = {len(refs_test)}')
-    # print(tool_refs[0])
     
     vector_train, ground_truth_train, nothing_train = khong_biet_dat_ten_gi(entries_train, refs_train, tool_groundtruth)
     vector_valid, ground_truth_valid, nothing_valid = khong_biet_dat_ten_gi(entries_valid, refs_valid, tool_groundtruth)
@@ -44,4 +46,4 @@ def main_function(folder_path):
 if __name__ == "__main__":
     folder_path = './23127072/'
     main_function(folder_path)
-    # result = extract_references('./23127072/2306-16149')
+    # result = extract_references('/23127072/2306-16226')
