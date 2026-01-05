@@ -1,0 +1,38 @@
+\section{Experimental setup}\label{sec:setup}
+
+We executed a set of experiments in a controlled environment in order to collect system call logs for the purpose of testing intrusion detection models. In particular, we setup three different Docker container workloads enabling different types of computational loads: (i) data analytics, (ii) media streaming, and (iii) web search application. We exploited the implementations (v3.0) of cloud applications provided in the benchmark suite for cloud services by Cloudsuite \cite{palit-demystifying-cloud-benchmarking}. The provided benchmarks are based on real-world software stacks and represent real-world setups.
+
+Each workload was tested against three scenarios: (i) benign, (ii) malicious with Cryptomining software, (iii) malicious with backdoor and remote control.
+
+For each scenario, multiple experiments were executed; the stream of system calls generated at the hosting machine level were registered for each executed experiment. 1000 experiments were executed for each scenario, for a total of 9000 instances.
+
+Experiments were executed in isolated virtual machines running Ubuntu 20.04 LTS operating system. Docker Engine was used to containerize the selected applications starting from their Docker images \cite{merkel2014docker}.
+
+\subsection{Workloads}
+\subsubsection{Data analytics}
+This workload generates a Hadoop cluster executing a set of data analysis tasks based on the MapReduce framework \cite{dean2008mapreduce}. The cluster includes a single master container running the driver program and multiple slave containers running the mappers and reducers. The tasks executed by the cluster includes: (i) filtering and transformation of the data, (ii)  data aggregation, and (iii) data classification based on Naive Bayes. Each experiment were executed by  selecting randomly the number of slaves (a value between 2 and 6).
+
+\subsubsection{Media streaming}
+This workload generates a Docker cluster including a streaming server and a streaming client. The server container is based on NGINX and hosts several videos of different quality and lengths. The client container, based on httperf, generates a mix of requests for different contents from the server.
+
+\subsubsection{Web search}
+The Web search workload provided by Cloudsuite relies on the Apache Solr search engine framework. It generates a server container running the Apache Solr index node and a client container simulating multiple real-world clients that send requests to the index node.
+
+
+\subsection{Scenarios}
+\subsubsection{Benign}
+In this scenario, the workloads were executed according to the specifications provided by the developers. The docker images were pulled directly from the Cloudsuite repository and locally installed for the execution.
+
+\subsubsection{Malicious with Cryptomining software}
+The benchmark images for the three workloads were injected with malicious code running a cryptomining application. We focused on the Monero cryptomining tool, which has been identified as the main one injected for hidden mining in cloud containers since it uses privacy-enhancing algorithms to provide users' anonymity. The tool is provided in the Docker image, and the mining code is injected in the workload entrypoint so as it is activated as soon as an experiment starts. The mining is performed throughout the all duration of each experiment.
+
+\subsubsection{Malicious with Backdoor and remote control}
+The benchmark images for the three workloads were equipped with a userland rootkit (Evil rabbit \cite{rootkits}) including SO injection capabilities. The rootkit enables the hidden remote management of the container by a malicious third party. The rootkit is provided in the Docker image and activated at the starting of the experiment. A bash script, randomly drawing linux commands from a predefined list, run on a container (which was chosen among the containers running in a workload except the target one) and transmits the commands to the target container for remote control and file transfer.
+
+\subsection{Experiment execution and data collection}
+For each experiment, a VM was started, and all the required packages and Docker images were loaded on the VM. At the beginning of an experiment, a Docker network was instantiated, then all containers required in the workload were created and started. The containers were all connected to the same Docker network. The \emph{perf} tool, which is traditionally installed by default in Unix-like operating systems, was used to record system calls at the hosting VM level \cite{perf}. In particular, we monitored: the master container in the data analytics workload, the NGINX server in the media streaming workload, and the index node container in the web search workload. These containers are the ones that run the malicious code in the corresponding scenarios. Selective monitoring was possible by filtering the system calls based on the container's IDs.
+
+
+
+
+

@@ -1,0 +1,73 @@
+\section{The \benchmark{} Benchmark}
+\label{sec:benchmark}
+
+
+\subsection{Formulation}
+\label{sec:benchmark:formulation}
+
+The \benchmark{} benchmark formalizes interactive coding with execution feedback as a partially observable Markov decision process (POMDP) $(\mathcal{U}, \mathcal{S}, \mathcal{A}, \mathcal{O}, \mathcal{T}, \mathcal{R})$ with instruction space $\mathcal{U}$, state space $\mathcal{S}$, action space $\mathcal{A}$, observation space $\mathcal{O}$, transition function $\mathcal{T}: \mathcal{S} \times \mathcal{A} \to \mathcal{S}$, and reward function $\mathcal{R}: \mathcal{S} \times \mathcal{A} \to [0, 1]$.
+Given a  coding instruction $u \in \mathcal{U}$ in natural language, an agent issues code or a special \texttt{submit} keyword as an action $a_t \in \mathcal{A}$.
+An action is \textit{admissible}~\cite{yao2020calm} if it can be parsed and executed in the compiler/interpreter environment, and an admissible action incurs a change in the latent state space $s_{t+1} \in \mathcal{S}$, and an execution feedback as observation $o_{t+1} \in \mathcal{O}$.
+The interaction loop repeats until the \texttt{submit} action is issued, wherein the task episode ends and a reward $r = \mathcal{R}(s_T, \texttt{submit}) \in [0, 1]$ is computed, with $1$ representing task completion. 
+We use the \textbf{Success Rate (SR)} metric, defined as the proportion of task episodes where $r = 1$.
+We also define the \textbf{Error \%} metric, which is the percentage of \textit{non} admissible actions across  task episodes.
+
+
+
+\subsection{Construction pipeline}
+\label{sec:benchmark:construct_pipeline}
+At a high level, \benchmark{} decomposes the construction of an interactive coding task into three \textbf{modular} parts: (1) environment construction, (2) data collection, and (3) reward design.
+This workflow allows for the safe execution of transition functions, flexible reward design, and convenient adaptation of existing instructions to an interactive setting.
+
+\textbf{Docker-based environments.}
+\benchmark{} uses Docker~\cite{merkel2014docker} virtual containers as a general-purpose execution sandbox.
+Given a \texttt{Dockerfile} that defines a system and execution entrypoint, \benchmark{} creates a corresponding, stateful virtual container that hosts the desired state space and transition function.
+We choose Docker as the basis of \benchmark{}'s environment construction for its safe execution in virtual containers, reproducibility of a \texttt{Dockerfile} across any Docker-equipped machine, and excellent coverage of application code, libraries, and dependencies offered by the \texttt{Dockerfile} DSL.
+
+\textbf{Data collection.}
+\benchmark{} requires that a dataset has at minimum two fields: \texttt{query}, a natural language instruction $u \in \mathcal{U}$, and \texttt{gold}, an answer or code block that is a procedure for generating the correct answer.
+We define these conditions to make it easy to adapt existing text-to-code datasets to an interactive setting while also leaving plenty of bandwidth for constructing new tasks and datasets.
+
+\textbf{Reward design.}
+Across a single task episode, the action, observation, and state modification (if any) per interaction loop are implicitly logged by \benchmark{}.
+\benchmark{}'s default reward function determines task completion via an exact match of the agent's execution output (observation and state modifications) against the gold command, where $1$ is awarded only if all components match.
+Since Exact Match is usually too stringent of an evaluation criteria, \benchmark{} exposes a reward function endpoint that has access to both the interaction history and the execution container, allowing for custom reward function definitions that can incorporate multiple signals.
+
+\subsection{Implementations}
+\label{sec:benchmark:ic_envs}
+
+Following the procedure discussed in Section~\ref{sec:benchmark:construct_pipeline}, we create two separate \benchmark{} based environments where Bash and SQL are the action spaces respectively. Table~\ref{table:env-compare} summarizes them.
+
+\input{figures/tables/methods-env-compare}
+
+\textbf{InterCode-Bash.} We define a \texttt{bash} shell within an Ubuntu Operating System as the task setting.
+To evaluate an agent's ability to adapt generations to different situations, we architect four distinct file systems that can be swapped into the Bash environment by changing a single line in the \texttt{Dockerfile}.
+
+We bootstrap the NL2Bash~\cite{lin-etal-2018-nl2bash} dataset (which lacks specificity in queries and grounding to any underlying file system, preventing it from being used directly for interactive evaluations) to create an interactive coding task where an agent completes an instruction via \texttt{bash} actions. Transferring NL2Bash to the interactive task setting requires simple transformations to ground instructions and \texttt{gold} code blocks in the file system. First, we consider a subset of 1000 commands with each having $\geq$ 4 utilities. We then filter out commands that are non-UNIX, non-Linux, or use utilities we currently do not support (eg. "ssh", "sudo", time, and GUI-dependent utilities). Finally, we enhance under-specified commands with specific file names/directory names/paths and update deprecated utilities/flags. The resulting 200 commands are grouped into 4 disjoint sets, 3 of which were grounded to custom-designed file systems, while one set is file-system agnostic. This categorization allows for a comprehensive evaluation of different command-grounding scenarios.
+
+The \benchmark{}-Bash dataset instructions typically make one or both of the following two types of requests. It either
+1. Requests information that can be answered via execution output (i.e. "How many files...", "What is the size of...", "Where is \texttt{<file>} stored?") or
+2. Requests a change to the location/configuration/content of a file or folder (i.e. "Move \texttt{dir1} folder...", "Set permissions of...", "Append a line to...").
+Therefore, we define a custom reward function that evaluates an agent's performance against file system modifications and the latest execution output.
+Execution output is graded with a simple lexical similarity function.
+File system assessment is done in two parts. First, a comparison of the agent's and \texttt{gold} command's list of file system changes (list of \texttt{[path, modification type $\in$ [added, changed, deleted]]} entries) reveals any extraneous or missing changes.
+Second, \texttt{md5sum} hashes of each commonly edited file path are compared to determine if an added or changed file was altered correctly.
+A max score of 1 is achieved only if the correct file paths are changed, the changes are correct, and the latest execution output matches the gold command output exactly. Additional Bash statistics and design details are discussed in \S~\ref{appx:env:bashenv}.
+
+\textbf{InterCode-SQL.} We write a \texttt{Dockerfile} that defines a SQL interpreter within a MySQL database as the task setting.
+To create the databases and tables necessary for the task dataset, we write type resolution scripts and perform database conversions using the \texttt{sqlite3mysql}~\cite{sqlite3mysql} Python library to adapt the Spider~\cite{yu-etal-2018-spider} database and table schema to a MySQL format.
+We then consolidate all setup code into a single, unified MySQL \texttt{.sql} dump that contains the complete set of schemas for all tables across 20 different databases.
+On container start-up, this file is invoked automatically, creating and populating databases with tables and tables with records.
+
+The Spider~\cite{yu-etal-2018-spider} dataset is a large-scale cross-domain dataset originally meant for evaluating SQL query generations from natural language questions. We adapt the development set, which contains $1034$ task instances, and remove all extraneous columns aside from the natural language questions and gold SQL command. The \texttt{instruction} and \texttt{gold} values do not require any additional pre-processing to be compatible with the MySQL task environment.
+
+Finally, we employ Intersection over Union (\textit{IoU}), or more formally the Jaccard Index, to quantify the correctness of the latest execution output generated by the agent against the gold output, where both outputs are a list of records.
+A non-tabular execution output receives a reward of 0 by default.
+Among the items that lie in the intersection of the agent and gold execution outputs, we also apply a penalty if the records are in the incorrect order.
+To quantify how sorted the agent output is relative to the gold output, we lean on Kendall’s $\tau$ and adjust the output range to $[0, 1]$. The \textit{IoU} score is then directly scaled by this coefficient. All in all, only a correctly ordered list with the exact set of records found in the gold output receives a score of 1.
+Visualizations like Figure~\ref{fig:preview} for SQL along with a more extensive implementation discussion for this environment are in \S~\ref{appx:env:sqlenv}
+
+\textbf{Validations.}
+To verify the functionality of action execution in the task environment and the correctness of custom reward functions, we write testing scripts for both Bash and SQL that pass the gold command in as a dummy agent's action to ensure that the command is admissible and executes without error, and to verify that the reward received by the command is $1$.
+To confirm that \benchmark{}'s dataset specification is enforced across multiple accepted file formats, we define a custom \benchmark{} data loader class which is then rigorously unit tested.
+

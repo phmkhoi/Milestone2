@@ -1,0 +1,754 @@
+In this section, we evaluate the current prototype implementation of LM4HPC through experiments designed to generate leaderboards for three representative tasks: Code Similarity Analysis, Parallelism Detection, and OpenMP Question Answering. \ourwork utilizes LangChain v0.0.174, \face's transformers v4.29.0 and datasets v2.12.0 as our runtime libraries. 
+%The models and datasets used for evaluation are loaded from the local SSD drive or \face . 
+Details of the models and datasets will be discussed in subsequent subsections.
+
+%\subsection{Hardware and Software Configuration}
+%In this section, we conduct evaluations of the results from HPC inference tasks, generated using HPC-FAIR APIs. 
+Our experiments were conducted on two machines: 1) a Google Colab VM with a 6-core Xeon processor operating at 2.20GHz, 83.5 GB main memory, 166GB HDD drive, and an NVIDIA A100 GPU with 40 GB memory. 2) a Dell workstation equipped with a dual Intel Xeon 6238 CPU operating at 2.10GHz, 128 GB main memory, 1TB SSD drive, and an NVIDIA Quadro RTX 6000 GPU with 24GB memory.  The majority of our experiments were run on the Google Colab machine to leverage its superior GPU memory. However, we encountered difficulties running Cerebras-GPT on the Colab machine and were compelled to use the Dell workstation with larger CPU memory instead. 
+ % The system runs on Red Hat Enterprise Linux 8 OS with CUDA 12.0 installed.  
+ 
+%\todo{\textcolor{blue}{added google colab }faithfully list all machines we used and why a single machine cannot run them all. This can be mentioned in conclusion as a challenge to run models}
+%\todo{\textcolor{blue}{added StarCoder; we don't have time for LLaMA }add two more models: StarCoder and LLaMA into the results tables}
+
+
+
+% For specialized tasks, such as parallelism detection, out-of-the-box models typically underperform. To address this, we have integrated models from previous research into HPC-FAIR. We will discuss these additions in the following sections.
+%\todo{Mention model parameter sizes, temperature used, memory footprints, etc. in the table or text}
+
+% \todo[author=Le, color=green]{add model parameters for each model; input and output of the model}
+% \todo{Merge some large language models of this table into Table 1. This table should only contain additional smaller models for evaluation.}
+% \begin{table}[h]
+% \caption{Models used in the evaluation. For LLM model, we mark the parameter size used for evaluation. }
+% \label{tab:eval-models}
+% \begin{tabular}{c|cccc}
+% \hline
+% Model Type           & Model Name   & temperature & application             & pre-trained with code data? \\ \hline
+% \multirow{2}{*}{LM}  & Codebert    &  & code specified & Yes                         \\ \cline{2-4} 
+%                      & GraphCodeBert    & & code specified    & Yes                         \\ \hline
+% \multirow{3}{*}{LLM} & ChatGPT 3.5 - 175B &0.7 & general text generation & Yes                         \\ \cline{2-4} 
+%                      & LLaMA - 13B   &     & general text generation & No                          \\ \cline{2-4} 
+%                      & Dolly 2.0 - 12B  &  & general text generation & No                          \\ \hline
+% \end{tabular}
+% \end{table}
+
+% \subsection{Datasets}
+% \todo{In the approach section, we also have the datasets subsection to introduce HPC specific datasets we are adding. So most text about our own datasets should be moved there. This Preliminary result section should be very brief, just introducing other datasets and referring to our own datasets. }
+% In this section, we introduce the datasets used in the evaluation experiments for our HPC-FAIR framework. Datasets can be stored either on the \face hub or locally. HPC-FAIR, inheriting from \face, provides APIs for loading data from the hub using \face dataset identifiers or loading locally stored data by passing the dataset path.
+
+% \textbf{POJ-104 dataset}~\cite{dataset:poj104} is derived from a pedagogical programming open judge (OJ) system that automatically evaluates the validity of submitted source code for specific problems by executing the code. This dataset is particularly useful for the code similarity task, as it consists of 104 problems, each accompanied by 500 student-written C/C++ programs that provide solutions to the respective problem.
+
+% \textbf{DRB-ML-Dataset} is an OpenMP dataset, derived from \textbf{DataRaceBench}~\cite{dataset:dataracebench}, which contains 658 C /C++ OpenMP kernels.
+% \textbf{DataRaceBench}~\cite{dataset:dataracebench} is an open-source benchmark suite developed to systematically and quantitatively evaluate the effectiveness of data race detection tools. DataRaceBench (DRB) focuses on parallel programs written in OpenMP and includes a set of micro-benchmark programs with or without data races to enable support for data race tool evaluation. The micro-benchmarks in DRB come from three main sources: manually written, extracted from real scientific applications, or automatically generated optimization variants.
+
+%\todo[]{add dataset statistics table showing category and number of Qs in each category as well as examples \textcolor{blue}{this is done within the dataset part in the approach section}}
+% \textbf{\crawldata} is an open-source benchmark composed of data from three resources: code crawled from GitHub, the OpenMP benchmark, and synthetic code. The design of the \crawldata dataset focuses on loops that can be parallelized with OpenMP. Each loop in the dataset is given a label indicating whether it is parallel and, if parallelizable, the corresponding OpenMP directive associated with the loop.
+%\todo{Let's consistently use OpenMPQA as the name of the dataset, underscore in name is a bad choice for typing. \textcolor{blue}{We are using OMPQA right now}}
+% \textbf{OMPQA} is created in this work for evaluating LLM models. We aim to create a comprehensive, diverse and balanced dataset and keep the following key principles to keep in mind while creating an OpenMP Q\&A dataset:
+% \begin{enumerate}
+%     \item Diversity of Topics: Include questions covering a wide range of topics related to OpenMP such as its basic syntax, data sharing, task scheduling, memory model, environment variables, thread affinity, synchronization, nested parallelism, and performance tuning. This will ensure that the model is trained on a diverse set of topics.
+%     \item Multiple Difficulty Levels: The dataset should contain questions of varying difficulty levels, from beginner to advanced. This will make the model more adaptable in dealing with a wide range of queries, from basic to highly technical.
+%     \item Different Types of Questions: Include a mix of "what is" (definition), "how to" (process), "why" (reasoning), and "which" (selection) questions. This variation will help the model recognize and correctly respond to different types of queries.
+%     \item Real-world Problems: Include questions that are based on real-world problems or scenarios. These could be drawn from forums, textbooks, or academic papers. Real-world scenarios often involve complex, multi-faceted problems that challenge the model to synthesize information from different areas of knowledge.
+%     \item Balanced Positive and Negative Examples: In addition to correct answers, also include incorrect ones (marked as such) to help the model learn what constitutes an incorrect response.
+%     \item Data Privacy: The dataset should not contain any personally identifiable information or sensitive data. Ensure all data is anonymized and complies with relevant data protection laws and regulations.
+% \end{enumerate}
+
+%\todo{TODO: a table of question categories and sample Q\&A \textcolor{blue}{this is done within the dataset part in the approach section}}
+
+% \begin{table}[h]
+% \centering
+% \begin{tabular}{|c|p{1in}|p{3in}|}
+% \hline
+%  Category &  Description & Examples    \\
+% \hline
+%  Basics& OpenMP concepts, quiz &  \\
+% \hline
+% Examples & example OpenMP code snippets & Give an example OpenMP code for computing PI  \\
+% \hline
+% Compilers & available OpenMP compilers, usage, internals &  \\
+% \hline
+%  Benchmarks & Available benchmarks, knowledge about individual benchmarks & What open-source benchmarks are available for measuring performance of OpenMP compilers? What benchmarks are available for evaluating data race detection tools?   \\
+% \hline 
+% \end{tabular}
+% \caption{Categories of OpenMP Questions, with examples and Answers}
+% % current collection of Q&A
+% % https://docs.google.com/spreadsheets/d/1dqsd2v_lcRyLv8XiLIy00E_ezBiaivcSjZrMDqFeu_w/edit#gid=0
+% \label{tab-omp-qa}
+% \end{table}
+%\todo{To lin: please add 10 Clang/LLVM compiler related questions}
+
+%\todo{What is the common name for this task: Code similarity vs. Similarity Analysis vs. something else?  Please cite some previous paper and define the task when first mentioning this task name in Approach section, and in this Results section, we don't need to re-define the tasks. We just present results. \textit{similarity checking}}
+\subsection{Code Similarity Analysis}
+% \textbf{Task definition.}
+% The definition of code similarity varies for different applications and datasets. As mentioned in section 3.2. The POJ-104 dataset defines similarity as code equivalent in functional. We process the POJ-104 dataset into tuples, in which each pair of code are assigned a label for similarity 
+The code similarity task is designed to measure the syntactic and/or semantic similarity between two code snippets. Such analysis information can be beneficial in various scenarios such as plagiarism detection, code reuse and refactoring, bug detection and repair, licensing compliance, malware detection, and so on.
+%The concept of code similarity can take on various forms depending on the specific application and dataset. 
+% The code similarity task is designed to measure the semantic similarity between two code snippets. By evaluating the semantic relationship between the input code pair, the task aims to determine whether the codes share similar functionality or not. This task is formulated as a binary classification problem, with the output indicating whether the two code snippets are semantically similar (1) or not (0).
+
+% \noindent
+\textbf{Preparing Datasets and Ground Truth.}
+%As mentioned in Section~\ref{sec-approach}, the POJ-104 dataset is a collection of code snippets, each associated with a label representing its specific functionality. To prepare the dataset for code similarity analysis, we first use \ourwork datasets API to load the POJ-104 dataset from the local drive and generate pairs of code snippets. 
+%We use \ourwork datasets API to load 
+Two datasets introduced in Section~\ref{sec-datasets}, POJ-104 and DRB-ML, are loaded through \ourwork's datasets API for this experiment.
+For each pair of code snippets in the POJ-104 dataset, we assign a binary similarity label based on their functional labels.  A similarity label of 1 signifies that the snippet pair shares the same functional label and we assign a similarity score of 1. Otherwise, the label is 0. 
+%Conversely, if the functional labels differ, we assign a similarity label of 0, denoting that the code snippets are functionally distinct or 'dissimilar'. 
+We have processed the DRB-ML dataset using a similar methodology to generate code pairs and labels. The main difference is that the similarity ground truth for DRB-ML is derived from its own similarity score table~\cite{chen2022early}, providing a precise and reliable similarity measurement between code snippets in the dataset.
+%It's noteworthy that the DRB-ML dataset is unbalanced after processing with its similarity loop-up table. With various metrics provided by \ourwork evaluator API, we strategically pick different metrics for evaluations with the two datasets. 
+
+%\todo[]{add evaluation in listing 1}
+\textbf{Inference Experiments and Evaluation.}
+%For the rapid deployment of state-of-the-art models for the code similarity task, 
+We employ \ourwork's code similarity pipeline to test various models. 
+%This API enables users to effortlessly obtain inference results for input data using either the default model or a user-specified model that the pipeline supports.  
+%\todo{\textcolor{blue}{added }Mention temperature settings as needed in the text}
+The default model for this pipeline is CodeBERT. We additionally select four models from Table \ref{tab-modelExample} for evaluation: GraphCodeBERT, gpt-3.5-turbo, Dolly 2.0 (12B), and Cerebras-GPT (13B). 
+We set the maximum token length for the model output to 256. This limits the verbosity of the model and keeps its responses concise. Additionally, we set the temperature parameter to 0 when applicable. For models like Dolly 2.0 that require positive temperature, we set the temperature to be $1\times 10^{-6}$. This setting ensures that the model's responses are consistent and deterministic, minimizing variability and uncertainty in its output. 
+
+% In \ourwork, the handling of these models within the code similarity pipeline can be divided into two categories. On the one hand, CodeBert and GraphCodeBERT, which are language models specifically devised and trained on a variety of programming languages, are processed by comparing the code embeddings these models generate in order to assess code similarity. On the other hand, models like gpt-3.5-turbo, Dolly, and Cerebras, which are Large Language Models (LLMs) designed for a multitude of tasks and exhibit different parameter sizes and training data diversities, are managed differently. For these models, we directly input the codes as prompts and request answers. We use the default max\_token for each LLM and adjust the temperature to 0.5 for balanced output. This dual approach enables \ourwork to cater to a wide variety of models and tasks efficiently.
+
+Within \ourwork, the approach of processing input code pairs depends on the type of the model employed. 
+% Models like CodeBert and GraphCodeBert, which are specifically devised and trained on a variety of programming languages, directly embed the code pairs and pass to their model to generate a similarity prediction. 
+Models like CodeBert and GraphCodeBert are specifically devised and trained on a variety of programming languages. We directly feed a pair of code snippets to generate a similarity prediction.
+On the other hand, large language models like gpt-3.5-turbo, Dolly 2.0, and Cerebras-GPT are evaluated using the following prompt template: ``Code 1: \{...\} Code 2: \{...\}  Determine whether the two code snippets are similar. If the code snippets are similar, output 1; otherwise, output 0.''.
+
+
+%\todo{\textcolor{yellow}{check embedding of LLMs; added under "Inference Experiments and Evaluation"} Not clear how LMs are used to generate similarity score: did you use questions to ask two code snippets or using their embeddings?}
+%All the models are evaluated using their out-of-the-box configurations, with no specific tuning for the task. 
+
+%\ourwork pipeline API loads models either from the \face model hub by passing the model identifier or from a locally saved checkpoint, as shown in listing \ref{ls:pipepline}. 
+%The output from the pipelines can then be passed to the HPC-FAIR evaluator API. This API provides a quick and efficient means of model evaluation, including generating a leaderboard. % that allows users to compare and assess the performance of various models in a straightforward manner.
+% To quickly deploy the cutting-edge models for the similarity task, users can use the \ourwork pipeline API by passing the model identifier or from locally saved checkpoint as illustrated in listing \ref{ls:pipepline}. The output of the pipelines can be passed to \ourwork evaluator API to generate leaderboard for a quick model evaluation. 
+
+% \noindent
+\textbf{Results.}
+%We have evaluated two language  models and three large languae models for this task. 
+%\todo{\textcolor{blue}{done }fix table ref}
+The Code Similarity Analysis leaderboards generated using the two datasets are shown in Table~\ref{tab:hpctask1}.
+%\todo{\textcolor{blue}{change right table to show F1 only, justifying by saving space}}
+Notably, gpt-3.5-turbo demonstrates superior performance.
+%in comprehending code snippets and comparing code similarity under various definitions. 
+Two other models, StarChat-Alpha and Dolly 2.0, also exhibit commendable performance. 
+Most large language models outperform traditional models (GraphCodeBERT and CodeBERT) that were specifically trained for code analysis. 
+However, Cerebras-GPT struggled to comprehend the code and mostly returned arbitrary word tokens, indicating a lack of effective code understanding since it is mostly designed for natural language processing.
+%\todo{Read Cerebras official tech report or paper: checking if code understanding tasks were used to evaluate it at all. PH please help this.}
+%From these observations, it can be inferred that language models do possess the ability to understand programming languages and compare code similarity. In particular, powerful language models like gpt-3.5-turbo outperform traditional language models and lead the leaderboard for both datasets.
+
+%In general, language models with a greater number of parameters perform better in this task. However, the diversity of the training data is also a crucial factor. Large language models that haven't been trained with code, like Cerebras, struggle with the code similarity checking task, emphasizing the importance of task-specific training data for effective model performance.
+
+
+
+
+
+% HPC-FAIR evaluates the output of each model and generates the leaderboard of models for the similarity checking task. The evaluation results are shown in table \ref{tab:t1-drb}. \todo{What can we learn from the results. A table without explanation is not sufficient for a paper.}
+%\todo{use bold numbers to highlight best scores for each column}
+%\todo{The order of the rows: please consider order the best to the worst models for each tasks. This is how leaderboards usually show things. \textcolor{blue}{fixed}}
+
+
+% \begin{table}[htbp]
+%   \centering
+%   \caption{Leaderboards for Code Similarity Analysis using the POJ-104 dataset (left) and the DRB dataset (right)}
+% \label{tab:t1-drb}
+%   \begin{minipage}{.5\linewidth}
+%     \centering
+% % \caption{Task 1 results with POJ-104 dataset}
+% % \label{tab:t1-poj104}
+% \begin{tabular}{|c|c|c|c|}
+% \hline
+% Model & Precision              & Recall                 & F1                     \\ \hline
+% CodeBERT        & 51.5                   & 59.4                   & 55.2                   \\ \hline
+% GraphCodeBERT   & 52.7                   & 60.3                   & 56.3                   \\ \hline
+% ChatGPT 3.5     & 78.4                   & 74.2                   & 76.2                   \\ \hline
+% Cerebras 13B    & 0                      & 0                      & 0                      \\ \hline
+% Dolly 2.0       & 61.9                   & 61.3                   & 61.6
+%     \\ \hline
+% \end{tabular}
+%   \end{minipage}%
+%   \hspace{-1cm}
+%   \begin{minipage}{.5\linewidth}
+%     \centering
+% % \caption{Task 1 results with DRB dataset}
+% % \label{tab:t1-drb}
+% \begin{tabular}{|c|c|}
+% \hline
+% Model & Accuracy                       \\ \hline
+% CodeBERT        & 84.4                    \\ \hline
+% GraphCodeBERT   & 85.1                             \\ \hline
+% ChatGPT 3.5     & 88.7                          \\ \hline
+% Cerebras 13B    & 0                               \\ \hline
+% Dolly 2.0       & 76.9             
+%     \\ \hline
+% \end{tabular}
+%   \end{minipage}
+% \end{table}
+
+% \setlength{\textfloatsep}{8pt}
+\begin{table}[htbp]
+\caption{Code Similarity Analysis Leaderboard: POJ-104 (left) and DRB-ML (right)}
+\label{tab:hpctask1}
+%  \centering
+\begin{minipage}{.5\linewidth}
+  % \caption{Leaderboard using POJ-104}
+  % \label{tab:t1.1}
+  \begin{tabular}{|c|c|c|c|}
+  \hline
+  \textbf{Model} & \textbf{Precision}              & \textbf{Recall}                 & \textbf{F1}                     \\ \hline
+  \textbf{gpt-3.5-turbo}     & \textbf{78.4}                   & \textbf{74.2}                   & \textbf{76.2}         \\ \hline
+  Dolly 2.0 12B  & 61.9                   & 61.3                   & 61.6                   \\ \hline
+StarChat-Alpha  & 59.4                      & 56.2                      & 57.8            \\ \hline
+GraphCodeBERT   & 52.7                   & 60.3                   & 56.3             \\ \hline
+CodeBERT        & 51.5                   & 59.4                   & 55.2          \\ \hline
+Cerebras-GPT 13B   & 0                      & 0                      & 0              \\ \hline        
+\end{tabular}
+\end{minipage}
+\hspace{0.1cm}
+\begin{minipage}{.5\linewidth}
+  % \caption{Leaderboard using DRB-ML}
+  % \label{tab:t1.2}
+  \begin{tabular}{|c|c|c|c|}
+\hline
+\textbf{Model} & \textbf{Precision}              & \textbf{Recall}                 & \textbf{F1}                     \\ \hline
+\textbf{gpt-3.5-turbo}     & \textbf{82.4}                   & \textbf{81.3}                   & \textbf{81.8}           \\ \hline
+StarChat-Alpha  & 79.6                   & 77.4                   & 78.5                   \\ \hline
+Dolly 2.0 12B  & 74.3                      & 73.2                      & 73.7            \\ \hline
+GraphCodeBERT   & 79.4                   & 77.9                   & 78.6            \\ \hline
+CodeBERT        & 76.9                   & 74.5                   & 75.7          \\ \hline
+Cerebras-GPT 13B    & 0                      & 0                      & 0              \\ \hline            
+\end{tabular}  
+\end{minipage}
+\end{table}
+
+%\begin{table}[htbp]
+%%  \centering
+%\begin{minipage}{.5\linewidth}
+%  \caption{Leaderboards for Code Similarity Analysis: POJ-104 dataset}
+%  \label{tab:t1}
+%%  \centering
+%% \caption{Task 1 results with POJ-104 dataset}
+%% \label{tab:t1-poj104}
+%\begin{tabular}{|c|c|c|c|}
+%\hline
+%Model & Precision              & Recall                 & F1                     \\ \hline
+%\textbf{gpt-3.5-turbo}     & \textbf{78.4}                   & \textbf{74.2}                   & \textbf{76.2}                   \\ %\hline
+%Dolly 2.0 12B  & 61.9                   & 61.3                   & 61.6                   \\ \hline
+%StarChat-Alpha   & 59.4                      & 56.2                      & 57.8            \\ \hline
+%GraphCodeBERT   & 52.7                   & 60.3                   & 56.3             \\ \hline
+%CodeBERT        & 51.5                   & 59.4                   & 55.2          \\ \hline
+%Cerebras-GPT 13B    & 0                      & 0                      & 0              \\ \hline          
+%\end{tabular}
+%\end{minipage}%
+%%  \hspace{-1cm}
+%%   \begin{minipage}{.5\linewidth}
+%%     \centering
+%% % \caption{Task 1 results with DRB dataset}
+%% % \label{tab:t1-drb}
+%% \begin{tabular}{|c|c|}
+%% \hline
+%% Model & Accuracy                       \\ \hline
+%% \textbf{gpt-3.5-turbo}     & \textbf{88.7}                    \\ \hline
+%% GraphCodeBERT   & 85.1                             \\ \hline
+%% CodeBERT        & 84.4                          \\ \hline
+%% Dolly 2.0       & 76.9                           \\ \hline
+%% Cerebras 13B    & 0           
+%%     \\ \hline
+%% \end{tabular}
+%%   \end{minipage}
+%%\end{table}
+%% Model & Accuracy                       \\ \hline
+%% CodeBERT        & 84.4                    \\ \hline
+%% GraphCodeBERT   & 85.1                             \\ \hline
+%% ChatGPT 3.5     & 88.7                          \\ \hline
+%% Cerebras 13B    & 0                               \\ \hline
+%% Dolly 2.0       & 76.9             
+%
+%%\todo{fix table}
+%
+%%\begin{table}[htbp]
+%%  \centering
+%\begin{minipage}{.5\linewidth}
+%  \caption{Leaderboards for Code Similarity Analysis: DRB-ML dataset}
+%\label{tab:t1}
+%%    \centering
+%% \caption{Task 1 results with POJ-104 dataset}
+%% \label{tab:t1-poj104}
+%\begin{tabular}{|c|c|c|c|}
+%\hline
+%Model & Precision              & Recall                 & F1                     \\ \hline
+%\textbf{gpt-3.5-turbo}     & \textbf{82.4}                   & \textbf{81.3}                   & \textbf{81.8}                   \\ %\hline
+%StarChat-Alpha  & 79.6                   & 77.4                   & 78.5                   \\ \hline
+%Dolly 2.0   & 74.3                      & 73.2                      & 73.7            \\ \hline
+%GraphCodeBERT   & 79.4                   & 77.9                   & 78.6            \\ \hline
+%CodeBERT        & 76.9                   & 74.5                   & 75.7          \\ \hline
+%Cerebras-GPT 13B    & 0                      & 0                      & 0              \\ \hline            
+%\end{tabular}
+%\end{minipage}%
+%%  \hspace{-1cm}
+%%   \begin{minipage}{.5\linewidth}
+%%     \centering
+%% % \caption{Task 1 results with DRB dataset}
+%% % \label{tab:t1-drb}
+%% \begin{tabular}{|c|c|}
+%% \hline
+%% Model & Accuracy                       \\ \hline
+%% \textbf{gpt-3.5-turbo}     & \textbf{88.7}                    \\ \hline
+%% GraphCodeBERT   & 85.1                             \\ \hline
+%% CodeBERT        & 84.4                          \\ \hline
+%% Dolly 2.0       & 76.9                           \\ \hline
+%% Cerebras 13B    & 0           
+%%     \\ \hline
+%% \end{tabular}
+%%   \end{minipage}
+%\end{table}
+
+
+
+
+
+
+% \begin{table}[]
+% \centering
+% \caption{Task 1 results with POJ-104 dataset}
+% \label{tab:t1-poj104}
+% \begin{tabular}{|c|c|c|c|}
+% \hline
+% Model-Tokenzier & Precision              & Recall                 & F1                     \\ \hline
+% CodeBERT        & 51.5                   & 59.4                   & 55.2                   \\ \hline
+% GraphCodeBERT   & 52.7                   & 60.3                   & 56.3                   \\ \hline
+% ChatGPT 3.5     & 78.4                   & 74.2                   & 76.2                   \\ \hline
+% Cerebras 13B    & 0                      & 0                      & 0                      \\ \hline
+% Dolly 2.0       & 61.9                   & 61.3                   & 61.6
+%     \\ \hline
+% \end{tabular}
+% \end{table}
+
+
+
+% \begin{table}[]
+% \centering
+% \caption{Task 1 results with DRB dataset}
+% \label{tab:t1-drb}
+% \begin{tabular}{|c|c|}
+% \hline
+% Model-Tokenzier & Accuracy                       \\ \hline
+% CodeBERT        & 84.4                    \\ \hline
+% GraphCodeBERT   & 85.1                             \\ \hline
+% ChatGPT 3.5     & 88.7                          \\ \hline
+% Cerebras 13B    & 0                               \\ \hline
+% Dolly 2.0       & 76.9             
+%     \\ \hline
+% \end{tabular}
+% \end{table}
+%\todo{Please add ranking columns to all leaderboards when possible}
+
+%==================================================================
+\subsection{Parallelism Detection}
+\vspace{-5pt}
+The parallelism detection task aims to identify parallelism opportunities within a given code snippet. We utilized two datasets, \crawldata  and DRB-ML introduced in Section~\ref{sec-datasets}, for the experiment. 
+%Both datasets are created from previous research datasets to follow the format of \face such that it can be operated by \ourwork APIs. \todo{check if cited}
+
+%\todo{\textcolor{blue}{added in listing 2 and explained in text} Some details are missing: need an concrete input and expected output. Does the input code snippet contain enough context information or just functions or loops? \textbf{Put input and output examples} \textit{added in the dataset part}}
+%\todo{\textcolor{yellow}{token limits details not discussed, do we need to put it here? }\textcolor{blue}{explained in text with listing 2.}explain the input code snippets: 1. examples of previous work, understand not perfect; 2. input token limit; 3. }
+
+% \noindent
+\textbf{Preparing Datasets and Ground Truth.}
+The \crawldata dataset is specifically designed for parallelism detection. 
+%Each row in the dataset corresponds to a loop and labels indicating whether the loop is parallelizable and the type of OpenMP directive (if applicable). 
+%This dataset includes widely-used benchmarks in the OpenMP community, such as NasBench ~\cite{} and Rodinia benchmark ~\cite{}. 
+%After loading the \crawldata dataset, we extract only the label indicating whether the code is parallelizable, along with the data itself. Similar to the \crawldata dataset, a label of 1 represents parallelizable code, while a label of 0 indicates non-parallelizable code. 
+Its existing labeling scheme allows us to prepare the data for binary classification models. 
+Similarly, we prepared DRB-ML dataset with a label indicating whether each code snippet is parallelizable using OpenMP or not.  
+%The parallelism detection task makes use of the entire DRB-ML dataset. However, as every piece of code in the DRB-ML dataset is parallelizable, it creates an imbalance for this task. Therefore, we utilize different metrics provided by HPC-FAIR to evaluate model performance.
+
+It is worth noting that both datasets have undergone source code pre-processing steps, including comment removal and code snippet extraction. These steps are common practice~\cite{chen2023learning-dataset} to ensure that code snippets are small enough to be fed into language models with limited input token sequence sizes. However, the resulting code snippets may lose their context information, such as variable declarations. This is a serious limitation of language models with limited input sizes when applied to process large source files. 
+% No space for the code
+%Listing \ref{ls:parallel-data} shows an example code for the parallelism detection task from the DRB-ML dataset. 
+
+% \begin{comment}
+  
+
+% \begin{listing}[h]
+% \label{ls:parallel-data}
+% \caption{An example code snippet from the DRB-ML dataset}
+%     \begin{minted}[
+% frame=lines,
+% framesep=2mm,
+% baselinestretch=1.2,
+% fontsize=\scriptsize,
+% linenos
+% ]{c}
+% for (c1 = 0; c1 <= ((nj + -1 < nm + -1 ? nj + -1 : nm + -1)); c1++) 
+% {
+%     for (c2 = 0; c2 <= ((nl + -1 < nm + -1 ? nl + -1 : nm + -1)); c2++) {
+%         C[c1][c2] = ((double)c1) * (c2 + 3) / nl;
+%         D[c1][c2] = ((double)c1) * (c2 + 2) / nk;
+%     }
+% ...// code omitted here
+% }
+% \end{minted}
+% \end{listing}
+% \end{comment}
+%\todo{\textcolor{blue}{we have checked autoparbench. NPB and Rodinia is included in omp-serial dataset}a previous paper used NPB and Rodinia for testing auto parallelization. search: AutoParBench}
+
+%\textbf{Inference Experiments and Evaluation} 
+%HPC tasks like parallelism detection usually require specially designed models constructed by multiple machine learning layers and pre-trained with a large dataset. \ourwork aims to collect cutting-edge models and deploy them in pipelines according to specific tasks. 
+%For the parallelism detection pipeline, two language models, augAST\cite{} and DeepSCC~\cite{} We reproduced previous works to train the models with the \crawldata training set and make the pretrained model accessable to users using \ourwork APIs. In this section, we evaluated three LLMs besides the two pre-trained language models. 
+
+
+% \noindent
+\textbf{Inference Experiments and Results.}
+We selected six models to generate parallelism detection leaderboards. Four of them are introduced in Section~\ref{sec-background}.  They take the code snippets in a prompt template: ``As an OpenMP expert, you will analyze the given code snippet to determine if it can be parallelized. Code: \{...\}. Answer yes or no first:''. The other two are augAST~\cite{chen2023learning-dataset} and DeepSCC-based~\cite{harel2023learning}, which are pre-trained models using \crawldata's training dataset. We fed code snippets to these two models to directly obtain predicted labels. 
+
+Table \ref{tab:t2} presents the resulting leaderboards. 
+The highest F1 score reaches 93.9, indicating that LMs can be very effective for detecting parallelism. However, the datasets contain small-scale code snippets that are significantly simpler than real HPC codes. 
+Again, gpt-3.5-turbo outperforms all other models overall, including specially trained models like augAST and DeepSCC.
+AugAST performs better than gpt-3.5-turbo in terms of precision, suggesting it's more effective in predicting a positive class, which, in this case, is parallelizable code. 
+%However, gpt-3.5-turbo scores better on recall and F1 measures, indicating it can effectively manage both true positive and false negative cases. 
+%Language models trained with relatively smaller training datasets, like Dolly and Cerebras, do not perform as well as the fine-tuned models.
+Finally, Cerebras-GPT did not perform well in this code analysis task. 
+
+%gpt-3.5-turbo model has been trained with a massive amount of data. Although the specific details of the training data have not been disclosed, it's possible that it includes GitHub code. As a result, most of the data in the two datasets may have already been exposed to the gpt-3.5-turbo model. LLMs trained with a relatively smaller training data set, like Dolly and Cerebras, do not perform as well as the traditional pre-trained models.\todo{pre-trained vs. fine-tuned are different concept. I think you mean fine-tuned models for parallelism detection here.} Cerebras, in particular, struggles to comprehend the code in this task.
+% & Model & Precision              & Recall                 & F1                     \\ \hline
+% 1 & augAST        & 92.1                   & 82.4                   & 87.0                   \\ \hline
+% 2& DeepSCC   & 82.7                   & 81.4                   & 82.0                   \\ \hline
+% 3& ChatGPT 3.5     & 90.6                   & 89.3                   & 89.9                   \\ \hline
+% 4& Cerebras 13B    & 0                      & 0                      & 0                      \\ \hline
+% 5& Dolly 2.0       & 64.2                   & 63.7                   & 63.9
+%\todo{Table 5: using F1 at least form the second table, if space permits, using the same metrics as the left table}
+
+\begin{table}[htbp]
+  \centering
+  \caption{Parallelism Detection Leaderboards: \crawldata(left) and DRB-ML(right)}
+\label{tab:t2}
+  \begin{minipage}{.5\linewidth}
+    \centering
+    \resizebox{6cm}{!}{
+\begin{tabular}{|c|c|c|c|c|}
+\hline
+\textbf{Model} & \textbf{Precision}              & \textbf{Recall}                 & \textbf{F1}                     \\ \hline
+\textbf{gpt-3.5-turbo}     & 90.6                   & \textbf{89.3}                  & \textbf{89.9}                   \\ \hline
+augAST        & \textbf{92.1}                   & 82.4                   & 87.0                   \\ \hline
+DeepSCC   & 82.7                   & 81.4                   & 82.0                   \\ \hline
+StarChat-Alpha   & 85.7                   & 68.2                  & 75.9                   \\ \hline
+Dolly 2.0 12B      & 64.2                   & 63.7                   & 63.9                      \\ \hline
+Cerebras-GPT 13B    & 0                      & 0                      & 0
+    \\ \hline
+\end{tabular} 
+}
+  \end{minipage}%
+  \hspace{-1.13cm}
+  \hspace{0.9cm}
+   \begin{minipage}{.5\linewidth}
+    \centering
+    \resizebox{6cm}{!}
+{
+\begin{tabular}{|c|c|c|c|c|}
+\hline
+\textbf{Model} & \textbf{Precision}              & \textbf{Recall}                 & \textbf{F1}                     \\ \hline
+\textbf{gpt-3.5-turbo}     & 90.0                   & \textbf{98.9}                  & \textbf{94.2}                   \\ \hline
+augAST        & \textbf{91.4}                   & 72.3                   & 80.7                   \\ \hline
+DeepSCC   & 80.4                   & 79.5                   & 79.9                   \\ \hline
+StarChat-Alpha   & 81.9                   & 20.3                  & 32.5                   \\ \hline
+Dolly 2.0 12B      & 40.0                   & 11.2                   & 2.17                      \\ \hline
+Cerebras-GPT 13B    & 0                      & 0                      & 0
+    \\ \hline
+\end{tabular}
+}
+  \end{minipage}%
+\end{table}
+
+
+
+%==================================================================
+\subsection{OpenMP Q\&A}
+% current collection of Q&A
+% https://docs.google.com/spreadsheets/d/1dqsd2v_lcRyLv8XiLIy00E_ezBiaivcSjZrMDqFeu_w/edit#gid=0
+ In this experiment, we utilized \ourwork to evaluate the capabilities of several language models in answering questions related to OpenMP. This evaluation was conducted using the OMPQA dataset, introduced in Section \ref{sec-datasets}. 
+ %each LM functions as an OpenMP Q\&A (Question and Answer) system. It is designed such that users can pose questions related to OpenMP, and in response, the LLM generates relevant answers. \ourwork allows for a practical examination of each LLM's understanding and application of OpenMP knowledge.
+
+\textbf{Experiment Settings.} 
+%As delineated in , OMPQA encompasses a diverse array of topics pertinent to OpenMP. Each entry in the OMPQA dataset has a corresponding answer that has been derived from the official OpenMP documentation, verified online resources, or expert human responses. 
+%The prompt for this task, 
+
+% We set the maximum token length for the model output to 256. This limits the verbosity of the model and keeps its responses concise. Additionally, we set the temperature parameter to 0. This setting ensures that the model's responses are consistent and deterministic, minimizing variability and uncertainty in its output. 
+%\todo{\textcolor{blue}{done }We should set temperature to be 0 to have consistent answers. This is also the setting used by other evaluation papers. }
+
+Each model receives the question in the following prompt template:
+``You are an OpenMP expert. Please answer this question. Question: \{question\}''. Two metrics are selected to evaluate the quality of answers: the Bilingual Evaluation Understudy (BLEU) and ROUGE-L metrics. BLEU is a precision-oriented metric measuring the overlap of n-grams between the generated text and a set of reference texts. 
+%It can consider multiple references but lacks a direct measure of semantic meaning. 
+%NOT enough useful info.an extensively employed algorithm in the field of machine translation and natural language processing, developed to assess the quality of machine-translated text from one natural language to another. 
+ROUGE-L (Recall-Oriented Understudy for Gisting Evaluation - Longest Common Subsequence) calculates the longest common subsequence (LCS) that appears in a left-to-right sequence in both the system-generated and reference summaries, thus providing a measure of the coherence and fluidity of the generated text.
+
+\textbf{Results.} 
+Table \ref{tab:t3-qa} displays the Q\&A leaderboard of several selected models. We additionally include the memory and execution time information. The experiments using gpt-3.5-turbo do not consume any local GPU memory since the model is invoked remotely through OpenAI's API.
+
+Again, gpt-3.5-turbo unsurprisingly outperforms other LLMs, including StarChat-Alpha, Dolly 2.0, and Cerebras-GPT. However, the highest ROUGE-L F1 score of 0.259 indicates that all models have room for improvement in answering OpenMP questions. One reason is that many questions in OMPQA are open-ended and do not necessarily have a single correct answer. Also, the two metrics used do not sufficiently consider semantics.
+
+% it becomes apparent that the augmentation of LLMs with documentation via LangChain enhances performance in the `Basic' and `Examples' categories but results in a downturn in the `Compiler' and `Benchmarks' categories. This discrepancy is likely due to the fact that our documentation does not encompass information pertinent to compiler and benchmark topics. Additionally, we assess the performance using CodeBLEU\cite{ren2020codebleu}, a novel metric specifically designed for the evaluation of code generation tasks. By our observation, the CodeBLEU scores for the 'Examples' category evaluate the generated code better, indicating that the HPC-specific metrics in LM4HPC help with the LLM evaluation for HPC tasks.
+
+% Please add the following required packages to your document preamble:
+% \usepackage{multirow}
+% \usepackage[table,xcdraw]{xcolor}
+% If you use beamer only pass "xcolor=table" option, i.e. \documentclass[xcolor=table]{beamer}
+\begin{table}[]
+\caption{Q\&A Leaderboard using the OMPQA dataset. The arrow indicates the performance changes when augmenting external knowledge base by LangChain.}
+\label{tab:t3-qa}
+\begin{tabular}{|c|c|c|c|c|ccc|}
+\hline
+ &
+   &
+   &
+   &
+   &
+  \multicolumn{3}{c|}{\textbf{ROUGE}} \\ \cline{6-8} 
+\multirow{-2}{*}{\textbf{Model}} &
+  \multirow{-2}{*}{\begin{tabular}[c]{@{}c@{}}\textbf{\scriptsize CPU}\\ \scriptsize  Mem. (GB)\end{tabular}} &
+  \multirow{-2}{*}{\begin{tabular}[c]{@{}c@{}}\textbf{\scriptsize GPU} \\ \scriptsize  Mem. (GB)\end{tabular}} &
+  \multirow{-2}{*}{\textbf{Time}(s)} &
+  \multirow{-2}{*}{\textbf{BLEU}} &
+  \multicolumn{1}{c|}{Recall} &
+  \multicolumn{1}{c|}{Prescision} &
+  F1 \\ \hline
+  \begin{tabular}[c]{@{}c@{}}gpt-3.5-turbo\\ + LangChain\end{tabular}
+ &
+  4.1 &
+  0 &
+  21.452 &
+  \textbf{{0.147}$\uparrow$} &
+  \multicolumn{1}{c|}{{0.347$\downarrow$}} &
+  \multicolumn{1}{c|}{0.262$\downarrow$} &
+  \textbf{0.259$\uparrow$} \\ \hline
+gpt-3.5-turbo &
+  4.2 &
+  0 &
+  12.749 &
+  0.139 &
+  \multicolumn{1}{c|}{\textbf{0.446}} &
+  \multicolumn{1}{c|}{0.231} &
+  0.257 \\ \hline
+StarChat-Alpha &
+  6.8 &
+  18.9 &
+  29.732 &
+  0.082 &
+  \multicolumn{1}{c|}{0.322} &
+  \multicolumn{1}{c|}{0.149} &
+  0.172 \\ \hline
+  \begin{tabular}[c]{@{}c@{}}Dolly 2.0 12B\\ + LangChain\end{tabular}
+  &
+  27.4 &
+  39.8 &
+  7.217 &
+  0.084$\uparrow$&
+  \multicolumn{1}{c|}{0.228$\uparrow$} &
+  \multicolumn{1}{c|}{0.232$\downarrow$} &
+  0.182$\uparrow$ \\ \hline
+Dolly 2.0 12B &
+  27.1 &
+  39.2 &
+  8.147 &
+  0.06 &
+  \multicolumn{1}{c|}{0.208} &
+  \multicolumn{1}{c|}{\textbf{0.312}} &
+  0.148 \\ \hline
+Cerebras-GPT 13B &
+  52.6 &
+  11.7 &
+  590.763 &
+  0.071 &
+  \multicolumn{1}{c|}{0.319} &
+  \multicolumn{1}{c|}{0.089} &
+  0.112 \\ \hline
+\end{tabular}
+\end{table}
+
+
+% Please add the following required packages to your document preamble:
+% \usepackage{multirow}
+% \usepackage[table,xcdraw]{xcolor}
+% If you use beamer only pass "xcolor=table" option, i.e. \documentclass[xcolor=table]{beamer}
+% \begin{table}[]
+% \caption{Q\&A leaderboard by category}
+% \label{tab:langchain-category}
+% \begin{tabular}{|c|c|c|c|ccc|}
+% \hline
+%  &
+%    &
+%    &
+%    &
+%   \multicolumn{3}{c|}{\textbf{ROUGE}} \\ \cline{5-7} 
+% \multirow{-2}{*}{\textbf{Category}} &
+%   \multirow{-2}{*}{\textbf{Model}} &
+%   \multirow{-2}{*}{\textbf{BLEU}} &
+%   \multirow{-2}{*}{\textbf{CodeBLEU}} &
+%   \multicolumn{1}{c|}{\textbf{Recall}} &
+%   \multicolumn{1}{c|}{\textbf{Prescision}} &
+%   \textbf{F1} \\ \hline
+%  &
+%   GPT3 &
+%   0.175 &
+%   NA &
+%   \multicolumn{1}{c|}{0.476} &
+%   \multicolumn{1}{c|}{0.251} &
+%   0.329 \\ \cline{2-7} 
+%  &
+%   GPT3+LangChain &
+%   \cellcolor[HTML]{32CB00}0.182 &
+%   NA &
+%   \multicolumn{1}{c|}{\cellcolor[HTML]{32CB00}0.498} &
+%   \multicolumn{1}{c|}{\cellcolor[HTML]{32CB00}0.276} &
+%   \cellcolor[HTML]{32CB00}0.355 \\ \cline{2-7} 
+%  &
+%   Dolly &
+%   0.092 &
+%   NA &
+%   \multicolumn{1}{c|}{0.227} &
+%   \multicolumn{1}{c|}{0.275} &
+%   0.249 \\ \cline{2-7} 
+% \multirow{-4}{*}{Basic} &
+%   Dolly+LangChain &
+%   \cellcolor[HTML]{32CB00}0.101 &
+%   NA &
+%   \multicolumn{1}{c|}{\cellcolor[HTML]{32CB00}0.371} &
+%   \multicolumn{1}{c|}{\cellcolor[HTML]{32CB00}0.324} &
+%   \cellcolor[HTML]{32CB00}0.346 \\ \hline
+%  &
+%   GPT3 &
+%   0.152 &
+%   0.165 &
+%   \multicolumn{1}{c|}{0.371} &
+%   \multicolumn{1}{c|}{0.247} &
+%   0.297 \\ \cline{2-7} 
+%  &
+%   GPT3+LangChain &
+%   \cellcolor[HTML]{32CB00}0.187 &
+%   \cellcolor[HTML]{32CB00}0.266 &
+%   \multicolumn{1}{c|}{\cellcolor[HTML]{FD6864}0.339} &
+%   \multicolumn{1}{c|}{\cellcolor[HTML]{32CB00}0.337} &
+%   \cellcolor[HTML]{32CB00}0.338 \\ \cline{2-7} 
+%  &
+%   Dolly &
+%   0.103 &
+%   0.131 &
+%   \multicolumn{1}{c|}{0.245} &
+%   \multicolumn{1}{c|}{0.194} &
+%   0.217 \\ \cline{2-7} 
+% \multirow{-4}{*}{Examples} &
+%   Dolly+LangChain &
+%   \cellcolor[HTML]{32CB00}0.112 &
+%   \cellcolor[HTML]{32CB00}0.147 &
+%   \multicolumn{1}{c|}{\cellcolor[HTML]{32CB00}0.287} &
+%   \multicolumn{1}{c|}{\cellcolor[HTML]{FD6864}0.166} &
+%   \cellcolor[HTML]{FD6864}0.21 \\ \hline
+%  &
+%   GPT3 &
+%   0.147 &
+%   NA &
+%   \multicolumn{1}{c|}{0.375} &
+%   \multicolumn{1}{c|}{0.367} &
+%   0.371 \\ \cline{2-7} 
+%  &
+%   GPT3+LangChain &
+%   \cellcolor[HTML]{FD6864}0.139 &
+%   NA &
+%   \multicolumn{1}{c|}{\cellcolor[HTML]{FD6864}0.319} &
+%   \multicolumn{1}{c|}{\cellcolor[HTML]{FD6864}0.311} &
+%   \cellcolor[HTML]{FD6864}0.315 \\ \cline{2-7} 
+%  &
+%   Dolly &
+%   0.057 &
+%   NA &
+%   \multicolumn{1}{c|}{0.275} &
+%   \multicolumn{1}{c|}{0.266} &
+%   0.27 \\ \cline{2-7} 
+% \multirow{-4}{*}{Compilers} &
+%   Dolly+LangChain &
+%   \cellcolor[HTML]{FD6864}0.046 &
+%   NA &
+%   \multicolumn{1}{c|}{\cellcolor[HTML]{FD6864}0.217} &
+%   \multicolumn{1}{c|}{\cellcolor[HTML]{FD6864}0.246} &
+%   \cellcolor[HTML]{FD6864}0.231 \\ \hline
+%  &
+%   GPT3 &
+%   0.105 &
+%   NA &
+%   \multicolumn{1}{c|}{0.247} &
+%   \multicolumn{1}{c|}{0.265} &
+%   0.256 \\ \cline{2-7} 
+%  &
+%   GPT3+LangChain &
+%   \cellcolor[HTML]{FD6864}0.094 &
+%   NA &
+%   \multicolumn{1}{c|}{\cellcolor[HTML]{FD6864}0.216} &
+%   \multicolumn{1}{c|}{\cellcolor[HTML]{FD6864}0.254} &
+%   \cellcolor[HTML]{FD6864}0.233 \\ \cline{2-7} 
+%  &
+%   Dolly &
+%   0.086 &
+%   NA &
+%   \multicolumn{1}{c|}{0.208} &
+%   \multicolumn{1}{c|}{0.312} &
+%   0.25 \\ \cline{2-7} 
+% \multirow{-4}{*}{Benchmarks} &
+%   Dolly+LangChain &
+%   \cellcolor[HTML]{FD6864}0.089 &
+%   NA &
+%   \multicolumn{1}{c|}{\cellcolor[HTML]{FD6864}0.204} &
+%   \multicolumn{1}{c|}{\cellcolor[HTML]{FD6864}0.277} &
+%   \cellcolor[HTML]{FD6864}0.235 \\ \hline
+% \end{tabular}
+% \end{table}
+
+%One key feature of \ourwork is the capacity to integrate LangChain, which uses a vector store to allow question answering using additional user data. 
+To enhance the capacity of large language models (LLMs) in accurately responding to OpenMP queries, we integrate the official OpenMP documentation into our process. 
+%However, this integration can be challenged by the size limit of the documentation. To overcome this, 
+We employ LangChain, a mechanism designed to efficiently store and retrieve language model embeddings, enabling us to accommodate large volumes of new data. To assess the efficacy of using LangChain to incorporate additional user data, we leverage its API to create a vector store. This vector store holds embeddings of text chunks derived from the OpenMP API Specification v5.2 (669 pages) and the OpenMP Application Programming Interface Examples v5.2.1 (575 pages). We then select two LangChain-supported models, GPT-3.5 and Dolly 2.0, to utilize the vector store as an additional resource for answering queries, thereby demonstrating the practical utility of our approach.
+The results indicate slight improvements in both the BLEU and ROUGE-L F1 scores, increasing from 0.139 to 0.147 and from 0.257 to 0.259, respectively. However, there are mixed results for recall and precision metrics. gpt-3.5-turbo has a better recall, 0.446, compared to 0.347 of the Langchain approach.  %This suggests that the Vector Store API provided by \ourwork enables LLMs to leverage additional user databases, code, or documentation, enhancing their performance on HPC tasks.
+
+Further, we examine the effectiveness of the LangChain approach across different question categories. When addressing `Basic' questions, the BLEU scores rise by 20.7\% and 9.8\% for gpt-3.5-turbo and Dolly 2.0, respectively. Additionally, we assess the LangChain performance using the CodeBLEU metric\cite{ren2020codebleu} for the `Examples' category, observing a score increase of 6.1\% and 12.2\% for gpt-3.5-turbo and Dolly 2.0, respectively. These observations indicate that augmenting LLMs with documentation via LangChain improves performance for `Basic' and `Examples' categories. However, for `Compilers' and `Benchmarks' categories, the performance of gpt-3.5-turbo and Dolly 2.0 diminishes when utilizing LangChain, recording an average BLEU score drop of 8.0\% and 7.9\%, respectively. This drop is likely because our documentation does not include information relevant to compiler and benchmark topics.
+
+
+
+We also manually investigated the answers generated by the models. Overall, StarChat-Alpha delivers competitive results compared to GPT-3.5. It seems to be a good choice for people who want to use open-source language models based on our experiments. Research has indicated that GPT-4 surpasses GPT-3.5 in a variety of domains. However, as of now, API accessibility for GPT-4 has not been made publicly available. We plan to assess GPT-4's performance as soon as it becomes accessible and incorporate it into our framework if it benefits HPC tasks.
+%\todo{\textcolor{yellow}{move to section3: Addressing input limit challenge. or supplying additional knowledge challenges or both. Longer input can include an additional context (knowledge).} Make sure there is text explaining what a model + LangChain means: best to have a diagram explaining how different pieces (model, prompt, vector store) work together. This can be part of the approach section, explaining the QA pipeline}
+%\todo{\textcolor{blue}{mentioned we used only the text}limit of LangChain PDFLoader}
+%\todo{\textcolor{blue}{added why gpt4 is not avaliable}add metrics designed for code output; add why GPT4 is no available}
+%\todo{\textcolor{blue}{will upload with arXiv version}check some answers vs. reference answers: understanding why the scores are low in general}
+%\todo{\textcolor{blue}{will upload with arXiv version} save and upload the generated answers/questions to GitHub}
+%\todo[color=green]{create a new table for code category outputs}
+
+
+% Please add the following required packages to your document preamble:
+% \usepackage{multirow}
+
+
+%\todo{\textcolor{blue}{For my experimetns, yes. It is normal since the deviation can be high for different tests for the same model}Dolly + LangChain is faster than using Dolly only?}
+
+
+
+
+% If you use beamer only pass "xcolor=table" option, i.e. \documentclass[xcolor=table]{beamer}
+% \begin{table}[h]
+% \centering
+% \caption{Q\&A Leaderboard using the OMPQA dataset}
+% \label{tab:t3-qa}
+% \begin{tabular}{|c|r|r|r|rrr|}
+% \hline
+% & \multicolumn{1}{c|}{} & \multicolumn{1}{c|}{} & \multicolumn{1}{c|}{} & \multicolumn{3}{c|}{ROUGE-L}                                       \\ \cline{5-7} 
+% \multirow{-2}{*}{model} &
+%   \multicolumn{1}{c|}{\multirow{-2}{*}{temp}} &
+%   \multicolumn{1}{c|}{\multirow{-2}{*}{max\_token}} &
+%   \multicolumn{1}{c|}{\multirow{-2}{*}{BLEU}} &
+%   \multicolumn{1}{c|}{Recall} &
+%   \multicolumn{1}{c|}{Precision} &
+%   \multicolumn{1}{c|}{F1} \\ \hline
+% \textbf{gpt-3.5-turbo}              & 0.5                   & 209                   & \textbf{0.086}               & \multicolumn{1}{r|}{0.4378} & \multicolumn{1}{r|}{0.1704} & \textbf{0.2190} \\ \hline
+% Dolly 2.0 + LangChain             & 0.5                   & 209                   & 0.061                & \multicolumn{1}{r|}{0.2607} & \multicolumn{1}{r|}{0.2115} & 0.2004 \\ \hline
+
+% Dolly 2.0 12B & 0.5  & 209        & 0.2737                & \multicolumn{1}{r|}{0.208} & \multicolumn{1}{r|}{0.312} & 0.148 \\ \hline
+% Cerebras-GPT 13B           & 0.5                   & 209                   & 0.0703                & \multicolumn{1}{r|}{0.2661} & \multicolumn{1}{r|}{0.0816} & 0.1107 \\ \hline
+% \end{tabular}
+% \end{table}
+
+% \todo{redo a few model +langChain experiments: should not use embeddings generated by model A to hook up with Model B. }
+
+
+%\todo{add in table 6: space disk/memory; We should report space (memory, disk) complexity of the experiments, may not have enough space right now}

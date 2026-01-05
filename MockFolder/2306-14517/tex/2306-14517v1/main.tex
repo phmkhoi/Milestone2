@@ -1,0 +1,484 @@
+\documentclass{INTERSPEECH2023}
+
+% 2023-01-06 modified by Simon King (Simon.King@ed.ac.uk)  
+
+% **************************************
+% *    DOUBLE-BLIND REVIEW SETTINGS    *
+% **************************************
+% Comment out \interspeechcameraready when submitting the 
+% paper for review.
+% If your paper is accepted, uncomment this to produce the
+%  'camera ready' version to submit for publication.
+\interspeechcameraready 
+
+\usepackage{times}
+\usepackage{latexsym}
+\usepackage{caption}
+\usepackage{graphicx}
+\usepackage{latexsym}
+\usepackage{booktabs}
+\usepackage{xcolor,colortbl}
+\usepackage{amsmath}
+\usepackage{multirow}
+\usepackage[normalem]{ulem}
+\usepackage{lipsum}
+\usepackage{colortbl}
+\usepackage{soul}
+\usepackage{hyperref}
+% \usepackage[dvipsnames]{xcolor} % for expanded colour set
+
+\setul{0.5ex}{0.2ex}
+\newcommand{\ulcolor}[2][]{\setulcolor{#1}\ul{#2}}
+\definecolor{darkgreen}{RGB}{4,182,117}
+\newcommand{\dummy}[1]{\textcolor{lightgray}{#1}}
+\newcommand{\pascale}[1]{\textcolor{red}{#1}}
+
+% **************************************
+% *                                    *
+% *      STOP !   DO NOT DELETE !      *
+% *          READ THIS FIRST           *
+% *                                    *
+% * This template also includes        *
+% * important INSTRUCTIONS that you    *
+% * must follow when preparing your    *
+% * paper. Read it BEFORE replacing    *
+% * the content with your own work.    *
+% **************************************
+
+\title{Cross-Lingual Cross-Age Group Adaptation\\for Low-Resource Elderly Speech Emotion Recognition}
+\name{Samuel Cahyawijaya$^*$\thanks{$^*$ Equal contribution.}, Holy Lovenia$^*$, Willy Chung$^*$, Rita Frieske, Zihan Liu, Pascale Fung}
+%The maximum number of authors in the author list is 20. If the number of contributing authors is more than this, they should be listed in a footnote or the acknowledgement section.
+\address{
+  The Hong Kong University of Science and Technology}
+\email{\{scahyawijaya, hlovenia, whcchung\}@connect.ust.hk}
+
+\begin{document}
+
+\maketitle
+ 
+\begin{abstract}
+% 1000 characters. ASCII characters only. No citations.
+
+Speech emotion recognition plays a crucial role in human-computer interactions. However, most speech emotion recognition research is biased toward English-speaking adults, which hinders its applicability to other demographic groups in different languages and age groups. In this work, we analyze the transferability of emotion recognition across three different languages--English, Mandarin Chinese, and Cantonese; and 2 different age groups--adults and the elderly. To conduct the experiment, we develop an English-Mandarin speech emotion benchmark for adults and the elderly, BiMotion, and a Cantonese speech emotion dataset, YueMotion. This study concludes that different language and age groups require specific speech features, thus making cross-lingual inference an unsuitable method. However, cross-group data augmentation is still beneficial to regularize the model, with linguistic distance being a significant influence on cross-lingual transferability. We release publicly release our code at \url{https://github.com/HLTCHKUST/elderly_ser}.
+
+\end{abstract}
+\noindent\textbf{Index Terms}: speech emotion recognition, cross-lingual adaptation, cross-age adaptation, elderly, low-resource language
+
+\section{Introduction}
+
+%https://www.sciencedirect.com/science/article/abs/pii/S074756320400024X, https://www.frontiersin.org/articles/10.3389/fpsyg.2018.01334/full
+% Human emotion is a part of human behavior that affects the decision-making process of oneself~\cite{martnez2005emot-ai}. 
+% ~\cite{martnez2005emot-ai,mirabella2018emot-dm}
+% explicit & implicit => https://academic.oup.com/scan/article/12/10/1545/4158838
+Understanding human emotion
+% , both explicit and implicit emotions~\cite{braunstein2017emotreg}, 
+% https://link.springer.com/chapter/10.1007/978-3-540-85099-1_1, https://ieeexplore.ieee.org/document/911197
+is a crucial step towards better human-computer interaction~\cite{beale2008hci,cowie2001emot-rec,winata2021nora,ishii2021erica}. 
+% Cite US, UK, Germany, etc emotion datasets
+Most studies on speech emotion recognition are centered on young-adult people, mainly originating from English-speaking countries~\cite{busso2008iemocap,livingstone2018ryerson,zadeh2018multi,poria2019meld}. This demographic bias causes existing commercial emotion recognition systems to inaccurately perceived emotion in the elderly~\cite{kim2021agebias}.
+Despite the fast-growing elderly demographic in many countries~\cite{rouzet2019ageing},
+% Cite child & elderly emotion datasets
+only a few studies with a fairly limited amount of data work on emotion recognition for elderly~\cite{cao2014crema,ma2019elderreact,pichora2020tess}, especially from non-English-speaking countries~\cite{lee2017csed}.
+
+% https://proceedings.neurips.cc/paper/2020/file/92d1e1eb1cd6f9fba3227870bb6d7f07-Paper.pdf
+To cope with the limited resource problem in the elderly emotion recognition, in this work, we study the prospect of transferring emotion recognition ability over various age groups and languages through the utilization of multilingual pre-trained speech models, e.g., Wav2Vec 2.0~\cite{baevski2020wav2vec2}. Specifically, we aim to understand the transferability of emotion recognition ability using only speech modality between two languages and two age groups, i.e, English-speaking adults, English-speaking elderly, Mandarin-speaking adults, and Mandarin-speaking elderly. To do this, we develop BiMotion, a bi-lingual bi-age-group speech emotion recognition benchmark that covers 6 adult and elderly speech emotion recognition datasets from English and Mandarin Chinese. Additionally, we analyze the effect of language distance on the transferability of emotion recognition ability from Mandarin and English using YueMotion, a newly-constructed Cantonese speech emotion recognition dataset.
+
+\begin{figure}[t!]
+    \centering
+    \resizebox{0.8\linewidth}{!}{
+        \includegraphics{images/mrp-overview.png}
+    }
+    \caption{Elderly speech emotion data in low-resource languages is extremely rare, which makes an in-group trained model perform poorly (a). We explore two ways to improve it: cross-group inference (b) and cross-group augmentation (c).}
+    \label{fig:my_label}
+    \vspace{-15.5pt}
+\end{figure}
+
+We analyze the transferability of emotion recognition ability in three ways, i.e., 1) cross-group inference using only the source group data for training to better understand the features distinction between each group, 2) cross-group data augmentation to better understand the transferability across different groups, and 3) feature-space projection to better understand the effect of transferability across different language distance. Through a series of experiments, we conclude that:
+\begin{itemize}
+    \item Very distinct speech features are needed for recognizing emotion across different language and age groups, which makes cross-lingual inference an ill-suited method for transferring speech emotion recognition ability.
+    \item Despite the different important speech features across groups, data augmentation across different groups is still beneficial as it helps the model to better regularize yielding higher evaluation performance.
+    \item Language distance plays a crucial role in cross-lingual transferability, as more similar languages tend to share more similar speech characteristics, thus allowing better generalization to the target language.
+\end{itemize}
+
+% Our contributions can be summarized in three-fold:
+% \begin{itemize}
+%     \item We introduce the first bi-lingual bi-age-group emotion recognition benchmark, namely BiMotion, consisting of 6 adult and elderly speech emotion recognition datasets from English and Chinese languages.
+%     \item We develop Yuemotion, a new speech emotion recognition dataset for adult and elderly in Cantonese, and further evaluate our transferability hypothesis on it.
+%     \item We provide the analysis of the transferability of emotion recognition ability between different age and language groups. Our analysis suggests that the transferability via cross-group data augmentation from high-resource groups can be promising to improve the emotion recognition quality in the low-resource age and language groups.
+
+% \end{itemize}
+
+
+\section{Related Work}
+
+\subsection{Emotion Recognition}
+% Related Work
+% https://arxiv.org/pdf/2211.07290.pdf
+% \pascale{You need to cite previous work from this group here. We were the first to explore speech emotion recognition using neural networks.}
+Various efforts have explored emotion recognition solutions for around two decades ago through different modalities~\cite{martnez2005emot-ai,bertero2016multimodalhumor,cen2010speechemot,bertero2017speechemot,lovenia2022did,latif2022aiemot,dai2021weaklysupervised,dai2021mm-emot,lubis2014construction,lubis2016emotion}. Most studies focus on methods that can estimate the subject emotion effectively through a specific modality while some others focus on combining multiple modalities to better estimate the subject emotion. 
+% https://www.sciencedirect.com/science/article/pii/S2213422016300191, https://www.frontiersin.org/articles/10.3389/fpsyg.2015.01501/full
+% Despite the advancement of the methods, the transferability of emotion recognition ability across different cultures and age groups has never \pascale{never is not true} been explored, although there is evidence that shows emotions vary among different culture~\cite{hareli2015crosscultural,lim2016cultural} and age group~\cite{ebner2014emotion-aging,aguilar2018emotion-adult}. 
+The transferability of emotion recognition across different cultures and language groups has also been previously studied~\cite{hareli2015crosscultural,lim2016cultural,iosifov2022serlangtrans} showing that there are significant differences across languages and cultures.
+Nevertheless, it is only evaluated on a small-scale model that owns limited world knowledge. In this work, we extend this analysis to pre-trained speech models and further explore the transferability to cover an extremely low-resource group, i.e., the elderly in the low-resource language group.
+
+% \pascale{The transferability of emotion expression across different cultures and language groups has been previously studied~\ciite{iosifov2022serlangtrans} showing that there are significant differences. In this work, we explore this further and ...}
+
+\subsection{Pre-trained Speech Model} 
+Large pre-trained speech models achieve state-of-the-art performance for various speech tasks in recent years~\cite{baevski2020wav2vec2,hsu2021hubert,babu2022interspeech}.
+% \pascale{popularity is never a good reason to do research} 
+These models have been trained in an unsupervised manner on large-scale multilingual speech corpora. The representation of these models has been shown to be effective, achieving state-of-the-art performance in various downstream tasks including automatic speech recognition, speaker verification, language identification, and emotion recognition~\cite{fan2021verification-lid,pepino2021emotionrecognition,lovenia2022ascend,cahyawijaya2022nusacrowd,dai2022ci}. In this work, we adopt the XLSR Wav2Vec 2.0 model~\cite{baevski2020wav2vec2,babu2022interspeech}, which has been pre-trained on large-scale multilingual speech corpora. The multilingual representation learned by the model will be crucial for evaluating the transferability of emotion recognition ability across different languages.
+
+\section{Benchmark and Dataset}
+
+\subsection{BiMotion Benchmark}
+
+\begin{table}[!t]
+    \caption{Statistics of datasets covered in BiMotion.}
+    \label{tab:bimotion-data}
+    \centering
+    \resizebox{0.87\linewidth}{!}{
+    \begin{tabular}{l|c|c|c|c|c}
+        \toprule
+        \textbf{Dataset} & \textbf{Language} & \textbf{Age Group} & \textbf{\#Train} & \textbf{\#Valid} & \textbf{\#Test} \\ \midrule
+        % CMU-MOSEI & English & - & 20000 & 1259 & 2000 \\
+        \multirow{2}{*}{\textbf{CREMA-D}} & English & Elderly & 150 & 42 & 300 \\
+        & English & Adults & 5000 & 750 & 1200 \\ \midrule
+        \textbf{CSED} & Mandarin & Elderly & 200 & 52 & 400 \\ \midrule
+        \textbf{ElderReact} & English & Elderly & 615 & 355 & 353 \\ \midrule
+        \multirow{2}{*}{\textbf{ESD}} & Mandarin & Adults & 15000 & 1000 & 1500 \\
+        & English & Adults & 15000 & 1000 & 1500 \\ \midrule
+        \textbf{IEMOCAP} & English & Adults & 7500 & 1039 & 1500 \\ \midrule
+        \multirow{2}{*}{\textbf{TESS}} & English & Elderly & 699 & 200 & 500 \\
+        & English & Adults & 700 & 201 & 500 \\
+        \bottomrule
+    \end{tabular}
+    }
+\end{table}
+
+To test the transferability of emotion recognition ability across different languages and age groups, we develop a bilingual speech emotion recognition benchmark namely BiMotion, that covers two languages, i.e., English and Mandarin, and two age groups, i.e., Elderly (age $\geq$60 y.o) and Adults (age 20-59). We construct our benchmark from a collection of six publicly available datasets, i.e., CREMA-D~\cite{cao2014crema}, CSED~\cite{lee2017csed}, ElderReact~\cite{ma2019elderreact}, ESD~\cite{zhou2022esd}, IEMOCAP~\cite{busso2008iemocap}, and TESS~\cite{pichora2020tess}. For datasets with an official split, i.e., ESD and ElderReact, we use the provided dataset splits. For the other datasets, we generate a new dataset split since there is no official split provided. The statistics of the datasets in BiMotion are shown in Table~\ref{tab:bimotion-data}.
+
+\subsection{YueMotion Dataset}
+
+To strengthen our transferability analysis, we further introduce a new speech emotion recognition dataset covering adults in Cantonese named YueMotion. The utterances in YueMotion are recorded by 11 speakers (4 males and 7 females) each with a personal recording device. During the recording session, each speaker is asked to say out loud 10 pre-defined sentences used in daily conversations with 6 different emotions, i.e., happiness, sadness, neutral, disgust, fear, and anger. The YueMotion dataset is used to further verify our hypothesis regarding the transferability of emotion recognition ability. The detailed statistics of YueMotion dataset are shown in Table~\ref{tab:yuemotion-data}. 
+
+
+\begin{table}[]
+    \caption{Statistics of the YueMotion dataset.}
+    \label{tab:yuemotion-data}
+    \centering
+    \resizebox{0.85\linewidth}{!}{
+    \begin{tabular}{c|c|c|c|c|c}
+        \toprule
+        \textbf{Age Group} & \textbf{Gender} & \textbf{\#Train} & \textbf{\#Valid} & \textbf{\#Test} & \textbf{\#All} \\ \midrule
+        % \multirow{2}{*}{Elderly} & Male & 60 & 18 & 42 & 120 \\
+        % & Female & 90 & 27 & 63 & 180 \\ \midrule
+        \multirow{2}{*}{Adults} & Male & 120 & 36 & 84 & 240 \\
+        & Female & 210 & 63 & 147 & 420 \\ \midrule
+        \multicolumn{2}{c|}{\textbf{Total Samples}} & \textbf{330} & \textbf{99} & \textbf{231} & \textbf{660} \\
+        \bottomrule
+    \end{tabular}
+    }
+\end{table}
+
+\section{Methodology}
+
+We employ two methods to evaluate the transferability of emotion recognition ability, i.e., \ulcolor[darkgreen]{cross-group data augmentation} and \ulcolor[orange]{cross-group inference}.\footnote{To enhance readability, we use colored underlines to mark the term \ulcolor[darkgreen]{cross-group data augmentation} and \ulcolor[orange]{cross-group inference} onwards.} The detail of each method is explained in the following subsection.
+
+
+% % OVERVIEW TABLE
+% \begin{table}[!t]
+%     \centering
+%     \resizebox{\linewidth}{!}{
+%     \begin{tabular}{llcccccc}
+%     \toprule
+%         \multicolumn{2}{c}{\textbf{Training set}} & \multicolumn{4}{c}{\textbf{Weighted F1-score on test set $\uparrow$}} \\ \cmidrule(lr){1-2} \cmidrule(lr){3-6}
+%         \textbf{Language} & \textbf{Age} & \textbf{Eng-Elderly} & \textbf{Eng-Adults} & \textbf{Zho-Elderly} & \textbf{Zho-Adults} \\
+%     \midrule
+%         \multirow{3}{*}{\textit{Eng-Zho}} & \textbf{All} & \underline{67.28\%} & 75.74\% & \textbf{57.64\%} & \textbf{97.28\%} \\
+%         & \textbf{Elderly} & 50.99\% & 26.28\% & 46.10\% & 33.41\% \\
+%         & \textbf{Adults} & 44.40\% & \underline{76.90\%} & 23.09\% & 96.94\% \\
+%         \midrule
+%         \multirow{3}{*}{\textit{Eng}} & \textbf{All} & \textbf{71.46\%} & \textbf{78.58\%} & 19.64\% & 54.17\% \\
+%         & \textbf{Elderly} & 48.34\% & 28.84\% & 19.73\% & 37.85\% \\
+%         & \textbf{Adults} & 42.34\% & 77.66\% & \underline{22.66\%} & \underline{65.77\%} \\
+%         \midrule
+%         \multirow{3}{*}{\textit{Zho}} & \textbf{All} & \underline{27.21\%} & 31.61\% & \underline{54.83\%} & \underline{97.07\%} \\
+%         & \textbf{Elderly} & 12.84\% & 8.39\% & 46.62\% & 15.84\% \\
+%         & \textbf{Adults} & 24.83\% & \underline{31.91\%} & 28.15\% & 95.68\% \\
+%     \bottomrule
+%     \end{tabular}
+%     }
+%     \caption{Evaluation results of our experiments on the \textit{seen} patient test set and the \textit{unseen} patient test set. \textbf{Bold} and \underline{underline} denotes the first and the second best score on each test set, respectively.}
+%     \label{tab:exp-result}
+% \end{table}
+
+% DETAILED TABLE
+% \begin{table*}[!t]
+%     \caption{Evaluation results of our in-group and out-of-group evaluation on BiMotion. The age-group \textbf{All} denotes a combination of \textbf{Elderly} and \textbf{Adults}. \textbf{Bold} denotes the best score on each test set and \underline{underline} denotes the results from in-group training and evaluation.}
+%     \label{tab:exp-result}
+%     \centering
+%     \resizebox{\linewidth}{!}{
+%     \begin{tabular}{ll c ccc>{\columncolor[gray]{0.9}}c c cccc>{\columncolor[gray]{0.9}}c c >{\columncolor[gray]{0.9}}c c >{\columncolor[gray]{0.9}}c}
+%     \toprule
+%          \multicolumn{2}{c}{\textbf{Training set}} & & \multicolumn{4}{c}{\textit{Eng-Elderly}} & & \multicolumn{5}{c}{\textit{Eng-Adults}} & & \multicolumn{1}{c}{\textit{Zho-Elderly}} & & \multicolumn{1}{c}{\textit{Zho-Adults}} \\
+%         \cmidrule(lr){1-2} \cmidrule(lr){4-7} \cmidrule(lr){9-13} \cmidrule(lr){15-15} \cmidrule(lr){17-17}
+%         % \cmidrule{3-13}
+%         \textbf{Language} & \textbf{Age Group} & & \textbf{CREMA} & \textbf{ElderReact$^*$} & \textbf{TESS} & \textbf{Avg.} & & \textbf{CREMA} & \textbf{ESD} & \textbf{IEMOCAP} & \textbf{TESS} & \textbf{Avg.} & & \textbf{CSED} & & \textbf{ESD} \\
+%     \midrule
+%         \multirow{3}{*}{\textit{Eng-Zho}} & \textbf{All} & & 65.01 & 36.84 & \textbf{100.00} & 67.28 & & 74.25 & 94.98 & 33.73 & \textbf{100.00} & 75.74 & & \textbf{57.64} & & \textbf{97.28} \\
+%         & \textbf{Elderly} & & 35.73 & 35.73 & 81.51 & 50.99 & & 29.53 & 35.01 & 9.70 & 30.86 & 26.28 & & 46.10 & & 33.41 \\
+%         & \textbf{Adults} & & 68.43 & 24.18 & 40.58 & 44.40 & & 74.05 & 96.14 & 38.42 & 99.00 & 76.90 & & 23.09 & & 96.94 \\
+%         \midrule
+%         \multirow{3}{*}{\textit{Eng}} & \textbf{All} & & \textbf{71.21} & \textbf{43.16} & \textbf{100.00} & \textbf{71.46} & & 76.06 & \textbf{96.46} & \textbf{41.79} & \textbf{100.00} & \textbf{78.58} & & 19.64 & & 54.17 \\
+%         & \textbf{Elderly} & & \underline{27.05} & \underline{36.51} & \underline{81.47} & \underline{48.34} & & 29.36 & 41.42 & 13.72 & 30.87 & 28.84 & & 19.73 & & 37.85 \\
+%         & \textbf{Adults} & & 64.82 & 27.29 & 34.90 & 42.34 & & \underline{\textbf{76.56}} & \underline{96.05} & \underline{38.23} & \underline{99.80} & \underline{77.66} & & 22.66 & & 65.77 \\
+%         \midrule
+%         \multirow{3}{*}{\textit{Zho}} & \textbf{All} & & 29.90 & 25.99 & 25.72 & 27.21 & & 26.47 & 56.25 & 11.83 & 31.89 & 31.61 & & 54.83 & & 97.07 \\
+%         & \textbf{Elderly} & & 11.60 & 22.99 & 3.93 & 12.84 & & 9.77 & 7.51 & 5.36 & 10.94 & 8.39 & & \underline{46.62} & & 15.84 \\
+%         & \textbf{Adults} & & 33.77 & 27.21 & 13.50 & 24.83 & & 32.37 & 58.82 & 11.05 & 25.41 & 31.91 & & 28.15 & & \underline{95.68} \\
+%     \bottomrule
+%     \end{tabular}
+%     }
+% \end{table*}
+
+% % DETAILED TABLE
+% \begin{table*}[!t]
+%     \centering
+%     \resizebox{\linewidth}{!}{
+%     \begin{tabular}{ll|ccc>{\columncolor[gray]{0.9}}c|cccc>{\columncolor[gray]{0.9}}c|c>{\columncolor[gray]{0.9}}c|c>{\columncolor[gray]{0.9}}c}
+%     \toprule
+%          %\multicolumn{2}{c}{\multirow{2}{*}{\textbf{Training set}}}
+%          & & \multicolumn{4}{c}{\textit{Eng-Elderly}} & \multicolumn{5}{c}{\textit{Eng-Adults}} & & \multicolumn{1}{c}{\textit{Zho-Elderly}} & & \multicolumn{1}{c}{\textit{Zho-Adults}} \\
+%         \cmidrule(lr){3-6} \cmidrule(lr){6-11} \cmidrule(lr){13-13} \cmidrule(lr){15-15}
+%         % \cmidrule{3-13}
+%         & & \textbf{CREMA} & \textbf{ElderReact$^*$} & \textbf{TESS} & \textbf{Avg.} & \textbf{CREMA} & \textbf{ESD} & \textbf{IEMOCAP} & \textbf{TESS} & \textbf{Avg.} & & \textbf{CSED} & & \textbf{ESD} \\
+%     \midrule
+%         \multirow{3}{*}{\textit{Eng-Zho}} & \textbf{All} & 65.01 & 36.84 & \textbf{100.00} & 67.28 & 74.25 & 94.98 & 33.73 & \textbf{100.00} & 75.74 & & \textbf{57.64} & & \textbf{97.28} \\
+%         & \textbf{Elderly} & 35.73 & 35.73 & 81.51 & 50.99 & 29.53 & 35.01 & 9.70 & 30.86 & 26.28 & & 46.10 & & 33.41 \\
+%         & \textbf{Adults} & 68.43 & 24.18 & 40.58 & 44.40 & 74.05 & 96.14 & 38.42 & 99.00 & 76.90 & & 23.09 & & 96.94 \\
+%         \midrule
+%         \multirow{3}{*}{\textit{Eng}} & \textbf{All} & \textbf{71.21} & \textbf{43.16} & \textbf{100.00} & \textbf{71.46} & 76.06 & \textbf{96.46} & \textbf{41.79} & \textbf{100.00} & \textbf{78.58} & & 19.64 & & 54.17 \\
+%         & \textbf{Elderly} & 27.05 & 36.51 & 81.47 & 48.34 & 29.36 & 41.42 & 13.72 & 30.87 & 28.84 & & 19.73 & & 37.85 \\
+%         & \textbf{Adults} & 64.82 & 27.29 & 34.90 & 42.34 & \textbf{76.56} & 96.05 & 38.23 & 99.80 & 77.66 & & 22.66 & & 65.77 \\
+%         \midrule
+%         \multirow{3}{*}{\textit{Zho}} & \textbf{All} & 29.90 & 25.99 & 25.72 & 27.21 & 26.47 & 56.25 & 11.83 & 31.89 & 31.61 & & 54.83 & & 97.07 \\
+%         & \textbf{Elderly} & 11.60 & 22.99 & 3.93 & 12.84 & 9.77 & 7.51 & 5.36 & 10.94 & 8.39 & & 46.62 & & 15.84 \\
+%         & \textbf{Adults} & 33.77 & 27.21 & 13.50 & 24.83 & 32.37 & 58.82 & 11.05 & 25.41 & 31.91 & & 28.15 & & 95.68 \\
+%     \bottomrule
+%     \end{tabular}
+%     }
+%     \caption{Evaluation results of our experiments on the \textit{seen} patient test set and the \textit{unseen} patient test set. \textbf{Bold} and \underline{underline} denotes the first and the second best score on each test set, respectively.}
+%     \label{tab:exp-result}
+% \end{table*}
+
+\subsection{Cross-Group Inference}
+\label{sec:cross-group-inf}
+
+We define a set of language L=\{$l_1$, $l_2$, \dots, $l_n$\} and a set of age group A=\{$a_1$, $a_2$, \dots, $a_m$\}. We define training and evaluation data from a language $l_i$ and age group $a_j$ as $X^{trn}_{l_i, a_j}$ and $X^{tst}_{l_i, a_j}$, respectively.
+To understand the transferability from the source group to the target group, we explore a method called cross-group inference. Following prior works on zero-shot accent/language adaptation~\cite{winata2020crossaccent,hu2020xtreme,winata2022nusax}, we explore cross-lingual and cross-age inference settings in our experiment. Specifically, given a training dataset $X^{trn}_{l_i,a_j}$, we select three out-of-group test datasets: 1) datasets that are not in $l_i$ language ($X^{tst}_{\neg l_i,a_j}$), 2) datasets that are not in $a_j$ age-group ($X^{tst}_{l_i,\neg a_j}$), and 3) datasets that are not in $l_i$ language and $a_j$ age-group $X^{tst}_{\neg l_i, \neg a_j}$. We conduct cross-group inference by training the models on a specific group training set and evaluating them on the three out-of-group test sets. With this method, we can analyze the effect of cross-group information on a specific language and age group.
+
+\subsection{Cross-Group Data Augmentation}
+\label{sec:cross-group-da}
+
+Prior works~\cite{huang2018auggan,singh2019xlda} have shown that cross-domain and cross-lingual data augmentation method effectively improves the model performance in textual and speech modalities, especially on low-resource languages and domains. We adopt the data augmentation technique to the speech emotion recognition task by utilizing cross-lingual and cross-age data augmentation. Our cross-group data augmentation injects a training dataset $X^{trn}_{l_i, a_j}$ from a language group $l_i$ and an age group $a_j$ with data from other language and age groups producing a new augmented dataset. Given $X^{trn}_{l_i, a_j}$, there are three different data augmentation settings possible, i.e., cross-lingual data augmentation on the same age group resulting in $X^{trn}_{L,a_j}$, cross-age data augmentation on the same language resulting in $X^{trn}_{l_i,A}$, and cross-lingual cross-age data augmentation resulting in $X^{trn}_{L,A}$. We then fine-tune the model on the augmented dataset and evaluate it on $X^{tst}_{l_i, a_j}$, the test set with a language $l_i$ and age group $a_j$. Through this method, we can analyze the influence of cross-group augmentation on a specific language and age group.
+
+\subsection{Feature-Space Projection}
+\label{sec:feature-projection}
+
+Given a fine-tuned emotion recognition model $\theta$, we extract the speech representation by taking the high-dimensional features before the last linear classification layer. By using $\theta$, we extract the speech features from data points and perform matrix decomposition~\cite{jolliffe1986pca,hyvarinen2000ica,halko2011md,lovenia2019td,winata2020lr,cahyawijaya2021greenformer,cahyawijaya2021greenformers} into a 2-dimensional space with UMAP~\cite{mcinnes2018umap-software} for visualization. With this approach, we can approximate the effect of \ulcolor[darkgreen]{augmenting cross-group data points} to the training coverage, which will determine the prediction quality of the model to the evaluation data in a specific language $l_i$ and age-group $a_j$.
+
+\section{Experimental Settings}
+
+\begin{table}[!t]
+    \caption{Evaluation results of \ulcolor[orange]{cross-lingual and cross-age groups inference} on BiMotion. \textbf{Cross-all} denotes cross-age cross-lingual inference. \textbf{eng}, \textbf{zho}, \textbf{eld}, and \textbf{adu} denote English, Mandarin, elderly, and adults, respectively.}
+    \label{tab:cgi-result}
+    \centering
+    \resizebox{\linewidth}{!}{
+        \begin{tabular}{c|c|c|c|c|c}
+        \toprule
+        \multirow{3}{*}[-0.3em]{\bf{\begin{tabular}[c]{@{}c@{}}Training\\Data\end{tabular}}} & \multicolumn{4}{c|}{\bf{Test Data}} & \multirow{3}{*}{\bf{Avg.}} \\ \cmidrule{2-5}
+         & $\bm{l_i}$\bf{=eng} & $\bm{l_i}$\bf{=eng} & $\bm{l_i}$\bf{=zho} & $\bm{l_i}$\bf{=zho} & \\
+         & $\bm{a_j}$\textbf{=eld} & $\bm{a_j}$\textbf{=adu} & $\bm{a_j}$\textbf{=eld} & $\bm{a_j}$\textbf{=adu} & \\ \midrule
+        \textbf{Cross-all ($\bm{X^{trn}_{\neg l_i, \neg a_j}}$)} & 27.48 & 9.71 & 24.75 & 28.71 & 22.66 \\
+        \textbf{Cross-age ($\bm{X^{trn}_{l_i, \neg a_j}}$)} & 40.40 & 27.69 & 26.69 & 14.56 & 27.34 \\
+        \textbf{Cross-lingual ($\bm{X^{trn}_{\neg l_i, a_j}}$)} & 14.54 & 32.42 & 16.06 & 57.54 & 30.14 \\
+        \textbf{Baseline ($\bm{X^{trn}_{l_i, a_j}}$)} & \bf{55.12} & \bf{70.28} & \bf{57.00} & \bf{97.00} & \bf{69.85} \\
+        \bottomrule
+        \end{tabular}
+    }
+\end{table}
+
+\subsection{Baseline Models}
+
+For our experiment, we utilize the XLSR-53 Wav2Vec 2.0~\cite{baevski2020wav2vec2,babu2022interspeech} model which is pre-trained in 53 languages including English, Mandarin, and Cantonese.\footnote{We use the model checkpoint from \url{https://huggingface.co/facebook/wav2vec2-large-xlsr-53}.} We compare the performance of the \ulcolor[darkgreen]{cross-group data augmentation} and \ulcolor[orange]{cross-group inference} settings with a simple in-group training baseline where given a language $l_i$ and an age-group $a_j$, the model is fine-tuned only on $X_{l_i, a_j}$ and evaluated on the test set of the corresponding language and age-group.
+
+\subsection{Training Settings}
+
+To evaluate the transferability of emotion recognition ability, we conduct an extensive analysis in the BiMotion benchmark. We explore two different cross-group transfer methods, i.e., cross-group data-augmentation (\S\ref{sec:cross-group-da}) and cross-group inference (\S\ref{sec:cross-group-inf}). Specifically, we fine-tune the pre-trained XLSR-53 Wav2Vec 2.0 model using the in-group and the \ulcolor[darkgreen]{cross-group augmented datasets}, i..e., $X_{l_i, a_j}$, $X_{a_j}$, $X_{l_i}$, $X_{all}$, and evaluate on all the test set covering both the in-group and the out-of-group test data, i.e, $X^{test}_{l_i, a_j}$, $X^{test}_{\neg l_i}$, $X^{test}_{\neg a_j}$,  and $X^{test}_{\neg l_i, \neg a_j}$. 
+
+To further strengthen our analysis, we conduct the transferability experiment on the YueMotion dataset. We use the Cantonese elderly and Cantonese adults data on the YueMotion as the test set, and explore \ulcolor[darkgreen]{cross-group data augmentation} and \ulcolor[orange]{cross-group inference} for those test datasets. To measure the effectiveness of the cross-group transferability on YueMotion, we utilize the training datasets from BiMotion and compare the cross-group transfer methods with the baseline trained only on the YueMotion training dataset.
+
+\textbf{Hyperparameters} We use the same hyperparameters in all experiments. For fine-tuning the model we use the following hyperparameter setting, i.e., AdamW optimizer~\cite{loshchilov2018decoupled} with a learning rate of 5e-5, a dropout rate of 0.1, a number of epochs of 20, and early stopping of 5 epochs.
+
+\subsection{Evaluation Metrics}
+
+Some speech utterances may consist of multiple emotion labels, e.g., happiness and surprise, which makes emotion recognition a multilabel problem. By framing the problem as multilabel, the occurrence of each emotion becomes sparse, thus leading to an imbalanced label distribution. To consider the imbalance distribution, we use binary F1-score to compute per-label evaluation performance and take the weighted F1-score over different emotion labels, which is an average of the F1 scores for each class weighted by the number of samples in that class. 
+% Formally, the weighted F1-score metric is defined as:
+
+% \begin{equation}
+%     F1_i = \frac{TP_i}{TP_i + \frac{1}{2} (FP_i + FN_i)}
+% \end{equation}
+
+% \begin{equation}
+%     Weighted\ F1 = \sum^{N}_{i=1}{\frac{\#\ utterance\ in\ class\ i}{\#\ total\ samples}} * F1_i
+% \end{equation}
+
+\section{Results and Discussion}
+
+\begin{table}[!t]
+    \caption{Evaluation results of \ulcolor[darkgreen]{cross-lingual and cross-age groups data augmentation} on BiMotion. \textbf{Cross-all} denotes cross-age cross-lingual data augmentation. \textbf{eng}, \textbf{zho}, \textbf{eld}, and \textbf{adu} denote English, Mandarin, elderly, and adults, respectively.}
+    \label{tab:cga-result}
+    \centering
+    \resizebox{\linewidth}{!}{
+        \begin{tabular}{c|c|c|c|c|c}
+        \toprule
+        \multirow{3}{*}[-0.3em]{\bf{\begin{tabular}[c]{@{}c@{}}Training\\Data\end{tabular}}} & \multicolumn{4}{c|}{\bf{Test Data}} & \multirow{3}{*}{\bf{Avg.}} \\ \cmidrule{2-5}
+         & $\bm{l_i}$\bf{=eng} & $\bm{l_i}$\bf{=eng} & $\bm{l_i}$\bf{=zho} & $\bm{l_i}$\bf{=zho} & \\
+         & $\bm{a_j}$\textbf{=eld} & $\bm{a_j}$\textbf{=adu} & $\bm{a_j}$\textbf{=eld} & $\bm{a_j}$\textbf{=adu} & \\ \midrule
+        \textbf{Cross-all ($\bm{X^{trn}_{L, A}}$)} & \bf{68.06} & \bf{77.24} & 52.21 & \bf{97.40} & \textbf{73.73} \\
+        \textbf{Cross-age ($\bm{X^{trn}_{l_i, A}}$)} & 66.96 & 75.47 & \bf{59.93} & 97.00 & 74.84 \\
+        \textbf{Cross-lingual ($\bm{X^{trn}_{L, a_j}}$)} & 54.55 & 74.13 & 54.84 & 95.82 & 57.34 \\
+        \textbf{Baseline ($\bm{X^{trn}_{l_i, a_j}}$)} & 55.12 & 70.28 & 57.00 & 97.00 & 69.85 \\
+        \bottomrule
+        \end{tabular}
+    }
+\end{table}
+
+
+\subsection{Transferability via Cross-Group Inference}
+\label{sec:cross-group-inference}
+
+The results of our \ulcolor[orange]{cross-group inference} experiment are shown in Table~\ref{tab:cgi-result}. Based on our experiments, \ulcolor[orange]{cross-lingual, cross-age, and cross-age cross-lingual inferences} are not beneficial for improving the performance of the target group compared to the baseline trained on the specific language and age group, instead, they hinder the performance by a huge margin. For instance, the best \ulcolor[orange]{cross-age inference} comes from \textbf{English-Adults} to \textbf{English-Elderly}, however, it still hampers the performance of the in-group \textbf{English-Elderly} baseline by $\sim$15\% weighted F1-score. While for \ulcolor[orange]{cross-lingual inference}, the results are much worse with more than $\sim 30\%$ lower weighted F1-score than the corresponding in-group training baseline. This result suggests that there are some differences in speech features used to recognize emotion between different languages and different age groups, which makes transfer through \ulcolor[orange]{cross-group inference} not suitable for speech emotion recognition.
+
+
+\begin{figure*}[!t]
+    \centering
+    \begin{minipage}{.28\linewidth}
+        \centering
+        \begingroup
+        \includegraphics[width=\linewidth]{images/in-group-yue.pdf}
+        \endgroup
+    \end{minipage}%
+    \hspace{15pt}
+    % \hfill\vline\hfill
+    \begin{minipage}{.28\linewidth}
+        \centering
+        \begingroup
+        \includegraphics[width=\linewidth]{images/cross-zho.pdf}
+        \endgroup
+    \end{minipage}%
+    \hspace{15pt}
+    % \hfill\vline\hfill
+    \begin{minipage}{.28\linewidth}
+        \centering
+        \begingroup
+        \includegraphics[width=\linewidth]{images/cross-eng-edit.png}
+        \endgroup
+    \end{minipage}%
+    \caption{\ulcolor[darkgreen]{Cross-group data augmentation} on the Cantonese-Adults data. \textcolor{blue}{Blue}, \textcolor{red}{red}, \textcolor{olive}{olive} regions represent the density plot of the training data for \textcolor{blue}{happy}, \textcolor{red}{sad}, and \textcolor{olive}{neutral} emotions, respectively.}
+    \label{fig:aug-xlingual}
+\end{figure*}
+
+\begin{figure}[!t]
+    \centering
+    \begin{minipage}{.5\linewidth}
+        \centering
+        \begingroup
+        \includegraphics[width=\linewidth]{images/in-group.pdf}
+        \endgroup
+    \end{minipage}%
+    % \hspace{2pt}
+    % \hfill\vline\hfill
+    % \begin{minipage}{.31\linewidth}
+    %     \centering
+    %     \begingroup
+    %     \includegraphics[width=\linewidth]{images/cross-age.pdf}
+    %     \endgroup
+    % \end{minipage}%
+    % \hspace{2pt}
+    % \hfill\vline\hfill
+    \begin{minipage}{.5\linewidth}
+        \centering
+        \begingroup
+        \includegraphics[width=\linewidth]{images/cross-age-augmentation.png}
+        \endgroup
+    \end{minipage}%
+    \caption{\ulcolor[darkgreen]{Cross-group data augmentation} on the Mandarin-Elderly data. \textcolor{blue}{Blue}, and \textcolor{red}{red} regions denote the density of the training data for \textcolor{blue}{positive} and \textcolor{red}{negative} emotions, respectively.}
+    \label{fig:aug-zh-eld}
+    \vspace{-8pt}
+\end{figure}
+
+\subsection{Transferability via Cross-Group Data Augmentation}
+\label{sec:cross-group-augmentation}
+
+Despite having different characteristics, \ulcolor[darkgreen]{cross-group transfer through data augmentation} could provide richer and more diverse samples of emotion-induced speech and help to avoid overfitting problems, especially in a low-resource setting. Based on our cross-group data augmentation results in Table~\ref{tab:cga-result}, the \textbf{English-Elderly} and \textbf{English-Adults} groups benefit the most from the \ulcolor[darkgreen]{cross-group data augmentation}, gaining $\sim$12\% and $\sim$5\% weighted F1-score respectively. While for the Mandarin groups, the improvement is quite small. \textbf{Mandarin-Elderly} gains $\sim$3\% weighted F1-score with data augmentation from \textbf{Mandarin-Elderly}, while the result for the \textbf{Mandarin-Adults} remains the same, which is probably due to the limited data available from the \textbf{Mandarin-Elderly} group.
+
+For \ulcolor[darkgreen]{cross-lingual data augmentation}, the effect is apparent with the only improvement coming from the \textbf{English-Adults} group, while the performance in other groups decreases. We conjecture this is due to the huge linguistic differences between English and Mandarin~\cite{lim2016cultural,fu2020speechsim}. Further analysis regarding the effect of language distance is discussed on \S\ref{sec:language-distance}.
+% and \textbf{Zho-Elderly} groups, reduce the evaluation performance compared to the in-group training baseline by 0.5-1\% weighted F1-score. While cross-lingual data augmentation to \textbf{Zho-Adults} and \textbf{English-Elderly}, increase the evaluation performance against the in-group baseline by 1-2\% weighted F1-score. 
+% This finding suggests that cross-group transferability through cross-age data augmentation is more beneficial compared to cross-lingual data augmentation which is potentially caused by the significant language and cultural differences between English-speaking countries and Chinese-speaking countries~\cite{lim2016cultural}.
+Furthermore, a combination of \ulcolor[darkgreen]{cross-lingual and cross-age data augmentation} tends to improve the performance even higher. Specifically, the performance on \textbf{English-Elderly} and \textbf{English-Adults} increase by $\sim$13\% and $\sim$17\% weighted F1-score, respectively. The performance on \textbf{Mandarin-Adults} group improves marginally by $\sim$0.4\% weighted F1-score. On the other hand, the performance of \textbf{Mandarin-Elderly} decreases by $\sim$5\% weighted F1-score compared to the in-group training baseline. This might be caused by distributional shift due to the large amount of augmentation from other groups with respect to the amount of data in the \textbf{Mandarin-Elderly} group.
+
+We further analyze the cross-group behavior further through feature-space projection using the model trained on all BiMotion training data. As shown in Figure~\ref{fig:aug-zh-eld}, \ulcolor[darkgreen]{cross-age data augmentation} improves the training coverage of the model resulting in a better generalization on unseen evaluation data, despite the speech feature differences among different age groups. This shows the potential of leveraging \ulcolor[darkgreen]{cross-age data augmentation} for modeling low-resource groups such as the elderly.
+
+\subsection{Effect of Language Distance on Transferability}
+\label{sec:language-distance}
+
+We further analyze the effect of language distance on \ulcolor[darkgreen]{cross-lingual data augmentation}. Specifically, we explore the effect of \ulcolor[darkgreen]{cross-lingual data augmentation} from Mandarin and English to Cantonese. To balance the amount of data between English and Mandarin, we only utilize the ESD dataset~\cite{zhou2022esd} which contains 15K training, 1K validation, and 1.5K utterances for each English and Mandarin. For the Cantonese dataset, we utilize the newly constructed speech emotion dataset, YueMotion. As shown in Table~\ref{tab:yue-result}, the performance on the \textbf{Cantonese} data increases when the model is augmented with \textbf{Mandarin} data and decreases when the model is augmented with \textbf{English}. This follows the linguistic similarity of languages; Mandarin and Cantonese are more similar as both come from the same language family, i.e., Sino-Tibetan, compared to English that comes from the Indo-European language family. Similar pattern is also observed in the Mandarin test data when the Cantonese-Mandarin trained model outperforms the Cantonese-Mandarin-English model by $\sim$3\% weighted F1-score. 
+
+We also analyze the cross-lingual behavior further through feature-space projection with the Cantonese-Mandarin-English trained model. As shown in Figure~\ref{fig:aug-xlingual}, the original Cantonese training data cannot cover all the test data. When Mandarin data is added, the training coverage improved which covers more test samples for each label. When English data is added, the training coverage is improved, but not without shifting the training distribution, e.g., the out-of-distribution on the sad label, causing the model to perform worse on the Cantonese evaluation data.
+% the underlying reason why \ulcolor[darkgreen]{cross-group data augmentation} works using the \textbf{Chinese-Elderly} group from CSED~\cite{lee2017csed} as our case study. Since CSED consists of 3 labels: positive, neutral, and negative, to analyze the effect of the cross-group data augmentation, we group the emotion labels over all datasets into positive emotions (happiness, surprise, excitement, and positive) and negative emotions (sadness, fear, anger, disgust, frustration, and negative), and omit other emotion labels (others, unknown, and neutral). We use the model trained on English-Chinese adults and elderly data to extract the speech features from all the data points and visualize them with UMAP~\cite{mcinnes2018umap-software}. As shown in Figure~\ref{fig:augmentation-analysis}, despite having feature dissimilarities, the speech features from the augmented dataset can still be clustered together forming a single and more refined cluster for each label. Our analysis suggests that both \ulcolor[darkgreen]{cross-age and cross-lingual data augmentation} help to improve the training coverage of the model which allows better generalization yielding a better-performing model on the test set.
+
+% \subsection{Broader Impact}
+
+% Our work provides an extensive analysis of cross-group transferability in the speech emotion recognition task through cross-group data augmentation and cross-group inference. We explored two criteria of subject grouping, i.e., language and age group. Our work paves the way for research in cross-group transfer as one solution to leverage the performance in language and age groups with limited resources available to further reduce the disparity in the underrepresented groups such as low-resource language and the elderly.
+
+% Our current work only focuses only on 3 languages, i.e., English, Chinese, and Cantonese, exploring broader language groups covering a more diverse language family might be an interesting future research direction. Moreover, our work only focuses on emotion recognition systems for adults and elderly. Nevertheless, the generalization of the analysis to younger age groups such as toddlers, childhood, and adolescents remains an open question for future work. Future work might also consider exploring the effect of cross-group transfer for emotion recognition under different criteria for grouping, such as cultural, geographical, and other means. 
+
+\begin{table}[!t]
+    \caption{The effect of cross-lingual transferability in YueMotion.}
+    \label{tab:yue-result}
+    \centering
+    \resizebox{0.85\linewidth}{!}{
+    \begin{tabular}{c|c|c|c}
+        \toprule
+        \multirow{2}{*}[-0.2em]{\bf{\begin{tabular}[c]{@{}c@{}}Training\\Data\end{tabular}}} & \multicolumn{3}{c}{\bf{Test Data}} \\ \cmidrule{2-4}
+         & \bf{$\bm{l_i}$=yue} & \bf{$\bm{l_i}$=eng} & \bf{$\bm{l_i}$=zho} \\
+        \midrule
+        \bf{Cross-lingual (yue+eng+zho)} & 47.59 & \textbf{92.61} & 93.75 \\
+        \bf{Cross-lingual (yue+eng)} & 43.59 & 92.51 & - \\
+        \bf{Cross-lingual (yue+zho)} & \textbf{51.60} & - & \textbf{97.00} \\
+        \bf{Baseline (yue)} & 45.33 & - & - \\
+        \bottomrule
+    \end{tabular}
+    }
+\end{table}
+
+\section{Conclusion}
+
+We investigate the transferability of speech emotion recognition ability to achieve a better generalization for the elderly in low-resource languages. We construct an English-Mandarin speech emotion benchmark for adults and the elderly, namely BiMotion, from six publicly available datasets. We also construct, YueMotion, a low-resource speech emotion dataset for adults in Cantonese to analyze the effect of language distance in cross-lingual data augmentation. Based on the experiments, we conclude: 1) significantly distinct speech features are necessary to recognize emotion across different language and age groups, 2) although the speech features may vary across different groups, cross-group data augmentation is still beneficial to better generalize the model, and 3) language distance substantially affects the effectiveness of cross-lingual transferability.
+%, where closely-related languages improve the performance and distant languages may even hamper the performance of the model.
+% Our analysis paves a way to develop better speech emotion recognition for low-resource groups such as the elderly in low-resource languages.
+Our analysis lays the groundwork for developing more effective speech emotion recognition models for low-resource groups, e.g., the elderly in low-resource languages.
+
+% Using the BiMotion benchmark, we explore cross-lingual and cross-age transferability through two approaches: 1) cross-group data augmentation and 2) cross-group inference. 
+% Our findings suggest that: 1) there are different important speech features for recognizing emotion across different groups, 2) cross-group data augmentation improves the performance in low-resource groups, despite there being different important speech features across groups, and 3) cross-age transferability is superior against cross-lingual transferability for transferring emotion recognition ability. 
+% To further strengthen our analysis, we construct another low-resource speech emotion dataset in Cantonese, called Yuemotion, which supports all our findings from BiMotion that 
+% improve the emotion recognition performance by $\sim$XX\% weighted F1-score with the cross-group data augmentation, while slightly decreasing the performance by $\sim$YY\% weighted F1-score with the cross-group inference.
+
+
+% \section{Acknowledgements}
+
+\bibliographystyle{IEEEtran}
+\bibliography{mybib}
+
+\end{document}

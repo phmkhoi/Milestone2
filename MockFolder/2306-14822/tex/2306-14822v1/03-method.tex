@@ -1,0 +1,65 @@
+\section{Methodology}
+\begin{figure*}
+\includegraphics[width=0.9\textwidth]{figures/model.png}
+\centering
+\caption{\label{fig:model}The overall architecture of proposed framework. Label embeddings are pre-trained on the hyperbolic space to capture the hierarchical information, and the input sequence is encoded by RoBERTa to generate contextualized representations $h_i$ and cross entropy loss for each sample. $h_i$ will be simultaneously projected to the hyperbolic space to derive the hyperbolic distance $w_i$ to its label, and $w_i$ will be used to weight the standard cross entropy loss.}
+\centering
+\end{figure*}
+
+In this section, we describe the proposed \wsmodelname in detail. Fig.~\ref{fig:model} illustrates its workflow. 
+
+\subsection{Euclidean Sequence Representations}
+Given the input sequence $x_i = \{x_i^1, x_i^2, \dots , x_i^k\}$ with $k$ tokens, text encoder generates the representation of the input sequence $h_i$. The text encoder itself is model agnostic, which could be any transformer-like model or even trained directly on the hyperbolic space. Here we use $\mathrm{RoBERTa}_\mathrm{base}$ in particular, since its excellence of generating contextualized representations. We also discuss the generalization of BERT-style models as the text encoder in the experiment. As convention, we take the hidden states corresponding to $\mathrm{[CLS]}$ token as the sequence representation $h_i$. 
+
+\subsection{Hyperbolic Projection}
+We adopt the Poincar\'{e} ball model of hyperbolic space. Let $B$ be the Poincar\'{e} ball model, and the associated tangent space denoted as $\tau_x B$, we use exponential map $ exp_x: \tau_x B \rightarrow B $, $\forall x \in B$, to project points from euclidean space to the hyperbolic space:
+\begin{equation}
+\label{eq:exp_map}
+    \textrm{exp}_x(v) = x \oplus \textrm{tanh}(\frac{{\lambda_x \Vert v \Vert}}{2})\frac{v}{\Vert v \Vert}
+\end{equation}
+On the contrary, we could use logarithmic map to project points back to the euclidean space if needed:
+
+\begin{equation}
+    \textrm{log}_x(y) = \frac{2}{\lambda_x}\textrm{tanh}^{-1}(\Vert -x \oplus y \Vert)\frac{-x \oplus y}{\Vert -x \oplus y \Vert}
+\end{equation}
+where $v \neq 0$ and $y \neq x$ is the tangent vector, $\lambda_x = \frac{2}{1-\Vert x \Vert^2}$ is the conformal factor, and $\oplus$ is the Möbius addition:
+\begin{equation}
+    x \oplus y = \frac{(1+2\langle x,y \rangle + \Vert y \Vert^2)x + (1 - \Vert x \Vert^2)y}{1+2 \langle x,y \rangle + \Vert x \Vert^2 \Vert y \Vert^2}
+\end{equation}
+With exponential and logarithmic map, we can project embeddings from euclidean space to hyperbolic space or vice versa, and hence allowing us to take advantage on both spaces. Specifically, most of the well known language models are pre-trained on euclidean space which are powerful and easy to use, while in the hyperbolic space we can better model the label inventories in order to boost the performance.
+
+\subsection{Hyperbolic Label Embeddings}
+\label{sec:hyper_label_embedding}
+To fully utilize the hierarchy of label set, we train label representations on the hyperbolic space. In this stage, our goal is to learn representations for each class $ \mathcal{E} = \{ e_1, e_2, \dots, e_m \}$, where $e_i$ is the hyperbolic label embeddings $ \in \mathbb{R}^{h_d}$, $h_d$ is the dimension of hyperbolic space, and $m$ is the number of classes. The label set can be represented as a set of tuples, indicating the parent-children relationship between nodes: $\mathcal{D} = \{(u,v)\}$ where $u$ is the parent of $v$. For datasets which does not contain parent-children relationship, we follow the parrot's emotion model~\cite{parrott2001emotions} to form $\mathcal{D}$, which has at most three levels of hierarchy. For the objective, we follow previous work~\cite{NIPS2017_poincare_hierarchical, ganea2018hyperbolic} that maximizes the distance between unrelated samples using negative sampling:
+\begin{equation}
+    \mathcal{L}_{label} = -\sum_{(u,v) \in \mathcal{D}} log \frac{e^{-d(u,v)}}{\sum_{v^{'} \in \mathcal{N}(u) \cup \{v\}}e^{-d(u,v^{'})}}
+\end{equation}
+where $\mathcal{N}(u) = \{v: (u,v) \not\in \mathcal{D}, v \neq u \}$ is the negative sample set and $d(u,v)$ is the distance between two points calculated by Eq.~\ref{eq:poincare_distance}. We use Riemammian Adam~\cite{becigneul2018riemannian_adam} for the optimization. After that, hyperbolic embeddings for each label is ready for use in the next step.
+
+\subsection{Label-Aware Hyperbolic Weighted Loss}
+\label{sec:hyperbolic_weighted_loss}
+Cross entropy loss is commonly used in classification task. It assumes that every instance's negative log probability contributes equally. Usually, classifying a sample to be \textit{furious} when the ground truth is \textit{angry}, is more forgivable than classifying a sample to be \textit{joy}. However, it is the subtle difference between those confusable pairs such as \textit{angry} and \textit{furious} that makes fine-grained classification task challenging. 
+In our work, we incorporate hyperbolic distance to enhance learning efficacy. To be more specific, we expect the confusable pairs that shares almost identical semantics can be well seperated on the hyperbolic space, and jointly update the model lies in the euclidean space. Formally, the pre-trained hyperbolic label embedding set (See Sec.\ref{sec:hyper_label_embedding}) is denoted as $ \mathcal{E} = \{ e_1, e_2, \dots, e_m \}$. Each instance $\{x_i, y_i\}$ contains a pair of sequences and labels where $y_i \in \mathcal{M}$ and $\mathcal{M}$ denotes the label set with $|\mathcal{M}| = m$. Given the sequence $x_i$, $h_i$ is extracted from the text encoder, and the logit $c_i \in \mathbb{R}^m$ is obtained by further passing $h_i$ through a linear layer: $c_i = \textrm{MLP}(h_i)$.
+The standard cross-entropy loss is expressed mathematically as follows. 
+\begin{equation}
+\mathcal{L}_\mathcal{CE} = \frac{1}{N} \sum_{i = 1}^N-log\frac{exp(c_i^{y_i})}{\sum_{j = 1}^K exp(c_i^j)}
+\end{equation}
+
+The length of the geodesic, i.e., the distance between two points in a Poincar\'{e} ball is given by:
+\begin{equation}
+\label{eq:poincare_distance}
+d(x_i, y_i) = \textrm{cosh}^{-1}(1 + 2 \frac{\Vert x_i -y_i \Vert^2}{(1 - \Vert x_i \Vert^2)(1 - \Vert y_i \Vert^2)})
+\end{equation}
+
+
+Now we can project the text representation generated from the encoder to the hyperbolic space using Eq.~\ref{eq:exp_map}, and calculate the distance $w \in \mathbb{R}$ of text representation and the label embeddings, which are both on the hyperbolic space.
+We expect the embeddings for both input sequence and its label to be as close as possible, which means the distance $w$ is expected to be minimized. A simple way is to integrate $w$ into $\mathcal{L}_\mathcal{CE}$ by multiplying: 
+%We would multiply the former with a lower penalty and a higher penalty for the latter. We also argue that if the text representation $h_i$ contains emotional semantics, it is easier to classify. Therefore, we compute the distance between text representations and label embeddings on the Poincar\'{e} space and re-weight with the $L_{CE}$. The way to compute the distance on the Poincar\'{e} space and re-weighted cross-entropy loss is described as follows. HNN represents hyperbolic neural network, and it projects the contextualized representation $h$ from euclidean space to hyperbolic space.
+%\begin{equation}
+% w = d(HNN(h), (e_{y_1}, e_{y_2}, \dots, e_{y_N}))
+%\end{equation}
+\begin{equation}
+    \mathcal{L}_\mathcal{WCE} =  \sum_{i = 1}^N-w_i log \frac{exp(c_i^{y_i})}{\sum_{j = 1}^K exp(c_i^j)}
+\end{equation}
+
+In this way, $w$ can be viewed as a weight to penalize pairs that have larger distance in the hyperbolic space. Our goal here is to jointly learn embeddings in both Euclidean and hyperbolic space to boost the performance. By taking $w$ as a weight to sum up cross entropy loss, the main merit is that it is easy to implement without carrying all optimization operation on the hyperbolic space, while allowing the whole framework to be updated jointly. We will also discuss the scenario when fully using hyperbolic neural networks in Sec.~\ref{sec:main_results}.

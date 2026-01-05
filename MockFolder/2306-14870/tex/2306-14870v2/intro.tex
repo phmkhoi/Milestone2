@@ -1,0 +1,48 @@
+%!TEX root=./neurips_2023.tex
+
+\section{Introduction}
+
+\begin{figure}[!t]
+\begin{minipage}{\textwidth}
+\begin{figure}[H]
+    \centering    
+    \vspace{-5mm}
+    \includegraphics[width=\columnwidth]{figs/top_v2.png}
+    \vspace{-5mm}
+    \caption{An overview of parameter-efficient modules (PEMs) and available PEM combination of our study. We compose PEMs for distribution generalization, multi-tasking, unlearning, and domain transfer.}
+    \label{fig:main_fig}
+\end{figure}
+\end{minipage}
+\vspace{-13pt}
+\end{figure}
+
+% LLM → parameter-efficient finetuning
+% zero-shot combine → arithmetic
+% parameter-efficient module can do task arithmetic
+
+Parameter-efficient finetuning (PEFT) methods -- that only adjust a small number of parameters while keeping most pretrained parameters frozen -- are becoming a standard approach to customize pretrained language models (PLMs) due to its competitive performance and reduced memory and storage cost~\citep{houlsby2019parameter,li2021prefix,he2021towards}. 
+% Most PEFT approaches insert additional modules into the pretrained model, the representative ones are adapter~\citep{xx}, prefix tuning~\citep{xxx}, LoRA~\citep{xxx}, and IA$^3$~\citep{xxx}. 
+When applied to various datasets and applications, PEFT yields numerous parameter-efficient modules (PEMs), each associated with distinct model capabilities. These compact, easily manageable modules can be transferred with minimal effort, presenting an appealing perspective of modular deep learning to view PEFT methods~\citep{pfeiffer2023modular}, then a natural question arises: can we compose these lightweight modules to leverage the diverse skills they embody?
+% For example, PEFT methods have shown comparable or superior performance over full finetuning widely employed recently to customize large language models like LLaMA through instruction tuning~\citep{xxx}.
+
+In this work, we study the composition of trained PEMs to achieve highly flexible manipulation of the module capabilities. This includes integrating modules trained on varied data distributions to facilitate generalization on different distributions, fusing learned skills into a multi-task learner, unlearning certain abilities, or 
+% even more sophisticated, obtaining new skills on an unseen combination of task and domain by composing relevant ones.
+transferring domains.
+Importantly, we seek to meet these objectives in a \emph{training-free} manner because accessing corresponding annotated data is often restricted to protect data privacy and intellectual property.
+To this end, we propose to compose different PEMs in the parameter space via linear arithmetic operations, which merge separate modules into one module. 
+Specifically, we define addition and negation operators for the PEM architecture of focus as the basic operators -- addition is intended to aggregate module skills, akin to a multi-task setting, while negation aims to retract certain abilities from the underlying pretrained model. 
+These two operators can be composed to perform various linear arithmetic operations on the module parameters -- for instance, deriving PEMs with an advanced composition of skills through an analogy operation, similar to the well-known word embedding equation ``\texttt{queen = king - man + woman}'' as we will show in \textsection\ref{sec:combine}.
+An overview of the proposed method is illustrated in Figure~\ref{fig:main_fig}.
+Notably, our approach does not require additional training due to the simplicity of the addition and negation operators and linear arithmetic involved. 
+
+This work draws inspiration from a recent line of research on merging all the model parameters in a full finetuning setting~\citep{wortsman2022model,matena2022merging,jin2022dataless}, where they show that starting from the same pretrained model, different model parameters could be added to boost performance.~\citet{ilharco2022editing} explore editing models by performing arithmetic operations on all the model parameter updates, while we focus on parameter-efficient modules which necessitate specially designed operators as we will demonstrate in \textsection\ref{sec:definition}. 
+Prior works on composing PEMs fuse their outputs with another learnable module~\citep{pfeiffer2021adapterfusion} or in a mixture-of-expert fashion~\citep{wang2022adamix}, both of which require additional training.~\citet{qin2022exploring,chronopoulou2023adaptersoup} explore the addition of the PEM parameters in multi-task scenarios. 
+However, our approach distinguishes itself by (1) studying flexible arithmetic operation in a more systematic way, not limited to addition, (2) examining the composition of PEMs in broader settings beyond multi-task applications, and (3) extending the base model of PEM to modern large language models such as LLaMA~\citep{touvron2023llama}.
+
+
+In this study, we focus on LoRA~\citep{hu2021lora} and \ia~\citep{liu2022few} as our PEM architectures, two state-of-the-art PEFT methods. 
+% that achieve superior performance than traditional adapters~\citep{houlsby2019parameter}. 
+Experiments are conducted on four diverse settings with text benchmarks, composing PEMs for: 
+(1) distribution generalization, (2) multi-tasking, (3) unlearning, and (4) domain transfer. We additionally extend our approach to detoxify large language models such as Alpaca-LoRA~\citep{alpacalora}.
+
+Our results demonstrate that the proposed approach is able to successfully compose the PEMs without additional training across all settings, achieving significant gains using a new PEM derived from arithmetic operations of existing ones.

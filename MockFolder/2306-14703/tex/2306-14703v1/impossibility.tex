@@ -1,0 +1,1032 @@
+% Submitted on ... to ...
+% Revised on ...
+\documentclass[a4paper]{article}
+%\documentclass[a4paper,titlepage]{article}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+%\usepackage[dvips]{graphicx}
+\usepackage{graphicx}
+\usepackage[OT4]{fontenc}
+%\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{tikz}
+\usepackage{url}
+\usepackage[numbers]{natbib}
+\usepackage{bm}
+\emergencystretch=20pt
+
+\usepackage{setspace}
+%\doublespacings
+
+\newcommand{\abs}[1]{\left| #1 \right|}
+\newcommand{\norm}[1]{\left|\mkern-1mu\left| #1 \right|\mkern-1mu\right|}
+\newcommand{\aabs}[1]{\left\| #1 \right\|}
+\newcommand{\okra}[1]{\left( #1 \right)}
+\newcommand{\kwad}[1]{\left[ #1 \right]}
+\newcommand{\klam}[1]{\left\{ #1 \right\}}
+\newcommand{\ceil}[1]{\left\lceil #1 \right\rceil}
+\newcommand{\floor}[1]{\left\lfloor #1 \right\rfloor}
+\newcommand{\dzi}[1]{\left\langle #1 \right\rangle}
+\newcommand{\ind}{\mathrel{\perp\mkern-10mu\perp}}
+\DeclareMathOperator*{\argmin}{arg\, min}
+\DeclareMathOperator*{\argmax}{arg\, max}
+\DeclareMathOperator*{\hilberg}{hilb}
+\DeclareMathOperator{\essinf}{ess\, inf}
+\DeclareMathOperator{\esssup}{ess\, sup}
+\DeclareMathOperator{\card}{card}
+\DeclareMathOperator{\supp}{supp}
+\DeclareMathOperator{\cov}{Cov}
+\DeclareMathOperator{\var}{Var}
+\DeclareMathOperator{\mean}{\mathbf{E}}
+\DeclareMathOperator{\median}{\mathbf{M}}
+\newcommand{\peq}{\stackrel{+}{=}}
+\newcommand{\pge}{\stackrel{+}{>}}
+\newcommand{\ple}{\stackrel{+}{<}}
+\newcommand{\boole}[1]{{\bf 1}{\klam{#1}}}
+
+\newtheorem{conjecture}{Conjecture}
+\newtheorem{definition}{Definition}
+\newtheorem{example}{Example}
+\newtheorem{corollary}{Corollary}
+\newtheorem{proposition}{Proposition}
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newenvironment*{proof}{\begin{trivlist}\item[]
+\noindent\textbf{Proof:}}{$\Box$\par\end{trivlist}}
+\newenvironment*{proof*}[1]{\begin{trivlist}\item[]
+\noindent\textbf{Proof of #1:}}{$\Box$\par\end{trivlist}}
+%\renewcommand{\theenumi}{\roman{enumi}}
+%\renewcommand{\labelenumi}{(\theenumi)}
+%\renewcommand{\thesection}{\Roman{section}}
+%\renewcommand{\thesubsection}{\Roman{section}-\Alph{subsection}}
+
+
+\newcommand{\bibnamefont}[1]{\MakeUppercase{#1}}
+
+
+\author{{\L}ukasz D\k{e}bowski\thanks{
+    {\L}. D\k{e}bowski is with
+    the Institute of Computer Science, Polish Academy of Sciences, 
+    ul. Jana Kazimierza 5, 01-248 Warszawa, Poland 
+    (e-mail: ldebowsk@ipipan.waw.pl).
+  }
+  % \thanks{Manuscript received ... ; revised ... .}
+  %\thanks{}  
+}
+
+
+\title{Recurrence and repetition times in the case of \\ a stretched
+  exponential growth} \date{}
+
+\begin{document}
+
+%\pagestyle{empty}   
+%\begin{titlepage}
+%\titlepage
+\maketitle
+
+\begin{abstract}
+  By an analogy to the duality between the recurrence time and the
+  longest match length, we introduce a quantity dual to the maximal
+  repetition length, which we call the repetition time.  Using the
+  generalized Kac lemma for successive recurrence times by Chen Moy,
+  we sandwich the repetition time in terms of min-entropies with no or
+  relatively short conditioning. The sole assumption is stationarity
+  and ergodicity. The proof is surprisingly short and the claim is
+  fully general in contrast to earlier approaches by Szpankowski and
+  by D\k{e}bowski. We discuss the analogy of this result with the
+  Wyner-Ziv/Ornstein-Weiss theorem, which sandwiches the recurrence
+  time in terms of Shannon entropies. We formulate the respective
+  sandwich bounds in a way that applies also to the case of stretched
+  exponential growth observed empirically for natural language.
+% \end{abstract}
+%
+% \begin{keywords}
+  \\[1em]
+  \textbf{Keywords:} stationary processes, recurrence time, maximal
+  repetition, R\'enyi entropies
+  % \end{keywords}
+  \\[1em]
+  \textbf{MSC2020:} 60G10, 94A17
+\end{abstract}
+
+% %MSC 2020: 
+% % 94A29 - Source coding
+% % 60G10 - Stationary processes
+% % 94A17 - Measures of information, entropy
+
+
+% \end{titlepage}
+% \pagestyle{plain}   
+
+% \tableofcontents
+
+\section{Introduction}
+\label{secIntroduction}
+
+Using appropriate concepts is often a gate to the simple theory. Some
+instance of this rule will be exhibited in this short note.  Let
+$(X_i)_{i\in\mathbb{Z}}$ be an arbitrary stochastic process over a
+countable alphabet. The well-researched recurrence time $R^{(1)}_k$
+\citep{Kac47,WynerZiv89,OrnsteinWeiss93,Kontoyiannis98,Ko12} is the
+first position in the future on which a copy of string $X_1^k$
+reappears,
+\begin{align}
+  R^{(1)}_k:=\inf\klam{\infty}\cup\klam{i\ge 1: X_{i+1}^{i+k}=X_1^k}.
+\end{align}
+By contrast, we define here the repetition time $R^{(2)}_k$ as the
+first position in the future on which a copy of any previously seen
+string $X_{j+1}^{j+k}$ occurs,
+\begin{align}
+  R^{(2)}_k:=\inf\klam{\infty}\cup\klam{i\ge 1:
+  X_{i+1}^{i+k}=X_{j+1}^{j+k}\text{ for some } 0\le j<i}.
+\end{align}
+If $(X_i)_{i\in\mathbb{Z}}$ is a process over a $D$-ary alphabet then
+$R^{(2)}_k\le D^k$. In any case, $R^{(2)}_k\le R^{(1)}_k$. Precisely,
+we have
+\begin{align}
+  \label{Minimum}
+  R^{(2)}_k=\inf_{i\ge 0}\okra{i+R^{(1)}_k\circ T^i}
+\end{align}
+for the shift automorphism $X_i\circ T=X_{i+1}$, since observing a
+repetition is equivalent to observing a recurrence of some particular
+string. Relationship (\ref{Minimum}) is a simple fact that will have
+weighty consequences in this note.
+% The motivation for the novel term ``impossibility time'' is a rule
+% of thumb that if some rare event happens twice then the phenomenon
+% cannot be random.
+
+In parallel, we can discuss variables that are dual to random
+variables $R^{(\gamma)}_k$. The longest match length $L^{(1)}_n$
+\citep{WynerZiv89,OrnsteinWeiss93,Szpankowski93,
+  KontoyiannisOthers98,GaoKontoyiannisBienenstock08}
+is
+\begin{align}
+  L^{(1)}_n:=\max\klam{0}\cup\klam{k\ge 1: X_{i+1}^{i+k}=X_1^k
+  \text{ for some } 0< i\le n-k},
+\end{align}
+whereas the maximal repetition length $L^{(2)}_n$
+\citep{DeLuca99,KolpakovKucherov99a,KolpakovKucherov99,CrochemoreIlie08,
+  ErdosRenyi70,ArratiaWaterman89,Shields92b,Shields97,
+  Szpankowski93,Szpankowski93a,KontoyiannisSuhov94,
+  Debowski11b,Debowski17,Debowski18b} is
+\begin{align}
+  L^{(2)}_n:=\max\klam{0}\cup\klam{k\ge 1: X_{i+1}^{i+k}=X_{j+1}^{j+k}
+  \text{ for some } 0\le j< i\le n-k}.
+\end{align}
+Both $L^{(\gamma)}_n$ are functions of prefix $X_1^n$ and
+$n\ge L^{(2)}_n\ge L^{(1)}_n$. For $\gamma\in\klam{1,2}$, we have the
+dualities
+\begin{align}
+  R^{(\gamma)}_k&:=\min\klam{n: L^{(\gamma)}_{n+k}\ge k},
+  &
+    L^{(\gamma)}_n&=\max\klam{k: R^{(\gamma)}_k\le n-k}.
+\end{align}
+Hence $R^{(\gamma)}_k>n\iff L^{(\gamma)}_{n+k}<k$
+\citep{WynerZiv89}. Thus the dual random variables carry the same
+information as the primal. Both $R^{(\gamma)}_k$ and $L^{(\gamma)}_n$
+are non-decreasing functions of $k$ and $n$ respectively.
+
+Whereas variable $R^{(2)}_k$ is defined in this paper, there is a long
+history of investigation of variables $R^{(1)}_k$, $L^{(1)}_n$, and
+$L^{(2)}_n$. These concepts appear in various contexts in ergodic
+theory, information theory, theoretical computer science, and
+quantitative linguistics, as we have already indicated by the
+references.  Establishing the asymptotic behavior of $R^{(\gamma)}_k$
+and $L^{(\gamma)}_n$ for stationary ergodic processes is of a theoretical
+importance since combined with empirical data, it can reveal what kind
+of a process may generate these observations.
+
+To comment on the respective theoretical results, let us begin with
+the recurrence time and the longest match length.  Let $\log$ denote
+the natural logarithm.  Consider a discrete random variable $X$. The
+Shannon entropy is $H_1(X):=\mean\kwad{-\log P(X)}$. Let
+$(X_i)_{i\in\mathbb{Z}}$ be a stationary ergodic process over a finite
+alphabet. The celebrated Wyner-Ziv/Ornstein-Weiss (WZ/OW) theorem
+\citep{WynerZiv89,OrnsteinWeiss93} asserts
+\begin{align}
+  \label{WZOW}
+  \lim_{k\to\infty} \frac{\log n}{L^{(1)}_n}
+  =\lim_{k\to\infty} \frac{1}{k}\log R^{(1)}_k
+  =h_1:=\lim_{k\to\infty} \frac{H_1(X_1^k)}{k}
+  \text{ a.s.}
+\end{align}
+Thus the rates of the recurrence time and the longest match length are
+essentially dictated by the rate of the Shannon entropy.  The Shannon
+entropy rate $h_1$ exists for any stationary process.
+
+Let us proceed to the maximal repetition length and the repetition
+time.  For memoryless sources, the maximal repetition length
+$L^{(2)}_n$ grows at a similar rate as the longest match length
+$L^{(1)}_n$ \citep{ErdosRenyi70,ArratiaWaterman89}. Probably for this
+reason, the problem that $L^{(2)}_n$ can grow much faster than
+$L^{(1)}_n$ for other stationary processes was first recognized as
+late as by \citet{Shields92b,Shields97}. Define the collision entropy
+is $H_2(X)=-\log\mean P(X)$, where $H_2(X)\le H_1(X)$ by the Jensen
+inequality.  A technically complicated result by
+\citet{Szpankowski93,Szpankowski93a}, involving suffix trees, can be
+rewritten as
+\begin{align}
+  \label{Szpankowski}
+  \lim_{k\to\infty} \frac{\log n}{L^{(2)}_n}
+  =\lim_{k\to\infty} \frac{1}{k}\log R^{(2)}_k
+  =h_2:=\lim_{k\to\infty} \frac{H_2(X_1^k)}{k}
+  \text{ a.s.}
+\end{align}
+provided we have a uniform bound on the pointwise mutual information
+\begin{align}
+  \label{Kfinite}
+  \sup_{n,m\ge 1}\esssup
+     \frac{P(X_1^{n+m})}{P(X_1^n)P(X_{n+1}^{n+m})}
+     < \infty.
+\end{align}
+Quantity $h_2$ is called the collision entropy rate. Whereas limit
+$h_1$ exists for any stationary process, limit $h_2$ exists if
+(\ref{Kfinite}) holds additionally. The collision entropy rate can be
+substantially smaller than the Shannon entropy rate.
+
+Condition (\ref{Kfinite}) is satisfied by finite-state processes
+\citep[Theorem 11.3]{Debowski21} but it does not cover all important
+cases---such as stationary sources that do not satisfy the finite
+energy condition \citep{Shields92b,Shields97}, do not meet the
+Doeblin condition \citep[Theorem 11.7]{Debowski21}, or are not diluted
+by random noise \citep{Shields97}, \citep[Theorem 11.6]{Debowski21}.
+We became interested in characterizing the maximal repetition length
+because of our long-standing interests in statistical language
+modeling \citep{Debowski21}.  In fact, for natural language,
+experiments suggest that the Shannon entropy rate is positive,
+$h_1>0$, \citep{Shannon51,CoverKing78,BehrOthers03} but the mutual
+information probably grows like a power-law, called Hilberg's law
+\citep{Hilberg90, TakahiraOthers16, KaplanOther20, Debowski21}, which
+contradicts condition (\ref{Kfinite}). Moreover, as discovered
+empirically in \citep{Debowski12b,Debowski15f} for novels in English,
+German, and French, we have a power-law logarithmic growth of the
+maximal repetition length
+\begin{align}
+  L^{(2)}_n\propto \log^\alpha n,\quad \alpha\approx 3.
+\end{align}
+This is equivalent to the stretched exponential growth of the
+repetition time
+\begin{align}
+  \log R^{(2)}_k\propto k^\beta,\quad \beta\approx 1/3.
+\end{align}
+
+The goal of this paper is to analyze this case of a stretched
+exponential growth, rectifying and beautifying our earlier theoretical
+accounts and cumbersome statements
+\citep{Debowski15f,Debowski18b,Debowski21}. We will do it by using the
+repetition time $R^{(2)}_k$ rather than the maximal repetition length
+$L^{(2)}_n$. The new results are simple and general but they have
+escaped our awareness for quite a long time. The reason was that we got
+stuck to bounding $L^{(2)}_n$ rather than $R^{(2)}_k$, gradually
+losing hope in an elegant solution.
+
+Two explanations regarding our framework are in place.  First, the
+Hilberg exponent of a sequence $(a_k)_{k\in\mathbb{N}}$ is defined as
+\begin{align}
+  \label{Exponent}
+  \hilberg_{k\rightarrow\infty} a_k
+  :=\limsup_{k\rightarrow\infty} \max\klam{0,\frac{\log
+  a_k}{\log k}}
+  .
+\end{align}
+It measures the rate of asymptotic power-law growth,
+$\hilberg_{k\rightarrow\infty} k^\beta=\max\klam{0,\beta}$. Some
+properties of the Hilberg exponent are summarized in \citep[Section
+8.1]{Debowski21}. We write succinctly
+\begin{align}
+  a_k\lesssim b_k\iff
+  \hilberg_{k\rightarrow\infty} a_k\le
+  \hilberg_{k\rightarrow\infty} b_k,
+  \\
+  a_k\sim b_k\iff
+  \hilberg_{k\rightarrow\infty} a_k=
+  \hilberg_{k\rightarrow\infty} b_k.
+\end{align}
+The Hilberg exponent is useful for characterizing the power-law growth
+of mutual information, i.e., Hilberg's law \citep[Chapter
+8]{Debowski21}. Hence comes its name.
+
+Second, for a parameter $\gamma\in(0,1)\cup(1,\infty)$, the
+R\'enyi-Arimoto conditional entropy of a discrete random variable $X$
+given a variable $Y$ is defined as
+\begin{align}
+  \label{RenyiArimoto}
+  H_\gamma(X|Y):=
+  -\frac{\gamma}{\gamma-1}\log
+  \mean\kwad{\sum_x p(X=x|Y)^{\gamma}}^{1/\gamma}
+  ,
+\end{align}
+whereas for $\gamma\in\klam{0,1,\infty}$, we define
+\begin{align}
+  H_\gamma(X|Y):=\lim_{\delta\rightarrow\gamma} H_\delta(X|Y).
+\end{align}
+We also put $H_\gamma(X):=H_\gamma(X|1)$. The special cases are
+called:
+\begin{itemize}
+\item the Hartley entropy
+$H_0(X|Y)= \log \esssup\card\klam{x: P(X=x|Y)>0}$,
+\item  the Shannon
+entropy $H_1(X|Y)=\mean\kwad{-\log P(X|Y)}$, 
+\item the collision entropy
+$H_2(X|Y)=-2\log \mean\kwad{\sum_{x\in\mathbb{X}} P(X=x|Y)^2}^{1/2}$,
+\item the min-entropy $H_\infty(X|Y)=-\log \mean\max_{x} P(X=x|Y)$.
+\end{itemize}
+We have $H_\gamma(X)\ge H_\delta(X)$ for $\gamma<\delta$, whereas
+$H_\gamma(X)\le \frac{\gamma}{\gamma-1}H_\infty(X)$ for $\gamma>1$.
+Thus all R\'enyi-Arimoto entropies with $\gamma>1$ are of the same
+magnitude.  Moreover, we have a generalized chain rule
+\begin{align}
+  \label{Chain}
+  H_\gamma(X|Y,Z)\le H_\gamma(X|Y)\le H_\gamma(U,X|Y)\le
+  H_0(U|Y)+H_\gamma(X|Y,U).
+\end{align}
+An overview of the R\'enyi-Arimoto entropies can be found in
+\citep{FehrBerens14} and also in \citep[Section 9.1]{Debowski21}.
+
+Let us come back to the recurrence and repetition times.  In the body of
+the paper, we will prove the following Theorems \ref{theoMainOne} and
+\ref{theoMainTwo}, which are analogous but a noticeable novelty can be
+attributed only to Theorem \ref{theoMainTwo}.
+\begin{theorem}
+  \label{theoMainOne}
+  Consider a stationary ergodic process $(X_i)_{i\in\mathbb{Z}}$ over
+  a finite alphabet. We have a sandwich bound
+  \begin{align}
+    hk\sim
+    \log P(X_1^k|X_{k+1}^\infty)\lesssim
+    \log R^{(1)}_k\lesssim
+    -\log P(X_1^k)\lesssim
+    H_1(X_1^k)
+    \text{ a.s.},
+  \end{align}
+  where the right-most inequality $\lesssim$ becomes the equivalence
+  $\sim$ for
+  \begin{align}
+    \limsup_{k\to\infty} \frac{\sqrt{\var\log P(X_1^k)}}{H_1(X_1^k)}<1.
+  \end{align}
+\end{theorem}
+\emph{Remark:} Theorem \ref{theoMainOne} applies the same sandwich
+bound by \citet{Kontoyiannis98} as the simple proof of the WZ/OW
+theorem (\ref{WZOW}) presented in \citep[Theorem 9.12]{Debowski21}.
+We also recall that $h_1=\mean\kwad{-\log P(X_1|X_2^\infty)}$ for a
+stationary process. Consequently if $h_1=0$ then
+$P(X_1^k|X_{k+1}^\infty)=1$ almost surely. Quantity $\sqrt{\var\log
+  P(X_1^k)}$ is called varentropy \citep{KontoyiannisVerdu13}.
+
+\begin{theorem}
+  \label{theoMainTwo}
+  Consider a stationary ergodic process $(X_i)_{i\in\mathbb{Z}}$ over
+  a countable alphabet. Define the context length
+  \begin{align}
+    \label{ContextLength}
+    I_k:=\min\klam{i:\log i\ge H_\infty(X_1^k|X_{k+1}^{k+i})}.
+  \end{align}
+  We have a sandwich bound 
+  \begin{align}
+    \label{MainTwo}
+    H_\infty(X_1^k|X_{k+1}^{k+I_k})\lesssim
+    \log I_k\lesssim
+    \log R^{(2)}_k\lesssim
+    H_\infty(X_1^k)
+    \text{ a.s.}
+    ,
+  \end{align}
+  where the left-most inequality $\lesssim$ becomes the equivalence
+  $\sim$ for a finite alphabet.
+\end{theorem}
+\emph{Remark:} We may substitute
+$I_k\to\min\klam{i:\frac{\gamma}{\gamma-1}\log i\ge
+  H_\gamma(X_1^k|X_{k+1}^{k+i})}$ and $H_\infty\to H_\gamma$ for any
+$\gamma>1$ in the sandwich bound (\ref{MainTwo}).  In
+\citep{Debowski18b,Debowski21}, a trivial bound in terms of Shannon
+entropy $H_1(X_1^k)$ stemming from inequality $L^{(2)}_n\ge L^{(1)}_n$
+was discussed instead of the right-most bound in (\ref{MainTwo}). By
+contrast, the upper bound in (\ref{MainTwo}) in terms of min-entropy
+$H_\infty(X_1^k)$, which is a brand new idea, follows by inequality
+(\ref{Minimum}) and the generalized Kac lemma for successive
+recurrence times by \citet{ChenMoy59}. As for the lower bound in
+(\ref{MainTwo}), context length $I_k$ can be much shorter than the
+pessimistic context length $D^k$ for a $D$-ary alphabet that was
+proved sufficient in \citep[Theorem 8]{Debowski18b}. Moreover,
+bounding $R^{(2)}_k$ rather than $L^{(2)}_n$ leads to more elegant
+statements than produced in \citep{Debowski18b,Debowski21}.
+
+The organization of the note is as follows. In Section
+\ref{secRecurrence}, we recall the known sandwich bound for the
+recurrence time. In Section \ref{secRepetition}, we prove a new
+sandwich bound for the repetition time. Concluding, in Section
+\ref{secFinal}, we specialize these results to the Hilberg exponents.
+
+% Gaps to be filled:
+
+% -- How much can different entropies differ?, Szpankowski's results
+% on $L^{(\gamma)}_n$ for $\gamma\ge 3$ suggest that entropy rates
+% $h_\gamma$ are equal.
+
+
+\section{Sandwiching recurrence times}
+\label{secRecurrence}
+
+There is a celebrated lemma by \citeauthor{Kac47}. Namely, the
+conditional expectation of the recurrence time is the inverse
+probability of the initial string.
+\begin{lemma}[\citep{Kac47}]
+  \label{theoKac}
+  For a stationary ergodic process $(X_i)_{i\in\mathbb{Z}}$ over a
+  countable alphabet,
+  \begin{align}
+    \mean\okra{R^{(1)}_k\middle|X_1^k}
+    =
+    \frac{1}{P(X_1^k)}.
+  \end{align}
+\end{lemma}
+There is also a converse result by \citeauthor{Kontoyiannis98}.
+\begin{lemma}[\citep{Kontoyiannis98}]
+  \label{theoKontoyiannis}
+  For a process $(X_i)_{i\in\mathbb{Z}}$ over a $D$-ary alphabet,
+  \begin{align}
+    \mean\okra{\frac{1}{R^{(1)}_k
+    P(X_1^k|X_2^\infty)}\middle|X_{k+1}^\infty}
+    \le
+    1+\log D^k.
+  \end{align}
+\end{lemma}
+The origin of this clever but simple inequality comes from an
+observation that for a fixed sequence $x_{k+1}^\infty$ and any number
+$i\ge 1$, there is at most one string $x_1^k$ such that $R^{(1)}_k=i$
+for $X_1^\infty=x_1^\infty$.
+
+The following sandwich bound appears in the simple proof of the WZ/OW
+theorem in \citep[Theorem 9.12]{Debowski21}. We recall the derivation
+for the analogy with developments of Section \ref{secRepetition}.
+\begin{proposition}
+  \label{theoSandwichRecurrence}
+  Consider a stationary ergodic process $(X_i)_{i\in\mathbb{Z}}$ over
+  a $D$-ary alphabet. Assume that $\sum_{k=1}^\infty \rho_k<\infty$
+  for some $\rho_k>0$.  Almost surely, for sufficiently large $k$ we have
+\begin{align}
+  \label{SandwichRecurrence}
+  -\log P(X_1^k|X_{k+1}^\infty)
+  +\log \rho_k-\log k
+  <
+  \log R^{(1)}_k
+  <
+  -\log P(X_1^k)
+  -\log \rho_k
+  .
+\end{align}
+\end{proposition}
+\begin{proof}
+  As \citet{Kontoyiannis98} has shown, by applying the Markov
+  inequality to Lemmas \ref{theoKac} and \ref{theoKontoyiannis}, we
+  obtain two complementary bounds
+\begin{align}
+  \label{ProbRecurrenceI}
+  P\okra{R^{(1)}_k\ge \frac{C}{P(X_1^k)}}&\le C^{-1}
+  ,
+  \\
+  \label{ProbRecurrenceII}
+  P\okra{R^{(1)}_k\le \frac{C}{P(X_1^k|X_{k+1}^\infty)}}&\le C(1+k\log D)
+  .
+\end{align}
+Setting $C=\rho_k^{-1}$ in (\ref{ProbRecurrenceI}) and $C=k^{-1}\rho_k$ in
+(\ref{ProbRecurrenceII}) we obtain (\ref{SandwichRecurrence}) by the
+Borel-Cantelli lemma.
+\end{proof}
+
+The WZ/OW theorem (\ref{WZOW}) follows by Proposition
+\ref{theoSandwichRecurrence} combined with the
+Shannon-McMillan-Breiman (SMB) theorem \citep{Shannon48, Breiman57,
+  Chung61, Barron85, AlgoetCover88}, which asserts
+\begin{align}
+  \label{SMB}
+  \lim_{k\to\infty}
+  \frac{1}{k}\okra{-\log P(X_1^k)}=
+  \lim_{k\to\infty}
+  \frac{1}{k}\okra{-\log P(X_1^k|X_{k+1}^\infty)}=
+  h_1 \text{ a.s.}
+\end{align}
+
+\section{Sandwiching repetition times}
+\label{secRepetition}
+
+There is a result by \citeauthor{ChenMoy59} that generalizes the Kac
+lemma to successive recurrence times. In our notation, it can be
+stated in the following way.
+\begin{lemma}[\citep{ChenMoy59}]
+  \label{theoChenMoy}
+  For a stationary process $(X_i)_{i\in\mathbb{Z}}$, fix a string
+  $x_1^k$ such that $P(X_1^k=x_1^k)>0$. Define the random set
+  $\mathcal{T}:=\klam{j\in\mathbb{Z}: X_{j}^{j+k-1}=x_1^k}$.  Let the
+  sequence $(T_r)_{r\in\mathbb{Z}}$ be defined by conditions:
+  $T_r\in\mathcal{T}$ and $T_r>T_{r-1}$ for $r\in\mathbb{Z}$, whereas
+  $T_1\ge 1$ and $T_0\le 0$. The successive recurrence times are
+  defined as
+  \begin{align}
+    \label{Successive}
+    W_r:=T_r-T_{r-1}.
+  \end{align}
+  It is claimed that for a stationary process $(X_i)_{i\in\mathbb{Z}}$
+  with respect to measure $P$, process $(W_r)_{r\in\mathbb{Z}}$ is
+  stationary with respect to measure $P(\cdot|T_0=0)$. Moreover, if
+  additionally process $(X_i)_{i\in\mathbb{Z}}$ is ergodic then for
+  $r\in\mathbb{Z}$, we have
+  \begin{align}
+    \mean\okra{W_r\middle|T_0}
+    =
+    \frac{1}{P(X_1^k=x_1^k)}.
+  \end{align}
+\end{lemma}
+
+Let us derive a strong upper bound for the repetition time.  The
+following proposition is a new simple idea. We have sought for this
+sort of bound in terms of the maximal repetition length intermittently
+for a long time. In our perception, this involved lower bounding the
+probability of a union for strongly dependent processes. We tried to
+use the Chung-Erd\H{o}s inequality \citep{ChungErdos1952} or other
+second-moment methods like \citet{Szpankowski93,Szpankowski93a} did,
+which led to complicated calculations and assumptions difficult to
+satisfy. We have overlooked that the solution may be so simple when we
+reformulate the problem as bounding the repetition time.
+\begin{proposition}
+  \label{theoSandwichRepetitionOne}
+  Consider a stationary ergodic process
+  $(X_i)_{i\in\mathbb{Z}}$ over a countable alphabet. Assume that
+  $\sum_{k=1}^\infty \rho_k<\infty$ for some $\rho_k>0$.  Almost
+  surely, for sufficiently large $k$ we have
+\begin{align}
+  \label{SandwichRepetitionOne}
+  \log R^{(2)}_k< H_\infty(X_1^k)-\log\rho_k
+  .
+\end{align}
+\end{proposition}
+\begin{proof}
+  Consider an arbitrary string $x_1^k$ such that $P(X_1^k=x_1^k)>0$
+  and the corresponding successive recurrence times
+  (\ref{Successive}).  Specializing inequality (\ref{Minimum}), we
+  obtain
+  \begin{align}
+    R^{(2)}_k\le W_1+W_2,
+  \end{align}
+  since by the time we observe string $x_1^k$ twice, we must have seen
+  some repetition of length $k$, certainly.  Fix $x_1^k$ as the most
+  probable string of length $k$.  In view of Lemma \ref{theoChenMoy},
+  we may bound
+  \begin{align}
+    P(R^{(2)}_k\ge n)
+    &\le \frac{\mean R^{(2)}_k}{n}
+      \le \frac{\mean \mean\okra{W_1+W_2|T_0}}{n}
+      \nonumber\\
+    &= \frac{2}{nP(X_1^k=x_1^k)}
+      = \frac{2e^{-H_\infty(X_1^k)}}{n},
+  \end{align}
+  since $e^{-H_\infty(X)}=\max_{x} P(X=x)$.  Define
+  $n_k:=e^{H_\infty(X_1^k)}\rho_k^{-1}$. Then we have
+  $\sum_{k=1}^\infty P(R^{(2)}_k\ge n_k)<\infty$. Hence inequality
+  (\ref{SandwichRepetitionOne}) is obtained by the Borel-Cantelli
+  lemma.
+\end{proof}
+
+Now we will derive a lower bound for the repetition time.  This
+proposition refines \citep[Theorem 9.25]{Debowski21} by using the
+weighted conditional entropy rather than the min-entropy conditioned
+on the infinite future.
+\begin{proposition}
+  \label{theoSandwichRepetitionTwo}
+  Consider a stationary process $(X_i)_{i\in\mathbb{Z}}$ over a
+  countable alphabet. Assume that $\sum_{k=1}^\infty \rho_k<\infty$
+  for some $\rho_k>0$. Define the weighted conditional entropy
+  \begin{align}
+    H_\bullet(X_1^k|X_{k+1}^\infty):=-\log \okra{
+    \sum_{i=1}^\infty\frac{e^{-H_\infty(X_1^k|X_{k+1}^{k+i})}}{i(i+1)}}.
+  \end{align}
+  Almost surely, for sufficiently large $k$ we have
+  \begin{align}
+    \label{SandwichRepetitionTwo}
+    \log R^{(2)}_k> \frac{1}{3}H_\bullet(X_1^k|X_{k+1}^\infty)
+    +\frac{1}{3}\log\rho_k
+    .
+  \end{align}
+\end{proposition}
+\emph{Remark:} We note that
+$H_\bullet(X_1^k|X_{k+1}^\infty)\ge
+H_\infty(X_1^k|X_{k+1}^\infty)$. Hence Proposition
+\ref{theoSandwichRepetitionTwo} is stronger than \citep[Theorem
+9.25]{Debowski21}.
+\begin{proof}
+  For $i<j$, we obtain 
+\begin{align}
+  P(X_{i+1}^{i+k}=X_{j+1}^{j+k})
+  &=
+    \mean
+    P(X_{i+1}^{i+k}=X_{j+1}^{j+k}|X_{i+k+1}^{j+k})
+    \nonumber\\
+  &\le
+    \mean \max_{x_1^k} P(X_{i+1}^{i+k}=x_1^k|X_{i+k+1}^{j+k})
+    \nonumber\\
+  &=
+    e^{-H_\infty(X_1^k|X_{k+1}^{k+j-i})}
+    .
+\end{align}
+Observe that $3-2x\le x^{-2}$, so $n-x\le 4n^3x^{-2}/27$.
+%$n-x=n/3(3-2(3x/2n))\le n/3(3x/2n)^{-2}=4n^3/27x^2$.
+Hence, by the union bound,
+\begin{align}
+  P(R^{(2)}_k\le n)
+  &= P\okra{X_{i+1}^{i+k}=X_{j+1}^{j+k} \text{ for some }
+    0\le i<j\le n}
+    \nonumber\\
+  &\le \sum_{0\le i<j\le n} P(X_{i+1}^{i+k}=X_{j+1}^{j+k})
+    \le \sum_{0\le i<j\le n}  e^{-H_\infty(X_1^k|X_{k+1}^{k+j-i})}
+    \nonumber\\
+  &= \sum_{i=1}^{n-1}
+    \frac{n-i}{e^{H_\infty(X_1^k|X_{k+1}^{k+i})}}
+    \le \frac{8n^3}{27}
+    \sum_{i=1}^\infty\frac{e^{-H_\infty(X_1^k|X_{k+1}^{k+i})}}{i(i+1)}
+    \nonumber\\
+  &\le \frac{8n^3}{27} e^{-H_\bullet(X_1^k|X_{k+1}^\infty)}.
+\end{align}
+Put $n_k:=\sqrt[3]{\rho_k e^{H_\bullet(X_1^k|X_{k+1}^\infty)}}$. Then
+$\sum_{k=1}^\infty P(R^{(2)}_k\le n_k)<\infty$.  Consequently,
+inequality (\ref{SandwichRepetitionTwo}) follows by the
+Borel-Cantelli lemma.
+\end{proof}
+
+The last proposition in this section is also new although it recycles
+some techniques used in universal coding such as \citep[Theorem
+6.11]{Debowski21}. The goal is to show that the bound in terms of the
+weighted conditional entropy is more precise than the bound proved in
+\citep[Theorem 8]{Debowski18b} since the length of conditioning can be
+shortened to $I_k$ rather than $D^k$.
+\begin{proposition}
+  \label{theoSandwichContext}
+  Consider a stationary process $(X_i)_{i\in\mathbb{Z}}$ over a
+  countable alphabet.  For $I_k$ defined in (\ref{ContextLength}), we
+  have
+\begin{align}
+  \label{SandwichContextOne}
+  \log I_k-\log 2&\le H_\bullet(X_1^k|X_{k+1}^\infty)\le
+  3\log I_k+\frac{1}{I_k}
+  ,
+  \\
+  \label{SandwichContextThree}
+  \log (I_k-1)-H_0(X_i)&\le H_\infty(X_1^k|X_{k+1}^{k+I_k})\le \log I_k
+                              .
+\end{align}
+\end{proposition}
+\emph{Remark:} We note that $I_k\le D^k$ and
+$H_\infty(X_1^k|X_{k+1}^{k+I_k})\ge H_\infty(X_1^k|X_{k+1}^{k+D^k})$
+for a $D$-ary alphabet. Hence Propositions
+\ref{theoSandwichRepetitionTwo} and \ref{theoSandwichContext} combined
+are stronger than \citep[Theorem 8]{Debowski18b}.
+\begin{proof}
+First, we derive (\ref{SandwichContextOne}) from
+\begin{align}
+  H_\bullet(X_1^k|X_{k+1}^\infty)
+  &\le
+    H_\infty(X_1^k|X_{k+1}^{k+I_k})+\log I_k+\log (I_k+1)\le
+    3\log I_k+\frac{1}{I_k},
+  \\
+  H_\bullet(X_1^k|X_{k+1}^\infty)
+  &\ge
+    -\log\okra{\okra{1-\frac{1}{I_k}}e^{-H_\infty(X_1^k|X_{k+1}^{k+I_k-1})}
+    +\frac{1}{I_k}}
+    \nonumber\\
+  &\ge -\log\okra{\okra{1-\frac{1}{I_k}}\frac{1}{I_k-1}+\frac{1}{I_k}}
+    =\log I_k-\log 2.
+\end{align}
+Moreover, for a stationary process,
+\begin{align}
+  0
+  &\le
+    H_\infty(X_1^k|X_{k+1}^{k+I_k-1})-H_\infty(X_1^k|X_{k+1}^{k+I_k})\le
+    H_0(X_i)
+\end{align}
+since by the chain rule (\ref{Chain}), we have
+\begin{align}
+  H_\infty(Y,X|Z,V)\le H_\infty(Y,X|Z)
+  &\le H_0(X|Z)+H_\infty(Y|X,Z)
+    \nonumber\\
+  &\le H_0(X)+H_\infty(U,Y|X,Z). 
+\end{align}
+Hence we obtain (\ref{SandwichContextThree}).
+\end{proof}
+
+\section{Final touch}
+\label{secFinal}
+
+Let us recall some properties of Hilberg exponents.  The probabilistic
+results of \citep[Section 8.1]{Debowski21} can be summarized as
+follows.
+\begin{definition}
+  Let $T$ be an automorphism of the probability space.  A sequence of
+  random variables $(J_k)_{k\in\mathbb{N}}$ is called $T$-increasing
+  if
+  \begin{align}
+    J_{k+1}\ge J_k\circ T,J_k\ge 0.
+  \end{align}
+\end{definition}
+Let $\median X:=\sup \klam{r: P(X<r)\le \frac{1}{2}}$ denote the
+median of a variable $X$.
+\begin{lemma}
+  \label{theoHilberg}
+  For $T$ being a stationary ergodic automorphism and a $T$-increasing
+  sequence $(J_k)_{k\in\mathbb{N}}$, we have
+  \begin{align}
+    \hilberg_{k\rightarrow\infty} \median J_k
+    \le \hilberg_{k\rightarrow\infty} J_k 
+    \le \hilberg_{k\rightarrow\infty} \mean J_k
+    \text{ a.s.}, 
+  \end{align}
+  where random variable $\hilberg_{k\rightarrow\infty} J_k$ is almost
+  surely constant. Moreover, the inequalities become the equalities if
+  \begin{align}
+    \limsup_{k\rightarrow\infty} \frac{\sqrt{\var J_k}}{\mean J_k}<1.
+  \end{align}
+\end{lemma}
+\begin{proof}
+  All claims but the last one follow by \citep[Theorems 8.3--8.5]{Debowski21}.
+  The last claim is a slight strengthening of \citep[Theorem
+  8.6]{Debowski21} and in a similar fashion it follows by the
+  median-mean inequality $\abs{\median X-\mean X}\le \sqrt{\var X}$,
+  see e.g.\ \citep[Theorem 3.17]{Debowski21}.
+\end{proof}
+
+We also make this simple observation.
+\begin{proposition}
+  \label{theoIncreasing}
+  Consider the shift automorphism $X_i\circ T=X_{i+1}$. Then sequences
+  $(L^{(\gamma)}_n)_{n\in\mathbb{N}}$,
+  $(R^{(\gamma)}_k)_{k\in\mathbb{N}}$,
+  $(-\log P(X_1^k))_{k\in\mathbb{N}}$, and
+  $(-\log P(X_1^k|X_{k+1}^\infty))_{k\in\mathbb{N}}$ are
+  $T$-increasing.
+\end{proposition}
+Theorem \ref{theoMainOne} follows by Propositions
+\ref{theoSandwichRecurrence} and \ref{theoIncreasing} and Lemma
+\ref{theoHilberg}, whereas Theorem \ref{theoMainTwo} follows by
+Propositions
+\ref{theoSandwichRepetitionOne}--\ref{theoSandwichContext}. Quod erat
+demonstrandum.
+
+% \bibliographystyle{IEEEtran}
+\bibliographystyle{abbrvnat}
+%\bibliographystyle{elsart-harv}
+
+\bibliography{0-journals-abbrv,0-publishers-abbrv,ai,mine,tcs,ql,nlp,books}
+
+\end{document}
+
+% The subword complexity \citep{Ferenczi99, DeLuca99,
+%   JansonLonardiSzpankowski04, GheorghiciucWard07, Ivanko08} is the
+% number of distinct substrings of a given length in a given string,
+% \begin{align}
+%  f(k|x_1^n):=\card\klam{x_{i+1}^{i+k}:0\le i\le n-k}. 
+% \end{align}
+% We have two simple facts.
+% \begin{lemma}[\mbox{\citep[Theorem 9.15]{Debowski21}}]
+%   \label{theoSCRecurrence}
+%   For any stationary process $(X_i)_{i\in\mathbb{Z}}$, 
+% \begin{align}
+%   \mean f(k|X_1^{n+k-1})=\mean \min\klam{R^{(1)}_k,n}.
+% \end{align}
+% \end{lemma}
+% \begin{lemma}[\mbox{\citep[Theorem 9.21]{Debowski21}}]
+%   \label{theoSCRepetition}
+%   For any process $(X_i)_{i\in\mathbb{Z}}$, 
+%   \begin{align}
+%     P(L^{(2)}_{n+k-1}<k)\le \frac{\mean f(k|X_1^{n+k-1})}{n}.
+%   \end{align}
+% \end{lemma}
+% Let us observe that Lemma \ref{theoSCRepetition} can be alternatively
+% proved using Lemma \ref{theoSCRecurrence} and the Markov inequality,
+% \begin{align}
+%   P(L^{(2)}_{n+k-1}<k)
+%   &\le P(R^{(2)}_k\ge n)
+%   =P(R^{(1)}_k\ge n)
+%     =P\okra{\min\klam{R^{(1)}_k,n}\ge n}
+%     \nonumber\\
+%   &\le \frac{\mean\min\klam{R^{(1)}_k,n}}{n}
+%   = \frac{\mean f(k|X_1^{n+k-1})}{n}.
+% \end{align}
+% Thus it cannot lead to a non-trivial upper bound for $R^{(2)}_k$.
+ 
+% Now, we will derive an upper bound for the repetition time.  The
+% following proposition is a new idea.
+% \begin{proposition}
+%   \label{theoSandwichRepetitionOne}
+%   Consider a stationary ergodic process $(X_i)_{i\in\mathbb{Z}}$.  Let
+%   us denote
+% \begin{align}
+%   E_k&:=\mean P(X_1^k)=e^{-H_2(X_1^k)},
+%   \\
+%   V_k&:=\var P(X_1^k)=e^{-2H_3(X_1^k)}-e^{-2H_2(X_1^k)}.
+% \end{align}
+% Assume that $V_k/E_k^2\le \rho_k$ where
+% $\sum_{k=1}^\infty \rho_k\log k<\infty$ for some $\rho_k>0$. Almost
+% surely, for sufficiently large $k$ we have
+% \begin{align}
+%   \label{SandwichRepetitionOne}
+%   \log R^{(2)}_k< H_2(X_1^k)-\log\rho_k
+%   .
+% \end{align}
+% \end{proposition}
+% \begin{proof}
+%   By Lemmas \ref{theoSCRecurrence} and \ref{theoKac}, we obtain
+% \begin{align}
+%   \mean f(k|X_1^{n+k-1})
+%   &
+%     =\mean \min\klam{R^{(1)}_k,n}
+%     %\nonumber\\
+%   %&
+%     =
+%     \mean\mean\okra{\min\klam{R^{(1)}_k,n}\middle|X_1^k}
+%     \nonumber\\
+%  &\le
+%    \mean\min\klam{\mean(R^{(1)}_k|X_1^k),n}
+%    %\nonumber\\
+%   %&
+%     =
+%     \mean\min\klam{\frac{1}{P(X_1^k)},n}
+%     \nonumber\\
+%   &=
+%     \int_0^{n} P\okra{\frac{1}{P(X_1^k)}\ge x} dx
+%     %\nonumber\\
+%   %&
+%     =
+%      n-\int_0^{n} P\okra{P(X_1^k)>x^{-1}} dx
+%      .
+% \end{align}
+% Recall the Paley-Zygmund inequality, see e.g.\ \citep[Theorem
+% 3.16]{Debowski21},
+% \begin{align}
+%   P(Y> \epsilon)\ge
+%   \frac{(\mean Y-\epsilon)_+^2}{\var Y+(\mean Y-\epsilon)_+^2}
+%   .
+% \end{align}
+% For $n\ge 1/E_k$, we obtain
+% \begin{align}
+%   \mean f(k|X_1^{n+k-1})
+%   &\le
+%     n-\int_0^{n}\frac{(\mean P(X_1^k)-x^{-1})^2_+
+%     }{\var P(X_1^k)+(\mean P(X_1^k)-x^{-1})^2_+} dx
+%     \nonumber\\
+%   &=
+%     n-\int_{1/E_k}^{n}\frac{(E_kx-1)^2}{V_kx^2+(E_kx-1)^2}dx.
+%     \nonumber\\
+%   &\le
+%     n-\int_{1/E_k}^{n} \frac{E_k^2x^2-2E_kx}{V_kx^2+E_k^2x^2} dx
+%      \nonumber\\
+%   &=
+%     n -\frac{E_k^2}{V_k+E_k^2}\okra{n-\frac{1}{E_k}}
+%     +\frac{2E_k}{V_k+E_k^2}\log E_kn
+%     \nonumber\\
+%   &=
+%     \frac{V_kn+E_k(1+2\log E_kn)}{V_k+E_k^2}.
+% \end{align}
+% Applying Lemma \ref{theoSCRepetition}, we may rewrite
+% \begin{align}
+%   P(R^{(2)}_k\ge n)=P(L^{(2)}_{n+k-1}<k)
+%   &\le
+%     \frac{\mean f(k|X_1^{n+k-1})}{n}
+%     \nonumber\\
+%   &\le
+%   \frac{V_k}{V_k+E_k^2}+\frac{E_k^2}{V_k+E_k^2}\frac{1+2\log
+%     E_kn}{E_kn}
+%     .
+% \end{align}
+% Define $n_k:=E_k^{-1}\rho_k^{-1}$. Then
+% \begin{align}
+%   P(R^{(2)}_k\ge n_k)\le
+%   \frac{\rho_k}{1+\rho_k}+\frac{\rho_k(1-2\log
+%  \rho_k)}{1+\rho_k}.
+% \end{align}
+% In particular, $\sum_{k=1}^\infty P(R^{(2)}_k\ge n_k)<\infty$. Hence
+% inequality (\ref{SandwichRepetitionOne}) is obtained by the
+% Borel-Cantelli lemma.
+% \end{proof}
+
+
+% We can check the indefinite integral
+% \begin{align}
+%   &\int \frac{(Ex-1)^2}{Qx^2-2Ex+1}dx
+%     =
+%   \nonumber\\
+%   &\quad\frac{E^2x}{Q}-\frac{VE}{Q^2}\log\okra{Qx^2-2Ex+1}
+%     +\frac{\sqrt{V}(V-E^2)}{Q^2}\tan^{-1}\okra{\frac{Qx-E}{\sqrt{V}}}
+%     .
+% \end{align}
+% Hence
+% \begin{align}
+%   \int_{1/E}^{n_k}\frac{(Ex-1)^2}{Qx^2-2Ex+1}dx
+%   &\ge
+%     \frac{E^2n_k}{Q}
+%     -\frac{VE}{Q^2}\log\okra{Qn_k^2-2En_k+1}+C,
+%   \\
+%   C
+%   &:=
+%     -\frac{E}{Q}
+%     +\frac{VE}{Q^2}\log\okra{\frac{V}{E^2}}
+%     -\frac{\pi\sqrt{V}(V-E^2)}{Q^2}
+%     .  
+% \end{align}
+
+% Denote $A_{ij}:=X_{i+1}^{i+k}=X_{j+1}^{j+k}$,
+% $E:=\mean\max_{x_1^k} P(X_{i+1}^{i+k}=x_1^k|X_{i+k+1}^{\infty})$,
+% $S:=\sum_{0\le i<j\le n} P(A_{ij})$, $N:=n(n-1)/2$,
+% $\pi_{ijlm}\propto P(A_{ij}\cap A_{lm})$,
+% $\psi_{ijlm}=\frac{P(A_{ij}\cap A_{lm})}{P(A_{ij})P(A_{lm})}$.  By the
+% Chung-Erd\H{o}s inequality,
+% \begin{align}
+%   P(R^{(2)}_k\le n)
+%   &= P\okra{\bigcup_{0\le i<j\le n} A_{ij}}
+%     \ge 
+%     \frac{
+%     \displaystyle\sum_{0\le i<j\le n} \sum_{0\le l<m\le n} 
+%     P(A_{ij})P(A_{lm})
+%     }{
+%     \displaystyle\sum_{0\le i<j\le n} \sum_{0\le l<m\le n}
+%     P(A_{ij}\cap A_{lm})
+%     }
+%     \nonumber\\
+%   &=
+%     \sum_{ijlm}
+%     \pi_{ijlm}\okra{\psi_{ijlm}}^{-1}
+%     \ge
+%     \okra{\sum_{ijlm}
+%     \pi_{ijlm}\psi_{ijlm}}^{-1}
+%   %   \nonumber\\
+%   % &\ge \okra{\max_{0\le i<j\le n}\max_{0\le i<j\le n}
+%   %   \frac{P(A_{ij}\cap A_{lm})}{P(A_{ij})P(A_{lm})}}^{-1}
+%     \nonumber\\
+%   &\ge
+%     \frac{S^2}{S(1+(N-1)E)}
+%     \ge
+%     \frac{S}{1+(N-1)E}
+%     \nonumber\\  
+%   &=\frac{
+%     S_{i<j}S_{l<m}
+%     }{
+%     S_{i=l<j=m}
+%     +2S_{i=l<j<m}+2S_{l<m=i<j}+2S_{i<l<j=m}
+%     +2S_{l<i<j<m}+2S_{i<l<j<m}+2S_{i<j<l<m}
+%     }
+%    \nonumber\\
+%   &=\frac{
+%     S_{i<j}^2
+%     }{
+%     S_{i<j}
+%     +6S_{i=l<j<m}
+%     +2S_{l<i<j<m}+2S_{i<l<j<m}+2S_{i<j<l<m}
+%     }
+%   .  
+% \end{align}
+
+% \begin{lemma}[\mbox{\citep[Theorem 8.3]{Debowski21}}]
+%   \label{theoHilbergConstant}
+%   Consider a sequence of real random variables
+%   $(J_k)_{k\in\mathbb{N}}$.  If $T$ is a stationary ergodic
+%   transformation of the probability space and $J_{k+1}\ge J_k\circ T$
+%   for all $k\in\mathbb{N}$ then random variable
+%   $\hilberg_{k\rightarrow\infty} J_k$ is almost surely constant.
+% \end{lemma}
+
+% \begin{lemma}[\mbox{\citep[Theorem 8.4]{Debowski21}}]
+%   \label{theoHilbergExpectation}
+%   Consider a sequence of real random variables
+%   $(J_k)_{k\in\mathbb{N}}$.  If $0\le J_k\le J_{k+1}$ for all
+%   $k\in\mathbb{N}$ then
+% \begin{align}
+%   \label{HilbergExpectation}
+%   \esssup\hilberg_{k\rightarrow\infty} J_k \le
+%   \hilberg_{k\rightarrow\infty} \mean J_k 
+%   .
+% \end{align}
+% \end{lemma}
+
+% \begin{lemma}[\mbox{\citep[Theorem
+%     8.5]{Debowski21}}]
+%   \label{theoHilbergMedian}
+%   Consider a sequence of real random variables
+%   $(J_k)_{k\in\mathbb{N}}$ such that $J_k\ge 0$ for all
+%   $k\in\mathbb{N}$.  We have
+%   \begin{align}
+%   \label{HilbergMedian}
+%   \hilberg_{k\rightarrow\infty} \median J_k
+%   \le \esssup \hilberg_{k\rightarrow\infty} J_k 
+%   .
+% \end{align}
+% \end{lemma}
+
+
+%%% Local Variables: 
+%%% mode: latex
+%%% mode: flyspell
+%%% TeX-master: t
+%%% TeX-PDF-mode: t
+%%% ispell-local-dictionary: "american"
+%%% End: 
+
+%  LocalWords:  differentiable

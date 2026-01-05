@@ -1,0 +1,398 @@
+\section{Limitation, future work, and societal impact}
+
+\subsection{Limitation and future work}
+There are several limitations to this work that future research can further explore. First, we focus our scope on compositionality benchmarks formulated as image-to-text retrieval task. While this is currently the most prevailing evaluation framework, future research can characterize compositionality evaluation as text-to-image retrieval problem, as in the initial efforts considered by~\cite{ray2023cola,thrush2022winoground}. More importantly, we hope our work can guide future efforts in creating and ensuring faithful compositionality benchmarks in text-to-image form.
+Second, in this work, we identify \emph{two} human interpretable dataset biases, the nonsensical and non-fluent biases, which may not cover all dataset artifacts that could possibly be exploited by a model. Future work may utilize more sophisticated techniques to remove spurious dataset artifacts beyond human comprehension~\cite{le2020adversarial}.
+Finally, we focus our evaluations on contrastively learned vision-language models~\cite{RadfordKHRGASAM21}. Future work should include and characterize the compositionality of modern generative vision-language models~\cite{alayrac2022flamingo,chen2022pali,li2023blip2,tschannen2023image}.
+
+
+\subsection{Societal impact}
+As vision-language models such as CLIP~\cite{RadfordKHRGASAM21} are becoming the foundation models for many downstream applications~\cite{rombach2022high,ramesh2022hierarchical}, it is imperative to understand the limitations of these models to avoid misuses and undesirable outcomes~\cite{cho2022dall,bianchi2022easily}. Compositionality benchmarks probe a model's understanding of finer-grained concepts, and hence allow us to identify blind spots~\cite{yuksekgonul2023when,zhao2022vl,ma2022crepe} of seemingly powerful models deemed by standard classification and retrieval benchmarks~\cite{Deng2009ImageNetAL,lin2014microsoft}.
+Our work further alleviates common artifacts in existing compositionality benchmarks that result in overestimation of a model's capability. We hope our proposed benchmark \method leads to more faithful assessment of a vision-language model's compositionality, and can hence guide more accurate usages of the models.
+Nevertheless, we note that strong performances on \method do not imply perfect models. We envision \method being one of the many benchmarks used to comprehensively understand the abilities of vision-language models from various aspects.
+
+
+
+
+% \subsection{Future work}
+% \begin{itemize}
+%     \item text to image
+%     \item whether there also similar biases.
+%     \item more models, how to evaluate multi-modal generative models like Flamingo.
+% \end{itemize}
+
+
+\section{Implementation details}
+
+
+\subsection{Hardware information}
+All experiments are run on a machine with an Intel(R) Xeon(R) CPU E5-2678 v3 with a 512G memory and two 48G NVIDIA RTX A6000 GPUs.
+
+
+\subsection{Dataset sources}
+We obtain all existing datasets from their original sources released by the authors.
+We refer readers to these sources for the dataset licenses. To the best of our knowledge, the data we use does not contain personally identifiable information or offensive content.
+
+\begin{itemize}
+    \item CREPE~\cite{ma2022crepe}: We obtain CREPE dataset from its official repository~\footnote{\url{https://github.com/RAIVNLab/CREPE}}.
+
+    \item ARO~\cite{yuksekgonul2023when}: We obtain ARO dataset from its official repository~\footnote{\url{https://github.com/mertyg/vision-language-models-are-bows}}.
+
+    \item VL-CheckList~\cite{zhao2022vl}: We obtain VL-CheckList dataset from its official repository~\footnote{\url{https://github.com/om-ai-lab/VL-CheckList}}.
+
+    \item COCO~\cite{lin2014microsoft}: We obtain COCO from its official project website~\footnote{\url{https://cocodataset.org/}}.
+\end{itemize}
+
+
+
+\subsection{Software configuration}
+
+\textbf{Models.} We detail the sources of the pretrained models we use in the paper, and the hyper-parameters used in training our own models.
+
+\begin{itemize}
+    \item Vera model~\cite{liu2023vera}: We obtain pretrained Vera model released by its author~\footnote{\url{https://huggingface.co/liujch1998/vera}}.
+    \item Grammar model~\cite{morris2020textattack}: We obtain the Grammar model released by the authors~\footnote{\url{https://huggingface.co/textattack/distilbert-base-uncased-CoLA}}.
+    \item All pretrained CLIP models: We obtain all pretrained CLIP models' weights from OpenCLIP~\footnote{\url{https://github.com/mlfoundations/open_clip}}.
+    \item \negclip\ models: We obtain weights for pretrained \negclip released by the authors~\footnote{\url{https://github.com/mertyg/vision-language-models-are-bows}}. For training from scratch and finetuning, we train RN50 and ViT-B/32 based on OpenCLIP codebase and set hyper-parameters as the following: number of warmup steps is 1000, batch size is 256, learning rate is 1e-4, weight decay is 0.1, number of epochs is 30. We augment the original CLIP loss with hard negative captions following \negclip~\cite{yuksekgonul2023when}.
+\end{itemize}
+
+\textbf{Evaluations.}
+We base our evaluation framework on OpenCLIP~\cite{ilharco_gabriel_2021_5143773}. We follow all default hyper-parameters used for evaluating models.
+
+
+
+\section{Vision-language compositionality benchmarks}
+\label{app:bms}
+
+We provide an overview of existing vision-language compositionality benchmarks below, with Table~\ref{tab:benchmark_comp} summarizing the dataset comparisons.
+
+\subsection{Image-to-text formulation}
+A majority of current benchmarks formulate the evaluation task as image-to-text retrieval problem. These benchmarks generate hard negative texts procedurally through rule-based templates, where each benchmark considers different types of hard negatives.
+
+\textbf{VL-Checklist~\cite{zhao2022vl}.} VL-CheckList aims at evaluating vision-language models' understanding of different objects, attributes, and relationships. It contains \replace\ hard negatives generated by replacing atomic parts of the positive texts with other foils.
+VL-CheckList further breaks the hard negatives down into more granular categories based on the type of the replaced atomic part, \ie, object, attribute, or relationship.
+
+
+\textbf{ARO~\cite{yuksekgonul2023when}.} ARO focuses on models' understanding of different relationships, attributes, and order information. It considers \swap\ and \shuffle\ hard negatives. \swap\ hard negatives are generated by swapping two words in the positive texts; on the other hand, \shuffle\ hard negatives are generated by shuffling words in the positive texts. ARO further divides \swap\ hard negatives into attribute or relationship type.
+
+
+\textbf{CREPE~\cite{ma2022crepe}.} CREPE is a large-scale evaluation benchmark that includes three types of hard negatives: \replace, \swap\ and \negate. \replace\ and \swap\ hard negatives are generated as in VL-CheckList and ARO. In addition, \negate\ hard negatives are generated by adding negation keywords (\ie, \textit{not} or \textit{no}) to the original positive texts. The hard negatives are not further divided into fine-grained types (object, attribute, or relations).
+
+
+
+\subsection{Text-to-image formulation}
+Complementary to image-to-text formulation, compositionality can as well be evaluated by probing a model to select an image that best matches a given text description, against other hard negative images as distractors. Unlike hard negative texts, hard negative images are more difficult to obtain and thus current text-to-image compositionality benchmarks are smaller at scale.
+
+\paragraph{Winoground~\cite{thrush2022winoground}.} Winoground is a small dataset manually curated by human annotators. Each example in the dataset contains two images and two matching captions, where both captions contain identical words that appear in different orders. Note that Winoground can be used for either image-to-text or text-to-image retrieval. While the original intention for Winoground is to evaluate vision-language compositionality, recent work~\cite{diwan2022winoground} has pointed out that solving the tasks in Winoground requires not just compositional vision-language understanding, but additionally a suite of other abilities such as commonsense reasoning, or distinguishing visually difficult images.
+
+\paragraph{Cola~\cite{ray2023cola}.} Cola tests a vision-language model's ability to select an image that correctly matches a given caption, against another distractor image with the same objects and attributes but in the wrong composition. The image pairs are mined from existing datasets. As a result, the final evaluation set is relatively small in size ($210$ examples in total).
+
+We deem text-to-image evaluation as important as image-to-text evaluation. Future work can explore approaches to generate or mine compositional hard negative images at scale, as preliminarily explored in \cite{ray2023cola,yuksekgonul2023when}.
+
+
+
+\begin{table}[t]
+ \caption{Summary on vision-language compositionality benchmarks. \method considers image-to-text formulation to enable larger scale evaluation set. In addition, \method considers a wide range of hard negative types. \shuffle\ and \negate\ are omitted as they introduce inevitable biases discussed in Sec.~\ref{sec:hn_types}.}
+ \centering
+\scalebox{0.8}{
+\begin{tabular}{lccccccc}
+\toprule 
+&&& \multicolumn{5}{c}{\bf Hard Negative Text Type}  \\ 
+     \cmidrule{4-8}
+{\textbf{Benchmark}} & {\textbf{Task Formulation}}  &  {\textbf{Scale}} & {\textbf{\shuffle}} & {\textbf{\replace}}  & {\textbf{\swap}}  & {\textbf{\negate}} & {\textbf{\add}}\\
+\midrule
+
+VL-CheckList~\cite{zhao2022vl} & Image-to-Text & $>1000$ & & \checkmark\\
+\midrule
+ARO~\cite{yuksekgonul2023when} & Image-to-Text & $>1000$ & \checkmark & & \checkmark\\ 
+\midrule
+CREPE~\cite{ma2022crepe}  & Image-to-Text & $>1000$ & & \checkmark & \checkmark & \checkmark\\
+\midrule
+Winoground~\cite{thrush2022winoground} & Image-to-Text / Text-to-Image & $400$ & & & \checkmark\\ 
+\midrule
+Cola~\cite{ray2023cola} & Text-to-Image & $210$ &  &  &  N/A \\
+
+
+
+   \midrule
+   \midrule
+\method  & Image-to-Text & $>1000$ & & \checkmark & \checkmark &  & \checkmark
+
+
+   \\ \bottomrule
+
+\end{tabular}
+}
+\label{tab:benchmark_comp}
+\end{table}
+
+
+% \section{In-distribution training and transferability}
+
+% \input{tables/re_eval}
+
+
+\section{\method~}
+\subsection{Taxonomy}
+Figure~\ref{fig:sugarcrepe-tax} shows the taxonomy of \method. We first categorize the hard negatives based on their forms: \replace, \swap, and \add. We then further divide each type of hard negatives into finer-grained sub-categories based on the type (object, attribute, or relation) of the atomic concept altered. \method covers a total of $7$ fine-graind hard negative types.
+
+
+\begin{figure}[h]
+\begin{adjustbox}{max width=\linewidth}
+\begin{forest}
+  for tree={
+    font=\sffamily,
+    draw,
+    align=center,
+    edge={thick, -latex},
+    l sep+=20pt,
+    s sep+=20pt,
+    anchor=center,
+    child anchor=north,
+    parent anchor=south,
+    edge path={
+      \noexpand\path [draw, \forestoption{edge}] (!u.parent anchor) -- +(0,-10pt) -| (.child anchor)\forestoption{edge label};
+    },
+    if level=1{
+      edge path={
+        \noexpand\path [draw, \forestoption{edge}] (!u.parent anchor) -- +(0,-10pt) -| (.child anchor)\forestoption{edge label};
+      },
+      rounded corners=2pt,
+      fill=orange!15,
+      edge={thick, orange!60!black, -latex},
+    }{},
+  }
+  [\method, align=center, anchor=east
+    [\replace
+      [\replaceobj]
+      [\replaceatt]
+      [\replacerel]
+    ]
+    [\swap
+      [\swapobj]
+      [\swapatt]
+    ]
+    [\add
+      [\addobj]
+      [\addatt]
+    ]
+  ]
+\end{forest}
+\end{adjustbox}
+\caption{Taxonomy of hard negatives considered in \method.}
+    \label{fig:sugarcrepe-tax}
+\end{figure}
+
+
+\subsection{Hard negative generation procedure and templates}
+\label{app:prompt}
+
+To generate hard negatives in \method, we come up with three different prompt templates for the three hard negative types considered: \replace, \swap, and \add. Each template consists of task instruction for generating the corresponding type of hard negatives and several ($7$ or more) few-shot demonstrations. We describe the general generation procedure and example prompt templates below and refer readers to our dataset repository for the full prompts used~\footnote{\url{https://github.com/RAIVNLab/sugar-crepe}} .
+
+\begin{figure}[t]
+\centering
+\begin{subfigure}{.4\textwidth}
+  \centering
+  \includegraphics[width=\linewidth]{imgs/prompt-replace-obj.pdf}
+  \caption{\replaceobj.}
+\end{subfigure}
+\begin{subfigure}{.4\textwidth}
+  \centering
+  \includegraphics[width=\linewidth]{imgs/prompt-replace-att.pdf}
+  \caption{\replaceatt.}
+\end{subfigure}
+\begin{subfigure}{.4\textwidth}
+  \centering
+  \includegraphics[width=\linewidth]{imgs/prompt-replace-rel.pdf}
+  \caption{\replacerel.}
+\end{subfigure}
+\caption{Example prompt templates (black) and outputs (green) from ChatGPT for \replace\ hard negatives.}
+\label{fig:prompt-replace}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\begin{subfigure}{.4\textwidth}
+  \centering
+  \includegraphics[width=\linewidth]{imgs/prompt-swap-obj.pdf}
+  \caption{\swapobj.}
+\end{subfigure}
+\begin{subfigure}{.4\textwidth}
+  \centering
+  \includegraphics[width=\linewidth]{imgs/prompt-swap-att.pdf}
+  \caption{\swapatt.}
+\end{subfigure}
+
+\caption{Example prompt templates (black) and outputs (green) from ChatGPT for \swap\ hard negatives.}
+\label{fig:prompt-swap}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\begin{subfigure}{.4\textwidth}
+  \centering
+  \includegraphics[width=\linewidth]{imgs/prompt-add-obj.pdf}
+  \caption{\addobj.}
+\end{subfigure}
+\begin{subfigure}{.4\textwidth}
+  \centering
+  \includegraphics[width=\linewidth]{imgs/prompt-add-att.pdf}
+  \caption{\addatt.}
+\end{subfigure}
+\caption{Example prompt templates (black) and outputs (green) from ChatGPT for \add\ hard negatives.}
+\label{fig:prompt-add}
+\end{figure}
+
+
+\textbf{Generating \replace\ hard negatives.} 
+To best leverage ChatGPT's capabilities, we devise a three-step workflow to generate \replace\ hard negatives: (1) We prompt ChatGPT in locating the desired atomic concepts (\eg, objects) in the sentence; (2) We prompt ChatGPT to generate a new concept to replace a randomly selected old concept; (3) We let ChatGPT compose a new sentence by replacing the old concept with the new one.
+For steps (1) and (3), we prompt ChatGPT with a temperature of $0.0$ to get stable outputs. For step (2), however, we diversify the outputs by prompting ChatGPT with a higher temperature of $1.5$.
+With this design, we are able to generate diverse \replace\ hard negatives.
+Figure~\ref{fig:prompt-replace} shows the example templates and outputs for \replace\ hard negatives.
+
+\textbf{Generating \swap\ hard negatives.} To generate \textsc{swap} hard negatives, which do not require any new concepts, we simply prompt ChatGPT once with a temperature of 0.0. Unlike \replace, \swap\ hard negatives are only possible when there are at least two atomic concepts of the same category, \ie, either object or attribute. Thus, our prompt first queries ChatGPT whether it is possible to swap two atomic concepts in the input sentence to generate a new description. Only if the answer is yes, will ChatGPT then proceed to identify two swappable concepts and compose the corresponding new sentence by swapping the two concepts.
+Figure~\ref{fig:prompt-swap} shows the example templates and outputs for \swap\ hard negatives.
+
+\textbf{Generating \add\ hard negatives.} Similar to the \replace, we also employ a three-step prompting procedure to generate \add\ hard negatives. The only difference in the procedure is that we prompt ChatGPT to add the generated new concept to the original caption, instead of using it to replace an old concept.
+Figure~\ref{fig:prompt-add} shows the example templates and outputs for \add\ hard negatives.
+
+
+
+
+
+\subsection{Adversarial refinement}
+\label{app:refine}
+We detail the adversarial refinement procedure below.
+Given a text model $M$, we denote its output score for the positive and negative caption of $i$-th image as $M(p_{i})$ and $M(n_{i})$. If $M(p_{i})>M(n_{i})$, then the model could identify the correct caption for the $i$-th image without referring to it. For a test set to be unattackable given the text model $M$, the expectation of $M$'s identifying the correct caption should be as close to random guess as possible; in particular, we hope that $E_{i}[M(p_{i})>M(n_{i})]=0.5$. To achieve this for both the grammar model $M_1$ and plausibility model $M_2$, we first calculate the score difference $g^{(1)}_i=M_{1}(p_{i})-M_{1}(n_{i})$ and  $g^{(2)}_i=M_{2}(p_{i})-M_{2}(n_{i})$, where the range of both $g^{(1)}$ and $g^{(2)}$ is $[-1, 1]$. Then we split the 2D space of the joint range of  $g^{(1)}$ and $g^{(2)}$ into $100\times 100$ equal grids, and for each pair of symmetric grids, \eg, $\{(g^{(1)}, g^{(2)})|g^{(1)}\in(0.02, 0.04], g^{(2)}\in(-0.04, 0.06]\}$ and $\{(g^{(1)}, g^{(2)})|g^{(1)}\in(-0.02, -0.04], g^{(2)}\in(0.04, -0.06]\}$, we preserve the same number of data for both grids, therefore we ensure that for the resultant set, $E_{i}[M_{1}(p_{i})>M_{1}(n_{i})]=0.5$ and $E_{i}[M_{2}(p_{i})>M_{2}(n_{i})]=0.5$.
+
+
+\subsection{Dataset information}
+We host \method on Github~\footnote{\url{https://github.com/RAIVNLab/sugar-crepe}}.
+The data card~\cite{pushkarna2022data} for \method, containing detailed dataset documentation, is available at the dataset repository~\footnote{\url{https://github.com/RAIVNLab/sugar-crepe/blob/main/data_card.pdf}}.
+We provide a summary below.
+
+\textbf{Dataset documentation.}
+\method is a benchmark for faithful vision-language compositionality evaluation. Given an image, a model is required to select the positive text that correctly describes the image, against another hard negative text distractor that differs from the positive text only by small compositional changes. Each example consists of three fields:
+\begin{itemize}
+    \item \texttt{filename}: The id to an image
+    \item \texttt{caption}: Positive text correctly describing the image
+    \item \texttt{negative\_caption}: Hard negative text incorrectly describing the image
+\end{itemize}
+
+
+\textbf{Maintenance plan.}
+We are committed to maintain the dataset to address any technical issues. We actively monitor issues in the repository.
+
+
+
+\textbf{Licensing.}
+We license our work using MIT License~\footnote{\url{https://github.com/RAIVNLab/sugar-crepe/blob/main/LICENSE}}.
+All the source data we use is publicly released by prior work~\cite{lin2014microsoft}.
+
+
+
+\textbf{Author statement.}
+We the authors will bear all responsibility in case of violation of rights.
+
+
+\section{Detailed evaluation results}
+
+\subsection{Full evaluation results on existing benchmarks}
+\label{app:eval}
+
+We provide the full evaluation results over $17$ pretrained CLIP models as well as $2$ text-only models, Vera~\cite{liu2023vera} and the Grammar model~\cite{morris2020textattack}, on existing compositionality benchmarks in Table~\ref{tab:eval_existing}. We see that the text-only models, arguably without any vision-language compositionality, outperform most of the pretrained CLIP models, achieving state-of-the-art performances on many benchmark tasks. This implies that current benchmarks fail to faithfully reflect a model's vision-language compositionality.
+
+\input{tables/eval_existing}
+
+\subsection{\method human evaluation}
+\label{app:sugar}
+To compare the quality of the hard negatives generated in \method to those in current benchmarks (\ie, \hncoco), we randomly sample $100$ examples for each of the hard negative types: \replace, \swap, and \negate\ / \add.
+Each example is organized to consist of (1) the original positive text, (2) its hard negative in \hncoco, and (3) its hard negative in \method. For each example, a human user rates whether the hard negative in \hncoco\ or that in \method is better (or tie) in terms of commonsense and grammatical correctness, respectively. Note that we compare \negate\ in \hncoco\ to \add\ in \method, as both hard negatives are intended to probe a model's understanding of the \textit{existence or not} of an atomic concept. Table~\ref{tab:sugar_crepe_eval_quant_human} shows that hard negatives in \method are much more sensical and fluent than that in \hncoco\ across all three different types. For instance, \method has $68\%$ more sensical and $46\%$ more fluent hard negatives than \hncoco\ on \swap.
+
+\input{tables/sugar_crepe_eval_human}
+
+% \subsection{Filter ratio}
+
+% \begin{table*}[!h]
+%   \centering
+%   \small
+%   \caption{filter ratio: what percent of samples would got filtered.}
+%   \scalebox{0.65}{
+%     \begin{tabular}{cccccc} 
+%     \toprule
+%      \multicolumn{3}{c}{\bf \method} &  \multicolumn{3}{c}{\bf CREPE} \\ 
+%      \cmidrule{1-3}\cmidrule{4-6}
+     
+%     \textbf{\add} &\textbf{\swap} & \textbf{\replace} & \textbf{\add} & \textbf{\swap} & \textbf{\replace}  \\ 
+%     \midrule
+%        \\ 
+% \bottomrule 
+% \end{tabular}
+% }
+% \label{tab:filter}
+% \end{table*}
+
+
+
+
+
+
+% \begin{table*}[t]
+%   \centering
+%   \small
+%   \caption{Our evaluation of pretrained vision-language models on \method shows that they demonstrate compositionality on some hard negatives but are far from human performance on others, especially on hard negatives of \swap\ form or ones perturbing attributes and relations.}
+%   \scalebox{0.6}{
+%     \begin{tabular}{llrr ccccccc} 
+%     \toprule
+%      &&&& \multicolumn{3}{c}{\bf \replace}  &  \multicolumn{2}{c}{\bf \swap} & \multicolumn{2}{c}{\bf \add} \\ 
+%      \cmidrule(lr){5-7}\cmidrule(lr){8-9}\cmidrule(lr){10-11}
+     
+%     \textbf{Source} &\textbf{Model} &\textbf{Data Size} &\textbf{Model Size (M)} & \textbf{Object} & \textbf{Attribute} & \textbf{Relation} & \textbf{Object} & \textbf{Attribute} & \textbf{Object} & \textbf{Attribute}   \\ 
+%     \midrule
+
+% \multicolumn{2}{c}{Human} & & & 95 & 92 & 90  & 90 & 93 & 91 & 80\\
+
+% \midrule\midrule
+
+% \multirow{2}{*}{Text-only model} &  Vera~\cite{liu2023vera} & & & 49.29 & 49.74 & 49.38 & 49.17 & 49.57 &  49.30 & 49.49\\
+
+% & Grammar~\cite{morris2020textattack} & & & 50.00 & 50.00 & 50.00 & 50.00 & 50.00 & 50.00 & 50.00 \\
+
+% \midrule\midrule
+
+% \multirow{7}{*}{OpenAI~\cite{RadfordKHRGASAM21}}    
+% & RN50& \multirow{7}{*}{400M} & 102& 88.13& 76.49& 64.92 & 65.62& 66.41& 71.27& 60.97\\
+% & RN101& & 120& 89.10& 78.96& 62.54 & 60.55& 62.05& 73.15& 58.92\\
+% & ViT-B-32& & 151& 87.32& 75.13& 64.83 & 63.56& 63.34& 74.24& 61.85\\
+% & RN50x4& & 178& 90.01& 77.17& 63.95 & 61.78& 64.12& 76.23& 61.71\\
+% & RN50x16& & 291& 90.87& 77.09& 64.44 & 64.38& 64.41& 77.56& 64.13\\
+% & ViT-L-14& & 428& 90.82& 75.55& 62.94 & 60.27& 63.34& 75.49& 64.64\\
+% & RN50x64& & 623& 91.73& 78.02& 66.37 & 61.92& 63.48& 79.90& 66.17\\
+
+
+% \midrule
+
+% \multirow{6}{*}{LAION~\cite{laion5b}}   
+% & roberta-ViT-B-32& \multirow{4}{*}{2B}& 212& 89.25& 80.75& 67.87 & 64.52& 66.12& 84.35& 72.21\\
+% & ViT-H-14&  & 986& 93.05& 82.11& 67.61 & 66.99& 66.83& 88.84& 75.56\\
+% & ViT-g-14& & 1367& 92.75& 82.20& 68.31 & 63.15& 65.76& 88.60& 77.09\\
+% & ViT-bigG-14& & 2540& 93.86& 84.41& 70.03 & 66.58& 67.83& 88.99& 74.81\\ \cline{3-3}
+% & xlm-roberta-base-ViT-B-32& \multirow{2}{*}{5B}& 366& 89.96& 79.90& 65.67 & 63.56& 65.91& 84.35& 73.09\\
+% & xlm-roberta-large-ViT-H-14& & 1193& 93.86& 82.37& 68.27 & 65.48& 66.48& 90.83& 76.12\\
+
+
+% \midrule
+
+% \multirow{4}{*}{DataComp~\cite{gadre2023datacomp}}   
+% & \texttt{small:}ViT-B-32& 13M& 151& 57.10& 55.79& 53.79 & 51.51& 52.00& 54.02& 57.25\\
+% & \texttt{medium:}ViT-B-32& 128M& 151 & 73.53& 66.52& 54.97 & 57.53& 55.21& 65.61& 61.94\\
+% & \texttt{large:}ViT-B-16& 1B& 150& 88.79& 75.21& 61.18 & 58.22& 58.56& 81.26& 69.98\\
+% & \texttt{xlarge:}ViT-L-14& 13B& 428& 92.95& 79.81& 66.68 & 63.97& 64.48& 88.10& 76.02\\
+
+% \bottomrule 
+% \end{tabular}
+% }
+  
+%   \label{tab:eval_ours1}
+
+% \end{table*}

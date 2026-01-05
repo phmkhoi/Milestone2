@@ -1,0 +1,13 @@
+
+
+\subsection{Dataset}
+
+We evaluate our method on the Brain Tumor Segmentation challenge (BraTS) dataset \cite{menze2014multimodal,bakas2017advancing,bakas2018identifying}, which contains 2,000 cases, each of which includes four 3D volumes from four different MRI modalities: T1, post-contrast enhanced T1 (T1-CE), T2, and T2 Fluid Attenuated Inversion Recovery (T2-FLAIR), as well as a corresponding segmentation ground-truth mask. The official data split divides these cases by the ratio of 8:1:1 for training, validation, and testing (5,802 positive and 1,073 negative images). In order to evaluate the performance, we use the validation set as our test set and report statistics on it. We preprocess the data by slicing each volume along the z-axis to form a total of 193,905 2D images, following the approach of Kang et al. \cite{kang2021towards} and Dey and Hong \cite{dey2021asc}. We use the ground-truth segmentation masks only in the final evaluation, not in the training process.
+
+\subsection{Implementation Details and Evaluation Protocol}
+
+We implement our method in PyTorch using ResNet-18 as the backbone classifier. We pretrain the classifier using SupCon \cite{khosla2020supervised} and then fine-tune it in our experiments. We use the entire training set for both pretraining and fine-tuning. We set the initial learning rate to 1e-4 for both phases, and use the cosine annealing scheduler to decrease it until the minimum learning rate is 5e-6. We set the weight decay in both phases to 1e-5 for model regularization. We use Adam optimizer in the multiple-exit phase and SGD optimizer in the aggregation phase. We train all classifiers until they converge with a test accuracy of over 0.9 for all image modalities. Note that only class labels are available in the training set.
+
+We use the Dice score and Intersection over Union (IoU) to evaluate the quality of the semantic segmentation, following the approach of Xu et al. \cite{xu2019whole}, Tang et al. \cite{tang2021m}, and Qian et al. \cite{qian2022transformer}. In addition, we report the 95\% Hausdorff Distance (HD95) to evaluate the boundary of the prediction mask.
+
+Interested readers can refer to the supplementary material for results on other network architectures.

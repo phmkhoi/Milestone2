@@ -1,0 +1,207 @@
+
+\section{Related Work}
+\label{relatedwork}
+\iffalse
+    add paper
+    1 Image as a Foreign Language: BEIT Pretraining for All Vision and Vision-Language Tasks
+      https://arxiv.org/pdf/2208.10442.pdf
+    2 End-to-End 3D Dense Captioning with Vote2Cap-DETR
+    3 TMR: Text-to-Motion Retrieval
+
+    Notices
+    LLM部分的逻辑 参考TMR的Cross-modal retrieval部分
+
+Among widely adopted vision &
+language retrieval models, some successful examples include
+CLIP [37], BLIP [24], CoCa [49] for images, and
+MIL-NCE [31], Frozen [5], CLIP4Clip [28] for videos.
+They all use variants of cross-modal contrastive learning
+techniques, such as InfoNCE [32], which we also employ
+in this work. As discussed in Section 1, we draw inspiration
+from BLIP [24], CoCa [49], which add synthesis branches to
+standard retrieval frameworks. Our work is similar in spirit to
+these works in that we perform a cross-modal vision & language
+retrieval task, but differ in focusing on 3D human
+motion retrieval, which to the best of our knowledge has
+not been benchmarked.
+3.
+
+    
+    1 Human Motion Modeling
+        1.1 Motion Synthesis
+            a. temos
+            b. motion-diffusion-model
+            c. motion-latent-diffusion
+        1.2 Motion caption
+            a. RAE
+            b. SeqGAN
+            c. TM2T
+        1.3 Motion edit
+            a. 
+            b. MDM
+
+    2 Language model
+        a. BERT
+        b. T5 https://arxiv.org/pdf/1910.10683.pdf
+        c. GPT
+        d. llama
+
+    3 RL
+        a. Reinforcement learning: An introduction.
+        b. SCST
+    
+\fi
+% multiple inputs
+% text-driven 
+%   1. Caption -> Motion
+%   2. Prompts (task) 
+%   3. Unified Motion Synthesis
+
+
+
+\textbf{Human Motion Synthesis} involves generating diverse and realistic human-like motion using multimodal inputs, such as text~\cite{Guo_2022_CVPR_humanml3d,petrovich22temos,zhang2022motiondiffuse,mdm2022human,chuan2022tm2t,ahuja2019language2pose,kim2022flame}, action~\cite{petrovich21actor, guo2020action2motion,mdm2022human,chen2023mld}, and incomplete motion ~\cite{yuan2020dlow, zhang2021we, ma2022multi,mdm2022human}.
+%
+Text-to-motion is one of the most important motion generation tasks, due to the user-friendly and convenient language input. MDM~\cite{mdm2022human} proposes a diffusion-based generative model~\cite{ho2020denoising} separately trained on several motion tasks. MLD~\cite{chen2023mld} advances the latent diffusion model~\cite{song2020denoising,stable_diffusion} to generate motions based on different conditional inputs.
+%
+T2M-GPT~\cite{zhang2023generating} investigates a generative framework based on VQ-VAE and Generative Pre-trained Transformer (GPT) for motion generation. 
+%
+Motion completion task generates motion conditioning on partial motions, such as classical motion prediction \cite{yuan2020dlow, zhang2021we, ma2022multi} or motion in-between \cite{mdm2022human}, which generates the intermediate motion while the first and last parts are fixed.
+%
+Although they show promising results in various human motion tasks, most above methods are limited in using a single model to handle multiple tasks. We thus propose a uniform approach that treats human motion as a foreign language, and leverages the strong language generation and zero-shot transfer abilities of pre-trained language models %%Chen Tao: 你不也是a single model handle 多任务么？ 
+
+
+\vspace{20pt}
+\begin{table}[t]
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{@{}lcccccccccc@{}}
+\toprule
+Methods & Text-to-Motion & Motion-to-Text & Motion Prediction & Motion In-between & Random Motion & Random Description
+\\ \midrule
+T2M-GPT \cite{mdm2022human}& \CheckmarkBold & \XSolidBrush & \XSolidBrush & \XSolidBrush & \CheckmarkBold & \XSolidBrush  \\
+MLD \cite{chen2023mld} & \CheckmarkBold & \XSolidBrush & \XSolidBrush & \XSolidBrush& \CheckmarkBold & \XSolidBrush 
+  \\
+TM2T \cite{chuan2022tm2t} & \CheckmarkBold & \CheckmarkBold  & \XSolidBrush & \XSolidBrush & \XSolidBrush & \XSolidBrush
+  \\
+MDM \cite{mdm2022human}   & \CheckmarkBold   & \XSolidBrush  & \CheckmarkBold & \CheckmarkBold & \CheckmarkBold & \XSolidBrush \\
+MotionDiffuse\cite{zhang2022motiondiffuse}  & \CheckmarkBold   & \XSolidBrush  & \CheckmarkBold & \CheckmarkBold & \CheckmarkBold & \XSolidBrush 
+  \\
+ \midrule
+MotionGPT (Ours) & \CheckmarkBold& \CheckmarkBold& \CheckmarkBold& \CheckmarkBold& \CheckmarkBold& \CheckmarkBold
+\\\bottomrule
+\end{tabular}%
+}
+\label{tab:checkmark}
+\vspace{5pt}
+\caption{Comparison of recent state-of-the-art methods on diverse motion-relevant tasks. \textit{Random Motion} and \textit{Random Caption} represent unconstrained generation of motions and motion descriptions.}
+\vspace{-10pt}
+% The asterisks (*) denote tasks that the methods theoretically have the potential to perform, even though they are not explicitly mentioned in the respective papers.}
+% \vspace{-40pt}
+\end{table}
+
+\textbf{Human Motion Captioning.} To describe human motion with natural languages, \cite{takano2015statistical} learns the mapping from motions to language relying on two statistical models.
+%
+Furthermore, recurrent networks have also been used in \cite{yamada2018rae,plappert2018learning}. 
+% , while SeqGAN~\cite{goutsu2021linguistic} further extend a discriminator
+More recently, TM2T~\cite{chuan2022tm2t} proposed a new motion representation that compresses motions into a short sequence of discrete variables, then uses a neural translation network to build mappings between two modalities. While previous research like TM2T~\cite{chuan2022tm2t} incorporated captioning modules into their training pipeline for motion generation, these approaches are constrained to bidirectional translation between text and motion within one uniform framework.
+
+% aided Methods
+\textbf{Language Models and Multi-Modal.}
+% GPT (t2m-gpt/image gpt/ blip/ blip2/Image as a foreign language/3d)
+Large-scale language models (LLMs)~\cite{devlin2018bert,dai2019transformer,raffel2020t5,brown2020gpt3,zhang2022opt,touvron2023llama}, enabled by extensive datasets and model size, have demonstrated impressive comprehension and generation capabilities, elevating natural language processing to new heights. BERT~\cite{devlin2018bert} pre-trains deep bidirectional language representations that can support downstream tasks. T5~\cite{raffel2020t5} introduced a unified framework that converts all text-based language problems into a text-to-text format. More recent research~\cite{wei2021finetuned,bach2022promptsource,ouyang2022instructgpt,chung2022flant5} find that by fine-tuning pre-trained models using input-output pairs consisting of instructions and coupled answers, the performance of pre-trained models can be further improved. FLAN~\cite{chung2022flant5} presents an instruction-tuning technique that surpasses the performance of non-tuned models in unseen tasks. 
+Recently, the wave of multi-modal models~\cite{li2022blip,huang2023language,li2023blip2} is intriguing to process text along with other modalities, such as images~\cite{li2022blip,huang2023language,girdhar2023imagebind}, audio~\cite{guzhov2022audioclip,girdhar2023imagebind}, and videos~\cite{xu2021videoclip}. CLIP~\cite{radford2021clip} further learns a semantic latent representation that couples images with corresponding language descriptions.
+Despite the success of language models in various vision-language tasks, the development of multi-modal language models that can handle human motion is still limited.
+
+% text-driven limit
+%  增加 InstructGPT
+\textbf{Motion Language Pre-training.} Existing text-to-motion generation methods~\cite{Guo_2022_CVPR_humanml3d,petrovich22temos, mdm2022human,chuan2022tm2t,ahuja2019language2pose,kim2022flame} can be characterized as caption-to-motion, where the models take in a pure text description of the desired motion.
+%
+While these methods can generate motions from textual descriptions, they are often limited in supporting instructions from users like InstructGPT~\cite{ouyang2022instructgpt}. In other words, they do not allow users to provide context-specific instructions for certain applications.
+%
+MotionCLIP~\cite{tevet2022motionclip} utilizes the language and visual understanding of CLIP~\cite{radford2021clip} to align its latent space with a motion auto-encoder.
+%
+Meanwhile, many language models, such as T5\cite{raffel2020t5} and InstructGPT~\cite{ouyang2022instructgpt}, have been developed to address diverse language processing tasks, including translation, question answering, and classification.
+%
+These models are typically designed to map a given text input to a target output, such as a translation or answer. 
+%
+However, while these models have shown remarkable performance in language tasks, they have not been widely applied to motion tasks. Therefore, we propose MotionGPT to enable the effective integration of natural language models with human motion tasks, providing a unified solution for motion synthesis problems.
+
+
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{pipeline.pdf}
+\vspace{-10pt}
+\caption{Method overview: MotionGPT consists of a motion tokenizer $\mathcal{V}$ (\cref{sec:method:vqvae}) and a motion-aware language model (\cref{sec:method:lm}). Combining \textit{Motion Tokens} learned by $\mathcal{V}$ and \textit{Text Tokens} by text tokenizer, we then learn motion and language jointly utilizing language model as backbone.}
+\label{fig:pipeline}
+\end{figure}
+
+
+
+
+
+
+
+
+
+\iffalse
+
+% \textbf{Reinforcement Learning} has been used to train end-to-end deep learning systems directly on non-differentiable metrics for the task at hand.
+% % ref chatgpt / scst
+% Self-Critical Sequence Training (SCST) is a variant of the REINFORCE algorithm, which replaces the baseline reward estimation technique with its own test-time inference output to normalize the rewards and reduce variance. Unlike actor-critic methods that require estimating the reward signal and REINFORCE algorithms that require estimating normalization, SCST avoids both and harmonizes the model with respect to its test-time inference procedure.
+
+
+
+% 1 Diffsuion model
+bao2022all, All are Worth Words: a ViT Backbone for Score-based Diffusion Models
+https://arxiv.org/pdf/2209.12152.pdf
+%
+Diffusion probabilistic model~\cite{sohl2015deep} have achieved extraordinary successes in image synthesis, xx, as well as . The generative xxx
+%
+Stable Diffusion~\cite{stable_diffusion} demonstrates the availability of the latent diffusion, and achieves fast but high-resolution image synthesis by compressing images to latent representation.
+%
+The Classifier-Free Guidance~\cite{ho2022classifier} refer to mdm and sd
+xxx
+%
+More recently, some works~\cite{zhang2022motiondiffuse, mdm2022human, xx, kim2022flame} have gone into employing diffusion models in motion generation.
+%
+Motiondiffuse~\cite{zhang2022motiondiffuse} and FLAME~\cite{kim2022flame} xx
+%
+MDM~\cite{mdm2022human} xx
+% teach 是diffusion吗
+teach
+%
+However, these approaches usually suffer from lower inference speed and higher training costs.
+% 参考ldm最后一段的写法
+\cx{To address these drawbacks, we propose motion diffusion under motion latent representation, which can speed up motion diffusion generation to near real-time but not downgrade motion quality.}
+
+
+
+
+
+
+
+
+    % 1 motion style transfer
+    %     一句总写style in motion，提出解释style in image domain，参考deep-motion-editing
+    %     1 deep-motion-editing
+    %     2 Motion Puzzle: Arbitrary Motion Style Transfer by Body Part
+
+    3 Motion Synthesis ???
+    1.1 physical-based motion control
+    1 ASE: Large-Scale Reusable Adversarial Skill Embeddings for Physically Simulated Characters
+    1.2 data-driven motion
+    1 xx actor?
+
+
+    \hspace*{\fill} \\{\bf Human Motion Synthesis} aims to produce diverse and stylized motion sequences with respect to input conditions. Cross-modality motion synthesis trains a synthesis model based on natural language descriptions~\cite{lin2018human, Text2Action}, audio signals~\cite{Ondras2021AudioDrivenRU}, and musics~\cite{lee2019dancing, Transflower, starke2022deepphase, li2021ai}, yet the inherent domain gap often makes the synthesis result less controllable. Physical quantities including trajectory and average speed~\cite{pavllo2018quaternet} are also utilized for motion control.
+    Recently, deep generative model has enabled more effective data-driven learning schemes.
+    Zhao~\etal\cite{zhao2020bayesian} propose a probabilistic Bayesian model for motion synthesis, and Li~\etal~\cite{li2022ganimator} propose to synthesize novel motions from a single, short motion sequence.
+    For style-guided motion synthesis, existing works have made great progress under few-shot~\cite{Mason2018FewshotLO} and unpaired~\cite{Aberman2020UnpairedMS, Wang2021ACC} setting, but most work still requires a 3D motion sequence for initialization.
+    %
+    % siggraph reviewer
+    For content style-guided synthesis work,
+    Mason~\etal\cite{mason2022real} presents a style modelling system that uses an animation synthesis network to model motion content based on local motion phases.
+    Smith~\etal\cite{smith2019efficient} proposes a fast neural network-based motion style transfer method that generates stylized motion.
+    %
+    In contrast, our framework directly learns an expressive latent style space that supports video-based motion style interpolation. Furthermore, it can be easily extend to support various input modalities by training separate encoding networks.
+\fi

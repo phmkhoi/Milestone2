@@ -1,0 +1,138 @@
+\section{Proposed Approach}
+\label{sec:approach}
+
+We now present our proposed design for a multi-factor deterministic password generator (MFDPG). We begin with an overview of our construction and then specifically address the issues of password policy support and revocation in dedicated sections. Our design places a focus on modularity, with any of these components being replaceable in future iterations.
+
+\subsection{Multi-Factor Password Generation}
+\label{sec:mfdpg}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{051-FIG-MFDPG.pdf}
+\caption{Overview of multi-factor password generation architecture.}
+\label{fig:mfdpg}
+\end{figure}
+
+Fig. \ref{fig:mfdpg} shows an overview of our general approach for deriving a site-specific password from multiple authentication factors. The derivation algorithm (Alg. \ref{alg:mfdpg}) follows 4 general steps (the detailed algorithms for revocation and generation in steps 3 and 4 are discussed in \S\ref{sec:revocation} and \S\ref{sec:generation}, respectively):
+
+\begin{enumerate}[leftmargin=*]
+    \item Use MFKDF to derive a master key from multiple factors.
+    \item Use an adaptive KDF to derive a site-specific preimage.
+    \item Check if the preimage is revoked, and iterate until clear.
+    \item Convert preimage into a site policy-compliant password.
+\end{enumerate}
+
+The most obvious difference with this approach in comparison with traditional DPGs is the use of MFKDF to support multiple authentication factors, including YubiKeys, HOTP, TOTP, etc., in addition to passwords. In some cases, doing so requires the storage of public parameters (e.g., salts or one-time pads) either locally or in the cloud. Importantly, these values are entirely trustless; for example, MFKDF-based cryptocurrency wallets \cite{mfkdf_wallet} store them openly on blockchains.
+
+\begin{algorithm}[H]
+\caption{MFDPG Algorithm}
+\label{alg:mfdpg}
+\begin{algorithmic}[1]
+\Require $\mathsf{M}$ is MFKDF per Nair and Song \cite{mfkdf}
+\Require $\mathsf{K}$ is an adaptive KDF (e.g., Argon2 \cite{argon2})
+
+\Function{MFDPG}{$\mathsf{factors}, \mathsf{service}, \mathsf{policy}$}
+    \State $\mathsf{master\_key} \gets \mathsf{M}(\mathsf{factors})$
+    \State $\mathsf{counter} \gets 0$
+    \Repeat
+        \State $\mathsf{counter} \gets \mathsf{counter} + 1$
+        \State $\mathsf{preimage} \gets \mathsf{K}(\mathsf{master\_key} \odot \mathsf{service} \odot \mathsf{counter})$
+    \Until \textbf{not} {$\textsc{Check}(\mathsf{preimage})$}
+    \State \Return $\textsc{Generate}(\mathsf{preimage}, \mathsf{policy})$
+\EndFunction
+
+\end{algorithmic}
+\end{algorithm}
+
+Using MFKDF rather than a PBKDF addresses the most significant issue with current PRGs: brute-force attack susceptibility. Because of the ``exponential entropy'' property of MFKDF, adversaries can no longer use a site-specific password to attack the user's master password. Instead, they would have to simultaneously crack all of a user's factors, a task that is significantly harder than guessing their master password alone.
+
+An additional advantage of using MFKDF in this context is its support for factor recovery. MFKDF presents a threshold variant that allows 3 authentication factors to be established, any 2 of which can be used to derive the key. When using this variant, the resulting MFDPG construction could allow users to recover from the loss of a single authentication factor without losing access to all of their generated passwords, as is the case in present password-only DPGs.
+
+\subsection{Revocation Algorithm}
+\label{sec:revocation}
+
+Another key difficulty with current PRGs is the lack of revocation support. As discussed in \S\ref{sec:survey}, websites often implement password rotation policies that require users to update their password occasionally. Our goal is to support revocation in a way that does not store information about the services a user has accounts on, but also does not require users to remember and manually enter a unique revocation counter value for each service. To achieve this, we suggest using a Cuckoo filter \cite{fan2014cuckoo} or a similar set membership data structure.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75 \linewidth]{052-FIG-Revocation.pdf}
+\caption{Fixed-capacity Cuckoo filter for private credential revocation support.}
+\label{fig:cuckoo}
+\end{figure}
+
+Our suggested approach, illustrated in Fig. \ref{fig:cuckoo}, involves filling a Cuckoo filter with both true, revoked preimages and deterministic fictitious preimages, such that the total number of entries remains static. These true and fictitious entries should be indistinguishable, such that the number of true revoked items in the set should not be discernable to an adversary with access to the Cuckoo filter but not the user's master key. 
+
+In addition to its time and space efficiency, the use of a probabilistic set membership data structure has the advantage of not revealing its exact members.
+When correctly tuned, this approach is likely to further frustrate brute-force attacks, with a high false-positive rate for attackers, while still posing sufficiently low friction for users. As a result, users can revoke credentials as needed. Unlike current DPGs, they may do so without storing information that reveals the services they use, or even the number of revocations that they have performed. The exact revocation algorithm is detailed in Alg. \ref{alg:revocation}.
+
+\begin{algorithm}[H]
+\caption{MFDPG Revocation Algorithms}
+\label{alg:revocation}
+\begin{algorithmic}[1]
+\Require $\mathsf{S}$ is a Cuckoo filter per Fan et al. \cite{fan2014cuckoo}
+\Require $\mathsf{H}$ is a cryptographic hash function (e.g., SHA256)
+\Require $\mathsf{N}$ is the maximum number of allowed revocations
+
+\Function{Setup}{$\mathsf{master\_key}$}
+    \For{$\mathsf{i}~\textbf{in}~[0\ldots\mathsf{N}]$}
+        \State $\mathsf{S}.\mathsf{add}(H(\mathsf{master\_key} \odot \mathsf{i}))$
+    \EndFor
+\EndFunction
+
+\Function{Revoke}{$\mathsf{master\_key}, \mathsf{preimage}$}
+    \State $\mathsf{S}.\mathsf{add}(\mathsf{preimage})$
+    \For{$\mathsf{i}~\textbf{in}~[0\ldots\mathsf{N}]$}
+        \If{$\mathsf{S}.\mathsf{has}(H(\mathsf{master\_key} \odot \mathsf{i}))$}
+            \State $\mathsf{S}.\mathsf{remove}(H(\mathsf{master\_key} \odot \mathsf{i}))$
+            \State \Return
+        \EndIf
+    \EndFor
+\EndFunction
+
+\Function{Check}{$\mathsf{preimage}$}
+    \State \Return $\mathsf{S}.\mathsf{has}(\mathsf{preimage})$
+\EndFunction
+
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Password Generation Algorithm}
+\label{sec:generation}
+
+Finally, we discuss the issue of password policy support. As services enforce a wide array of seemingly arbitrary requirements on password length, complexity, character sets, etc., the final step of converting a site-specific preimage into a generated password must be sufficiently flexible to ensure compatibility with a variety of services.
+
+Rather than implementing an obscure password policy notation standard such as the Password Policy Markup Language (PPML) \cite{horsch2016password} or NIST 800-63-3 \cite{grassi2017draft}, we chose to support any regular password policy (i.e., any policy that can be expressed as a regular expression), as this includes all instances of the former, as well as most conceivable realistic password policies.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{053-FIG-Generation.pdf}
+\caption{Algorithm for generating random instances of regular password policy.}
+\label{fig:regex}
+\end{figure}
+
+To support all regular password policies, we suggest using a random regular DFA traversal algorithm such as Xeger \cite{team2009xeger} as shown in Fig. \ref{fig:regex}. First, a password policy, stored as a regular expression, is converted into an NFA using the McNaughton–Yamada–Thompson algorithm \cite{thompson1968programming}. That NFA is, in turn, converted into a DFA using the subset construction algorithm \cite{rabin1959finite}. Finally, a DFA traversal algorithm, such as Xeger \cite{team2009xeger}, performs a random walk of the generated DFA. The source of randomness is overridden to use a cryptographically secure PRNG, such as HMAC-DRBG \cite{barker_recommendation_2015}, seeded using the preimage for a given service. Thus, for a given service, using the same preimage and password policy, the same password will always be generated.
+
+The composition of these methods is shown in Alg.~\ref{alg:generation}. According to our survey of 45 existing DPGs in \S\ref{sec:survey}, we believe we are the first to propose this general approach.
+
+% Figure: DFA traversal
+% regular password generator
+% hash-based csprng (see MFKDF)
+% dfa traversal
+
+
+\begin{algorithm}[H]
+\caption{MFDPG Password Generation Algorithm}
+\label{alg:generation}
+\begin{algorithmic}[1]
+\Require $\mathsf{G}$ is a random regex DFA traverser (e.g., Xeger \cite{team2009xeger})
+\Require $\mathsf{R}$ is HMAC-DRBG per NIST SP 800-90 \cite{barker_recommendation_2015}.
+
+\Function{Generate}{$\mathsf{preimage}, \mathsf{policy}$}
+    \State \Return $\mathsf{G}(\mathsf{policy}, \mathsf{R}(\mathsf{preimage}))$
+\EndFunction
+
+\end{algorithmic}
+\end{algorithm}
+
+% pad(N):
+%   cbf.add()

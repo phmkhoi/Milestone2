@@ -1,0 +1,580 @@
+
+% \newpage
+\section{Experiments}
+\vspace{-10pt}
+\label{experiments}
+Extensive comparisons evaluate the performance of our MotionGPTs across multiple motion-relevant tasks and datasets. 
+%
+Details of the dataset settings, evaluation metrics, and implementation specifics (\cref{sec:comp:detail}) are provided.
+%
+We first present a uniform benchmark by comparing our approach with other SOTAs across various tasks (\cref{sec:comp:general}). Then, we evaluate each specific comparison on text-to-motion (\cref{sec:comp:text}), motion-to-text (\cref{sec:comp:m2t}), motion prediction and motion in-between (\cref{sec:comp:motion}).
+%
+The supplements include more qualitative results, user studies, and further implementation details.
+
+
+\begin{table}[t]
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{@{}lcccccccccc@{}}
+\toprule
+\multirow{2}{*}{Methods} & 
+\multicolumn{3}{c}{Text-to-Motion}& 
+\multicolumn{3}{c}{Motion-to-Text}& 
+\multicolumn{2}{c}{Motion Prediction}&
+\multicolumn{2}{c}{Motion In-between}
+\\ \cmidrule(lr){2-4} \cmidrule(lr){5-7} \cmidrule(lr){8-9} \cmidrule(lr){10-11}
+&
+R TOP1$\uparrow$ 
+ & FID$\downarrow$ 
+&  
+% MModality$\uparrow$
+DIV$\rightarrow$ 
+% & MMDist$\downarrow$ 
+& R TOP3$\uparrow$ 
+& Bleu@4$\uparrow$ & Cider$\uparrow$  & FID$\downarrow$ & DIV$\rightarrow$  & FID$\downarrow$ & DIV$\rightarrow$
+\\ \midrule
+Real &
+ $0.511^{\pm.003}$ &
+  $0.002^{\pm.000}$ &
+  % $0.797^{\pm.002}$ &
+  % $2.901$
+  $9.503^{\pm.065}$ &
+  
+  $0.828$ 
+  % ${2.901}$
+  & \multicolumn{1}{c}{-}& \multicolumn{1}{c}{-}
+  & 0.002 & 9.503 & 0.002 & 9.503
+  \\ \midrule
+MLD \cite{chen2023mld} &
+ $0.481^{\pm.003}$ &
+  ${0.473}^{\pm.013}$ &
+  % ${2.413^{\pm.079}}$ &
+  % $\underline{0.772}^{\pm.002}$ &
+
+  $9.724^{\pm.082}$ &
+  
+  \multicolumn{1}{c}{-}& \multicolumn{1}{c}{-}& \multicolumn{1}{c}{-}& \multicolumn{1}{c}{-}& \multicolumn{1}{c}{-}& \multicolumn{1}{c}{-} &
+  \multicolumn{1}{c}{-}
+  \\
+T2M-GPT \cite{mdm2022human}&
+   $\underline{0.491}^{\pm.003}$&
+  $\boldsymbol{0.116}^{\pm.004}$ &
+  % ${1.856^{\pm.011}}$ &
+  % $\boldsymbol{0.775}^{\pm.002}$ &
+  $9.761^{\pm.081}$ &
+  \multicolumn{1}{c}{-}& \multicolumn{1}{c}{-}& \multicolumn{1}{c}{-} & \multicolumn{1}{c}{-}& \multicolumn{1}{c}{-} & \multicolumn{1}{c}{-}& \multicolumn{1}{c}{-}
+  \\
+TM2T \cite{chuan2022tm2t} &
+ $0.424^{\pm.017}$ &
+  ${1.501^{\pm.003}}$ &
+  % $0.729^{\pm.002}$ &
+  % $3.467^{\pm.011}$ &
+  $8.589^{\pm.076}$ &
+  % ${2.935}$& 
+  $0.823$&
+  ${7.00}$ & 
+  ${16.8}$& \multicolumn{1}{c}{-}& \multicolumn{1}{c}{-}& \multicolumn{1}{c}{-}& \multicolumn{1}{c}{-}
+  \\
+MDM \cite{mdm2022human}&
+ $0.320^{\pm005}$ &
+${0.544}^{\pm.044}$ &
+  % ${2.799^{\pm.072}}$ &
+  % $0.611^{\pm.007}$ &
+  $\underline{9.559}^{\pm.086}$ &
+  \multicolumn{1}{c}{-}& \multicolumn{1}{c}{-}& \multicolumn{1}{c}{-}& $6.031$ & $7.813$& $2.698 $&$ 8.420$
+  \\
+ \midrule
+MotionGPT (Ours) &
+$\boldsymbol{0.492}^{\pm.003}$ &
+$\underline{0.232}^{\pm.008}$ & 
+% $\boldsymbol{3.437^{\pm.091}}$&
+% $0.708^{\pm.002}$ & 
+$\boldsymbol{9.528}^{\pm.071}$ &
+% $\boldsymbol{2.874}$
+$\boldsymbol{0.827}$
+& $\boldsymbol{12.47}$ & $\boldsymbol{29.2}$ & $\boldsymbol{0.905}$ &$\boldsymbol{8.972}$  & $\boldsymbol{0.214}$&$\boldsymbol{9.560}$
+   \\ \bottomrule
+\end{tabular}%
+}
+\caption{Comparison of four motion-related tasks on HumanML3D~\cite{Guo_2022_CVPR_humanml3d} dataset. The evaluation metrics are computed using the encoder introduced in \cite{Guo_2022_CVPR_humanml3d}. The empty columns of previous methods indicate that they can not handle the task. The arrows ($\rightarrow$) indicate that closer to \textit{Real} is desirable. \textbf{Bold} and \underline{underline} indicate the best and the second best result on text-to-motion task.}
+\label{tab:uniform}
+\end{table}
+
+
+\subsection{Experimental Setup}
+\label{sec:comp:metric}
+\textbf{Datasets.} General motion synthesis can support diverse task settings, and thus previous datasets and a modified benchmark are utilized to evaluate MotionGPT.
+%
+The study primarily focuses on two text-to-motion datasets: HumanML3D~\cite{Guo_2022_CVPR_humanml3d} and KIT \cite{Plappert2016kit}. 
+%
+The KIT dataset provides 6,353 textual descriptions corresponding to 3,911 motion sequences, while the HumanML3D dataset \cite{Guo_2022_CVPR_humanml3d} is a more recent dataset that contains 14,616 motion sequences obtained from AMASS \cite{AMASS_ICCV2019}, along with 44,970 sequence-level textual descriptions. 
+%
+To evaluate MotionGPT as a uniform framework on tasks, such as motion prediction and motion completion (in-between), we utilize the motion sequences available in HumanML3D, which is also a subset of the larger AMASS dataset.
+%
+Following the previous works \cite{Guo_2022_CVPR_humanml3d, chen2023mld, mdm2022human}, we adopt the same motion representation for fair comparisons, which combines joint velocities, positions, and rotations. 
+%
+By using this consistent representation, MotionGPT enables the availability to support further studies in the field.
+%
+($cf.$ supplement for the benchmark details.)
+
+\textbf{Evaluation Metrics} are summarized as four parts. (1) Motion quality: 
+Frechet Inception Distance (FID) is our primary metric based on a feature extractor \cite{Guo_2022_CVPR_humanml3d} to evaluate the distance of feature distributions between the generated and real motions.
+%
+For motion completion, we utilize metrics used in motion prediction studies \cite{yuan2020dlow, zhang2021we, ma2022multi}, such as Average Displacement Error (ADE) and Final Displacement Error (FDE), to evaluate the accuracy of the predicted motion.
+%
+% MPJPE, PAMPJPE to measure global and local errors in millimeters and Acceleration Error (ACCL) to evaluate the temporal quality of the reconstructed motions.
+%
+(2) Generation diversity: 
+We utilize the Diversity (DIV) metric to assess the motions diversity, which calculates the variance through features extracted from the motions \cite{Guo_2022_CVPR_humanml3d}. MultiModality (MM) measures the diversity of generated motions within the same text description of motion.
+%
+(3) Text matching: Based on the feature space from \cite{Guo_2022_CVPR_humanml3d}, the motion-retrieval precision (R Precision) evaluates the accuracy of matching between texts and motions using Top 1/2/3 retrieval accuracy. Multi-modal Distance (MM Dist) measures the distance between motions and texts.
+% 
+(4) Linguistic quality: We follow \cite{chuan2022tm2t} utilizing linguistic metrics from natural language studies, including BLUE~\cite{papineni2002bleu}, Rouge~\cite{lin2004rouge}, Cider~\cite{vedantam2015cider}, and BertScore~\cite{zhang2019bertscore} to evaluate the quality of generated motion captions.
+
+
+\label{sec:comp:detail}
+\textbf{Implementation Details.} We set the codebook of motion tokenizer as $K\in\mathbb{R}^{512\times512}$ for most comparisons. The motion encoder $\mathcal{E}$ incorporates a temporal downsampling rate $l$ of 4. 
+We utilize T5 \cite{raffel2020t5} as the underlying architecture for our language model, with a baseline model consisting of 12 layers in both the transformer encoder and decoder. The feed-forward networks have an output dimensionality of $d_\text{ff} = 3072$, and the attention mechanisms employ an inner dimensionality of $d_\text{kv} = 64$. The remaining sub-layers and embeddings have a dimensionality of $d_\text{model} = 768$.
+%
+% Further ablation studies on components, such as the number of layers are explored in \cref{sec:ablation}. 
+% 
+Moreover, all our models employ the AdamW optimizer for training. The motion tokenizers are trained utilizing a $10^{-4}$ learning rate and a 256 mini-batch size, while our language models have a $2\times10^{-4}$ learning rate for the pre-train stage, $10^{-4}$ for the instruction tuning stage, and a 16 mini-batch size for both stages. The motion tokenizer undergoes 150K iterations of training, while the language model undergoes 300K iterations during the pre-train stage and another 300K iterations during the instruction tuning stage. All models are trained on 8 Tesla V100 GPUs.
+
+% \begin{figure*}[t] 
+% 	\centering 
+% 	\includegraphics[width=0.8\linewidth]{tmp} 
+% 	\caption{ Results Gallery
+%  % Qualitative comparison of unconditioned motion generation. Samples for our MLD and ACTOR~\cite{petrovich21actor} trained on a split of AMASS~\cite{AMASS_ICCV2019} dataset, the motion part of \cite{Guo_2022_CVPR_humanml3d}. More samples in the supplements.
+%  } 
+% 	\label{fig:uncon}
+% \end{figure*}
+
+
+\subsection{Comparisons on Motion-relevant Tasks}
+\label{sec:comp}
+\label{sec:comp:general}
+\textbf{Comparisons on Multiple Tasks.} By introducing a uniform framework that treats human motion as a foreign language, we open up the exploration of diverse motion-relevant tasks. We employ a 220M pre-trained \textit{Flan-T5-Base}\cite{raffel2020t5,chung2022flant5} model as our backbone and fine-tune the model through the pre-training and instruction tuning stage (\cref{sec:method: strategy}) for all following comparisons.
+%
+As shown in \cref{tab:uniform}, we evaluate MotionGPT against state-of-the-art methods on key tasks such as text-conditioned motion generation~\cite{chen2023mld,zhang2023generating,chuan2022tm2t,mdm2022human}, motion captioning~\cite{chuan2022tm2t}, motion prediction~\cite{mdm2022human}, and motion in-between\cite{mdm2022human}. 
+While we leverage existing results from previous works or benchmarks for text-to-motion and motion-to-text tasks, we re-implement the motion diffusion models \cite{mdm2022human} for motion prediction and evaluate it under the same metrics and settings.
+Please note that some methods are designed for specific tasks, and thus some metrics are empty for tasks they cannot handle.
+The results presented in \cref{tab:uniform} demonstrate that our MotionGPT achieves competitive performance across all evaluated tasks, highlighting its capability to address diverse motion tasks within a single model.
+
+
+\label{sec:comp:text}
+% task
+% our training model
+% evaluation (why)
+% Tab. Details
+%   1. Others
+%   2. Performance (explain)
+% 夸
+\textbf{Comparisons on Text-to-Motion.} The text-to-motion task involves generating human motion sequences based on a given text input. We evaluate the proposed the MotionGPT model as the pre-trained MotionGPT, the same one in \cref{tab:uniform}, as well as fine-tuned it on text-to-motion task. We compare our MotionGPTs with other SOTAs~\cite{chuan2022tm2t,Guo_2022_CVPR_humanml3d,mdm2022human,chen2023mld,zhang2023generating} and evaluate the performance on both HumanML3D and KIT datasets using suggested metrics \cite{Guo_2022_CVPR_humanml3d}. The results are computed with a 95\% confidence interval, obtained from 20 repeated runs.
+The majority of the reported results are taken directly from their own papers or the benchmark presented in \cite{Guo_2022_CVPR_humanml3d}.
+% Besides, the deterministic methods such as ~\cite{plappert2018learning, bhattacharya2021text2gestures, ahuja2019language2pose} can not generate diverse results from the same input so their MModality metrics are empty.
+\cref{tab:tm:comp:humanml3d} summarizes the comparison results, where MotionGPT achieves competitive performance on most metrics.
+
+
+
+\begin{table}[t]
+\centering
+\vspace{10pt}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{@{}lccccccc@{}}
+\toprule
+\multirow{2}{*}{Methods}&\multicolumn{3}{c}{RPrecision$\uparrow$}&\multicolumn{1}{c}{\multirow{2}{*}{FID$\downarrow$}}&\multirow{2}{*}{MMDist$\downarrow$}&\multirow{2}{*}{Diversity$\rightarrow$}&\multirow{2}{*}{MModality$\uparrow$}\\\cmidrule(lr){2-4}
+&\multicolumn{1}{c}{Top1}&\multicolumn{1}{c}{Top2}&\multicolumn{1}{c}{Top3}&\multicolumn{1}{c}{}&&&\\\midrule
+Real &
+  $0.511^{\pm.003}$ &
+  $0.703^{\pm.003}$ &
+  $0.797^{\pm.002}$ &
+  $0.002^{\pm.000}$ &
+  $2.974^{\pm.008}$ &
+  $9.503^{\pm.065}$ &
+  \multicolumn{1}{c}{-}
+  \\ \midrule
+% TEMOS \cite{petrovich22temos}&
+%   $0.424^{\pm.002}$ &
+%   $0.612^{\pm.002}$ &
+%   $0.722^{\pm.002}$ &
+%   $3.734^{\pm.028}$ &
+%   $3.703^{\pm.008}$ &
+%   $8.973^{\pm.071}$ &
+%   $0.368^{\pm.018}$ \\
+TM2T \cite{chuan2022tm2t} &
+  $0.424^{\pm.003}$ &
+  $0.618^{\pm.003}$ &
+  $0.729^{\pm.002}$ &
+  $1.501^{\pm.017}$ &
+  $3.467^{\pm.011}$ &
+  $8.589^{\pm.076}$ &
+  $2.424^{\pm.093}$ 
+  \\
+T2M \cite{Guo_2022_CVPR_humanml3d}&
+  $0.457^{\pm.002}$ &
+  $0.639^{\pm.003}$ &
+  $0.740^{\pm.003}$ &
+  $1.067^{\pm.002}$ &
+  $3.340^{\pm.008}$ &
+  $9.188^{\pm.002}$ &
+  $2.090^{\pm.083}$ \\
+MotionDiffuse \cite{zhang2022motiondiffuse} &
+$\underline{0.491}^{\pm.001}$ &
+$\boldsymbol{0.681}^{\pm.001}$ &
+$\boldsymbol{0.782}^{\pm.001}$ &
+$0.630^{\pm.001}$ &
+$\underline{3.113}^{\pm.001}$ &
+${9.410}^{\pm.049}$ &
+$1.553^{\pm.042}$ \\
+MDM \cite{mdm2022human}&
+  $0.320^{\pm.005}$ &
+  $0.498^{\pm.004}$ &
+  $0.611^{\pm.007}$ &
+  ${0.544}^{\pm.044}$ &
+  $5.566^{\pm.027}$ &
+  $\underline{9.559}^{\pm.086}$ &
+  $\underline{2.799}^{\pm.072}$ \\
+MLD \cite{chen2023mld}&
+  ${0.481}^{\pm.003}$ &
+  ${0.673}^{\pm.003}$ &
+  ${0.772}^{\pm.002}$ &
+  ${0.473}^{\pm.013}$ &
+  ${3.196}^{\pm.010}$ &
+  $9.724^{\pm.082}$ &
+  ${2.413}^{\pm.079}$
+  \\
+T2M-GPT \cite{zhang2023generating}  & $\underline{0.491}^{\pm.003}$ & ${0.680}^{\pm.003}$ & ${0.775}^{\pm.002}$ & $\boldsymbol{0.116}^{\pm.004}$ & ${3.118}^{\pm.011}$ & $9.761^{\pm.081}$ & $1.856^{\pm.011}$ \\
+% ReMoDiffuse \cite{remodiffuse} & $\boldsymbol{0.510}^{\pm.005}$ & $\boldsymbol{0.698}^{\pm.006}$ & $\boldsymbol{0.795}^{\pm.004}$ & $\boldsymbol{0.103}^{\pm.004}$ & $\boldsymbol{2.974}^{\pm.016}$ & $9.018^{\pm.075}$ & $1.795^{\pm.043}$ \\
+\midrule
+% MotionGPT (Pre-trained) &
+% ${0.438}^{\pm.009}$ & $0.613^{\pm.003}$ & $0.708^{\pm.002}$ & $\underline{0.159}^{\pm.006}$ & $3.605^{\pm.011}$ & $9.301^{\pm.006}$ & 
+% $\boldsymbol{3.437}^{\pm.091}$
+MotionGPT (Pre-trained) &
+${0.435}^{\pm.003}$ & $0.607^{\pm.002}$ & $0.700^{\pm.002}$ & $\underline{0.160}^{\pm.008}$ & $3.700^{\pm.009}$ & $9.411^{\pm.081}$ & $\boldsymbol{3.437}^{\pm.091}$
+\\
+MotionGPT (Fine-tuned) &
+$\boldsymbol{0.492}^{\pm.003}$ & $\boldsymbol{0.681}^{\pm.003}$ & $\underline{0.778}^{\pm.002}$ & $0.232^{\pm.008}$ & $\boldsymbol{3.096}^{\pm.008}$ & $\boldsymbol{9.528}^{\pm.071}$ & 
+${2.008}^{\pm.084}$
+
+   \\ \bottomrule
+\end{tabular}%
+}
+\vspace{5pt}
+\caption{Comparison of text-to-motion on HumanML3D~\cite{Guo_2022_CVPR_humanml3d}. The empty MModality indicates \textit{Real} motion is deterministic. These methods are sorted by FID. \textit{Pre-trained} and \textit{Fine-tuned} indicate uniform motion-language pre-training and specific fine-tuning on this task. ($cf.$ \cref{tab:uniform} for notations.)}
+\vspace{-5pt}
+\label{tab:tm:comp:humanml3d}
+\end{table}
+
+
+\label{sec:comp:m2t}
+\textbf{Comparisons on Motion-to-Text.}
+The motion-to-text task involves generating a text description based on a given human motion sequence. 
+% We evaluate the also fine-tune the model specifically for the motion-to-text task. 
+We compare the pre-trained MotionGPT with recent work TM2T~\cite{chuan2022tm2t}. We evaluate the performance on the HumanML3D using the suggested metrics from \cite{chuan2022tm2t}. Additionally, we measure the average numbers of words $\text{Length}_\text{avg}$ for further comparisons. Please note that the reported results in \cite{chuan2022tm2t} are evaluated with pre-processed ground truth text, which ignores the grammatical tense and plural forms of words. In \cref{tab:tm:comp:m2t}, we directly use the ground truth text descriptions for a more accurate assessment. This comparison shows that MotionGPT overperforms recent work on text descriptions of given motions.
+
+
+\begin{table}[t]
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{@{}lccccccccc@{}}
+\toprule
+\multirow{2}{*}{Methods}&\multicolumn{2}{c}{RPrecision$\uparrow$}&
+\multirow{2}{*}{MMDist$\downarrow$} &\multirow{2}{*}{$\text{Length}_{\text{avg}}$$\uparrow$} &\multirow{2}{*}
+{Bleu@1$\uparrow$}&
+\multirow{2}{*}{Bleu@4$\uparrow$}&\multirow{2}{*}{Rouge$\uparrow$}&\multirow{2}{*}{Cider$\uparrow$}&\multirow{2}{*}{BertScore$\uparrow$}
+\\\cmidrule(lr){2-3}
+&\multicolumn{1}{c}{Top1}&\multicolumn{1}{c}{Top3}&&&\\\midrule
+
+Real & $0.523$ 
+% & $0.725$ 
+& $0.828$ & $2.901$ &  $12.75$ &\multicolumn{1}{c}{-}& \multicolumn{1}{c}{-}& \multicolumn{1}{c}{-}& \multicolumn{1}{c}{-}& \multicolumn{1}{c}{-}
+\\ \midrule
+% RAEs\cite{yamada2018rae}         & $0.100$ & $0.188$ & $0.261$ & $6.337$ 
+% & $33.3$ & $10.2$ & $37.5$ & $22.1$ & $10.7$ 
+% \\
+% Seq2Seq(Att)\cite{plappert2018seq2seqatt} & $0.436$ & $0.611$ & $0.706$ & $3.447$ & $51.8$ & $17.9$ & $46.4$ & $58.4$ & $29.1$ \\
+% SeqGAN\cite{goutsu2021seqgan}       & $0.332$ & $0.457$ & $0.532$ & $4.895$ & $47.8$ & $13.5$ & $39.2$ & $50.2$ & $23.4$ \\
+% TM2T\cite{chuan2022tm2t}         & ${0.516}$ & $\boldsymbol{0.720}$ & $\boldsymbol{0.823}$ & ${2.935}$ & $\boldsymbol{61.7}$ & $\boldsymbol{22.3}$ & $\boldsymbol{49.2}$ & $\boldsymbol{72.5}$ & $\boldsymbol{37.8}$ \\
+% % \midrule
+%    % \\
+% MotionGPT (Ours) &
+% $\boldsymbol{0.521}$ & $\boldsymbol{0.720}$ & ${0.811}$ & $\boldsymbol{2.874}$ & ${53.7}$ & ${16.5}$ & ${42.8}$ & ${47.6}$ & ${27.8}$
+% \\ \midrule
+TM2T\cite{chuan2022tm2t} & 
+${0.516}$ & 
+% $\boldsymbol{0.720}$ & 
+${0.823}$  &${2.935}$ & $10.67$& $\boldsymbol{48.9}$ & $7.00$ & $\boldsymbol{38.1}$ & $16.8$ & ${32.2}$ \\
+MotionGPT (Ours)& 
+$\boldsymbol{0.543}$ & $\boldsymbol{0.827}$ & $\boldsymbol{2.821}$ & $\boldsymbol{13.04}$ 
+& $48.2$ & $\boldsymbol{12.47}$ & $37.4$ & $\boldsymbol{29.2}$ & $\boldsymbol{32.4}$
+% $\boldsymbol{0.521}$ & 
+% % $\boldsymbol{0.720}$ & 
+% ${0.811}$ & $\boldsymbol{2.874}$ & $\boldsymbol{13.05}$& $47.8$ & $\boldsymbol{13.2}$ & $37.4$ & $\boldsymbol{29.5}$ & $31.1$
+\\
+   \bottomrule
+\end{tabular}%
+}
+\vspace{5pt}
+\caption{Comparison of motion captioning on HumanML3D~\cite{Guo_2022_CVPR_humanml3d}. The evaluation metrics follow \cite{chuan2022tm2t}, while we use the ground truth texts without pre-processing for linguistic metrics calculation.}
+\vspace{-15pt}
+\label{tab:tm:comp:m2t}
+\end{table}
+
+
+
+\textbf{Comparisons on Motion Prediction and In-between.}
+\label{sec:comp:motion}
+We summarize motion prediction and in-between together as general motion completion.
+To evaluate the motion completion capability of MotionGPT, we employ part of the AMASS dataset \cite{AMASS_ICCV2019}, a motion-only dataset. 
+For motion prediction task, we only input around the first 20\% of the motion sequence as conditions. For in-between, we mask about 50\% motion randomly for completion.
+%
+We also fine-tune MotionGPT specifically for this task and employ FID, ADE, and FDE as metrics like \cref{sec:comp:metric}.
+%
+Furthermore, we evaluate MDM~\cite{mdm2022human} on motion prediction by utilizing their provided model, which also supports motion in-between through masked motion ``in-painting''.
+%
+The real motion data is used as one of our baselines.
+%
+\cref{tab:comp:motion} reports that our MotionGPT has the best motion completion quality and diversity.
+
+
+\begin{table}[h]
+\centering
+\resizebox{0.8\columnwidth}{!}{%
+\begin{tabular}{@{}lccccccccc@{}}
+\toprule
+\multirow{2}{*}{Methods} & 
+\multicolumn{4}{c}{Motion Prediction }& &
+\multicolumn{3}{c}{Motion In-between  }\\
+\cmidrule(lr){2-5} \cmidrule(lr){7-9}
+& $\text{FID}\downarrow $  
+& Diversity$\uparrow$            
+& ADE$\downarrow$
+& FDE$\downarrow$
+&& $\text{FID}\downarrow $  
+& Diversity$\uparrow$            
+& ADE$\downarrow$
+\\ 
+\toprule
+Real & $0.002$ & $9.503$ & - & - && $0.002$ & $9.503$ & -
+\\\midrule
+% T2M-GPT\cite{}& \textcolor{red}{TODO} &\textcolor{red}{TODO}&\textcolor{red}{TODO}&\textcolor{red}{TODO} &-&-&-\\
+MDM\cite{mdm2022human}& $6.031$ & $7.813$& $5.446$ &$8.561$&& $2.698 $&$ 8.420$& $3.787$
+\\
+% \midrule
+MotionGPT (Ours) 
+& $\boldsymbol{0.905}$ &$\boldsymbol{8.972}$ & $\boldsymbol{4.745}$& $\boldsymbol{6.040}$ &&$\boldsymbol{0.214}$&$\boldsymbol{9.560}$&$\boldsymbol{3.762}$
+\\ \bottomrule
+\end{tabular}%
+}
+\vspace{4pt}
+\caption{Comparison of motion prediction and motion in-between on part of AMASSS~\cite{AMASS_ICCV2019} dataset using motion data only. 
+FID indicates motion quality and Diversity (DIV) for motion diversity within each condition. ADE and FDE are joints distance between generation and ground truth.}
+\vspace{-10pt}
+\label{tab:comp:motion}
+\end{table}
+
+\subsection{Ablation Studies}
+\label{sec:ablation}
+MotionGPT employs T5~\cite{raffel2020t5} as the motion-aware language backbone model, and we train these models with pre-training and then instruction tuning. Thus, both model size and training strategy influence the performance of MotionGPTs. We here evaluate them on the typical motion tasks. More detailed ablation studies are provided in the supplements.
+
+% Please add the following required packages to your document preamble:
+% \usepackage{booktabs}
+% \usepackage{multirow}
+% \usepackage{graphicx}
+\begin{table}[t]
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{@{}lccccccccccc@{}}
+\toprule
+\multirow{2}{*}{Size} & 
+\multirow{2}{*}{Instruction Tuning} & 
+\multicolumn{3}{c}{Text-to-Motion}& 
+\multicolumn{3}{c}{Motion-to-Text} & 
+\multicolumn{2}{c}{Motion Prediction}&
+\multicolumn{2}{c}{Motion In-between}
+\\ \cmidrule(lr){3-5} \cmidrule(lr){6-8} 
+\cmidrule(lr){9-10} \cmidrule(lr){11-12}
+&& R TOP3 $\uparrow$ & FID $\downarrow$ & DIV $\rightarrow$ & MMDist$\downarrow$ & Bleu@4$\uparrow$ & Cider$\uparrow$ 
+&   FID $\downarrow$ & DIV $\rightarrow$  & FID $\downarrow$ & DIV $\rightarrow$ 
+\\ \midrule
+Real & - &
+$0.797\hidden{^{\pm.002}}$ &
+$0.002\hidden{^{\pm.000}}$ &
+$9.503\hidden{^{\pm.065}}$ &
+% - &
+% $0.828$ 
+${2.901}$
+& -& -
+& 0.002 & 9.503 & 0.002 & 9.503
+\\ \midrule
+Small &  &
+$0.706\hidden{^{\pm.002}}$	& $0.727\hidden{^{\pm.008}}$	& 
+$9.264\hidden{^{\pm.042}}$  &
+$\boldsymbol{2.748}$	& ${12.02}$& ${24.9}$ & - & - & - & - 
+\\
+Small & \checkmark &
+$0.663$	& ${0.336}$	& ${9.239}$ &
+$2.931$	& $10.54$	& $24.3$ & $0.954$& $8.727$ & $0.326$ & $9.618$
+\\ \midrule
+Base & &
+$\boldsymbol{0.722}\hidden{^{\pm.002}}$	& $0.365\hidden{^{\pm.008}}$	& 
+$9.407\hidden{^{\pm.042}}$ &
+$2.821$	& $\boldsymbol{12.47}$ & $\boldsymbol{29.2}$ & - & - & - & - 
+\\
+Base & \checkmark &
+$0.700$	& $0.160$	& $\boldsymbol{9.411}$ &
+$3.019$	& $11.42$ & $28.2$ 
+% &0.668&9.172&0.157&9.389
+& ${0.905}$ &${8.972}$&$\boldsymbol{0.214}$&$\boldsymbol{9.560}$
+\\ \midrule
+Large &  &
+$0.694\hidden{^{\pm.002}}$ & $0.234\hidden{^{\pm.009}}$ & $9.310\hidden{^{\pm.078}}$ & $2.776$& $12.44$ & $28.5$ & - & - & - & - 
+\\
+Large & \checkmark &
+$0.708$	& $\boldsymbol{0.159}$	& $9.301$ &
+$3.011$ & $11.71$ & $29.1$ &
+% &$\boldsymbol{2.874}$ & $\boldsymbol{13.2}$ & $\boldsymbol{29.5}$&
+$\boldsymbol{0.556}$ & $\boldsymbol{8.975}$ & $0.223$  & $9.358$
+\\ 
+\bottomrule
+\end{tabular}%
+}
+\vspace{2pt}
+\caption{Evaluation of instruction tuning and different model sizes of MotionGPTs in four motion tasks on HumanML3D~\cite{Guo_2022_CVPR_humanml3d} dataset. ($cf.$ \cref{tab:uniform} for metrics details)}
+\vspace{-15pt}
+\label{tab:abl:tuning}
+\end{table}
+
+\label{sec:ablation:motionsize}
+\textbf{Model Sizes.}
+We evaluate the performance of models with different sizes across four motion tasks.
+Besides the base 220M MotionGPT in \cref{sec:comp:detail}, we now evaluate 60M, 220M, and 770M MotionGPTs. \cref{tab:abl:tuning} demonstrates that the 220M base model has achieved remarkable performance compared to the smaller 60M model. However, the larger model size of current Motions does not yield significant improvements and, in few cases, even leads to worse results, as observed in the motion in-between task. We believe this could be caused by the small amount of current motion datasets. HumanML3D only includes 15k motion sequences, much smaller than even billions of language and image data.
+
+\label{sec:ablation:strategy}
+\textbf{Effectiveness of Instruction Tuning.}
+We evaluate the impact of our instruction tuning strategy on different model sizes. The results in \cref{tab:abl:tuning} demonstrate that instruction tuning enhances the versatility of MotionGPT, enabling more motion tasks like motion completion and improving the motion performance of the text-to-motion task. However, for pure text-generation tasks, the model performance is downgraded, likely due to the pair amount of textual descriptions and coupled motions.
+
+
+% \tmp{In \cref{tab:ablation:diffusion}, we select the text-to-motion task as our focus and evaluate latent diffusion models $\epsilon_\theta$, using the similar metrics in \cref{tab:tm:comp:humanml3d}.
+% %
+% MLD-$i$ denotes the shape of latent $z\in\mathbb{R}^{i\times256}$.
+% %
+% Importantly, MLD-1, using the smallest latent, wins the best performance in most metrics.
+% %
+% % We find that the diffusion models \cx{xxxxxxx}.
+% %
+% After that, the evaluation on the components of $\epsilon_\theta$ is provided, \textit{cross-att} and \textit{concate} represent the cross-attention or concatenation for condition embedding $\epsilon_\theta(c)$.
+% %
+% Interestingly, MDM~\cite{mdm2022human} also reports the encoder design by concatenating embedding is better.
+% %
+% We find that skip connection, which is important for images~\cite{bao2022all, stable_diffusion}, also provided significant improvement in motion latent diffusion models, but MLDs using different numbers of layers in $\epsilon_\theta$ achieve similar effects on this dataset.
+% %
+% We then evaluate the generation of MLD by diffusion sampling, different from the generation in $\mathcal{V}$ by latent sampling ($cf.$ \cref{tab:mr:ablation}).
+% %
+% As shown in \cref{tab:ablation:uncon}, the MLD using the smallest latent and skip connection outperforms others.
+% %
+% The evaluation of how different language models influence MLDs and the details of latent/diffusion sampling are provided in supplements.}
+
+
+%stable diffusion 4.2 Image Generation with Latent Diffusion
+% Please add the following required packages to your document preamble:
+% \usepackage{booktabs}
+% \usepackage{graphicx}
+% \begin{table}[t]
+% \caption{Comparison of unconstrained generation on HumanML3D dataset ??}
+% \label{tab:my-table}
+% \resizebox{\columnwidth}{!}{%
+% \begin{tabular}{@{}cclll@{}}
+% \toprule
+% \multicolumn{1}{l}{Methods} & FID$\downarrow$   & KID$\downarrow$ & Diversity$\rightarrow$ & MModality $\uparrow$ \\ \midrule
+
+% Real               &  &  &  &  \\
+% Vposer             &  &  &  &  \\
+% ACTOR              &  &  &  &  \\
+% \midrule
+% ours(actor)              &  &  &  &  \\
+% \midrule
+% mdiffuse (1,256)   &  &  &  &  \\
+% mdiffuse (2,256)   &  &  &  &  \\
+% mdiffuse (5,256)   &  &  &  &  \\
+% mdiffuse (7,256)   &  &  &  &  \\
+% mdiffuse (10,256)  &  &  &  &  \\
+% \midrule
+% denoiser layer 7   &  &  &  &  \\
+% denoiser layer 9   &  &  &  &  \\
+% denoiser layer 11  &  &  &  &  \\
+% \midrule
+% mdiffuse w/ skip   &  &  &  &  \\
+% mdiffuse  w/o skip &  &  &  &  \\
+
+% \bottomrule
+% \end{tabular}%
+% }
+% \end{table}
+
+
+
+% \begin{table}[t]
+% \resizebox{\columnwidth}{!}{%
+% \begin{tabular}{@{}llllll@{}}
+% \toprule
+% \multirow{2}{*}{Models} & \multicolumn{1}{c}{R Precision} & \multicolumn{1}{c}{\multirow{2}{*}{FID$\downarrow$}} & \multirow{2}{*}{MM Dist.$\downarrow$} & \multirow{2}{*}{Diversity$\rightarrow$} & \multirow{2}{*}{MModality$\uparrow$} \\
+%                            & \multicolumn{1}{c}{Top 3$\uparrow$}       & \multicolumn{1}{c}{}                     &                          &                            &                            \\ \midrule
+% MDM          &  $0.611^{\pm.007}$ &
+%   $0.544^{\pm.044}$ &
+%   $5.566^{\pm.027}$ &
+%   $9.559^{\pm.086}$ &
+%   $2.799^{\pm.072}$                   \\ \midrule
+% MLD($z\in\mathbb{R}^{1\times256}$, w/ skip)    &                                 &                                          &                          &                            &                            \\
+% MLD($z\in\mathbb{R}^{1\times256}$, w/o skip)    &                                 &                                          &                          &                            &                            \\
+% MLD($x^{1:L}$, w/ skip)   &                                 &                                          &                          &                            &                            \\
+% MLD($x^{1:L}$, w/o skip)   &                                 &                                          &                          &                            &                            \\
+%  \bottomrule
+% \end{tabular}%
+% }
+% \caption{Latent diffusion or motion diffusion? Which format is better for text-conditioned diffusion model? Evaluation of text-conditioned motion generation on HumanML3D dataset. }
+% \label{tab:latent:or:motion}
+% \end{table}
+
+
+% \begin{figure}[t]
+%     \centering
+%     \includegraphics[width=0.95\linewidth]{tmp}
+%     \caption{
+%     Adding new task. 
+%     % AITS indicates the average time cost for each sentence. 
+%     % We calculate AITS on the test set of HumanML3D~\cite{Guo_2022_CVPR_humanml3d} without model or data loading parts. All tests are performed on the same Tesla V100. The closer the model is to the origin the better.
+%     }
+%     \label{fig:comp: time}
+% \end{figure}
+
+
+%% 时间
+% \iffalse
+% # 2022-11-08 00:15:39,497 model mdiffuse loaded
+% # MLD Infer time - This/Ave batch: 0.42
+% # MLD Infer FPS - Total batch: 461.68
+% # MLD Infer FPS - Per motion: 4.62
+% # Total time spent: 71.70 seconds (including model loading time and exporting time).
+% time cost for 100 poses 0.21s
+% # Traceback (most recent call last):
+% \fi
+
+
+
+% % Please add the following required packages to your document preamble:
+% % \usepackage{booktabs}
+% % \usepackage{multirow}
+% % \usepackage{graphicx}
+% \begin{table}[t]
+% \resizebox{\columnwidth}{!}{%
+% \begin{tabular}{@{}lccclccl@{}}
+% \toprule
+% % &  & \multicolumn{2}{c}{ Generation}
+% \multirow{2}{*}{Method} & \multicolumn{6}{c}{Motion Reconstruction}                                                            \\ \cmidrule(lr){2-4} \cmidrule(l){6-7} 
+%                        & MPJPE $\downarrow$ & PAMPJPE$\downarrow$ & ACCL$\downarrow$  &  & FID$\downarrow$  & DIV$\rightarrow$ \\ \midrule
+% Real  &  \multicolumn{1}{c}{-} & \multicolumn{1}{c}{-}& \multicolumn{1}{c}{-} & &  $0.002\hidden{^{\pm.000}}$&	$9.503\hidden{^{\pm.065}}$     \\ \midrule
+
+% \bottomrule
+% \end{tabular}%
+% }
+% \caption{Comparison of motion reconstruction performance on HumanML3D dataset with state-of-the-art methods: xxx }
+% \label{tab:mr:comp}
+% \end{table}

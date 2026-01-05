@@ -1,0 +1,127 @@
+
+In this section, we show that a certain fragment of string constraints
+whose decidability status has been left open in the literature can be
+reduced in logarithmic space to generalised Sem{\"e}nov arithmetic,
+and is hence decidable in EXPSPACE. This demonstrates an important
+application of our results on generalised Sem{\"e}nov arithmetic, with
+deep connections to solving string constraints in practice, which has
+been one of the motivations for our work.
+
+Let $\Sigma = \{ 0,1\}$. The \emph{theory of enriched string
+  constraints} $\TRElnc$ is the first-order theory of the two-sorted
+structure \[\langle \Sigma^*,\N; \{w\}_{w \in \Sigma^*}, \cdot, \slen,
+\strnum, \{R_i \}_{i\in \N}, 0,1,+\rangle,\] where
+%
+\begin{itemize}
+\item the binary function $\cdot$ over $\Sigma^*$ is the string
+  concatenation operator,
+\item the unary function $\slen\colon \Sigma^* \to \N$ returns on
+  input $w$ the length $\abs{w}$ of $w$,
+\item the unary function $\strnum\colon \Sigma^* \to \N$ on input $u$
+  returns $\eval{u}$, and
+\item $R_0,R_1,\ldots \subseteq \Sigma^*$ is an enumeration of all
+  regular languages.
+\end{itemize}
+%
+The remaining predicates, constant and function symbols are defined in
+their standard semantics.
+
+The above theory was introduced in~\cite{BKMMDNG20}, where an SMT solver addressing some fragments of this theory was defined, implemented, and compared to other state of the art solvers which can handle such string constraints. Extending \cite{BKMMDNG20}, \cite{BDGKMMN23} presents in more details the motivation behind considering this theory and its fragments. More precisely, the authors of \cite{BDGKMMN23} analysed an extensive collection of standard real-world benchmarks of string constraints and extracted the functions and predicates occurring in them. The works \cite{BKMMDNG20,BDGKMMN23} focused on benchmarks that do not contain word equations, and the result of the aforementioned benchmark-analysis produced exactly the four functions and predicates mentioned above: $\slen$, $\strnum$, regular language membership, and concatenation of strings. 
+
+Complementing the practical results of \cite{BKMMDNG20}, \cite{BDGKMMN23} showed a series of theoretical results regarding fragments of $\TRElnc$. In particular, the existential theory of $\TRElnc$ is shown to be undecidable. Moreover, \cite{BDGKMMN23} leaves as an open problem the question whether the existential theories of $\TREln$ and $\TREnc$, which drop the concatenation operator and length function, respectively, are decidable. From these two, the existential theories of $\TREln$ seems particularly interesting, as all instances from the benchmarks considered in the analysis \cite{BDGKMMN23} can be easily translated into a formula from this particular fragment of $\TREln$. Indeed, by the results reported in Table 1.b from \cite{BDGKMMN23},  %(which we have also double checked), 
+no instance contains both concatenation of strings and the $\strnum$ function; moreover, the concatenation of strings, which appears only in formulas involving regular membership predicates and, in some cases, length function, can be easily removed in all cases by a folklore technique called automata splitting (see, e.g., \cite{AACHRRS15}). Therefore, showing that the existential fragment of $\TREln$ is decidable essentially shows that one can decide all the instances from the standard benchmarks analysed in \cite{BDGKMMN23}.
+
+In this paper, we solve this open problem. By a reduction to generalised Sem{\"e}nov arithmetic, we can settle the decidability status of $\TREln$:
+%
+\begin{theorem}
+  The existential fragment of $\TREln$ is decidable in EXPSPACE.
+\end{theorem}
+%
+%% We equivalently interpret both the unary functions $\slen$
+%% and $\strnum$ and the binary function $+$ as binary and ternary
+%% relations over $\Sigma^*\times\N$ and $\N^3$, respectively.
+
+Again, we treat $\TREln$ as a relational structure. Without loss of
+generality, we may assume that atomic formulas of $\TREln$ are one of
+the following:
+%
+\begin{itemize}
+\item $R(s)$ for some string variable $s$ and a regular language $R$;
+\item $s=t$ for some string variables $s$ and $t$;
+\item $\slen(s,x)$ or $\strnum(s,x)$ for some string variable $s$ and
+  integer variable $x$; or
+\item $\vec a \cdot \vec x \ge b$ for a vector of integer variables
+  $\vec x$.
+\end{itemize}
+%
+The size of a formula of $\TREln$ is defined in the standard way as
+the number of symbols required to write it down, assuming binary
+encoding of numbers, and where the size of some $R$ is the size of the
+smallest DFA accepting $R$. Furthermore, in a quantifier-free formula
+$\varphi$ of $\TREln$, we may without loss of generality assume that
+all atomic formulas occur positive, except for atomic formulas $s=t$.
+
+We now describe the reduction to existential Sem{\"e}nov
+arithmetic. The idea underlying our proof is that we map a string $s$
+to the number $\eval{1s}$. Note that we cannot directly treat strings
+in $\Sigma^*$ as natural numbers due to the possibility of leading
+zeros. This encoding enables us to treat strings as numbers and to
+implement the functions $\strnum$ and $\slen$ in generalised
+Sem{\"e}nov arithmetic. Given a quantifier-free formula $\varphi$ of
+$\TREln$, we define by structural induction on $\varphi$ a function
+$\sigma$ that maps $\varphi$ to an equi-satisfiable formula of
+generalised Sem{\"e}nov arithmetic:
+%
+\begin{itemize}
+\item Case $\varphi \equiv R(s)$: $\sigma(\varphi)\defeq (0^*1 R)(s)$;
+\item Case $\varphi \equiv s=t$ or $\varphi \equiv \neg(s=t)$:
+  $\sigma(\varphi) \defeq s=t$ or $\sigma(\varphi) \defeq \neg s=t$,
+  respectively;
+\item Case $\varphi \equiv \strnum(s,x)$: $\sigma(\varphi)\defeq
+  \exists y.\, 2^y\leq s\land s< 2^{y+1} \land x = s-2^y$;
+\item Case $\varphi \equiv \slen(s,x)$: $\sigma(\varphi)\defeq 2^{x}\le s\land s < 2^{x+1}$;
+\item Case $\varphi \equiv \vec a\cdot \vec x \ge b$: $\sigma(\varphi) \defeq \vec a\cdot \vec x \ge b$; and
+\item Case $\varphi \equiv \varphi_1 \sim \varphi_2$, ${}\sim{} \in \{
+  \wedge, \vee \}$: $\sigma(\varphi)\defeq \sigma(\varphi_1) \sim
+  \sigma(\varphi_2)$.
+\end{itemize}
+%
+
+\begin{lemma}
+  Let $\varphi$ be a quantifier-free formula of $\TREln$ and $S$ be
+  the set of string variables occurring in $S$. Then $\varphi$ is
+  satisfiable if and only if $\sigma(\varphi) \wedge \bigwedge_{s\in
+    S} s>0$ is satisfiable.
+\end{lemma}
+\begin{proof}
+  Observe that the variables occurring in $\varphi$ are the same
+  variables as those occurring in $\sigma(\varphi)$. Let $S$ be the
+  set of string variables in $\varphi$ and $X$ be the set of
+  integer-valued variables in $\varphi$. Given an assignment $\mathcal
+  I_S \colon S \to \{0,1\}^*$, we define $\tilde{\mathcal{I}}_S \defeq
+  S \to \N$ such that $\tilde{\mathcal I}_S(s) \defeq \eval{1 \mathcal
+    I_S(s)}$. Subsequently, denote by $\mathcal I_X\colon X \to \N$ an
+  assignment to the integer-valued variables. We show by structural
+  induction on $\varphi$ that $(\mathcal I_S,\mathcal I_x) \models
+  \varphi$ if and only if $(\tilde{\mathcal I}_S, \mathcal I_X)
+  \models \sigma(\varphi) \wedge \bigwedge_{s\in S} s>0$:
+%
+  \begin{itemize}
+  \item Case $\varphi \equiv R(s)$: Let $\mathcal I_S(s)=b_{n-1}\cdots
+    b_0$, we have $\mathcal I_S(s)\in R$ if and only if $2^n +
+    \sum_{i=0}^{n-1} 2^ib_i \in \eval{0^*1R}$, noting that $2^n +
+    \sum_{i=0}^{n-1}2^i b_i=\eval{1b_{n-1}\cdots b_0}=\tilde{\mathcal
+      I}_S(s)$.
+  \item Case $\varphi \equiv \strnum(s,x)$: Let $\mathcal
+    I_S(s)=b_{n-1}\cdots b_0$ and $\mathcal I_X(x)=m$. We have that
+    $m=\sum_{i=0}^{n-1}2^ib_i$ if and only if $m=\tilde{\mathcal
+      I}_S(s)-2^n$ if and only if $(\tilde{\mathcal I}_S,\mathcal
+    I_X)\models \sigma(\varphi) \wedge \bigwedge_{s\in S} s>0$.
+  \item Case $\varphi\equiv \slen(s,x)$: Let $\mathcal
+    I_S(s)=b_{n-1}\cdots b_0$ and $\mathcal I_X(x)=m$. We have that
+    $m=n$ if and only if $2^m\le \eval{1b_{n-1}\cdots b_0} <2^{m+1}$
+    if and only if $(\tilde{\mathcal I}_S,\mathcal I_X)\models
+    \sigma(\varphi) \wedge \bigwedge_{s\in S} s>0$.
+  \end{itemize}
+  The remaining cases follow obviously.
+\end{proof}

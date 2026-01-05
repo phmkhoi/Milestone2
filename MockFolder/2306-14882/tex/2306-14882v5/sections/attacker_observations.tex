@@ -1,0 +1,96 @@
+\section{Restricting Attacker Observations}
+\label{sec:attackerobs}
+To achieve RMI, we first restrict the attacker's observations using microarchitectural isolation to satisfy \sw{shm}. We describe our baseline microarchitecture, and how it enforces strong isolation between security domains with shared memory disabled.
+From there, we show how we have enabled shared memory while carefully constraining what an attacker can observe to (speculative) accesses to shared memory i.e. \sw{shm}.
+
+\subsection{Strong Microarchitectural Isolation}
+\label{sec:hardwareisolation}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/partitioning_mem.pdf}
+\caption{Resource Partitioning Between Security Domains}
+\label{fig:partitioning_all}
+\centering
+\includegraphics[width=\columnwidth]{figures/context_switch.pdf}
+\caption{Context Switching Between Security Domains}
+\label{fig:context_switch}
+\centering
+\includegraphics[width=\columnwidth]{figures/dual_page_table.pdf}
+\caption{The Dual Page Table Mechanism }
+\label{fig:dual_pt}
+\end{figure}
+
+\noindent\textbf{Memory Isolation}
+Physical Memory Protection (PMP) \cite{waterman2015risc} is the official RISC-V mechanism to partition physical memory and prevent unauthorized access between security domains (OS, enclaves, and SM).
+However, it relies on accessing a series of registers, making it difficult to identify memory regions outside of the cores.
+This makes it difficult to integrate features such as fine-grained LLC partitioning (see Section \ref{sec:dynamiccache}).
+To allow for easy determination of a memory region from a physical address, 
+we revive a mechanism from the
+Sanctum paper \cite{costan2016sanctum}.
+At its core, the mechanism divides memory into fixed-size physical memory regions (in our case 64 regions of 32MB) allocated by the SM to different security domains.
+Each core uses two 64-bit registers as memory bitmaps, storing access rights for private and shared memory of the running security domain.
+Citadel adopts this mechanism, enforcing checks on all memory accesses, including speculative and page-walk operations.
+Figure \ref{fig:partitioning_all} illustrates this isolation, showing that only currently running security domains can access their corresponding DRAM regions.
+%\jules{18}
+\\
+
+\noindent\textbf{Microarchitectural Isolation}
+We base our design on MI6 \cite{bourgeat2019mi6}, which enforces strong microarchitectural isolation through partitioning, flushing, and disabling speculation in the SM.
+First, all spatially shared microarchitecture is partitioned, including the LLC, the LLC pipeline, Miss Status Handling Registers (MSHR) and other resources as illustrated in Figure \ref{fig:partitioning_all}.
+In particular, the LLC is statically partitioned into 64 regions to match the 64 DRAM memory regions -- we will improve this scheme in Section \ref{sec:dynamiccache}.
+We pad DRAM request timing to a fixed duration that matches the slowest request. This slightly increases latency, but masks side channels from opened rows and contention in the DRAM controller.
+We also pad requests coinciding with memory refresh (periodic and independent of any secrets) to a fixed duration.
+We leverage interrupt logic to interpose the SM when context switching between security domains and enforce the flushing of temporally-shared microarchitecture such as all cores' pipeline state, L1 caches, TLBs, Translation Caches and MSHRs (see Figure \ref{fig:context_switch}).
+The processor does not support hyper-threading and therefore is not vulnerable to related side channels such as port contention.
+The processor does not include a prefetcher or SIMD units so we are not susceptible to Spectre variants exploiting them.
+Finally, Citadel is not susceptible to Meltdown-style attacks, as the processor does not speculate across privilege levels (switching to a different privilege mode flushes the re-order buffer, making sure it never contains two instructions from different privilege levels).
+The exhaustive list of side channels and defense mechanisms covered by MI6 can be found in \cite{bourgeat2019mi6}.
+
+\noindent\textbf{Disabling Speculation in the SM}
+The SM executes in machine mode (see Figure \ref{fig:context_switch}) which gives it access to all physical memory.
+Following MI6 \cite{bourgeat2019mi6}, speculation in the SM is disabled to prevent TES attacks. 
+
+\subsection{Enabling Shared Memory}
+\label{sec:vmanddualpt}
+
+Existing mechanisms like MMIO or non-cacheable memory~\cite{schwarz2020context, costan2016intel} are insufficient to prevent TES attacks.
+They prevent some speculative memory accesses, but rely on physical addresses or page table entry bits, requiring speculative accesses to page table entries that leak address information.
+Instead, we decide to adopt Sanctum's dual-page-table mechanism (Figure \ref{fig:dual_pt}) as it makes it possible to differentiate between private and shared memory based solely on virtual addresses.
+Two new registers define the enclave's private virtual memory range.
+When setting up the enclave, the SM ensures that physical memory mapped as private is owned by the corresponding security domain.
+Memory access translation uses one of the two page tables:
+\emph{Enclave page table}: For virtual addresses within the enclave memory range. The SM ensures that this table is stored in enclave private memory.
+\emph{Shared page table}: For virtual addresses outside the private range (shared memory). This table is stored in shared memory.
+\noindent During address translation, additional bound checks ensure that all memory addresses that are accessed belong to the same security domain (enclave or shared memory) as the translated address.
+This mechanism can also be used to enable private shared memory between enclaves (not visible to the OS).
+The SM simply needs to ensure that the root page table and shared memory region(s) are not accessible to the OS.
+If shared memory with the OS is also required, some page tables can be located in the OS memory.
+
+\subsection{Disentangling Private and Shared State}
+\label{sec:disentangle}
+We now need to carefully constrain what the attacker can observe on (speculative) accesses to shared memory.
+As a design principle, read-only state used by both shared and private memory needs to be tagged to prevent aliasing while
+core-private microarchitectural state entangled with adversary state through a coherence protocol need to be partitioned.
+We highlight examples relevant to our design.
+
+\noindent\textbf{Tagged ATC and TLB for Correct Address Translations} 
+Both the Address Translation Cache (ATC) and Translation Lookaside Buffer (TLB) are susceptible to cross-domain aliasing.
+The ATC, which caches intermediate page walker results, relies on a few upper virtual address bits, while TLB aliasing can occur with large pages if the private virtual memory range is smaller than the page granularity.
+To prevent mistranslations, we tag ATC and TLB entries to indicate their association with private or shared memory.
+
+\noindent\textbf{Speculative Transmitters in the L1-D Cache}
+\label{sec:l1bypass}
+While shared memory cannot be accessed speculatively, private memory can, potentially leading to speculative eviction of shared memory.
+Unfortunately, the cache coherency protocol makes some private L1 microarchitectural state observable to an attacker, as writing to a memory location cached by another core takes longer than writing to an uncached location, effectively creating a side channel.
+This vulnerability enables Spectre-style attacks through coherency in the L1-D cache.
+In our case, partitioning the L1 would significantly impact overall system performance, including non-protected programs, due to the cache's latency sensitivity.
+Instead, we opted to bypass the L1-D cache for enclave accesses to shared memory.
+Because LLC is only reconfigured when no enclaves are running and the L1-D is flushed on context switch, we avoid issues related to cache coherency.
+This decision is further justified by the limited temporal reuse of shared memory accesses and the observed impact on performance (see Section \ref{sec:evalsharedmemory}).
+\\
+
+\noindent\textbf{Security Analysis}
+As we tagged read-only shared resources and the L1 is the only core-private state entangled with adversary state through a coherence protocol, we do not need to worry about other core-private structures.
+Consequently, the attacker is only able to observe state of the shared LLC.
+This effectively limits the attacker's observations to the trace of accesses, and addresses of accesses, to shared memory i.e.~\sw{shm}.

@@ -1,0 +1,277 @@
+\section{Implementation Detail}
+\vpara{KB Environment.} To execute the SPARQL, we build a virtuoso database with the latest official data dump of Freebase\footnote{https://developers.google.com/freebase}.
+
+\vpara{Pilot Study.}
+To simulate the generalization problems, the training set and test set are drawn from GrailQA's training set and test set, respectively.
+To build the toy train set, we choose two thousand cases with only the 1-hop logical expression from the GrailQA train set. In addition, for the compositional test set, we select the 1-hop cases from the GrailQA test set, which contains seen single relations and classes but unseen class-relation pairs beyond the train set. For the zero-shot test set, we select the 1-hop cases that involve both a class and a relation that does not appear in the toy train set. To be noted, as coarse-grained modeling involves the enumeration of logical expressions to obtain candidates, and the enumeration is nearly impossible for 2-hop logical expressions due to the large amount (greater than 2,000,000). So, we simplify the pilot study to only 1-hop questions that involve the composition of a class and a relation, which can also support comparing fine-grained and coarse-grained modeling.
+
+For both the coarse-level and fine-level matching methods, we apply a BERT-based-uncased model. Both models are trained for 5 epochs with a batch size of 8 and a learning rate of 2e-5. To demonstrate the capacity of the models and make an objective comparison, we also employ the contractive loss with a random negative sample for both strategies.
+
+\vpara{Extraction Model.} For both the relation extractor and class extractor, we also apply the BERT-based-uncased model. The encoder accepts the concatenation of the question $q$ and relation $r$ or the class $c$ as the input, and then a linear layer projects the output [CLS] embedding into a similarity score $s(q, r)$ or $s(q, c)$. The BERT is fine-tuned by optimizing a contrastive loss~\cite{chen2020simple},
+% to promote the gold relation $r_{pos}$ and penalize the negative ones $\{r_{neg}\}$, 
+
+\begin{equation}
+\mathcal{L}\left({q, r_{pos}}\right) = -\text{log}\frac{e^{s(q, r_{pos})}}{e^{s(q, r_{pos})}+\sum_{r^{'} \in \{r_{neg}\}}{e^{s(q, r^{'})}}}  \nonumber
+\label{extractor_loss}
+\end{equation}
+
+\noindent where $r_{pos}$ is one of the golden relations extracted from the target logical expression, and $\{r_{neg}\}$ is the set of the negative relations sampled from relation set which shares the same domain as $r_{pos}$. We sample 48 negative candidates for each sample and fine-tune BERT-base-uncased for 10 epochs with a batch size of 8 and a learning rate of 2e-5.
+
+\vpara{Generation Model.} We initiate both of our seq-to-seq models with T5-based provided by the huggingface library~\cite{wolf-etal-2020-transformers}. For logical skeleton parsing, we fine-tune for 5 epochs with a batch size of 4 and a 4-step gradient accumulation. For the final composition model, we fine-tune for 10 epochs with a batch size of 8 and a 4-step gradient accumulation. To be noted, both the designed rules for logical skeleton parsing and vocabulary constraints in decoding process will not be used in the training process, and both training object follow the regular BART.
+
+\section{Component Detection Models.}
+
+\begin{table}[t]
+\caption{Entity linking accuracy (\%).}
+\label{tb:entity-link}
+\centering
+\begin{tabular}{lc}
+\hline
+                              & Accuracy     \\ \hline
+GrailQA                       & 68.0          \\
+RNG-KBQA                      & 81.6          \\ \hline
+Ours                          & \textbf{87.2} \\
+\quad--Relation-aware Pruning & 83.0          \\ \hline
+\end{tabular}
+\end{table}
+
+\vpara{Entity Linking.}
+As shown in Figure~\ref{tb:entity-link}, compared with the entity linking (EL) strategy in RNG-KBQA, our EL strategy gains 5.6\% accuracy improvement. The reasons include (1) the trie tree considers all entities' surface names, ensuring the high coverage of entity candidates, (2) the relation-aware pruning strategy can effectively remove hard negatives with similar mentions but completely different semantics. 
+
+\vpara{Relation and Class Extraction.}
+Figure~\ref{fig:relation} depicts the effects of varying different sizes ($k$) of relations and classes. With the increase of $k$, the relation or class coverage represented by accuracy begins to grow slowly and attends to be stable when $k$ is around 10. Meanwhile, the complexity of composition enumeration grows exponentially with $k$. Thus, to balance efficiency and performance, we choose top-10 relations and top-10 classes.
+
+
+\begin{figure*}[th]
+\centering
+\includegraphics[scale=0.45]{relation_result.png}
+\caption{Performance of top-$k$ relation and class extraction. Accuracy denotes the coverage of relation or class candidates. Complexity denotes the number of compositions that should be enumerated. }     \label{fig:relation}
+\end{figure*}
+
+
+\vpara{Logical Skeleton Parsing.}
+ Table~\ref{tb:logical-form} displays the effectiveness of logical skeleton parsing techniques for various beam searches. ``Raw Question'' refers to directly parsing the raw question into the logical skeleton, while ``+Mask'' refers to parsing using our entity mask strategy. 
+ For both the strategies, in addition to the top-1, top-2, and top-3 beam search results, we also report the results of Top-2(R) which add ``<rel><rel>'' as the top-2 candidate if ``<rel>'' is the top-1 prediction, vice versa. We can see that our designed entity mask strategy and rule-based beam search can contribute to the logical skeleton parsing. The rules significantly improve the performance as 1-hop relation and 2-hop relations are quite mix up in KBs. For example, the semantic-grained one-hop relation ``program producer'' could be represented by a 1-hop relation (``tv.tv\_producer.programs\_produced'' in domain TV) or a 2-hop relations (``broadcast.content.producer'' and ``radio.radio\_subject.p- rograms\_with\_this\_subject'' in domain radio). 
+
+\section{Running Example}
+We here give a running example of our framework for better understanding. As shown in Figure~\ref{fig:over-view}, given the question ``the terminuses of Antonio belongs to what railway?'', we first propose fine-grained component detection. We retrieve candidate classes ``railway'', ``railway\_terminus'', ``railway\_type'', ... and candidate relations ``railway.terminuses'', ``railway.branches\_to'', ``transit\_line.terminuses'',..., and candidate entities ``Antonio'' which is a football player,``Antonio'' which is a city ,..., and logical skeleton candidates. Then, we apply the middle-grained constrain, for example, for class-relation pairs, ``railway'' is connected to ``railway.terminuses'' in KB but not connected to ``railway.branches\_to''; for relation-relation pairs,``railway.terminuses'' shares matched domain and range with ``railway.branches\_to'' but not share with ``transit\_line.terminuses''; for entities, the football player ``Antonio'' does not match any candidate relations and will be pruned.  Finally, we put question, all connected class-relation pairs, all connected relation-relation pairs, all entities that have not been pruned and logical skeleton candidates into the composition model and generate logical expression.
+\section{Case Study}
+\begin{figure*}[t]
+    \includegraphics[scale=0.7]{case_study.png}
+    \caption{Case Study on GrailQA.}
+    \centering
+    \label{fig:case-study}
+\end{figure*}
+
+\begin{table}[t]
+\caption{Logical skeleton parsing accuracy (\%).}
+\label{tb:logical-form}
+\centering
+\setlength{\tabcolsep}{1mm}{
+\begin{tabular}{lcccc}
+\hline
+& \multicolumn{1}{l}{Top-1} & \multicolumn{1}{l}{Top-2} & \multicolumn{1}{l}{Top-3} & \multicolumn{1}{l}{Top-2(R)} \\ \hline
+Raw Question   & 83.2    & 86.1     & 86.7  & 94.0 \\
+\multicolumn{1}{r}{+Mask} & 85.5 & 87.4 & 88.6 & \textbf{95.3} \\
+\hline
+\end{tabular}}
+\end{table}
+Figure~\ref{fig:case-study} shows some cases that our \smodel and RNG-KBQA predicted. 
+Example(a) shows a simple one-hop case, but RNG-KBQA tends to generate a more complex logical expression because it frequently occurs in the training set. 
+With sample cases where the surface name of the gold relation has a clear overlap with the question, Example(b) demonstrates how the composition of each component causes RNG-KBQA to fail. 
+As seen in example(c), the entanglement of knowledge and logical skeleton causes RNG-KBQA to predict some straightforward logical operators like "COUNT" incorrectly. These restrictions can be overcome by our proposed \model.
+
+
+% \section{Logical Form}
+% \label{sec:logical_form}
+% We denote a $n$-hop logical form as the logical form that contains $n$ relations. We enumerate all the 4-hop logical forms including the operators of ``AND'', ``ARGMIN'', ``ARGMAX'', ``COUNT'', ``JOIN'', ``LE'', ``LT'', ``GT'', and ``GE''. Then we remove those that are not in the training data to yield 103 common logical forms. Table~\ref{tb:common_logical_form} show the set of the created common logical forms in 1,2,3,4-hops respectively. 
+
+% \section{KB-constrained Partial Enumeration}
+% \label{sec:knowledgepair}
+% To inject the KB-constrained knowledge into the generation model, we enumerate all the pairs of atomic knowledge and check whether they are executable in KB. Algorithm~\ref{alg:alg1} presents the enumeration steps where Line 4-11 finds relations that could connect to the candidate entities, Line 12-24 finds relation pairs that could connect to each other, and Line 25-34 finds (class, relation) pairs that share same the domain or range.
+
+% \begin{algorithm*}[!t]
+% 	%\textsl{}\setstretch{1.8}
+% 	\renewcommand{\algorithmicrequire}{\textbf{Input:}}
+% 	\renewcommand{\algorithmicensure}{\textbf{Output:}}
+% 	\renewcommand{\algorithmicreturn}{\textbf{Return}}
+% 	\caption{\textbf{KB-constrained Partial Enumeration}}
+% 	\label{alg:alg1}
+% 	\begin{algorithmic}[1]
+% 	    \REQUIRE Top-$k$ class candidates $C_q$ , Top-$k$ relation candidates $R_q$,
+% 	     and candidate entities $E_q$.
+% 	    \ENSURE Atomic knowledge pairs $P_q$.
+% 	    \STATE Initialize the (entity, relation) set $P^{ent-rel}_q = \varnothing$.
+% 	    \STATE Initialize (relation, relation) set $P^{rel-rel}_q = \varnothing$.	  
+% 	    \STATE Initialize (class, relation) set $P^{class-rel}_q = \varnothing$.	 
+% 	    \FOR{$e$ in $E_q$}
+% 	    \STATE $N_e$ = Neighbour($e$);
+% 	    \FOR{$r$ in $R_q$}
+% 	    \IF{$r$ in $N_e$}
+% 	    \STATE $P^{ent-rel}_q = P^{ent-rel}_q \cup \{(e,r)\}$;
+% 	    \ENDIF
+% 	    \ENDFOR
+% 	    \ENDFOR
+% 	    \FOR{$r_1$ in $R_q$}
+% 	    \FOR{$r_2$ in $R_q$}
+% 	    \IF{connect($r_1$, $r_2$)}
+% 	    \STATE $P^{rel-rel}_q = P^{rel-rel}_q \cup \{(r_1,r_2)\}$;
+% 	    \ENDIF 
+% 	    \IF{connect($r_1$, reverse($r_2$))}
+% 	    \STATE $P^{rel-rel}_q = P^{rel-rel}_q \cup$ \{($r_1$,reverse($r_2$))\};
+% 	    \ENDIF 
+% 	    \IF{connect(reverse($r_1$), $r_1$)}
+% 	    \STATE $P^{rel-rel}_q = P^{rel-rel}_q \cup$ \{(reverse($r_1$),$r_2$)\};
+% 	    \ENDIF 
+% 	    \ENDFOR
+% 	    \ENDFOR
+% 	    \FOR{$c$ in $C_q$}
+% 	    \FOR{$r$ in $R_q$}
+% 	    \IF{$c$ in range($r$) or $c$ in domain($r$) } 
+% 	    \IF{subclass($c$) in $C_q$}
+% 	    \STATE \textbf{continue};
+% 	    \ENDIF
+% 	    \STATE $P^{class-rel}_q = P^{class-rel}_q \cup \{(c,r)\}$;
+% 	    \ENDIF
+% 	    \ENDFOR
+% 	    \ENDFOR
+% 	    \STATE $P_q$ = $P_{ent-rel}^q \cup P_{rel-rel}^q \cup P_{class-rel}^q$;
+% 	    \STATE Return atomic knowledge pairs $P_q$;
+% 	\end{algorithmic}  
+% \end{algorithm*}
+
+
+% \begin{table*}[]
+% \centering
+% \caption{
+%     Common Logical Form Set.
+%     \label{tb:common_logical_form}
+% }
+% \begin{tabular}{l}
+%  \hline
+% \multicolumn{1}{c}{1-hop Logical Forms} \\ \hline
+% (AND <class> (JOIN <rel> <entity>)) \\
+% (AND <class> (JOIN <rel> <literal>)) \\
+% (COUNT (AND <class> (JOIN <rel> <entity>))) \\
+% (ARGMAX <class> <rel>) \\
+% (ARGMIN <class> <rel>) \\
+% (AND <class> (le <rel> <literal>)) \\
+% (AND <class> (lt <rel> <literal>)) \\
+% (AND <class> (ge <rel> <literal>)) \\
+% (AND <class> (gt <rel> <literal>)) \\
+% (AND <class> (JOIN <rel> <class>)) \\
+% (COUNT (AND <class> (JOIN <rel> <literal>))) \\
+% (COUNT (AND <class> (JOIN <rel> <class>))) \\
+% \hline
+% \multicolumn{1}{c}{2-hop Logical Forms} \\ \hline
+% (AND <class> (JOIN <rel> (JOIN <rel> <entity>))) \\
+% (AND <class> (AND (JOIN <rel> <entity>) (JOIN <rel> <entity>))) \\
+% (COUNT (AND <class> (JOIN <rel> (JOIN <rel> <entity>)))) \\
+% (ARGMIN <class> (JOIN <rel> <rel>)) \\
+% (ARGMAX <class> (JOIN <rel> <rel>)) \\
+% (ARGMIN (AND <class> (JOIN <rel> <entity>)) <rel>) \\
+% (COUNT (AND <class> (AND (JOIN <rel> <entity>) (JOIN <rel> <entity>)))) \\
+% (ARGMAX (AND <class> (JOIN <rel> <entity>)) <rel>) \\
+% (AND <class> (JOIN <rel> (ge <rel> <literal>))) \\
+% (AND <class> (JOIN <rel> (lt <rel> <literal>))) \\
+% (AND <class> (AND (ge <rel> <literal>) (JOIN <rel> <entity>))) \\
+% (AND <class> (AND (JOIN <rel> <entity>) (le <rel> <literal>))) \\
+% (AND <class> (JOIN <rel> (gt <rel> <literal>))) \\
+% (AND <class> (AND (JOIN <rel> <entity>) (ge <rel> <literal>))) \\
+% (AND <class> (JOIN <rel> (le <rel> <literal>))) \\
+% (AND <class> (AND (JOIN <rel> <entity>) (gt <rel> <literal>))) \\
+% (AND <class> (JOIN <rel> (JOIN <rel> <class>))) \\
+% (AND <class> (AND (JOIN <rel> <entity>) (lt <rel> <literal>))) \\
+% (AND <class> (AND (lt <rel> <literal>) (JOIN <rel> <entity>))) \\
+% (AND <class> (AND (gt <rel> <literal>) (JOIN <rel> <entity>))) \\
+% (COUNT (AND <class> (JOIN <rel> (JOIN <rel> <literal>)))) \\
+% (AND <class> (AND (JOIN <rel> <class>) (JOIN <rel> <entity>))) \\
+% (AND <rel> (ge <rel> <literal>)) \\
+% (AND <class> (AND (le <rel> <literal>) (JOIN <rel> <literal>))) \\
+% (AND <class> (AND (le <rel> <literal>) (JOIN <rel> <entity>))) \\
+% (AND <class> (AND (JOIN <rel> <entity>) (JOIN <rel> <class>))) \\
+% (ARGMAX <rel> <rel>) \\
+% (ARGMIN <rel> <rel>) \\
+% (ARGMIN (AND <class> (JOIN <rel> <class>)) <rel>) \\
+% (COUNT (AND <class> (JOIN <rel> (JOIN <rel> <class>)))) \\
+% (COUNT (AND <rel> (JOIN <rel> <entity>))) \\
+% (AND <class> (JOIN <rel> (JOIN <rel> <literal>))) \\
+% (AND <class> (AND (ge <rel> <literal>) (JOIN <rel> <class>))) \\
+% \hline
+% \end{tabular}
+% \end{table*}
+
+% \begin{table*}[]
+% \centering
+% \begin{tabular}{l}
+% \hline
+% \multicolumn{1}{c}{3-hop Logical Forms} \\ \hline
+% (AND <class> (AND (JOIN <rel> (JOIN <rel> <entity>)) (JOIN <rel> <entity>))) \\
+% (AND <class> (JOIN <rel> (JOIN <rel> (JOIN <rel> <entity>)))) \\
+% (AND <class> (JOIN <rel> (AND (JOIN <rel> <entity>) (JOIN <rel> <entity>)))) \\
+% (AND <class> (AND (JOIN <rel> <entity>) (JOIN <rel> (JOIN <rel> <entity>)))) \\
+% (ARGMAX (AND <class> (JOIN <rel> (JOIN <rel> <entity>))) <rel>) \\
+% (ARGMIN (AND <class> (JOIN <rel> (JOIN <rel> <entity>))) <rel>) \\
+% (AND <class> (AND (JOIN <rel> (JOIN <rel> <entity>)) (ge <rel> <literal>))) \\
+% (COUNT (AND <class> (JOIN <rel> (JOIN <rel> (JOIN <rel> <entity>))))) \\
+% (ARGMIN (AND <class> (JOIN <rel> <entity>)) (JOIN <rel> <rel>)) \\
+% (AND <class> (JOIN <rel> (AND (JOIN <rel> <entity>) (le <rel> <literal>)))) \\
+% (COUNT (AND <class> (AND (JOIN <rel> (JOIN <rel> <entity>)) (JOIN <rel> <entity>)))) \\
+% (AND <class> (JOIN <rel> (JOIN <rel> (ge <rel> <literal>)))) \\
+% (ARGMAX (AND <class> (JOIN <rel> <entity>)) (JOIN <rel> <rel>)) \\
+% (AND <class> (AND (JOIN <rel> (ge <rel> <literal>)) (JOIN <rel> <entity>))) \\
+% (AND <class> (AND (JOIN <rel> (JOIN <rel> <entity>)) (lt <rel> <literal>))) \\
+% (AND <class> (AND (JOIN <rel> <entity>) (JOIN <rel> (le <rel> <literal>)))) \\
+% (AND <class> (JOIN <rel> (AND (le <rel> <literal>) (JOIN <rel> <entity>)))) \\
+% (AND <class> (JOIN <rel> (AND (lt <rel> <literal>) (JOIN <rel> <entity>)))) \\
+% (AND <class> (AND (le <rel> <literal>) (JOIN <rel> (JOIN <rel> <entity>)))) \\
+% (AND <class> (JOIN <rel> (AND (ge <rel> <literal>) (JOIN <rel> <entity>)))) \\
+% (AND <class> (AND (JOIN <rel> <entity>) (AND (JOIN <rel> <entity>) (JOIN <rel> <entity>)))) \\
+% (COUNT (AND <class> (JOIN <rel> (AND (JOIN <rel> <entity>) (JOIN <rel> <entity>))))) \\
+% (AND <class> (AND (ge <rel> <literal>) (JOIN <rel> (JOIN <rel> <entity>)))) \\
+% (AND <class> (AND (lt <rel> <literal>) (JOIN <rel> (JOIN <rel> <entity>)))) \\
+% (COUNT (AND <class> (AND (JOIN <rel> <entity>) (JOIN <rel> (JOIN <rel> <entity>))))) \\
+% (AND <class> (AND (JOIN <rel> (JOIN <rel> <literal>)) (le <rel> <literal>))) \\
+% (AND <class> (AND (JOIN <rel> (JOIN <rel> <entity>)) (le <rel> <literal>))) \\
+% (ARGMAX (AND <class> (JOIN <rel> (JOIN <rel> <literal>))) <rel>) \\
+% (AND <class> (AND (JOIN <rel> (le <rel> <literal>)) (JOIN <rel> <entity>))) \\
+% (AND <class> (AND (JOIN <rel> (gt <rel> <literal>)) (JOIN <rel> <entity>))) \\
+% (ARGMAX <class> (JOIN <rel> (JOIN <rel> <rel>))) \\
+% (AND <rel> (JOIN <rel> (JOIN <rel> <entity>))) \\
+% (ARGMAX (AND <class> (JOIN <rel> <literal>)) (JOIN <rel> <rel>)) \\
+% (AND <class> (JOIN <rel> (AND (gt <rel> <literal>) (JOIN <rel> <entity>)))) \\
+% (COUNT (AND <class> (AND (JOIN <rel> <entity>) (AND (JOIN <rel> <entity>) (JOIN <rel> <entity>))))) \\
+% (AND <class> (AND (JOIN <rel> (JOIN <rel> <entity>)) (gt <rel> <literal>))) \\
+% (COUNT (AND <rel> (AND (JOIN <rel> <entity>) (JOIN <rel> <entity>)))) \\
+% (ARGMIN <class> (JOIN <rel> (JOIN <rel> <rel>))) \\
+% (AND <class> (JOIN <rel> (AND (JOIN <rel> <entity>) (lt <rel> <literal>)))) \\
+% (AND <class> (JOIN <rel> (AND (JOIN <rel> <literal>) (lt <rel> <literal>)))) \\
+% (AND <class> (JOIN <rel> (AND (JOIN <rel> <entity>) (gt <rel> <literal>)))) \\
+% (AND <class> (AND (JOIN <rel> (JOIN <rel> <entity>)) (JOIN <rel> <class>))) \\
+% (ARGMAX (AND <class> (JOIN <rel> (JOIN <rel> <class>))) <rel>) \\
+% \hline
+% \end{tabular}
+% \end{table*}
+
+% \begin{table*}[]
+% \centering
+% \begin{tabular}{l}
+% \hline
+% (AND <class> (JOIN <rel> (AND (JOIN <rel> <entity>) (JOIN <rel> <class>)))) \\
+% (AND <class> (AND (JOIN <rel> (le <rel> <literal>)) (JOIN <rel> <class>))) \\
+% (AND <class> (JOIN <rel> (JOIN <rel> (JOIN <rel> <class>)))) \\
+% (AND <class> (AND (JOIN <rel> <entity>) (JOIN <rel> (JOIN <rel> <class>)))) \\
+% (AND <class> (JOIN <rel> (AND (JOIN <rel> <class>) (JOIN <rel> <entity>)))) \\\hline
+% \multicolumn{1}{c}{4-hop Logical Forms} \\ \hline
+% (ARGMAX (AND <class> (JOIN <rel> (JOIN <rel> <entity>))) (JOIN <rel> <rel>)) \\
+% (ARGMIN (AND <class> (JOIN <rel> (JOIN <rel> <entity>))) (JOIN <rel> <rel>)) \\
+% (AND <class> (AND (JOIN <rel> (JOIN <rel> <entity>)) (JOIN <rel> (JOIN <rel> <entity>)))) \\
+% (AND <class> (JOIN <rel> (AND (JOIN <rel> <entity>) (JOIN <rel> (JOIN <rel> <entity>))))) \\
+% (AND <class> (JOIN <rel> (JOIN <rel> (AND (JOIN <rel> <entity>) (JOIN <rel> <entity>))))) \\
+% (AND <class> (AND (JOIN <rel> <entity>) (JOIN <rel> (AND (JOIN <rel> <entity>) (ge <rel> <literal>))))) \\
+% (AND <class> (AND (lt <rel> <literal>) (JOIN <rel> (JOIN <rel> (JOIN <rel> <entity>))))) \\
+% (AND <rel> (JOIN <rel> (JOIN <rel> (JOIN <rel> <entity>)))) \\
+% (ARGMAX (AND <class> (JOIN <rel> (JOIN <rel> <class>))) (JOIN <rel> <rel>)) \\
+% \hline
+% \end{tabular}
+% \end{table*}

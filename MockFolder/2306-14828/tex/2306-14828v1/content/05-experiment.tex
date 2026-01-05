@@ -1,0 +1,390 @@
+\label{sec-experiment}
+\section{Experiment}
+In this section, we describe experiments conducted to evaluate \modelname.
+We first describe the experimental dataset and then describe the result of human evaluation,
+automatic metrics, a case study, and hyperparameter analyses 
+to further demonstrate the superiority of the proposed model. 
+% Source code is available at \url{https://reurl.cc/OAoddA}.
+
+\subsection{PANCO Dataset}
+
+% \begin{figure*}
+%     \centering
+%     \includegraphics[scale=0.95]{figs/PANCO_statistics.pdf}
+% 	 \caption{PANCO dataset statistics. We report the length at word
+% 	 level. We also list the top-10 most frequent words in real/fake headlines,
+% 	 sorted from left to right, top to bottom. Numbers and names are ignored.}
+%     \label{panco-stats}
+% \end{figure*}
+
+
+% \begin{table*}[h]
+% \begin{CJK*}{UTF8}{gbsn}
+%     \small
+%     \centering
+% \begin{tabular}{llllll}
+% \hline
+%                       &      & \textbf{Headline} & \textbf{Content}   & \textbf{Top-10 Words in Headline} & \textbf{Top-10 Words Eng. Trans.}                \\ \hline
+% \multirow{2}{*}{Real} & max  & 51                & 4731               &   辟谣, 谣言, 回应, 假 ,网传, 
+%             & Clarify, Rumor, Response, Fake, Buzz,            \\
+%                       & avg. & 13.7  $\pm$ 3.8  & 576.8 $\pm$ 449.5 &  官方, 致癌, 吃, 造谣,真相        & Official, Carcinogenic, Eat, Spread rumor, Truth \\ \hline
+% \multirow{2}{*}{Fake} & max  & 29                & 12653              & 吃, 网友, 致癌, 没, 女儿,                 & Eat, Netizens, Carcinogenic, Without, Daughter,  \\
+%                       & avg. & 13.9 $\pm$ 3.8   & 603.7 $\pm$ 566.9 & 喝酒, 酒, 驾, 开车, 算                   & Drinking, Wine, Drive, Driving Car, Belongs to           \\ \hline
+% \end{tabular}
+%     \caption{Headline and content length of PANCO dataset, we report max and average length in word level. We also count the top 10 most frequent words in real/fake headlines, sorted from left to right, top to bottom. Numbers and names are ignored.}
+%     \label{panco-stats}
+%     \end{CJK*}
+% \end{table*}
+% \dw{Generally, \dataset contains topics across junk science, gossip, wrong health information, misinformation of government policy.}
+
+\label{sec-dataset}
+We collected \textbf{Pa}ired \textbf{N}ews with \textbf{Co}ntent (PANCO), 
+a subset of a fake news classification competition held by WSDM.
+The competition involved a textual entailment task in which two news headlines
+were given as input: the task was to predict the relationship between the
+headlines. Each sample in the original dataset included a fake news headline
+and a headline that was either \textit{agreed} (two fake stories describing the
+same event), \textit{unrelated} (two stories describing different events), or
+\textit{disagreed} (two stories describing the same event, one of which was
+fake and the other was verified).
+We selected the \textit{disagreed} pairs that contain a fake headline and its
+corresponding verified news headline, and augmented the dataset in the
+following way:
+% (1)~We discarded \textit{agreed} headline pairs (both titles are fake).
+% (2)~We manually examined the \textit{unrelated} pairs and
+%   discarded
+% unrelated samples because we found that
+% some unrelated samples implicitly verify the fake headline.
+% (3)~We merged selected \textit{unrelated} samples with \textit{disagreed}
+% samples. 
+(1)~We used each title as a query which we submitted to Google Search to
+determine the source of each news story, and crawled the news content from
+sources which matched the title. 
+(2)~Five annotators labeled the FR type of each headline; the final label was
+decided by majority vote. 
+
+The proposed dataset consists of a total of 7,930 paired samples containing a fake news
+headline and the corresponding verified news headline along with their content
+and FR type. To better understand the dataset, we provide a preview sample in
+Fig.~\ref{PANCO_sample} in the appendix. The main novelty of \dataset is the
+collection of pairs (describing the same event) of fake and verified news
+with headlines and their content. In addition, we provide the FR type label for
+both verified and fake news as additional text features for further study. We provide a previewing sample from PANCO in Table~\ref{PANCO_sample}.
+
+\begin{figure*}
+    \centering
+    \includegraphics[width=0.8\textwidth]{figs/PANCO_sample.png}
+    \caption{A previewing sample from PANCO dataset,
+comprised of paired real and fake news headlines, the news content,
+and FR type labels for both real and fake headlines.}
+    \label{PANCO_sample}
+\end{figure*}
+
+%Note that \dataset does not include English headlines from WSDM, as they were machine-translated from their Chinese version and hence are not satisfactory for further experiments.
+%; thus \wdataset is a Chinese-only dataset. 
+
+%Some statistics are listed in Fig.~\ref{panco-stats}; 
+% Formally, \dataset contains the following list of features:
+% \begin{itemize}
+%     \item \textbf{Real Headline} Headline of verification news
+%     \item \textbf{Real Content} News content of verification news
+%     \item \textbf{Fake Headline} Headline of fake news
+%     \item \textbf{Fake Content} News content of fake news
+%     \item \textbf{FR type label} forward-reference type label for both real and fake headline
+% \end{itemize}
+
+\begin{table*}[h]
+\center
+\small
+\begin{tabular}{ll}
+\bottomrule
+\\[-1em]
+Reference & \begin{tabular}[c]{@{}l@{}}Verified news headline: The truth of using one drop of blood to test cancer. \\ 
+Fake news headline: \hspace{9pt} Testing cancer using only one drop of blood! This is amazing. \end{tabular}\\ \\[-1em]
+\hline
+\\[-1em]
+News content       & \begin{tabular}[c]{@{}l@{}}``The woman version of \hlyellow{Jobs}'' Elizabeth Holmes became popular by proposing a revolutionary\\technique: using a single drop of blood to test cancer. But not for long: her lies were revealed,\\and she fell from favor. \hlgreen{An expert said} that liquid biopsies in clinics cannot yet be consisted\\the gold standard, and cannot completely replace tissue biopsy.\end{tabular} \\ \\[-1em] \hline \hline \\[-1em]
+Ptr-G              & Rumors! \hlyellow{Jobs}, really tells you the truth! \\ \\[-1em] \hline \\[-1em]
+Clickbait          & ``Rumors'' \hlyellow{Jobs} can heal the reagent box? Here’s the truth! \\ \\[-1em] \hline \\[-1em]
+Clickbait+ROUGE    & Rumors! Can \hlyellow{Jobs} make people test for cancer? \\ \\[-1em] \hline \\[-1em]
+BERTSum            & A drop of blood can detect cancer?     \\ \\[-1em] \hline \\[-1em]
+T5                 & A drop of blood can detect cancer is a rumor, how can we do to \hlpink{prevent cancer}?                     \\ \\[-1em] \hline \\[-1em]
+ProphetNet         & Clarification: Blood test cannot determine cancer.                                           \\ \\[-1em] \hline \\[-1em]
+HonestBait         & A drop of blood can detect cancer? \hlgreen{Experts clarified}: it’s a scam!
+\\ \\[-1em] \toprule
+\end{tabular}
+\caption{\label{casestudy}
+Generated examples from different models. For brevity, we show part
+of the article and translated result.
+}
+\end{table*}
+
+\subsection{Baseline and Settings}
+We compared the proposed model with the following strong baseline for headline generation. 
+\noindent\textbf{Ptr-G} for pointer generator
+	 network~\cite{see-etal-2017-get}, an LSTM-based model with
+	 attention and a copy mechanism.
+\noindent\textbf{Clickbait}~\cite{xu-etal-2019-clickbait}, which uses a CNN-based
+	 sensationalism scorer to automatically balance MLE and reward loss, and also used as a reward to generate more sensational headlines.
+\noindent\textbf{ROUGE}, which uses the same architecture as Clickbait but with the
+	 ROUGE score as a reward.
+\noindent\textbf{BERTSum}~\cite{liu2019finetune}, which utilizes BERT's architecture
+	 to encode source text and perform extractive summarization.
+\noindent\textbf{T5}~\cite{2020t5}, a large Transformer-based model;
+	 we utilize T5 with PEGASUS~\cite{zhang2020pegasus} pretraining to
+	 strengthen the baseline.
+\noindent\textbf{ProphetNet}~\cite{qi2020prophetnet, qi2021prophetnet}, a
+	 Transformer-based model that utilizes future n-gram prediction as a
+	 self-supervision. %It is a strong performer on several summarization benchmarks.
+
+For human evaluation and the case study, we also include Gold, which represents
+human-written verified headlines as a strong baseline. Experimental settings
+are detailed as follows.
+We first pretrained all baselines on the LCSTS
+dataset~\cite{hu-etal-2015-lcsts} with 480,000 steps. LCSTS is a large-scale
+Chinese summarization dataset containing 2,400,591 samples with paired short
+text and summaries. We used the pretrained weights to fine-tune all baselines
+on the \dataset training set for another 20,000 steps. We saved the checkpoints
+for all baselines every 2,000 steps, and compared them by selecting the
+best one on the validation set. The hyperparameters of \modelname were also based on
+the validation results: $\lambda=0.2$ and $\alpha=0.4$. 
+%For a qualitative analysis of $\lambda$ and $\alpha$, see Appendices~\ref{lam-anal} and~\ref{app-anal}.
+% Source code is provided.\footnote{\url{https://reurl.cc/q1DmyD}}
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{lccccc}
+\bottomrule
+Model            & $R_1$   & $R_2$   & $R_L$   & BS & FR \\ \hline
+Ptr-G                     & 41.86          & 28.18          & 37.30          & 69.61               & 55.32                                  \\
+Clickbait                 & 41.02          & 28.03          & 36.64          & 69.52               & 69.11                                  \\
+ROUGE           & 43.75          & 27.65          & 35.65          & 71.56               & 58.91                                  \\
+ProphetNet                & \textbf{46.82} & 30.40          & 38.89          & \textbf{73.57}      & 49.77                                  \\
+BertSum                   & 28.09          & 16.15          & 18.86          & 63.22               & 16.83                                  \\
+T5                        & 44.27          & 28.55          & 38.66          & 72.73               & 59.96                                  \\ \hline
+\modelname & 43.76          & \textbf{31.45} & \textbf{40.42} & 72.61               & \textbf{80.42}                                  \\ \toprule
+\end{tabular}
+\caption{\label{auto}
+Automatic metrics of proposed model against baselines. $R_n$ is the
+n-gram ROUGE score, $R_L$ is the ROUGE-L score, BS is the BERT score,
+and FR is the ratio of the generated headlines using FR.
+}
+\end{table}
+
+\begin{table}[!h]
+\centering
+\small
+\begin{tabular}{lccc}
+\bottomrule
+Model  & ATRC & FAITH & FLCY \\ \hline
+Ptr-G           & -29.50\%        & -17.83\%         & -19.80\%        \\
+Clickbait       & ~-6.00\%        & -22.33\%         & ~-9.25\%         \\
+ROUGE & -17.50\%        & -17.25\%         & -24.66\%        \\
+BertSum         & -30.50\%        & -21.99\%         & ~-9.70\%         \\
+T5              & -12.50\%        & -10.25\%         & ~-1.25\%         \\
+ProphetNet      & ~-5.60\%        & ~-5.50\%         & ~~4.33\%          \\
+Gold (human)            & -11.25\%        & ~~1.00\%         & ~~8.34\%         \\ 
+%Fake~(Human)            & 5.75\%      & \textbf{-34.57\%}         & ~~9.60\%         \\
+\hline
+HonestBait      & -             & -              & -             \\ \toprule
+\end{tabular}
+\caption{\label{human-eval} Pairwise comparison in terms of
+attractiveness (ATRC), faithfulness (FAITH), and fluency (FLCY), shown as
+percentages. The larger the negative value, the more \modelname outperforms.}
+\end{table}
+
+\subsection{Human Evaluation}
+\label{sec5_4}
+We first conducted a human evaluation to evaluate the attractiveness,
+faithfulness, and fluency of the generated headlines. 
+%Our goal is to allure users to read real headlines, thus instead of being very similar to the original or fake news headline, we focus more on (1) attractiveness, whether the generated headline can motive users' curiosity, (2) faithfulness, whether the generated headline is faithful to its corresponding content, and (3) fluency, whether the generated headline is fluent for reading. $t$
+We randomly selected 100~samples from the \dataset test data, and asked five native speakers to select
+headlines in response to the following questions: 
+(1)~which headline makes you want to read further? 
+(2)~which headline is more faithful to the content?
+(3)~which headline is more fluent?
+
+The workers were given two generated titles and the story content, and were asked
+to select \textit{first title}, \textit{second title}, or \textit{tie} in
+response to the questions. %The order of titles was shuffled and the underlying generation system was not revealed. 
+Table~\ref{human-eval} reports the pairwise comparison results as percentages.
+Each number in the table is the competing model compared to the proposed
+\modelname, following \citet{zhao-etal-2020-bridging}. For
+example, the output of Ptr-G is 12.50\%/45.50\%/42.00\%
+better/same/worse than \modelname in terms of attractiveness, resulting in
+$12.50\%-42.00\% = -29.50\%$ in the table. Results show that for both
+attractiveness and faithfulness, \modelname
+outperforms all baselines by a large margin. We believe this is due to
+the use of forward referencing and the faithfulness check. 
+%By mimicking the writing style often used in beloved headlines, it can lead to a more attractive title, where we can see from the result of 
+Compared to the pure click-driven attractiveness-optimized 
+Clickbait~\cite{xu-etal-2019-clickbait}, \modelname outperforms by directly learning 
+writing skills to avoid other impact factors of attractiveness.
+%that their sensation scorer is trained by discriminating news based on the click amount, which is under the risk of noise perturbation and consequently underperform \modelname on attractiveness. In addition, it is shown that textual entailment based reward can help performing faithfulness evaluation, where we can see that 
+In addition, boosting only attractiveness makes Clickbait relatively
+unfaithful (-22.33\%). 
+In terms of fluency, only ProphetNet and human-written headlines outperform our
+%As for fluency, one baseline (ProphetNet) and human evaluation (Gold) outperform our
+model. As we did nothing specifically to improve fluency such as ProphetNet's n-stream
+attention, this result indicates that \modelname maintains
+reasonable fluency while increasing attractiveness and faithfulness. 
+Note that compared to human-generated real headlines, \modelname generates
+more attractive headlines (+11.25\%) with only a modest drop in faithfulness
+(-1.00\%). 
+%Also, when compared to human-written fake headlines, \wmodelname leads to a remarkable improvement on faithfulness (+34.57\%) with no significant difference on attractiveness.
+These results show the effectiveness of \modelname for rewriting real news
+headlines to promote stories, as it maintains high faithfulness while being
+more attractive.
+ 
+%\lwku{shaky below} Nevertheless, the architecture of \modelname can well balance the sensationalism and faithfulness, making these objectives fulfilled simultaneously. \modelname is able to generate attractive and faithful headlines, with no compromise made in terms of fluency. We believe that the use of FR is also helpful for generating fluent headlines, since we calculate the FR reward at each time step during decoding, so it is more flexible for the generator to avoid unusual result. Also, even most baselines show similar or close performance on Rouge scores, they show obvious differences on faithfulness in human evaluation. It indicates that while raw metric shows the model’s summarization ability, it may fail to distinguish how faithful a system is. ProphetNet is the most competitive baseline and perform a bit better than \modelname on fluency, showing its ability for generating natural sentences. However, without the help of FR and faithfulness scorer, their results are less attractive and less faithful. 
+
+%We conclude that our method improves the overall headline generation and can successfully provokes users' interest more.
+
+\subsection{Automatic Metrics}
+We used three automatic metrics for evaluation:
+\mbox{ROUGE-n}~\cite{lin-2004-rouge}, ROUGE-L, and the BERT
+score~\cite{bert-score}. Although in general, automatic metrics are shown to be not
+reliable for text
+generation~\cite{sulem-etal-2018-bleu,callison-burch-etal-2006-evaluating,schluter-2017-limits,wang-etal-2018-metrics},
+%specifically, our task values the attractiveness of titles where high diversity contributes,
+we still provide them here for reference. The results in Table~\ref{auto} still
+show the good abstractive ability of \modelname with the highest 40.42 $R_L$
+score. Among the baselines, ProphetNet is the strongest, with the highest $R_1$
+and BERT scores, perhaps due to its n-stream self-attention mechanism. 
+However, the extractive summarization model BERTSum performs worst
+here, as extracting a sentence from the article as its headline is not a common
+practice in general. 
+In the last column of Table~\ref{auto}, we further use the FR predictor to
+detect which FR technique(s) the generated headlines are using, and report the
+percentage of generated headlines that use FR. The result shows that 80.42\% of
+the headlines generated by \modelname exploit FRs to make headlines more
+attractive, which is the highest among all models, indicating that \modelname
+indeed learns to utilize FR techniques. 
+  
+
+%As autometrics cannot show the effectiveness of generating attractive or faithful headline, we further conduct human evaluations, and will be elaborated in the next section.
+
+
+% %Despite our model aims to generate more curiosity motive headlines different from the original verification news headlines, 
+% \cy{We would like to highlight that autometric results are only for reference, as this work values the attractiveness of titles where high diversity contributes the most. In addition, our fact-checking process is optimized for fidelity, instead of the wording overlap to the fake title.} Still, automatic evaluation can ensure the quality of the generated results are at an acceptable level. We use two standard automatic metrics for evaluation, BLEU \cite{bleu} and ROUGE \cite{lin-2004-rouge}, we range the automatic metrics from 1 to 4 grams. Results are summarized in Table \ref{auto}. \modelname outperforms all the baselines at almost all automatic metrics, which shows \modelname still maintains it's abstractive ability while trying to generate a more clickbait-style headline.
+% %However, the differences between all baselines are relatively small, showing that all baselines can at least produce relevant headlines with respect to the content.
+% \cy{The reason of such performance gain on automatic metrics may be the fluency improvement found by human evaluation. This could be attributed to the information provided by the fake title, as we have calculated a style similarity loss by measuring how close the encoding of content and the fake title is.} In addition, we found that our sensation scorer gives lower score to unnatural text sequence, which is reasonable as we pre-trained it by classifying human-written news and the output of summarization model.
+%Thus, rewards produced by the sensation scorer will be low if the text is incomplete or abnormal. 
+%leading to a more stable and fluent generation result.
+
+%A Possible reason lead to such improvement is the SRL event graph, which enlarge the information of news content by clustering news with same event. 
+
+\subsection{Ablation Study}
+To further investigate our framework, we conducted an ablation study. 
+%We remove every major component one-by-one to examine the effectiveness of each sub module. 
+We compared each setting with the full framework using the evaluation protocol
+from \S~\ref{sec5_4} by pairwise comparison, along with the automatic metrics
+for completeness. 
+The results are shown in Table~\ref{ablation}. 
+Clearly, there is a significant drop in attractiveness when we remove the
+sensation scorer (-19.50\%) or FR type reward (-16.00\%), which indicates that
+even with the sensation scorer, attractiveness still decreases without the help
+of the FR reward (see setting \emph{w/o FR}). That is, the FR reward indeed
+helps the model to learn attractive writing styles. 
+%Our preliminary user study has confirmed that user-preferred titles are mostly using FR techniques, and Table~\ref{auto} shows that our FR reward can successfully guide the generator to produce more FR-like titles. Finally this ablation result shows our generated headline using FR can also substantially improve the attractiveness. 
+In addition, removing the faithfulness scorer results in the largest decrease in
+faithfulness (-11.50\%). This also shows that our faithfulness
+scorer prevents deviations in the generated headline. Interestingly, removing
+the sensation scorer increases the ROUGE score, perhaps because the
+sensation scorer helps to generate more diverse and interesting headlines, and thus
+can harm metrics which are based on word-level overlap. We also observe that
+removing the faithfulness scorer reduces the ROUGE score, which shows that
+the faithfulness scorer helps to produce headlines with more fidelity, and
+thus increases the word-level overlap between the generated headlines and the 
+ground-truth.
+Note that as automatic metrics are still not the most important indicator of
+generation quality, thus we still keep sensation scorer for its improvements in terms of attractiveness and
+fluency even if removing the it leads to a higher
+ROUGE score.
+
+\begin{table}[!h]
+\centering
+\small
+\begin{tabular}{ cccccc }
+\bottomrule
+ & ATRC & FAITH & FLCY & $R_2$ & \\
+\hline
+W/o sen   & -19.50\% &   -4.00\%  & -9.75\% & \textbf{32.01} \\
+W/o faith &  -4.00\% &	-11.50\%  & -6.75\% & 28.81 \\
+W/o FR    & -16.00\% &  - 5.50\%  & -6.25\% & 30.92 \\
+Full      &   -      &     -      &    -    & 31.45 \\
+\toprule
+\end{tabular}
+\caption{\label{ablation}
+Ablation study result. 
+}
+\end{table}
+
+
+% \begin{figure}[!ht]
+%     \includegraphics[scale=0.76]{figs/case_study.pdf}
+% 	 \caption{Generated examples from different models. For simplicity, we 
+% 	 present only part of the article.}
+%     \label{casestudy}
+% \end{figure}
+
+% \begin{table}[]
+% \begin{CJK*}{UTF8}{gbsn}
+% \begin{tabular}{|l|}
+% \hline
+% \begin{tabular}[c]{@{}l@{}}\textbf{Article:} 几年前，女版“乔布斯”伊丽莎白·霍姆斯凭借一\\项革命性的血液检测技术——依靠一滴血就能进行两\\百多项专业检，被众人追捧。然而，好景不长，她的\\谎言很快被戳破，跌落神坛。...专家表示临床中液体\\活检还没有形成金标准，还不能完全代替组织活检 ...\\ 
+% Few years ago, "the woman version of Jobs" Elizabeth\\Holmes became popular by proposing a revolutionary\\ blood testing technique: using a drop of blood to perform\\ over two hundreds of professional testing. But not for long,\\ her lies were revealed, and she had fallen from the peak. \\
+% Expert said the liquid biopsy in clinic has not yet formed a\\
+% gold standard, and cannot completely replace tissue biopsy. \\
+% \end{tabular} \\ \hline
+% \textbf{Ptr-G:} 辟谣！乔布斯，真正告诉你真相！\\
+% Rumors! Jobs, really tells you the truth!\\
+% \hline
+% \textbf{Clickbait:} “辟谣”乔布斯能治疗试剂盒？真相看这里！\\ 
+% "Rumors" Jobs can heal the reagent box? Here's the truth!\\
+% \hline
+% \textbf{Clickbait+ROUGE:} 辟谣！乔布斯能让人验癌吗？\\ 
+% Rumors! Can Jobs make people test for cancer?\\
+% \hline
+% \textbf{BERTSum:} 一滴血就能测癌？\\ 
+% A drop of blood can detect cancer?\\
+% \hline
+% \textbf{T5:} 一滴血检测癌症是谣言，如何才能防癌？\\ 
+% A drop of blood can detect cancer is a rumor, \\how can we do to prevent cancer?\\
+% \hline 
+% \textbf{ProphetNet:} 辟谣：滴血检测不能确定癌症 \\
+% Clarification: Drop blood test cannot determine cancer. \\
+% \hline
+% \textbf{Gold:} 辟谣！一滴血「检测癌症」的真相\\ 
+% Rumors! The truth of using one drop of blood to test cancer.\\
+% \hline
+% \textbf{\modelname :} 一滴血就能发现癌症？专家辟谣：假的！\\ 
+% A drop of blood can detect cancer? Experts clarify: it's fake!\\
+% \hline
+% \end{tabular}
+% \caption{\label{casestudy}
+% Generated examples from different models. For simplicity, we only present part of the article.
+% }
+% \end{CJK*}
+% \end{table}
+
+
+\subsection{Case Study}
+Table~\ref{casestudy} shows an example illustrating headlines generated by
+different models. 
+Results show that Ptr-G, Clickbait, and ROUGE extract the name ``Jobs'' from
+the article (highlighted in yellow), which is a powerful ability of the copy
+mechanism to alleviate the generation of unknown tokens.
+However, in terms of being headlines, these texts are less satisfying in that
+they are not understandable. BERTSum and T5 make mistakes by generating open
+questions without answering them, which could motivate user interest but is not
+faithful enough for verified news headlines. Even more, T5 focuses on the wrong
+point borrowed from other articles as this article is not about cancer
+prevention, 
+%yet T5 still generate irrelevant information that does not need to be clarified, which can also decrease the ability of verification news.
+%yet T5 may learn from other article similar to this topic and yield the result that seems to be discussing how to prevent cancer,
+which could be harmful (highlighted in pink). In contrast, \modelname
+generates interrogative sentences to attract readers, but with an explicit
+clarification of the fake information, and is aligned to the content
+(highlighted in green).

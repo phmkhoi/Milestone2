@@ -1,0 +1,1028 @@
+% Version 1.2 of SN LaTeX, November 2022
+%
+% See section 11 of the User Manual for version history 
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                 %%
+%% Please do not use \input{...} to include other tex files.       %%
+%% Submit your LaTeX manuscript as one .tex document.              %%
+%%                                                                 %%
+%% All additional figures and files should be attached             %%
+%% separately and not embedded in the \TeX\ document itself.       %%
+%%                                                                 %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%\documentclass[referee,sn-basic]{sn-jnl}% referee option is meant for double line spacing
+
+%%=======================================================%%
+%% to print line numbers in the margin use lineno option %%
+%%=======================================================%%
+
+%%\documentclass[lineno,sn-basic]{sn-jnl}% Basic Springer Nature Reference Style/Chemistry Reference Style
+
+%%======================================================%%
+%% to compile with pdflatex/xelatex use pdflatex option %%
+%%======================================================%%
+
+%%\documentclass[pdflatex,sn-basic]{sn-jnl}% Basic Springer Nature Reference Style/Chemistry Reference Style
+
+
+%%Note: the following reference styles support Namedate and Numbered referencing. By default the style follows the most common style. To switch between the options you can add or remove �Numbered� in the optional parenthesis. 
+%%The option is available for: sn-basic.bst, sn-vancouver.bst, sn-chicago.bst, sn-mathphys.bst. %  
+ 
+%%\documentclass[sn-nature]{sn-jnl}% Style for submissions to Nature Portfolio journals
+%%\documentclass[sn-basic]{sn-jnl}% Basic Springer Nature Reference Style/Chemistry Reference Style
+\documentclass[sn-mathphys,Numbered]{sn-jnl}% Math and Physical Sciences Reference Style
+%%\documentclass[sn-aps]{sn-jnl}% American Physical Society (APS) Reference Style
+%%\documentclass[sn-vancouver,Numbered]{sn-jnl}% Vancouver Reference Style
+%%\documentclass[sn-apa]{sn-jnl}% APA Reference Style 
+%%\documentclass[sn-chicago]{sn-jnl}% Chicago-based Humanities Reference Style
+%%\documentclass[default]{sn-jnl}% Default
+%%\documentclass[default,iicol]{sn-jnl}% Default with double column layout
+
+%%%% Standard Packages
+%%<additional latex packages if required can be included here>
+
+\usepackage{graphicx}%
+\usepackage{multirow}%
+\usepackage{amsmath,amssymb,amsfonts}%
+\usepackage{amsthm}%
+\usepackage{mathrsfs}%
+\usepackage[title]{appendix}%
+\usepackage{xcolor}%
+\usepackage{textcomp}%
+\usepackage{manyfoot}%
+\usepackage{booktabs}%
+\usepackage{algorithm}%
+\usepackage{algorithmicx}%
+\usepackage{algpseudocode}%
+\usepackage{todonotes}%
+\usepackage{listings}%
+\input{shared}
+
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\argmin}{arg\,min}
+
+\renewcommand{\hat}[1]{\widehat{#1}}
+
+
+%%%%
+
+%%%%%=============================================================================%%%%
+%%%%  Remarks: This template is provided to aid authors with the preparation
+%%%%  of original research articles intended for submission to journals published 
+%%%%  by Springer Nature. The guidance has been prepared in partnership with 
+%%%%  production teams to conform to Springer Nature technical requirements. 
+%%%%  Editorial and presentation requirements differ among journal portfolios and 
+%%%%  research disciplines. You may find sections in this template are irrelevant 
+%%%%  to your work and are empowered to omit any such section if allowed by the 
+%%%%  journal you intend to submit to. The submission guidelines and policies 
+%%%%  of the journal take precedence. A detailed User Manual is available in the 
+%%%%  template package for technical guidance.
+%%%%%=============================================================================%%%%
+
+%\jyear{2021}%
+
+%% as per the requirement new theorem styles can be included as shown below
+\theoremstyle{remark}%
+\newtheorem{theorem}{Theorem}%  meant for continuous numbers
+\newtheorem{lemma}[theorem]{Lemma}
+%%\newtheorem{theorem}{Theorem}[section]% meant for sectionwise numbers
+%% optional argument [theorem] produces theorem numbering sequence instead of independent numbers for Proposition
+\newtheorem{proposition}[theorem]{Proposition}% 
+\newtheorem{cor}[theorem]{Corollary}
+%%\newtheorem{proposition}{Proposition}% to get separate numbers for theorem and proposition etc.
+\newtheorem{example}{Example}%
+\newtheorem{remark}{Remark}%
+
+\theoremstyle{definition}%
+\newtheorem{definition}{Definition}%
+
+
+\raggedbottom
+%%\unnumbered% uncomment this for unnumbered level heads
+
+\begin{document}
+
+\title[Trefftz-DG for Stokes]{Trefftz Discontinuous Galerkin discretization for the Stokes problem}
+
+%%=============================================================%%
+%% Prefix	-> \pfx{Dr}
+%% GivenName	-> \fnm{Joergen W.}
+%% Particle	-> \spfx{van der} -> surname prefix
+%% FamilyName	-> \sur{Ploeg}
+%% Suffix	-> \sfx{IV}
+%% NatureName	-> \tanm{Poet Laureate} -> Title after name
+%% Degrees	-> \dgr{MSc, PhD}
+%% \author*[1,2]{\pfx{Dr} \fnm{Joergen W.} \spfx{van der} \sur{Ploeg} \sfx{IV} \tanm{Poet Laureate} 
+%%                 \dgr{MSc, PhD}}\email{iauthor@gmail.com}
+%%=============================================================%%
+
+\author[1]{\fnm{Philip L.} \sur{Lederer}}\email{p.l.lederer@utwente.nl}
+%\equalcont{These authors contributed equally to this work.}
+
+\author[2]{\fnm{Christoph} \sur{Lehrenfeld}}\email{lehrenfeld@math.uni-goettingen.de}
+%\equalcont{These authors contributed equally to this work.}
+
+\author[2]{\fnm{Paul} \sur{Stocker}}\email{p.stocker@math.uni-goettingen.de}
+%\equalcont{These authors contributed equally to this work.}
+
+\affil[1]{\orgdiv{Department of Applied Mathematics}, \orgname{University of Twente}, \orgaddress{\street{Hallenweg 19}, \city{Enschede}, \postcode{7522NH}, \country{The Netherlands}}}
+
+\affil[2]{\orgdiv{Institute for Numerical and Applied Mathematics}, \orgname{University of Göttingen}, \orgaddress{\street{Lotzestr. 16-18}, \city{Göttingen}, \postcode{37083}, \state{State}, \country{Germany}}}
+
+%%==================================%%
+%% sample for unstructured abstract %%
+%%==================================%%
+
+\abstract{
+    We introduce a new discretization based on the Trefftz-DG method for solving the Stokes equations.
+    Discrete solutions of a corresponding method fulfill the Stokes equation pointwise within each element and yield element-wise divergence-free solutions. Compared to standard DG methods, a strong reduction of the degrees of freedom is achieved, especially for higher order polynomial degrees. In addition, in contrast to many other Trefftz-DG methods, our approach allows to easily incorporate inhomogeneous right hand sides (driving forces) by using the concept of the embedded Trefftz-DG method. 
+    On top of a detailed a priori error analysis, we further
+    %, modifications are presented that allow for pressure-robustness and exactly solenoidal (and divergence-conforming) approximations. Finally, 
+    compare our approach to standard discontinuous Galerkin Stokes discretizations and present numerical examples. 
+    %, numerical experiments are carried out and concepts that allow for the extensions to the treatment of the incompressible %Navier-Stokes equations are presented.
+    }
+
+%%================================%%
+%% Sample for structured abstract %%
+%%================================%%
+
+% \abstract{\textbf{Purpose:} The abstract serves both as a general introduction to the topic and as a brief, non-technical summary of the main results and their implications. The abstract must not include subheadings (unless expressly permitted in the journal's Instructions to Authors), equations or citations. As a guide the abstract should not exceed 200 words. Most journals do not set a hard limit however authors are advised to check the author instructions for the journal they are submitting to.
+% 
+% \textbf{Methods:} The abstract serves both as a general introduction to the topic and as a brief, non-technical summary of the main results and their implications. The abstract must not include subheadings (unless expressly permitted in the journal's Instructions to Authors), equations or citations. As a guide the abstract should not exceed 200 words. Most journals do not set a hard limit however authors are advised to check the author instructions for the journal they are submitting to.
+% 
+% \textbf{Results:} The abstract serves both as a general introduction to the topic and as a brief, non-technical summary of the main results and their implications. The abstract must not include subheadings (unless expressly permitted in the journal's Instructions to Authors), equations or citations. As a guide the abstract should not exceed 200 words. Most journals do not set a hard limit however authors are advised to check the author instructions for the journal they are submitting to.
+% 
+% \textbf{Conclusion:} The abstract serves both as a general introduction to the topic and as a brief, non-technical summary of the main results and their implications. The abstract must not include subheadings (unless expressly permitted in the journal's Instructions to Authors), equations or citations. As a guide the abstract should not exceed 200 words. Most journals do not set a hard limit however authors are advised to check the author instructions for the journal they are submitting to.}
+
+\keywords{Trefftz, Discontinuous Galerkin, Stokes} %, pressure robustness}
+
+%%\pacs[JEL Classification]{D8, H51}
+
+%%\pacs[MSC Classification]{35A01, 65L10, 65L12, 65L20, 65L70}
+
+\maketitle
+\section{Introduction}
+Trefftz methods, originating from the work of E. Trefftz \cite{trefftz1926}, use approximation spaces that lie in the kernel of the target differential operator. 
+The discretization spaces are constructed to provide the same approximation quality as comparable discrete spaces, such as polynomial spaces, with a significant reduction of the number of degrees of freedom.
+Trefftz methods provide a natural way to reduce degrees of freedom in discontinuous Galerkin (DG) methods by replacing the element-wise basis functions of the DG method by Trefftz basis functions. 
+
+Trefftz-DG methods have been derived and analyzed for several PDEs, usually under the common restrictions of a zero source term and piecewise constant coefficients, see for example the Laplace equation treated in \cite{HMPS14},  %for different time-dependent problems such as
+for Maxwell's equation see e.g.\cite{EKSW15, Huttunen},
+Schr\"odinger equation \cite{2306.09571,21M1426079},
+the acoustic wave equation \cite{mope18,bgl2016},
+elasto-acoustics \cite{bcds20},
+versions related to the `ultra-weak variational formulation' see also \cite{SpaceTimeTDG,mope18,bcds20,KSTW2014,EKSW15,tpwave,cessenat1996}.
+For Trefftz schemes for Helmholtz we refer to the survey \cite{TrefftzSurvey} and the references therein.
+
+So far, the Trefftz-DG methodology has been restricted to a small set of particular PDE problems due to the need to explicitly construct basis functions for the corresponding PDE-dependent Trefftz-DG spaces and the restrictions mentioned above.  
+Recently, a simple way to circumvent the explicit construction of Trefftz spaces for the Trefftz-DG method has been introduced with the embedded Trefftz-DG method in \cite{2201.07041}. 
+This approach delivers an easy construction of Trefftz-DG spaces for a broad class of PDE-problems, e.g. problems with differential operators that have not been considered in the Trefftz-DG literature before or PDEs with varying coefficients. Further, the approach allows for a generic construction of particular solutions to handle inhomogeneous source terms.
+
+Trefftz methods for the Stokes problem that can be found in the literature are spectral-type methods. 
+Explicit Trefftz basis functions have been constructed in \cite{POITOU2000561,Bouberbachene}. 
+In \cite{LifitsQTSM} a so called `quasi-Trefftz spectral-method' is presented, that solves an eigenvalue problem on an encompassing domain to construct Trefftz-like functions and can also treat the Stokes problem with a source term. 
+In \cite{21710} the Stokes problem is considered in two dimensions and singular solutions are introduced into a collocation Trefftz methods to deal with corner singularities.
+
+While there is, to the best of our knowledge, no Trefftz-DG method for Stokes in the literature, standard DG discretizations for Stokes are well-established since decades. 
+As one way to reduce the computational costs of DG methods Hybridization \cite{cockburn2009unified} has become very popular leading to the class of hybrid DG methods; with several hybrid DG methods developed for the Stokes equation in the literature. 
+However, in the search for efficient discretizations based on DG formulations, Trefftz-DG and hybrid DG methods are  incompatible. By \emph{incompatible} we don't mean that
+a combination of both methods is impossible, but that a combination of both does not bring any significant improvement over one of the two basic methods. We will focus on Trefftz-DG methods in this work and hence we skip here the large amount of literature on Stokes discretizations based on hybrid DG formulations.
+\\[1ex]
+
+\paragraph*{Main contributions and structure of the manuscript}
+In this work we extend the (embedded) Trefftz-DG methodology to the Stokes problem. We introduce a DG method with local basis functions that are polynomials and solve the Stokes problem pointwise.
+This extends the approach introduced in \cite{montlaur2010discontinuous,montlaur08} where a DG method using element-wise divergence-free polynomials is presented for the Stokes and Navier-Stokes equations. In view of the Trefftz methodology the approach in \cite{montlaur2010discontinuous,montlaur08} can be seen as a Trefftz-DG method with respect to the mass conservation equation, while the Trefftz-DG discretization considered in this paper includes also the momentum equation in the construction of the Trefftz-DG space. 
+
+The analysis of the discretization reveals that higher order pressure functions are locally determined by the velocity and that only the piecewise constant pressures appear as Lagrange multipliers in the Stokes saddle point problem. We prove stability of the saddle point problem and derive a priori error bounds in the energy as well as the $L^2$ norm of the velocity. In contrast to most other works on Trefftz-DG methods we allow inhomogeneous right hand side source terms in the method and its analysis. While the method for treating inhomogeneous right hand sides has already been introduced in \cite{2201.07041}, to the best of our knowledge, this is the first time a rigorous error analysis is provided for this generic approach in dealing with inhomogenities.
+
+The article proceeds as follows: We start with some preliminaries in \cref{sec:notation} and then introduce a DG and the corresponding Trefftz-DG method for the Stokes problem in \cref{sec:tdgstokes}. The analysis is carried out in \cref{sec:analysis}. Numerical results are presented in \cref{sec:num}. Final comments are given in \cref{sec13}.
+
+\section{Preliminaries}\label{sec:notation}
+Consider an open bounded Lipschitz domain $\Omega \subset \mathbb{R}^d$ with $d = 2,3$. 
+The Stokes equations determine a velocity $u$ and a pressure $p$ such that
+\begin{subequations}\label{eq:basicpde}
+\begin{alignat}{2} 
+  -\nu  \Delta u + \nabla p & = f && \quad \textrm{in } \Omega, \label{eq::stokes-a} \\
+  -\Div u &=g && \quad \textrm{in } \Omega, \label{eq::stokes-b}\\
+  u &= 0 &&\quad \textrm{on } \partial \Omega, \label{eq::stokes-c}
+\end{alignat}
+\end{subequations}
+where $f,g$ are external body forces and $\nu > 0$ is the dynamic viscosity. The weak formulation of the problem \eqref{eq:basicpde} is then given by $(u,p)\in [H^1_0(\Omega)]^d \times L^2_0(\Omega)$ 
+\begin{equation}\label{eq:weakbasicpde}
+\begin{aligned}
+\int_\Omega \nu \nabla u : \nabla v - \int_\Omega p \Div v &= \int_\Omega f\cdot v && \forall v\in [H^1_0(\Omega)]^d,  \\
+-\int_\Omega  \Div u q &= \int_\Omega g q  && \forall q\in L^2_0(\Omega).
+\end{aligned}
+\end{equation}
+The (Trefftz-) DG formulation introduced in this work is set on a sequence of shape regular simplicial triangulations $\Th$ of a polygonal domain $\dom$.
+We denote by $\Fh$ the set of facets in the mesh $\Th$ and define 
+$\Fhi$ as the subset of interior facets.
+%, from $\Fhb$, the set of boundary facets.
+We denote by $\cP^k(S)$ the space of polynomials up to degree $k$ on an domain $S$ with $\cP^k = \cP^k(\RR^d)$. With $\IP^k(\Th)$ and $\IP^k(\Fh)$ we denote the broken, i.e. element- or facet-wise polynomial space, such that for instance for $v\in\IP^k(\Th)$ it holds that $\restr{v}{T}\in\cP^k(T),$ for all $T\in\Th$. We use an according notation for other broken function spaces as well, e.g. $H^2(\Th)$ denotes the space of functions with a local element-wise $H^2$ regularity.
+Due to its frequent appearance we abbreviate the broken spaces on the mesh by setting $\IP^k = \IP^k(\Th)$ (and similarly for other broken function spaces).
+%For differential operators that are applied element-wise we use the subindex $h$ so that e.g. $\nabla_h$ denotes the element-wise gradient operator.
+
+The $L^2(S)$ scalar product over a domain $S$ is denoted by $(\cdot,\cdot)_S$.
+With $(\cdot,\cdot)_\Th$ and $(\cdot,\cdot)_\Fh$ we denote the sum over the
+element- and facet-wise $L^2$ scalar products. The unit outer normal is denoted
+by $n$. Correspondingly we use $\nrm{\cdot}_S$ for the $L^2$ norm on a domain or
+set of elements/facets $S$ and define $\nrm{\cdot}_0 \coloneqq \nrm{\cdot}_\Th$.  
+
+By $\Pi^k_S: L^2(S) \to \PP^k(S)$ we denote the $L^2$ projection on the domain $S$. With abuse of notation we use the same symbol for vectorial $L^2$ projections and denote by $\Pi^k$ the element-wise $L^2$ projection on $\PP^k(\Th)$ or $[\PP^k(\Th)]^d$, respectively.
+
+Let $T$ and $T'$ be two neighboring elements sharing a facet $F \in \Fhi$ where $T$ and $T'$ are uniquely ordered. On $F$ the functions $u_{T}$ and $u_{T'}$ denote the two limits of a discrete function from the different sides of the element interface. The vectors $n_T$ and $n_{T'}$ are the unit outer normals to $T$ and $T'$. We define
+\begin{equation*}
+    \jump{v} := v_{T} - v_{T'}, \qquad \text{and} \qquad
+    \avg{v} := \frac12 v_{T} + \frac12 v_{T'}.
+\end{equation*}
+On the boundary facets we set $\jump{v} = \avg{v} = v$.
+
+
+
+\section{Trefftz-DG for Stokes}\label{sec:tdgstokes}
+In this section we derive the Trefftz-DG formulation for the Stokes problem starting from a standard DG method, and then introducing Trefftz spaces into the formulation. 
+In \cref{sec:impl} we show a possible way to implement the Trefftz spaces, and construct local particular solutions to treat the inhomogeneous problem using the embedded Trefftz DG method, see \cite{2201.07041}.
+
+\subsection{The underyling DG Stokes discretization}
+As a basis for the following we consider the established DG discretization of the Stokes problem \eqref{eq:basicpde}, cf. e.g. \cite[Section 6.1.5]{di2011mathematical}: \\
+Find $(u_h, p_h) \in [\PP^k]^d \times \PP^{k-1}\setminus \RR$, s.t.
+\begin{subequations}\label{eq:dgstokes}
+\begin{align}
+a_h(u_h,v_h) &+ b_h(v_h,p_h) &\hspace*{-1cm}&= (f,v_h)_{\Th} && \forall ~ v_h \in [\PP^k]^d,\\
+  b_h(u_h,q_h) &  &\hspace*{-1cm}&= (g,q_h)_{\Th} && \forall ~ q_h \in \PP^{k-1}\setminus \RR,
+  \end{align}
+\end{subequations}
+with the bilinear forms
+\begin{align*}
+  a_h(u_h,v_h) &\coloneqq (\nu\! \Grad\! u_h,\Grad\! v_h)_\Th\! - (\avg{ \nu \partial_n u_h },\jmp{v_h})_\Fh\! - (\avg{\nu \partial_n v_h},\jmp{u_h})_\Fh  \\ & \qquad \!+ \frac{\alpha \nu }{h} (\jmp{u_h},\jmp{v_h})_\Fh, \\ 
+b_h(v_h,p_h) &\coloneqq -(\Div v_h, p_h)_{\Th} + (\jmp{v_h \cdot n}, \avg{p_h})_{\Fh},
+\end{align*}
+where the interior penalty parameter $\alpha = \mathcal{O}(k^2)$ is chosen sufficiently large and $\partial_n w \coloneqq \nabla w \cdot n$.
+
+In this work we want to introduce a Trefftz-DG method by reducing the finite element space to a 
+subspace, the Trefftz-DG space. For the underlying DG space we introduce the
+notation $\X_h(\Th) = [\PP^k(\Th)]^d \times \PP^{k-1}(\Th) \!\setminus\! \RR$
+(in short: $\X_h = [\PP^k]^d \times \PP^{k-1} \!\setminus\! \RR$) for the
+underlying DG space. For the local version we define $\X_h(T) = [\PP^k(T)]^d \times \PP^{k-1}(T)$.
+
+Further, we introduce the bilinear form $K_h$ on the product space $\X_h$
+\begin{equation} \label{eq:K}
+  \Kh((u_h,p_h),(v_h,q_h)) := a_h(u_h,v_h) + b_h(u_h,q_h) + b_h(v_h,p_h).
+\end{equation}
+Then \eqref{eq:dgstokes} also reads as: Find $(u_h,p_h) \in \X_h$ such that
+\begin{align} \label{eq:DGK}
+  \Kh((u_h,p_h),(v_h,q_h)) = (f,v_h)_{\Th} + (g,q_h)_{\Th} \quad \forall (v_h,q_h) \in \X_h.
+\end{align}
+
+\subsection{The Trefftz-DG Stokes discretization}
+The main idea of the Trefftz-DG method is to select a proper (affinely shifted) lower dimensional subspace of $\X_h$ that allows to reduce the computational costs of the underlying DG discretization without harming the approximation quality too much.
+To this end we pick the affine subspace of $\X_h$ that fulfills the Stokes equation \eqref{eq:basicpde} pointwise inside each element up to data approximation:
+\begin{equation}\label{eq:Trefftzconditions}
+  \TT_{f,g}(\Th) := \{ (u_h,p_h) \in \X_h \mid   -\Delta_h u_{h} + \nabla_h p_{h} = \Pi^{k-2} f, -\Div_h u_{h} = \Pi^{k-1} g \}. 
+\end{equation}
+To work with linear spaces we decompose $\TT_{f,g}$ into a (not unique) particular solution to the \emph{Trefftz constraints} $(u_{h,p},p_{h,p}) \in \TT_{f,g}$ and a linear space $\TT=\TT(\Th)=\TT_{0,0}(\Th)$, typically denoted as \emph{the Trefftz-DG space}. 
+% For the homogenisation we assume in the following that there is a function
+% $(u_{h,p},p_{h,p}) \in \X_h(\Th)$ with
+% \begin{equation}\label{eq:hom}
+%   -\Delta_h u_{h,p} + \nabla_h p_{h,p} = \Pi^{k-2} f \quad \text{and} \quad \Div_h u_{h,p} = \Pi^{k-1} g. 
+% \end{equation}
+% After homogenization the Trefftz approximation functions should element-wise satisfy \eqref{eq:basicpde}, with right hand side zero, therefor we define
+% \begin{align}\label{eq:tspace}
+% \TT(\Th) := \{ (u,p) \in \X_h(\Th) \mid \restr{\calL(u,p)}{T}= 0,\ \forall T\in\Th\}.
+% \end{align}
+% With this, we have
+% \begin{equation}
+%   \TT(\Th) + (u_{h,p},p_{h,p}) = \{ (u_h,p_h) \in \X_h(\Th) \mid \calL (u_h,p_h) = (\Pi^{k-2}f, \Pi^{k-1} g)\}.
+%   \end{equation}
+We prove below in \cref{sec:dofs} that a particular solution always exists, cf. \cref{lem:surj}, and can be
+constructed in a straight-forward manner, cf. \cref{sec:impl}.
+
+
+
+This yields the \emph{Trefftz problem}: Find $(u_h,p_h) \in \TT_{f,g} =  \TT + (u_{h,p},p_{h,p})$ so that
+\begin{align} \label{eq:discreteTrefftz}
+  \Kh((u_h,p_h),(v_h,q_h)) = (f,v_h)_{\Th} + (g,q_h)_{\Th}\quad \forall (v_h,q_h) \in \TT.
+\end{align}
+%\todo[inline]{$g$ can be removed. How to justify that?}
+Equivalently, to highlight the homogenisation, we can also write:
+Find $(u_{h,0},p_{h,0}) \in \TT$ so that for all $(v_h,q_h) \in \TT$ there holds 
+\begin{align} \label{eq:discreteTrefftz0}
+  \Kh((u_{h,0},p_{h,0}),(v_{h},q_{h})) = (f,v_h)_{\Th} + (g,q_h)_{\Th} - \Kh((u_{h,p},p_{h,p}),(v_{h},q_{h})).
+\end{align}
+
+\subsection{Trefftz constraints and the dimension of \texorpdfstring{$\TT$}{T}} \label{sec:dofs}
+In this subsection we want to discuss some properties of the Trefftz spaces $\TT_{f,g}$ and $\TT$.
+First, as we will typically have $g=0$, we note that the velocities in $\TT_{f,0}$ (and $\TT$) will be divergence-free on each element with the additional constraint of $-\Delta_h u+\Grad_h p= \Pi^{k-2} f$, making $\TT_{f,0}$ (and $\TT$) a subspace of the solenoidal vector fields considered in \cite{BJK90,montlaur2010discontinuous}.
+
+Next, we want to catch up the proof to the statement that a particular solution to the Trefftz constraints always exist. Furthermore we state the dimension of the local Trefftz space.
+\begin{lemma} \label{lem:surj} 
+ The pointwise Stokes operator $\calL : [\cP^{k}(T)]^d \times \cP^{k-1}(T) \to [\cP^{k-2}(T)]^d \times \cP^{k-1}(T)$, $(v,q) \mapsto (-\Delta v + \nabla p, - \Div v)$ is surjective 
+and the local Trefftz space on an element $T\in\Th$ has
+\begin{align} \label{eq:dimTT}
+\dim( \TT(T)) & = 
+\dim(\X_h(T)) \!-\! \dim([\cP^{k-2}]^d) \!-\! \dim(\cP^{k-1})
+\\ & =
+d \Big(  \Big( \begin{array}{c} k + d \\ d \end{array} \Big) - \Big( \begin{array}{c} k- 2 + d \\ d \end{array} \Big)  \Big) \nonumber
+%\dim(\X_h(T)) - \overbrace{\dim([\PP^{k-2}]^d)}^{-\Delta u_h + \nabla p_h \in [\PP^{k-2}]^d}  - \overbrace{\dim(\PP^{k-1})}^{\Div u_h \in \PP^{k-1}} 
+%& \geq \dim(\X_h(T)) - \dim([\PP^{k-2}]^d) - \dim(\PP^{k-1}) \\
+%& = d \left( \begin{array}{c} k \\ d \end{array} \right) + \left( \begin{array}{c} k-1 \\ d \end{array} \right) - d \left( \begin{array}{c} k-2 \\ d \end{array} \right) - \left( \begin{array}{c} k-1 \\ d \end{array} \right) \\
+% = d \left(  \left( \begin{array}{c} k \\ d \end{array} \right) - \left( \begin{array}{c} k-2 \\ d \end{array} \right)  \right).
+%\dim(\X_h(T)) - \dim([\PP^{k-2}]^d)
+\end{align}
+\end{lemma}
+\begin{proof}
+  We give the proof for $d=3$. The proof for $d=2$ follows similar lines. 
+  To prove surjectivity, first note that $\Div [\cP^{k}]^d = \cP^{k-1}$ and hence it remains only to show that $\{-\Delta u_h + \nabla p_h \mid u_h\in[\cP^k]^d, p_h\in\cP^{k-1}, \Div u_h=0\}=[\cP^{k-2}]^d$. The task is hence to find $u_h \in [\cP^k]^d$ with $\Div u_h = 0$ and $p_h \in \cP^{k-1}$ to every $v_h\in [\cP^{k-2}]^d$ so that $-\Delta u_h + \nabla p_h = v_h$. We prove this in two steps.
+\begin{enumerate}
+    %\item De-Rahm: $[\IP^{k-2}]^d=\Curl \IP^{k-1}\oplus \{q\in[\IP^{k-2}]^2: \Div q\neq 0\}$
+    %$\dim(\{q\in[\IP^{k-2}]^2: \Div q\neq 0\})=\dim([\IP^{k-2}]^2)-\dim(\IP^{k-3})$
+    \item
+    Since
+    $[\cP^{k-2}]^d=\Delta [\cP^{k}]^d=\Curl\Curl[\cP^{k}]^d + \Grad\Div[\cP^{k}]^d$ and using that  $\Curl[\cP^{k}]^d \subseteq [\cP^{k-1}]^d$ and $\Div[\cP^{k}]^d = \cP^{k-1}$ we get 
+    \begin{equation*}
+      [\cP^{k-2}]^d \subseteq \Curl[\cP^{k-1}]^d + \Grad\cP^{k-1}.
+    \end{equation*}
+    The other direction, $\Curl[\cP^{k-1}]^d + \Grad\cP^{k-1}
+    \subseteq [\cP^{k-2}]^d$ is obvious and hence equality holds.
+    We used the notation $V+W=\{v+w\mid v\in V,\ w\in W\}$ for the sum of two spaces. Note that this is not an orthogonal decomposition, and that the spaces considered here can have a non-empty intersection. In total this gives that to $v_h\in [\cP^{k-2}]^d$ there is $v_1 \in [\cP^{k-1}]^d$ and $v_2 \in \cP^{k-1}$ so that $v_h = \Curl v_1 + \Grad v_2$.
+    \item To match $\Grad v_2$ we can set $p_h = v_2$ and it remains to find $u_h \in [\cP^k]^d$ with $\Div u_h = 0$ so that $-\Delta u_h = \Curl v_1$. 
+    To this end note that 
+    \begin{equation*}
+      \Curl [\cP^{k-1}]^d= \Curl \Delta [\cP^{k+1}]^d=  \Delta \Curl [\cP^{k+1}]^d = \{\Delta u_h\mid u_h\in[\cP^{k}]^d, \Div u_h=0\},
+    \end{equation*}
+    where we used that to every $u\in[\cP^{k}]^d$ with $\Div u=0$ we can find a $w\in[\cP^{k+1}]^d$ such that $u=\Curl w$ (and vice versa).
+
+    %Therefore, we have that $\{q\in[\IP^{k-2}]^2: \Div q\neq 0\}\subset \Grad\IP^{k-1}$
+\end{enumerate}
+\end{proof}
+
+\begin{table}
+  \small
+  %\begin{center}
+    \begin{tabular}{@{}r@{~}|@{~}r@{~}|@{~~}r@{~~}r@{~~}r@{~~}r@{~~}r@{~~}r@{~}|@{~}r@{~}@{}|@{~}r@{~~}r@{~~}r@{~~}r@{~~}r@{~~}r@{~~}r@{}}
+      \toprule
+        \multicolumn{8}{c}{$d=2$} & \multicolumn{7}{c}{$d=3$} \\
+      \midrule
+$k $   && $1$
+    & $2$
+    & $3$
+    & $4$
+    & $5$
+    & $6$ &
+    & $1$
+    & $2$
+    & $3$
+    & $4$
+    & $5$
+    & $6$ \\
+%    & $k\!=\!1$ & $k\!=\!2$ & $k\!=\!3$ & $k\!=\!4$ &$k\!=\!5$ & $k\!=\!6$ & $k\!=\!1$ & $k\!=\!2$ & $k\!=\!3$ & $k\!=\!4$ &$k\!=\!5$ & $k\!=\!6$ &  \\
+    $\dim \X_h(T)$ & $\frac32 k^2\!+\!\frac72 k\!+\!2$ & 7 & 15 & 26 & 40 & 57 & 77
+    & $\frac23 k^3\!+\!\frac72 k^2\!+\!\frac{35}{6} k\!+\!3$ & 13 & 34 & 70 & 125 & 203 & 308 \\
+      $\dim \TT_{\hphantom{h}}(T)$ & $4 k \!+\! 2$& 6 & 10 & 14 & 18 & 22 & 26
+    & $3 k^2 + 6 k + 3 $&  12 & 27 & 48 & 75 & 108 & 147 \\
+    \bottomrule
+  \end{tabular}
+  %\end{center} 
+  %\vspace*{-0.6cm}
+  \caption{Dimensions of the local finite element spaces $\X_h(T)$ and $\TT(T)$.}\label{tab:localdims}
+\end{table}
+
+\begin{remark}
+  The formula derived in \eqref{eq:dimTT} shows the number of degrees of freedom
+  per element (\ndofs) for the Trefftz-DG space. We observe that the \ndofs ~are
+  exactly reduced by the number of scalar constraints that are imposed.
+  The Stokes equations can be seen as the momentum equation formulated on the
+  subspace of divergence-free functions where the pressure takes the role of the
+  corresponding Lagrange multiplier. The costs of this additional unknowns are
+  directly removed by the corresponding divergence-free constraint so that the
+  \ndofs ~remaining coincide with those of harmonic vector polynomials up to
+  degree $k$. Note however that the remaining system is still a saddle-point
+  problem, cf. also \cref{rem:loworder}. Let us now take a look at the dimension reduction.
+While the dimension of $\X_h$ grows cubic and quadratic in the polynomial degree $k$ for $d=3$ and $d=2$ in the polynomial degree $k$, respectively, the dimension of $\TT$ grows only quadratic and linear for $d=3$ and $d=2$. In \cref{tab:localdims} we present concrete numbers for $k \in \{1,..,6\}$ to give an idea of the reduction. This dimension reduction gives the same complexity in $k$ that is also obtained in hybrid DG methods after static condensation.
+\end{remark}
+
+\begin{figure}
+    \centering
+    \hspace*{-0.1\textwidth}
+    \includegraphics[width=0.21\textwidth]{tsbasis_1.png} \hspace*{-0.03\textwidth}
+    \includegraphics[width=0.21\textwidth]{tsbasis_2.png} \hspace*{-0.03\textwidth}
+    \includegraphics[width=0.21\textwidth]{tsbasis_0.png} \hspace*{-0.03\textwidth}
+    \includegraphics[width=0.21\textwidth]{tsbasis_3.png} \hspace*{-0.03\textwidth}
+    \includegraphics[width=0.21\textwidth]{tsbasis_4.png} 
+    \hspace*{-0.1\textwidth}
+    \\
+    \hspace*{-0.1\textwidth}
+    \includegraphics[width=0.21\textwidth]{tsbasis_5.png} \hspace*{-0.03\textwidth}
+    \includegraphics[width=0.21\textwidth]{tsbasis_6.png} \hspace*{-0.03\textwidth}
+    \includegraphics[width=0.21\textwidth]{tsbasis_8.png} \hspace*{-0.03\textwidth}
+    \includegraphics[width=0.21\textwidth]{tsbasis_9.png} \hspace*{-0.03\textwidth}
+    \includegraphics[width=0.21\textwidth]{tsbasis_7.png} 
+    \hspace*{-0.1\textwidth}
+    %\includegraphics[width=0.325\textwidth]{basis.01.png} \hspace*{-0.03\textwidth}
+    %\includegraphics[width=0.325\textwidth]{basis.02.png} \hspace*{-0.03\textwidth} \\
+    %\includegraphics[width=0.325\textwidth]{basis.03.png} \hspace*{-0.03\textwidth}
+    %\includegraphics[width=0.325\textwidth]{basis.04.png}\hspace*{-0.03\textwidth}
+    %\includegraphics[width=0.325\textwidth]{basis.05.png}\hspace*{-0.03\textwidth} \\
+    %\includegraphics[width=0.325\textwidth]{basis.06.png}\hspace*{-0.03\textwidth}
+    %\includegraphics[width=0.325\textwidth]{basis.07.png} \hspace*{-0.03\textwidth}
+    %\includegraphics[width=0.325\textwidth]{basis.08.png}\hspace*{-0.03\textwidth} \\
+    %\includegraphics[width=0.325\textwidth]{basis.09.png}\hspace*{-0.03\textwidth}
+    %\includegraphics[width=0.325\textwidth]{basis.10.png}\hspace*{-0.03\textwidth}
+    %\includegraphics[width=0.325\textwidth]{basis.11.png} \hspace*{-0.03\textwidth} \\
+    %\includegraphics[width=0.325\textwidth]{basis.12.png}\hspace*{-0.03\textwidth}
+    %\includegraphics[width=0.325\textwidth]{basis.13.png}\hspace*{-0.03\textwidth}
+    \caption{Example basis functions of a Stokes-Trefftz space for $k=2$ on a triangle. The coloring corresponds to the pressure value while the arrows indicate the velocity. The pressure scaling is different between the first seven and the last three basis functions. Note, that these basis functions are obtained from the generic approach of the embedded Trefftz DG method \cite{2201.07041}, cf. \cref{sec:impl}, and hence do not offer a complete insight of an available structure of the Trefftz space such as a clean decomposition into lower and higher order basis functions. Nevertheless, we observe that velocity and pressure functions are coupled for most basis functions except for three lowest order Trefftz basis functions: The first two basis functions have zero pressure and are constant and linear, respectively, and divergence-free and the last basis function corresponds to zero velocity and a constant pressure.}
+    \label{fig:trefftzbasis}
+\end{figure}
+
+\begin{remark}[Lowest order subspaces]\label{rem:loworder}
+  Due to the Trefftz constraint, basis functions of the Trefftz-DG space can no
+  longer be separated into velocity and pressure functions in general. See \cref{fig:trefftzbasis} for an example set of basis functions for $k=2$. However,
+  associated to the lowest order polynomial degrees some degrees of freedom can
+  be associated only to velocities and others only to pressure functions. The
+  piecewise constant pressure functions $\PP^0(\Th)$ are not seen by the Trefftz
+  constraints as the pressures only appear as gradients, i.e. these degrees of
+  freedom remain in the Trefftz space. From the velocity space the
+  velocity-pressure coupling is removed (from the space) for all linear velocity
+  functions, i.e. $[\PP^1(\Th)]^d$, as here the Laplacian vanishes. The
+  element-wise divergence constraint removes exactly one \dof ~per element from
+  this space ($\Div [\PP^1(\Th)]^d = \PP^0(\Th)$). Especially, piecewise
+  constant functions $[\PP^0(\Th)]^d$ remain in the Trefftz-DG space.
+  Finally, let us note that the problem formulated in the Trefftz-DG space is
+  still of saddle-point form with the Lagrange multiplier space being only the space of 
+  piecewise constant functions. 
+  % This also implieshowever can also be seen as the divergence-free subspace of the lowest order local Raviart-Thomas element $[\PP^0(\Th)]^d = \RR\TT^0(\Th) \cap \{v \in [\PP^0(\Th)]^1 \mid \Div v = 0 \}$.
+\end{remark}
+
+% From the previous lemma we obtain that the dimension of the Trefftz space is as
+% large as the space of piecewise vectorial harmonic polynomials up to degree $k$
+% which would be an appropriate Trefftz-DG space for a vector laplace problem. 
+% A Trefftz method provides function spaces that locally approximate homogeneous solutions to the equation, therefor we formulate a homogenized problem. 
+% For that we consider a element-wise particular solution $(u_{h,p},p_{h,p})\in \X_h(\Th)$, i.e. which satisfies
+% $\calL (u_{h,p},p_{h,p}) = (\Pi^{k-2}f,\Pi^{k-1}g)$ on each $T\in\Th$.
+% The Trefftz method then reads: 
+% \begin{equation}\label{eq:tdgstokes}
+%     \text{Find $(u_h,p_h)\in\IT(\Th) + (u_{h,p},p_{h,p})$ that solves \eqref{eq:dgstokes} for all $(v_h,q_h) \in \IT^p(\Th)$.}
+% \end{equation}
+
+
+
+
+\subsection{Implementation via embedded Trefftz method}\label{sec:impl}
+So far we characterized the Trefftz-DG space only implicitly through the Trefftz
+constraints. In principle a basis for the homogeneous Trefftz space $\TT_{0,0}$ could be
+constructed, see e.g. \cite{POITOU2000561,Bouberbachene}. %based on (shifted and scaled) monomials. 
+An alternative approach, based on the implicit characterization, is the use of the embedded Trefftz-DG method,
+presented in \cite{2201.07041}.
+The method allows to construct an embedding $T:
+\IT(\Th) \to \X_h(\Th)$ based on the Trefftz constraint equations. Then, all
+essential operations can be done exploiting the underlying DG space. In this
+approach it also straight-forward to find a generic element-wise particular
+solution $(u_{h,p},p_{h,p})\in \X_h(\Th)$ required for the homogenization of the
+Trefftz problem. In the following we shortly recap the procedure of the embedded Trefftz method for the Stokes
+setting, but refer to \cite{2201.07041} for more details. 
+
+Let us define the matrix and vector of our discrete linear system  
+\begin{equation*}\label{def:matrices}
+    (\bK)_{ij}=a_h(\phi_j,\phi_i)+b_h(\phi_j,\psi_i)+b_h(\phi_i,\psi_j),
+     \qquad 
+    (\bl)_i = (f,\phi_i)_\Th + (g,\psi_i)_\Th
+\end{equation*}
+for $i,j = 1,\dots, N$ and $(\phi_i,\psi_i)\in \X_h(\Th)$ a set of basis functions with $N$ the number of degrees of freedom.
+The Trefftz embedding can then be represented by the kernel of the matrix
+\begin{equation*}
+    (\bW)_{ij}=(-\Delta \phi_j + \Grad\psi_j, \tilde\phi_i)_\Th + (\Div\phi_j, \tilde\psi_i)_\Th,\qquad \bT=\ker\bW,
+\end{equation*}
+for a second set of test functions $(\tilde\phi_i, \tilde\psi_i)\in
+[\PP^{k-2}(\Th)]^d \times \PP^{k-1}(\Th)$. The Trefftz embedding matrix $\bT$
+then allows to characterize a Trefftz basis function through a linear
+combination of polynomial DG basis functions. This allows to reduce the
+size of global and local finite element matrices reducing the overall costs
+associated to the solution of the arising linear systems.
+
+\section{A-priori error analysis} \label{sec:analysis}
+In this section we derive a-priori error bounds for the Trefftz-DG method.
+To this end we define the norms 
+\begin{align*}
+  \norm{u}_{1,h}^2 := \nrm{\Grad u}_{\Th}^2 +   \nrm{ h^{-\frac12} \jmp{u}}^2_{\Fh}, \qquad 
+  \norm{p}_{0,h}^2:= \nrm{ h \Grad p}_{\Th}^2 + \nrm{ h^\frac12 \jmp{\Pi^0 p}}_{\Fhi}^2
+\end{align*}
+where we denote by $h$ the piecewise constant field of local mesh sizes with $h|_T = h_T = \operatorname{diam}(T),~ T \in \Th$. With abuse of notation we will also denote $h = \max_{T\in\Th} h_T$ as the maximum mesh size when $h$ appears as a scalar quantity.
+
+For $p_h \in \PP^{k-1}(\Th) \setminus \RR$ there holds $\norm{p_h}_0 \simeq \norm{p_h}_{0,h}$.
+For the overall problem we define the norm
+\begin{align*}
+  \nrm{(u,p)}_\TT^2 := \nu \norm{u}_{1,h}^2 + \nu^{-1} \norm{p}_{0,h}^2 
+\end{align*}
+In addition, as common in the analysis of DG methods, we introduce the stronger norms
+\begin{align*}
+  \norm{u}_{1,h,\ast}^2 := \norm{u}_{1,h}^2 + \nrm{ h^{\frac12} \ \partial_n u}^2_{\Fh}, \qquad 
+  \nrm{(u,p)}_{\TT,\ast}^2 := \nu \norm{u}_{1,h,\ast}^2 + \nu^{-1} \norm{p}_{0,h}^2   
+\end{align*}
+We note that on $\TT(\Th)$  the norms $\nrm{(\cdot,\cdot)}_{\TT}^2$ and $\nrm{(\cdot,\cdot)}_{\TT,\ast}^2$ are equivalent.
+
+
+
+\subsection{Saddle-point structure and space decomposition}
+In this section we introduce some structure to analyse and exploit the saddle-point
+structure of the variational problem. 
+We first note that the space $\{0\} \times \PP^0(\Th) \setminus \RR$, with $\PP^0(\Th)$ the space of piecewise
+constant pressures, forms a subspace of $\TT(\Th)$. Accordingly we can introduce the
+decomposition into two subspaces: one that contains all velocity functions and
+the high order ($\geq 1$) pressure functions and a second subspace only
+consisting of the zero velocity and low order pressures 
+\begin{equation}
+\TT(\Th) = \HH(\Th) \oplus \LL(\Th) 
+\qquad 
+\text{ with } 
+\qquad
+\LL(\Th) := \{0\} \times
+\PP^0(\Th).
+\end{equation}
+We recall $\TT = \TT(\Th)$, $\HH = \HH(\Th)$ and $\LL = \LL(\Th)$.
+Corresponding projection operators for $\LL$ and $\HH$ are denoted by $\Pi^{\LL}$ and
+$\Pi^{\HH} = \id -  \Pi^{\LL}$, respectively, 
+so that for $(u_h,p_h) \in \TT$ we have $(u_h,p_h) = \Pi^{\HH}(u_h,p_h) + \Pi^{\LL}(u_h,p_h)$ with $  \Pi^{\LL}(u_h,p_h) = (0, \Pi^0 p_h) \in \LL$ and $ \Pi^{\HH} (u_h, p_h) = (u_h, (\id - \Pi^0) p_h)\in \HH$. 
+
+We can then introduce norms for the subspaces $\HH$ and $\LL$ by
+\begin{align}
+  \nrm{(u,p)}_{\HH}^2 := \nu \norm{u}_{1,h}^2 + \nu^{-1} \nrm{h \Grad p}_{\Th}^2,  \qquad
+  \nrm{(u,p)}_{\LL}^2 := \nu^{-1} \nrm{h^\frac12 \jmp{\Pi^0 p}}_{\Fh}^2.
+\end{align}
+These norms are natural in the sense that $\nrm{(u_h,p_h)}_{\HH} =
+\nrm{\Pi^\HH(u_h,p_h)}_{\TT}$,  $\nrm{(u_h,p_h)}_{\LL} =
+\nrm{\Pi^\LL(u_h,p_h)}_{\TT}$
+and 
+$
+\nrm{(u_h,p_h)}_\TT^2 = \nrm{(u_h,p_h)}_{\HH}^2 +   \nrm{(u_h,p_h)}_{\LL}^2
+$
+for $(u_h,p_h) \in \TT$.
+
+Next, we observe that the higher order pressures in $\HH$ are controlled by the velocity
+due to the Trefftz constraint while on $\LL$ norms are completely determined by
+the lowest order pressure contributions. 
+This norm control is highlighted in the following lemma for general functions in $\TT$.
+\begin{lemma}\label{lem:normeq}
+  For $(u_h,p_h) \in \HH$ there holds
+  $
+  \nrm{(u_h,p_h)}_\HH^2 \simeq \nu \nrm{u_h}_{1,h}^2
+  $
+  and for $(u_h,p_h) \in \LL$ there holds
+  $
+  \nrm{(u_h,p_h)}_{\LL}^2 = \nu^{-1} \nrm{p_h}_{0,h}^2. 
+  $
+  Hence $\nrm{(u_h,p_h)}_{\TT}^2 \simeq \nu \nrm{u_h}_{1,h}^2 + \nu^{-1} \nrm{\Pi^0 p_h}_{0,h}^2$
+  for $(u_h,p_h) \in \TT$. 
+\end{lemma}
+\begin{proof}
+  From the Trefftz constraint we have $\nabla p_h = \nu \Delta u_h$ for $(u_h,p_h)
+  \in \TT$. Exploiting this, together with standard local inverse inequalities, yields:
+  \begin{align*}
+    \nu \norm{u_h}_{1,h}^2 \leq \nrm{(u_h,p_h)}_\HH & = \nu \norm{u_h}_{1,h}^2 + \nu^{-1} \nrm{h \Grad p_h}_{\Th}^2 = \nu \norm{u_h}_{1,h}^2 + \nu \nrm{h \ \Delta u_h}_{\Th}^2 \\
+    & \lesssim \nu \norm{u_h}_{1,h}^2 +  \nu \nrm{\Grad u_h}_{\Th}^2 \lesssim \nu \norm{u_h}_{1,h}^2. 
+  \end{align*}
+  Similarly we also have $\nrm{(u_h,p_h)}_{\LL}^2 = \nu^{-1} \nrm{p_h}_{0,h}^2$ which follows from
+  $u_h=0$ and $\Grad p_h = 0$ for a function $(u_h,p_h) \in \LL$. Now, splitting $(u_h,p_h) \in \TT$ into its components from
+  $\LL$  and $\HH$ and exploiting the previous statements we have
+  \begin{align*}
+    \nrm{(u_h,p_h)}_\TT^2
+    & \lesssim \nrm{\Pi^\HH(u_h,p_h)}_{\TT}^2 +   \nrm{\Pi^{\LL}(u_h,p_h)}_{\TT}^2
+    = \nrm{\Pi^\HH(u_h,p_h)}_{\HH}^2 +   \nrm{\Pi^{\LL}(u_h,p_h)}_{\LL}^2 \\
+    & = \nrm{(u_h,(\id - \Pi^0)p_h)}_{\HH}^2 + \nrm{(u_h, \Pi^0 p_h)}_{\LL}^2
+    \simeq \nu \nrm{u_h}_{1,h}^2 + \nu^{-1} \nrm{\Pi^0 p_h}_{0,h}^2.
+  \end{align*}
+  The opposite direction is obvious.
+\end{proof}
+For the stability analysis we will deal with the special saddle-point structure 
+that develops from the subspace splitting $\TT = \HH \oplus \LL$ by applying standard strategies, namely Brezzi's theorem.
+To this end we can split the bilinear form $\Kh(\cdot,\cdot)$ into its
+contributions that we obtain by restricting to the corresponding subspaces $\LL$
+and $\HH$. This gives
+% { \color{gray}We define $b^\LL := K|_{\HH(\Th) \times \LL(\Th)}$, i.e.
+%   $b^\LL((u_h,p_h),(v_h,q_h)) = b_h(u_h,q_h)$. }
+\begin{align} \label{eq::K_on_TT}
+  \Kh((u_h,p_h),&(v_h,q_h)) \nonumber \\ =
+&\Kh(\Pi^\HH(u_h,p_h),\Pi^\HH(v_h,q_h)) + \Kh(\Pi^{\HH}(u_h,p_h),\Pi^\LL(v_h,q_h)) \nonumber \\
+&+ \Kh(\Pi^{\HH}(v_h,q_h),\Pi^\LL(u_h,p_h)) + \Kh(\Pi^{\LL}(u_h,p_h),\Pi^\LL(v_h,q_h)) \nonumber \\ %+ \Kh(\Pi^{\LL}(u_h,p_h),\Pi^\LL(v_h,q_h))   \\
+%  & \color{gray}= \Kh(\Pi^\HH(u_h,p_h),\Pi^\HH(v_h,q_h)) + b^\LL(\Pi^{\HH}(u_h,p_h),\Pi^\LL(v_h,q_h)) + b^\LL(\Pi^{\HH}(v_h,q_h),\Pi^\LL(u_h,p_h)) \\
+  =& \Kh(\Pi^\HH(u_h,p_h),\Pi^\HH(v_h,q_h)) + b_h(u_h,\Pi^0 q_h) + b_h(v_h,\Pi^0p_h),
+\end{align}
+where we used that $\Kh(\Pi^{\LL}(u_h,p_h),\Pi^\LL(v_h,q_h)) = 0$ and $\Pi^{\LL}(u_h,p_h) = (0,\Pi^0 p_h)$ so that the velocity contributions of $\Pi^{\LL}(u_h,p_h)$ vanish.
+
+\subsection{Continuity and kernel-coercivity}
+By applying the Cauchy-Schwarz inequality several times, one can easily see that $\Kh(\cdot,\cdot)$ is continuous, i.e. 
+we have for all $(u,p), (v,q) \in \TT + [H^{2}(\Th)]^d \times H^1(\Th)$
+\begin{align} \label{eq:Khcontinuity}
+    \Kh((u,p),(v,q)) \lesssim \nrm{(u,p)}_{\TT,\ast} \nrm{(v,q)}_{\TT, \ast}.
+\end{align}
+Next, we show coercivity of $\Kh|_{\HH \times \HH}$ (``the upper left
+block''). 
+%, theLBB stability for $b^\LL = K|_{\HH \times \LL}$ and continuity of both.
+
+\begin{lemma}\label{lem:coercivity}
+  Let the stabilisation parameter $\alpha>0$ be sufficiently large, then for $(u_h,p_h) \in \HH(\Th)$ there holds
+  \begin{equation}
+    \Kh((u_h,p_h),(u_h,p_h)) \geq c_\HH \nrm{(u_h,p_h)}_{\HH}^2
+  \end{equation}
+  for a constant independent of the mesh size $h$ and $\nu$.
+\end{lemma}
+\begin{proof}
+Using decomposition \eqref{eq::K_on_TT} we first have
+  \begin{align*}
+    \Kh((u_h,p_h),(u_h,p_h)) & = a_h(u_h,u_h) + 2 b_h(u_h,p_h).
+    \end{align*}
+For the first term $a_h(u_h,u_h)$ it is well-known that there holds coercivity on $\PP^k(\Th)$ with respect to the discrete norm $\nu^{\frac12} \norm{\cdot}_{1,h}$ for $\alpha>0$ sufficiently large, see for example \cite{arnold2002unified,di2011mathematical}. We denote by $c_\alpha$ a sufficient lower bound such that for $\alpha\geq c_\alpha$ coercivity with corresponding coercivity constant $c_a$ is guaranteed.
+Hence $a_h(u_h,v_h) = a_h^{\alpha=c_\alpha}(u_h,v_h) + (\alpha - c_\alpha) \nu (h^{-\frac12}\jmp{u_h},\jmp{v_h})_{\Fh}$, where $a_h^{\alpha=c_\alpha}(u_h,v_h)$ is the bilinear form with interior penalty stabilization parameter $c_\alpha$ for which there holds
+$a_h^{\alpha=c_\alpha}(u_h,u_h) \geq c_a \nu \Vert u_h \Vert_{1,h}^2$.
+As $u_h$ is pointwise divergence-free the volume contribution in $b_h(\cdot,\cdot)$ vanishes and we have
+  \begin{align*}
+    \Kh((u_h,p_h),(u_h,p_h)) & \geq c_{a} \nu \norm{u_h}_{1,h}^2 + \frac{\alpha - c_\alpha}{h} \nu \norm{\jmp{u_h}}_{\Fh}^2 + 2 (\jmp{u_h \cdot n}, \avg{p_h})_{\Fh}.
+  \end{align*}
+  Thus it remains to bound the latter term. Let $\varepsilon > 0$, then Cauchy-Schwarz
+  and Young's inequality ($2 a b \leq \delta^{-1} a^2 + \delta
+  b^2,~a,b,\delta \geq 0$) yield
+  \begin{align*}
+    2 (\jmp{u_h \cdot n}, \avg{p_h})_{\Fh} & \leq \nu \varepsilon^{-1} \Vert{h^{-\frac12}\jmp{u_h \cdot n}}\Vert_{\Fh}^2 + \varepsilon \nu^{-1} \nrm{h^{\frac12}\avg{p_h}}_{\Fh}^2.
+  \end{align*}
+  Using inverse inequalities for polynomials and recalling that $p_h = (\id-\Pi^0)p_h$ (as
+  $(u_h,p_h)\in \HH$) we have with the Trefftz constraint $\Grad p_h = \nu
+  \Delta u_h$ 
+  \begin{align*}
+    \varepsilon \nu^{-1} \nrm{h^{\frac12} \avg{p_h}}_{\Fh}^2  &\leq c_{\text{inv}} \varepsilon \nu^{-1} \nrm{ h \nabla p_h}_{\Th}^2 = c_{\text{inv}} \varepsilon \nu^{-1}  \nrm{ h \nu \Delta u_h}_{\Th}^2 \leq c_{\text{inv}}' \varepsilon \nu \nrm{\nabla u_h}_{\Th}^2
+  \end{align*} 
+  for a constant $c_{\text{inv}}'$ that does not depend on $h$. Choosing $\varepsilon = \frac{c_a}{2 c'_{\text{inv}}}$ we conclude
+  \begin{align*}
+    \Kh((u_h,p_h),(u_h,p_h)) & \geq \frac12 c_a \nu  \norm{u_h}_{1,h}^2 + \frac{\alpha - c_\alpha - \varepsilon^{-1}}{h} \nu \norm{\jmp{u_h}}_{\Fh}^2,
+  \end{align*}
+  and hence, for $\alpha$ sufficiently large we obtain the claim with the norm equivalence of \cref{lem:normeq}.
+\end{proof}
+
+\subsection{LBB-stability}
+For the LBB-stability we use a stability result of an auxiliary (low order) discrete problem: Given $\tilde{p}_h \in \PP^1(\Fhi)$ find $(w_h,r_h,\hat{r}_h) \in [\PP^{1}(\Th)]^d \times \PP^0(\Th) \setminus \RR \times \PP^1(\Fh) $, s.t.
+\begin{subequations}\label{eq:aux}
+\begin{align}
+  a_{h}^{\nu = 1}(w_h,v_h) & \!+\! (r_h, \Div v_h)_{\Th} \!+\! (\hat{r}_h, \jmp{v_h \cdot n})_{\Fh}  &&
+  \!\!\!\!\!\!= 0 &&\!\!\! \forall v_h \in [\PP^1(\Th)]^d, \label{eq:auxa}\\
+  (s_h, \Div w_h)_{\Th} &&& \!\!\!\!\!\!= 0 &&\!\!\! \forall s_h \in \PP^0(\Th) \! \setminus \! \RR,\!\! \label{eq:auxb}\\
+  (\hat{s}_h, \jmp{w_h \!\cdot\! n})_{\Fh} 
+  &&& \!\!\!\!\!\! = (\tilde{p}_h, \hat{s}_h)_{\Fhi}   &&\!\!\! \forall \hat{s}_h \in  \PP^1(\Fh). \label{eq:auxc}
+\end{align}
+\end{subequations}
+Here, the bilinear form $a_{h}^{\nu = 1}(\cdot,\cdot)$ is to be understood as the bilinear form that is obtained from $a_{h}(\cdot,\cdot)$ when setting $\nu$ to $1$, so that the auxiliary problem is independent of $\nu$. In this auxiliary problem $r_h$ and $\hat{r}_h$ are the Lagrange multiplier for enforcing the pointwise divergence-constraint $\Div_h w_h=0$ and the normal jump condition $\jmp{w_h \cdot n} = \tilde{p}_h$, respectively.
+For $\tilde{p}_h = 0$ the solution $w_h$ is normal-continuous, i.e. $H(\Div)$-conforming. More precisely we would have $w_h \in \BDM^{1}(\Th) = [\PP^1(\Th)]^d \cap H(\Div;\Omega)$ with $\BDM^{1}$ the Brezzi-Douglas-Marini space. For general $\tilde{p}_h$ we instead have 
+$w_h \in \BDM^{-1}(\Th) = [\PP^1(\Th)]^d$ with $\BDM^{-1}(\Th)$ the Brezzi-Douglas-Marini element with broken up $H(\Div)$-continuity.
+% With the element-wise divergence-free space $\BDM^{-1}_0(\Th) = \BDM^{-1}(\Th) \cap \{v \in \BDM^{-1}(\Th) \mid \Div_h v = 0\}$, $\BDM^{-1}_0 \times \{0\}$ is a subspace of $\TT(\Th)$
+
+
+
+\begin{lemma}\label{lem:aux}
+  The velocity solution $w_h \in [\PP^1(\Th)]^d$ of the auxiliary problem \eqref{eq:aux} has $\Div_h w_h = 0$ and $\jmp{w_h \cdot n} = \tilde{p}_h$ on $\Fhi$ and there holds $\nrm{w_h}_{1,h} \lesssim \nrm{h^{-\frac12}\tilde{p}_h}_{\Fhi}$.
+\end{lemma}
+\begin{proof}
+  Very closely related statements can be found in the literature of hybridized mixed and $H(\Div)$-conformig DG and hybrid DG methods, cf. e.g. \cite{cockburn2005locally,cockburn2007note}. For completeness we give a proof in the appendix, cf. \cref{sec:proof:aux}.
+\end{proof}
+
+We can now state the LBB-stability result for the Trefftz-DG problem:
+\begin{lemma}\label{lem:LBB}
+  There holds
+  \begin{align*}
+    &  \inf_{(v_h,q_h) \in \LL} \sup_{(u_h,p_h) \in \HH} \frac{\Kh((u_h,p_h),(v_h,q_h))}{\nrm{(u_h,p_h)}_{\HH} \nrm{(v_h,q_h)}_{\LL}}  \simeq
+    \inf_{q_h \in \PP^0} \sup_{(u_h,p_h) \in \HH} \frac{b_h(u_h,q_h)}{\nrm{u_h}_{1,h} \nrm{q_h}_{0,h}}
+    \geq c_b
+  \end{align*}
+  for a constant $c_b > 0$ independent of $h$ and $\nu$.
+\end{lemma}
+\begin{proof}
+  We define $\tilde{p}_h = -\jmp{q_h} \in \PP^0(\Fhi)$ on $\Fhi$ and will construct a suitable velocity field $u_h$ that allows to control $\tilde{p}_h$.
+
+  With the element-wise divergence-free space $\BDM^{-1}_0(\Th) = \BDM^{-1}(\Th) \cap \{v \in \BDM^{-1}(\Th) \mid \Div_h v = 0\}$, $\BDM^{-1}_0 \times \{0\}$ is a subspace of $\TT(\Th)$
+  as for functions $v_h$ in $\BDM^{-1}_0(\Th)$ there holds $\Delta_h v_h = 0$ and $\Div_h v_h = 0 $.
+  Hence,  
+  $$
+  \inf_{q_h \in \PP^0} \sup_{(u_h,p_h) \in \HH} \frac{b_h(u_h,q_h)}{\nrm{u_h}_{1,h} \nrm{q_h}_{0,h}}
+  \geq \inf_{q_h \in \PP^0} \sup_{u_h \in \BDM^{-1}_0(\Th)} \frac{b_h(u_h,q_h)}{\nrm{u_h}_{1,h} \nrm{q_h}_{0,h}}.
+  $$
+  Now, we choose $u_h=w_h$ with $w_h$ the solution to the auxiliary problem \eqref{eq:aux} with data $\tilde{p}_h$ and obtain
+  \begin{align*}
+    b_h(u_h,q_h)  = (\avg{q_h}, \jmp{u_h \cdot n})_{\Fh}  
+    &=
+    \sum_{T\in\Th} (\avg{q_h}, u_h \cdot n)_{\partial T} - \underbrace{(\Div u_h, q_h)_T}_{=0} \\
+    & =\sum_{T\in\Th} (\avg{q_h}-q_h, u_h \cdot n)_{\partial T} + ( u_h, \underbrace{ \nabla q_h}_{=0})_T  \\
+    &= -(\frac12 \jmp{q_h}, \jmp{u_h \cdot n})_{\Fhi} = \frac12 \nrm{\jmp{q_h}}_{\Fhi}^2,
+  \end{align*}
+  and thus 
+  \begin{align*}
+    b_h(u_h,q_h) & = \frac12 \nrm{h^{\frac12}\jmp{q_h}}_{\Fhi} \nrm{h^{-\frac12}\jmp{q_h}}_{\Fhi} \gtrsim \nrm{h^{\frac12}\jmp{q_h}}_{\Fhi} \nrm{u_h}_{1,h} \simeq \nrm{q_h}_{0,h} \nrm{u_h}_{1,h},
+  \end{align*}
+  which concludes the proof.
+\end{proof}
+
+\subsection{Inf-Sup-Stability}
+\begin{theorem} \label{th:Khinfsup}
+  For $(v_h,q_h) \in \TT$ there holds
+  \begin{equation}
+    \sup_{(u_h,p_h) \in \TT} \frac{\Kh((u_h,p_h),(v_h,q_h))}{\nrm{(u_h,p_h)}_{\TT} } \geq c_\TT \nrm{(v_h,q_h)}_{\TT} \geq c_\TT^\ast \nrm{(v_h,q_h)}_{\TT,\ast}
+  \end{equation}
+  for constants $c_\TT, c_\TT^\ast$ independent of $h$ and $\nu$ and hence the Trefftz-DG problems \eqref{eq:discreteTrefftz} admits a unique solution that depends continuously on the data. 
+\end{theorem}
+\begin{proof}
+ We apply Brezzi's theorem together with \cref{lem:coercivity} and \cref{lem:LBB} and the continuity \eqref{eq:Khcontinuity}.
+\end{proof}
+
+\subsection{Quasi-best approximation and Aubin-Nitsche}
+In the following we consider a best approximation result in the Trefftz space and discuss
+an Aubin-Nitsche lilke result for the $L^2$ error of the velocity.
+\begin{lemma}
+  Let $(u,p) \in [H^{2}(\Th)]^d \times H^{1}(\Th) \setminus \RR$ be the solution of the Stokes problem \eqref{eq:weakbasicpde} and $(u_h,p_h) \in \TT_{f,g}$ be the discrete solution to \eqref{eq:discreteTrefftz}. Then, there holds
+  \begin{equation}
+    \nrm{(u_h-u,p_h-p)}_{\TT} \lesssim \nrm{(u_h-u,p_h-p)}_{\TT,\ast} \lesssim \inf_{(v_h,q_h) \in \TT_{f,g}} \nrm{(u-v_h,p-q_h)}_{\TT,\ast}
+  \end{equation}
+\end{lemma}
+\begin{proof} Let $(v_h,q_h) \in \TT_{f,g}$ be arbitrary. Then $(u_h-v_h,p_h-q_h) \in \TT$. 
+  Let $(w_h,r_h) \in \TT$ be a supremizer in \cref{th:Khinfsup} to $(u_h-v_h,p_h-q_h) \in \TT$, then
+  \begin{align*}
+    c_\TT^\ast  \nrm{(u_h-v_h,p_h-q_h)}_{\TT,\ast} & \leq \frac{\Kh((w_h,r_h),(u_h-v_h,p_h-q_h))}{\nrm{(w_h,r_h)}_{\TT} } \\ & = \frac{\Kh((w_h,r_h),(u-v_h,p-q_h))}{\nrm{(w_h,r_h)}_{\TT} }
+    \lesssim \nrm{(u-v_h,p-q_h)}_{\TT,\ast},
+  \end{align*}
+  where we made use of the consistency of the formulation, and continuity~\eqref{eq:Khcontinuity}. Finally, the claim follows from an application of the triangle inequality.
+\end{proof}
+
+To show error estimates in the $L^2$-norm we use a duality argument in the style of Aubin-Nitsche, requiring additional regularity for the solution of the Stokes problem, see \cite{10.3792/pjaa.67.171}.
+
+\begin{theorem}
+  Assume the domain boundary to be sufficiently smooth or $\Omega$ to be convex so that $L^2$-$H^2$-regularity holds and let $(u,p) \in [H^{2}(\Th)]^d \times H^{1}(\Th) \setminus \RR$, be the solution of the Stokes problem \eqref{eq:weakbasicpde} and $(u_h,p_h) \in \TT_{f,g}$ be the discrete solution to \eqref{eq:discreteTrefftz}. Then, there holds
+  \begin{equation}
+    \nrm{u-u_h}_{\Omega} \lesssim h \nrm{(u_h-u,p_h-p)}_{\TT,\ast}
+  \end{equation}
+\end{theorem}
+  \begin{proof}
+    We apply the Aubin-Nitsche trick and pose the auxiliary adjoint Stokes problem $\calL(w,r) =
+    (u-u_h,0)$ on $\Omega$. With $u-u_h \in [L^2(\Omega)]^d$ and the assumed
+    $L^2$-$H^2$-regularity, we have $(w,r) \in [H^2(\Omega)]^d \times H^1(\Omega)$.
+
+    Now, from the (adjoint) consistency of the bilinear forms
+    $a_h(\cdot,\cdot)$ and $b_h(\cdot,\cdot)$ we have
+    \begin{align*}
+      \nrm{u-u_h}_{\Omega}^2
+      =&a_h(w,u-u_h) + b_h(u-u_h,r) \quad\text{and}\quad b_h(w,p-p_h) = 0.
+    \end{align*}      
+    Due to consistency of the primal problem we can add the following expression which adds up to zero for any $(w_h,r_h) \in \TT^k$:
+    \begin{align*}
+      \nrm{u-u_h}_{\Omega}^2 =&a_h(w,u-u_h) + b_h(u-u_h,r) + b_h(w, p-p_h) 
+       - a_h(w_h,u-u_h) \\ & -b_h(u-u_h,r_h) - b_h(p-p_h,w_h) 
+        \\ %+ (f- \Pi^{k-2}f, w_h)_{\Omega} + (g- \Pi^{k-1}g, r_h) \\
+         =&a_h(w-w_h,u-u_h) + b_h(u-u_h,r-r_h) + b_h(w-w_h, p-p_h) %\\
+      %& + (f- \Pi^{k-2}f, w_h)_{\Omega} + (g- \Pi^{k-1}g, r_h)
+    \end{align*}
+    With $w_h = \Pi^{\BDM,1} w$, the $\BDM^1$-interpolant of $w$, we have
+    $\Div_h w_h = \Pi^0 \Div w = 0$ and hence with $r_h = \Pi^0 r$ there holds
+    $(w_h,r_h) \in \TT^1 \subset \TT^k$. 
+    %As $w_h \in [\PP^1]^d$ and $r_h \in
+    %\PP^0$ we further have the orthogonality relations
+    %$(f- \Pi^{k-2}f, w_h)_{\Omega}=0$ and $(g- \Pi^{k-1}g, r_h)=0$. 
+    Now applying
+    standard interpolation results for the $\BDM$-interpolator as well as exploiting the $L^2$-$H^2$-regularity yields the bound 
+    $$ \nrm{ (w-w_h,r-r_h) }_{\TT,\ast} \lesssim h \left( \snrm{w}_{H^2(\Omega)} +
+      \snrm{r}_{H^1(\Omega)} \right) \lesssim h \nrm{u-u_h}_{\Omega}.$$
+    We can then conclude with continuity~\eqref{eq:Khcontinuity} to obtain
+    \begin{align*}
+      \nrm{u-u_h}_{\Omega}^2
+      =&a_h(w-w_h,u-u_h) + b_h(u-u_h,r-r_h) + b_h(w-w_h, p-p_h) \\
+      \lesssim&  \nrm{ (w-w_h,r-r_h) }_{\TT,\ast} \nrm{ (u-u_h,p-p_h) }_{\TT,\ast}
+      \\
+      \lesssim&  h \nrm{u-u_h}_{\Omega} \nrm{ (u-u_h,p-p_h) }_{\TT,\ast}.
+    \end{align*}
+    Dividing by $\nrm{u-u_h}_{\Omega}$ then yields the claim.
+    \end{proof}
+
+\subsection{Approximation and a-priori error bounds}
+
+We conclude the stability analysis with the following optimal error estimate. 
+\begin{lemma}
+Let $(u,p) \in [H^{k+1}(\Th)]^d \times H^{k}(\Th) \setminus \RR$ be the solution of the Stokes problem.
+%and $(u_h,p_h) \in \TT_{f,g}$ be the discrete solution to \eqref{eq:discreteTrefftz}.
+  There holds
+  \begin{equation} \label{eq:approx}
+    \inf_{(v_h,q_h) \in \TT_{f,g}} \nrm{(u-v_h,p-q_h)}_{\TT,\ast} \lesssim
+    \nu^{\frac12} h^{k} \snrm{ u}_{H^{k+1}(\Th)} + \nu^{-\frac12} h^{k} \snrm{p}_{H^{k}(\Th)}.
+  \end{equation}
+\end{lemma}
+\begin{proof}
+  Let $(u',p') \in [H^{2}(\Omega)]^d \times H^{1}(\Omega)$ be the solutions to the Stokes problem with right hand side data $\Pi^{k-2}f$ and $\Pi^{k-1}g$. Let $T^k: L^1(\Th) \to \PP^k(\Th)$ denote the element-wise (potentially vectorial) averaged Taylor polynomial (averaged on a proper inner ball of each element) of degree $k$, cf. \cite{brennerscott}. Then, we set $v_h = T^k u'$ and $q_h = T^{k-1} p'$ and have
+\begin{align*}
+  -\Delta_h v_h + \Grad_h q_h\! &=\! - \Delta_h T^k u' + \Grad_h T^{k-1} p'\! 
+  = T^{k-2}(\! \overbrace{- \Delta_h u' + \Grad_h \!p'}^{\Pi^{k-2} f} )\! = \Pi^{k-2} f, \\
+ \Div_h v_h &= \Div_h T^k u' = T^{k-1} \Div_h u' = T^{k-1} \Pi^{k-1} g = \Pi^{k-1} g.
+\end{align*}
+Hence $(v_h,q_h) \in \TT_{f,g}$.
+Now we bound:
+\begin{align*}
+  \nrm{(u-v_h,&p-q_h)}_{\TT,\ast} 
+= \nrm{(u-T^ku',p-T^{k-1}p')}_{\TT,\ast} \\
+ &\leq \nrm{(u-T^ku,p-T^{k-1}p)}_{\TT,\ast} + \nrm{(T^k(u-u'),T^{k-1}(p-p'))}_{\TT,\ast} = 
+ I + II
+\end{align*}
+The first part, $I$, can directly be bounded by the right hand side of \eqref{eq:approx} due to the approximation properties of the averaged Taylor polynomial. We hence turn our attention to $II$. As the terms in $II$ are discrete functions (piecewise polynomials), we can apply inverse inequalities to obtain
+\begin{align*}
+  II & \lesssim  \nu^{\frac12} \snrm{\nabla T^k (u-u')}_{\Th} + \nu^{\frac12} \nrm{h^{-\frac12} \jmp{T^k (u-u')}}_{\Fh} + \nu^{-\frac12} \nrm{T^{k-1}(p - p')}_{\Omega} \\ &= \nu^{\frac12} (II_a + II_b) + \nu^{-\frac12} II_c.
+\end{align*}
+Let $I_C$ be the (vector-valued) Clément interpolation operator $I_C: [H^1(\Omega)]^d \to [\PP^1(\Th)]^d\cap [C^0(\Omega)]^d$ and define $v = u -u'$. Then we have by the properties of the averaged Taylor polynomial, cf. \cite[Lemma 4.3.8]{brennerscott}
+\begin{align*}
+  II_a & \lesssim  \snrm{ \nabla (T^k - \id) v}_{\Th} + \snrm{ \nabla v}_{\Th} \lesssim \snrm{ \nabla v}_{\Th}.
+  \intertext{Further, due to the interpolation properties of $I_C$ and $T^k$, $H^1$-continuity of $I_C$, $I_C v \in C^0(\Omega)$ and inverse inequalities for polynomials we have}
+  II_b & \lesssim \nrm{h^{-\frac12} \jmp{ (T^k - I_C) v}}_{\partial \Th} \lesssim  \nrm{ h^{-1}(T^k - I_C) v}_{\Th} + \nrm{\nabla (T^k - I_C) }_{\Th} \\
+ &\lesssim  \nrm{ h^{-1}(T^k - \id) v}_{\Th} + \nrm{h^{-1} (I_C - \id) v}_{\Th}
+ + \nrm{\nabla T^k v }_{\Th} + \nrm{\nabla I_C v }_{\Th} \lesssim  \snrm{ \nabla v}_{\Th}.
+ \end{align*}
+Similarly we also have
+ $II_c  =  \nrm{ T^k (p-p')}_{\Omega} \lesssim \nrm{ p-p'}_{\Omega}$. Hence 
+ $$II \leq \nu^{\frac12}  \nrm{ u-u'}_{H^1(\Omega)} + \nu^{-\frac12} \nrm{ p-p'}_{\Omega}.$$ 
+ We note that 
+$(u-u', p-p')$ solves the Stokes problem for the data $(f- \Pi^{k-2}f,g-\Pi^{k-1}g)$. 
+Exploiting linearity and stability of the continuous problem and that $f- \Pi^{k-2}f$ is ($L^2$-)orthogonal to $\Pi^0 v$ for all $v \in H^1(\Omega)$ we hence have
+\begin{align*}
+  II & \lesssim \nu^{-\frac12} \nrm{f - \Pi^{k-2} f}_{H^{-1}(\Omega)} + \nu^{-\frac12} \nrm{g - \Pi^{k-1} g}_{0} \\
+  & \lesssim \nu^{-\frac12} \sup_{v \in H^1(\Omega)} \frac{ (f - \Pi^{k-2} f,v)}{\nrm{v}_{H^{1}(\Omega)}} + \nu^{-\frac12} \snrm{h^k \ g}_{H^k(\Th)} \\
+  & = \nu^{-\frac12} \sup_{v \in H^1(\Omega)} \frac{ ((\id - \Pi^{k-2}) f,v - \Pi^0 v)}{\nrm{v}_{H^{1}(\Omega)}} + \nu^{-\frac12} \snrm{h^k \ g}_{H^k(\Th)} \\
+  & \lesssim \nu^{-\frac12} \sup_{v \in H^1(\Omega)} \frac{\nrm{h(\id - \Pi^{k-2}) f}_{\Th} \snrm{ v}_{H^1(\Th)}}{\nrm{v}_{H^{1}(\Omega)}} + \nu^{-\frac12} \snrm{h^k\ g}_{H^k(\Th)} \\
+  &   \lesssim \nu^{-\frac12} \nrm{h (\id - \Pi^{k-2}) f}_{\Th} + \nu^{-\frac12} \snrm{h^k \ g}_{H^k(\Th)}
+  \\
+  & \lesssim \nu^{-\frac12} \left( \snrm{h^k f}_{H^{k-1}(\Th)} + \snrm{h^k \ g}_{H^k(\Th)} \right)
+    \lesssim h^k \left( \nu^{\frac12} \snrm{u}_{H^{k+1}(\Th)} + \nu^{-\frac12}  \snrm{p}_{H^k(\Th)} \right).
+%    & \lesssim \nrm{ -\Delta_h u + \Pi^{k-2} \Delta_h u}_{H^{-1}(\Omega)} + \nrm{ \Grad_h p - \Pi^{k-2} \Grad_h p}_{H^{-1}(\Omega)} + \nrm{\Div_h u - \Pi^{k-1} \Div_h u}_{0} \\
+%    & \lesssim \sup_{v \in H^1(\Omega)} \frac{ (-\Delta_h u + \Pi^{k-2} \Delta_h u,v)}{\nrm{v}_{H^{1}(\Omega)}} + \nrm{ \Grad_h p - \Pi^{k-2} \Grad_h p}_{H^{-1}(\Omega)} + \nrm{\Div_h u - \Pi^{k-1} \Div_h u}_{0} 
+\end{align*}
+% \todo{check $\nu$-scaling}
+
+% \todo[inline]{discuss case $k=1$. The only Trefftz constraint in this case is
+%   the divergence-constraint where no $H^{-1}$-magic is necessary.}
+% For part II we can element-wise apply trace inequalities and make use of the approximation of the averaged Taylor polynomial:
+% \begin{align*}
+%   II^2 & \lesssim \nu \sum_{l=0,1,2} h^{l-1} \nrm{u'-T^k u'}_{H^l(\Th)}^2 + \nu^{-1} \sum_{l=0,1} h^{l} \nrm{p'-T^{k-1} p'}_{H^l(\Th)}^2 \\ & \lesssim \nu h^{2k} \snrm{u'}_{H^{k+1}(\Th)}^2 + \nu^{-1} h^{2k} \snrm{p'}_{H^{k}(\Th)}^2.
+% \end{align*}
+% \todo[inline]{We could shift to $u - T^ku$ (and $p - T^{k-1} p$) by triangle inequalities and this should suffice for the $H^1$ and $H^2$ part (assuming $H^2(\Th)$-regularity), but what about $\nrm{u-u'}_{L^2(\Omega)}$?}
+\end{proof}
+
+  
+
+\begin{cor}
+  Let $(u,p) \in [H^{k+1}(\Th)]^d\cap [H^1(\Omega)]^d \times H^{k}(\Th) \setminus \RR$ be the solution of the Stokes problem and $(u_h,p_h) \in \TT_{f,g}$ be the discrete solution to \eqref{eq:discreteTrefftz}. 
+  Then, there holds
+  \begin{equation} \label{eq:aprioribound1}
+    \nrm{(u-v_h,p-q_h)}_{\TT} \lesssim \nu^{\frac12} h^{k} \snrm{u}_{H^{k+1}(\Th)} + \nu^{-\frac12} h^{k} \snrm{p}_{H^{k}(\Th)}.
+  \end{equation}
+  Assuming $L^2$-$H^2$-regularity there further holds
+  \begin{equation}
+    \nrm{u-u_h}_{\Omega} \lesssim \nu^{\frac12} h^{k+1} \snrm{u}_{H^{k+1}(\Th)} + \nu^{-\frac12} h^{k+1} \snrm{p}_{H^{k}(\Th)}.
+  \end{equation}
+\end{cor}    
+% {\color{gray}
+% W.r.t. this decomposition we define the bilinear forms:
+% We define $ K := B|_{\HH(\Th) \times \HH(\Th)} $ so that 
+% %$ \Kh(u_h,p_h),(v_h,q_h) := b_h((\id - \Pi^{\LL})(u_h,p_h),(\id - \Pi^{\LL})(v_h,q_h))$
+% \begin{align*}
+%   K&: \HH(\Th) \times \HH(\Th) \to \RR, && ((u_h,p_h),(v_h,q_h)) \mapsto  a_h(u_h,v_h) + b_h(u_h,(\id - \Pi^0)q_h) + b_h(v_h,(\id - \Pi^0)p_h), \\
+% %  b^{\LL}&: \HH(\Th) \times \LL(\Th) \to \RR, && ((u_h,p_h),(0,q_h)) \mapsto  b_h(u_h,q_h)  \\
+% \end{align*}
+% }
+
+% Note that this allows for the identity
+% \begin{align*}
+%   a(u_h,v_h) + b_h(u_h,q_h) + b_h(v_h,q_h) = \Kh((u_h,p_h),(v_h,q_h)) + b_h(u_h,\Pi^0 q_h) + b_h(v_h,\Pi^0 p_h),\end{align*}
+% for $(u_h,p_h),(v_h,q_h) \in \TT(\Th)$ .
+
+\section{Numerical example}\label{sec:num}
+
+For the numerical example we consider the domain $[0,1]^2$ and consider the following manufactured solution
+\begin{align*}
+u=\Curl \zeta,\ p=x^6+y^6 - 2/7
+\end{align*}
+%\begin{align*}
+%&\text{in } d=2 \text{ fix } u=\Curl \zeta,\ p=x^6+y^6 - 2/7\\
+%&\text{in } d=3 \text{ fix } u=\Curl (\zeta,\zeta,\zeta),\ p=x^6+y^6+z^6 - 3/7.
+%\end{align*}
+for $\zeta= x^2 (1-x)^2  y^2  (1-y)^2$.
+%and 
+%$\zeta= x^2 (1-x)^2  y^2  (1-y)^2  z^2 (1-z)^2,$ respectively for $d=2,3$.
+For this choice of exact solution we then compute the numerical solution for the right hand side $f=-\nu \Delta u + \nabla p$ and homogeneous Dirichlet boundary data $g=0$.
+The method has been implemented using \texttt{NGSolve} \cite{ngsolve} and \texttt{NGSTrefftz} \cite{ngstrefftz} \footnote{Reproduction material will be provided with a future version of this preprint or upon individual request.}.
+%\todo[inline]{reproduction material?}
+
+
+%\subsection{Stokes examples}
+
+We fix $\nu=1$ and compare the Trefftz-DG method \eqref{eq:discreteTrefftz} to the standard DG method \eqref{eq:DGK}.
+The results are shown in Figure \ref{fig:stokes}.
+We observe that the Trefftz-DG method converges with the same order as the standard DG method for both the velocity and the pressure error, while the error constants are only slightly larger. 
+
+\begin{figure}[ht]
+\begin{center}    
+%\resizebox{0.99\textwidth}{!}
+{
+    \begin{tikzpicture}[scale=0.75,spy using outlines={circle, magnification=4, size=2cm, connect spies}]
+    \begin{groupplot}[%
+      group style={%
+        group name={my plots},
+        group size=2 by 1,
+        %vertical sep=5cm,
+        horizontal sep=2cm,
+      },
+    legend style={
+        legend columns=8,
+        at={(-0.22,-0.15)},
+        anchor=north,
+        draw=none
+    },
+    xlabel={$h$},
+    %xticks={1e0,1e-1,1e-2},
+    ymajorgrids=true,
+    grid style=dashed,
+    cycle list name=paulcolors2,
+    ]      
+    \nextgroupplot[ymode=log,xmode=log,x dir=reverse, ylabel={$\norm{u-u_h}_\Th$}]
+        \foreach \k in {2,3,4}{
+            \addplot+[discard if not={k}{\k},discard if not={nu}{1},discard if not={trefftz}{True},discard if not={hybrid}{False}] table [x=h, y=ul2error, col sep=comma] {ex/ex_2d.csv};
+            \addplot+[discard if not={k}{\k},discard if not={nu}{1},discard if not={trefftz}{False},discard if not={hybrid}{False}] table [x=h, y=ul2error, col sep=comma] {ex/ex_2d.csv};
+        }
+        \addplot[domain=0.06:0.5] {exp(-3*ln(1/x)-3.5)};
+        \addplot[domain=0.06:0.5] {exp(-4*ln(1/x)-4.5)};
+        \addplot[domain=0.06:0.5] {exp(-5*ln(1/x)-5.5)};
+    \nextgroupplot[ymode=log,xmode=log,x dir=reverse, ylabel={$\norm{p-p_h}_\Th$}]
+        \foreach \k in {2,3,4}{
+            \addplot+[discard if not={k}{\k},discard if not={nu}{1},discard if not={trefftz}{True},discard if not={hybrid}{False}] table [x=h, y=pl2error, col sep=comma] {ex/ex_2d.csv};
+            \addplot+[discard if not={k}{\k},discard if not={nu}{1},discard if not={trefftz}{False},discard if not={hybrid}{False}] table [x=h, y=pl2error, col sep=comma] {ex/ex_2d.csv};
+        }
+        \addlegendimage{solid}
+        \addplot[gray,dashed, domain=0.06:0.5] {exp(-2*ln(1/x)-1.0)};
+        \addplot[gray,dashed, domain=0.06:0.5] {exp(-3*ln(1/x)-1.5)};
+        \addplot[gray,dashed, domain=0.06:0.5] {exp(-4*ln(1/x)-2.5)};
+        \legend{$\IT^p\ (p=2)$,$\IP^p\ (p=2)$,$\IT^p\ (p=3)$,$\IP^p\ (p=3)$,$\IT^p\ (p=4)$,$\IP^p\ (p=4)$,$\mathcal O(h^{p+1})$,$\mathcal O(h^{p})$,}
+
+
+%    \nextgroupplot[ymode=log,xmode=log,x dir=reverse, ylabel={$\norm{p-p_h}_\Th$}]
+%        \foreach \k in {2,3,4}{
+%            \addplot+[discard if not={k}{\k},discard if not={nu}{1},discard if not={trefftz}{True},discard if not={hybrid}{False}] table [x=h, y=time, col sep=comma] {ex/ex_2d.csv};
+%            \addplot+[discard if not={k}{\k},discard if not={nu}{1},discard if not={trefftz}{False},discard if not={hybrid}{False}] table [x=h, y=time, col sep=comma] {ex/ex_2d.csv};
+%        }
+        \end{groupplot}
+        %\spy[purple,size=2cm] on (4.07,1.6) in node [fill=white] at (1.4,1.2);            
+        %\spy[purple,size=2cm] on (12.47,0.43) in node [fill=white] at (8.6,1.2);            
+\end{tikzpicture}}
+\end{center} %\vspace*{-0.25cm}
+\caption{Numerical results for the DG and Trefftz-DG method for the 2D example. The gray (solid and dashed) lines indicate the expected convergence rates.}
+    \label{fig:stokes}
+\end{figure}
+
+\section{Conclusion \& Outlook}\label{sec13}
+In this paper we introduced a new Stokes discretization based on local basis functions that are \emph{Trefftz}, i.e. that fulfill the Stokes equation pointwise (w.r.t. to an approximated r.h.s.). This leads to a strong reduction of unknowns compared to standard DG methods. To construct the corresponding basis we use the embedded Trefftz-DG method which also allows to deal with inhomogeneous boundary conditions. The method is analysed and a priori error bounds  are derived. To the best of our knowledge this is the first Trefftz-DG discretization for the Stokes problem. Crucial and new components in the analysis are a splitting of the pressure unknowns into higher order and lower order parts and the analysis for inhomogeneous boundary conditions. Especially the latter will also be useful for the analysis of (embedded) Trefftz-DG methods for other PDEs. 
+
+A topic that we have not addressed in this work is pressure robustness. Although discrete solutions of the presented scheme will be pointwise divergence-free, discrete solutions will in general not be normal-continuous or \emph{pressure robust}. We leave improvements of the proposed scheme in that regard for future research.
+
+Due to the generic construction of the Trefftz-DG space using the embedded Trefftz-DG approach, the presented approach allows to explore extensions to Oseen-type or non- and stationary Navier-Stokes problems where the Trefftz reduction of the underlying DG space is applied to each linear problem arising within potential linearization steps. Further investigations and analysis is left for future work.
+\begin{appendices}
+
+\section{Selected proof}
+\subsection{Proof of \cref{lem:aux}} \label{sec:proof:aux}
+\begin{proof}
+We analyse the twofold saddle-point problem \eqref{eq:aux} with $d_h = (s_h,\Div w_h)_\Th$ and $e_h = (\hat{s}_h, \jmp{w_h \cdot n})_\Fh$. A similar analysis has been carried out in \cite[Lemma 4.3.6]{alemanmaster}. From element-wise $H(\Div)$-interpolation, cf. e.g. \cite{brezzi}, and standard scaling arguments we have that $\jump{w_h\cdot n}$ can be matched with scalar data on facets, especially for all $\hat{s}_h \in \PP^0(\Fh)$, and there holds
+\begin{equation}
+  \sup_{w_h \in [\PP^1]^d} \frac{(\hat{s}_h, \jmp{w_h \cdot n})_\Fh}{\nrm{w_h}_{1,h}} \gtrsim \nrm{h^{-\frac12}\hat{s}_h}_{\Fh}.
+\end{equation}
+The kernel of $e_h(\cdot,\cdot)$ are $H(\Div)$-conforming functions in $\BDM^1(\Th)$. For this subspace we have the following well-known inf-sup result, cf. \cite{hansbolarson02,cockburn2007note}:
+\begin{equation}
+  \sup_{w_h \in \BDM^1} \frac{(s_h, \Div w_h)_\Th}{\nrm{w_h}_{1,h}} \gtrsim \nrm{s_h}_{0}.
+\end{equation}
+Hence, we have inf-sup stability of $d_h(\cdot,\cdot)$ on $\ker e_h$, inf-sup stability of $e_h(\cdot,\cdot)$ and coercivity of $a_h(\cdot,\cdot)$ on $\ker d_h \cap \ker e_h$. This implies stability of the twofold saddle-point problem, cf. e.g. \cite{saddle} and thus the stability estimate in the claim.
+\end{proof}
+
+%%=============================================%%
+%% For submissions to Nature Portfolio Journals %%
+%% please use the heading ``Extended Data''.   %%
+%%=============================================%%
+
+%%=============================================================%%
+%% Sample for another appendix section			       %%
+%%=============================================================%%
+
+%% \section{Example of another appendix section}\label{secA2}%
+%% Appendices may be used for helpful, supporting or essential material that would otherwise 
+%% clutter, break up or be distracting to the text. Appendices can consist of sections, figures, 
+%% tables and equations etc.
+
+\end{appendices} 
+
+%%===========================================================================================%%
+%% If you are submitting to one of the Nature Portfolio journals, using the eJP submission   %%
+%% system, please include the references within the manuscript file itself. You may do this  %%
+%% by copying the reference list from your .bbl file, paste it into the main manuscript .tex %%
+%% file, and delete the associated \verb+\bibliography+ commands.                            %%
+%%===========================================================================================%%
+
+\bibliography{literature}% common bib file
+%% if required, the content of .bbl file can be included here once bbl is generated
+%%\input sn-article.bbl
+
+
+\end{document}

@@ -1,0 +1,162 @@
+\documentclass[twocolumn,aps,prl,superscriptaddress,tightlines,nofootinbib]{revtex4-2}
+\usepackage{hyperref}
+\hypersetup{
+colorlinks=true,
+linkcolor=blue,         
+citecolor=blue,         
+filecolor=blue,      
+urlcolor=blue
+}
+\usepackage{url}
+\usepackage{float}
+\usepackage{placeins}
+\usepackage{color}
+\usepackage{graphicx,epsfig,colordvi,epstopdf}
+\usepackage{bm}
+\usepackage{mathtools}
+\usepackage{mathdots}
+\usepackage{physics}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\newcommand{\ra}[1]{\renewcommand{\arraystretch}{#1}}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{cleveref}
+\newcommand\numberthis{\addtocounter{equation}{1}\tag{\theequation}}
+
+\begin{document}
+\title{Mapping out phase diagrams with generative classifiers}
+\author{Julian Arnold}
+\affiliation{Department of Physics, University of Basel, Klingelbergstrasse 82, 4056 Basel, Switzerland}
+\author{Frank Sch\"afer}
+\affiliation{CSAIL, Massachusetts Institute of Technology, Cambridge, MA
+	02139, USA}
+\author{Alan Edelman}
+\affiliation{CSAIL, Massachusetts Institute of Technology, Cambridge, MA
+	02139, USA}
+\affiliation{Department of Mathematics, Massachusetts Institute of Technology, Cambridge, MA
+	02139, USA}
+ \author{Christoph Bruder}
+\affiliation{Department of Physics, University of Basel, Klingelbergstrasse 82, 4056 Basel, Switzerland}
+\date{\today}
+
+\begin{abstract}
+One of the central tasks in many-body physics is the determination of phase diagrams, which can be cast as a classification problem. Typically, classification problems are tackled using discriminative classifiers that explicitly model the conditional probability of labels given a sample. Here we show that phase-classification problems are naturally suitable to be solved using generative classifiers that are based on probabilistic models of the measurement statistics underlying the physical system. Such a generative approach benefits from modeling concepts native to the realm of statistical and quantum physics, as well as recent advances in machine learning. This yields a powerful framework for mapping out phase diagrams of classical and quantum systems in an automated fashion that is capable of leveraging prior system knowledge.
+\end{abstract}
+
+\maketitle
+\emph{Introduction}.---A classification task can be approached in two fundamentally distinct ways~\cite{ng:2001}. Typically, a classifier is constructed by modeling the conditional probability $P(y|\bm{x})$ of label $y$ given a sample $\bm{x}$ directly [see Fig.~\ref{fig:1}(a)]. Models of this type are called discriminative and the corresponding classifier predicts the label $y$ that maximizes $P(y|\bm{x})$. Discriminative classifiers have had tremendous success in fields such as image classification in large part due to the power of neural networks, particularly convolutional neural networks~\cite{krizhevsky:2012}. The alternative is to model the conditional probability of a sample given a label $P(\bm{x}|y)$ [see Fig.~\ref{fig:1}(b)]. Such models are called generative models as they describe how to generate samples $\bm{x}$ conditioned on the class label $y$~\cite{gen_vs_disc}. Applying Bayes' rule,
+\begin{equation}\label{eq:Bayes_1}
+    P(y|\bm{x}) = \frac{P(\bm{x}|y)P(y)}{P(\bm{x})} = \frac{P(\bm{x}|y)P(y)}{\sum_{y'} P(\bm{x}|y')P(y')},
+\end{equation}
+one can use a generative model to construct a so-called generative classifier.
+
+Generative models are apt for describing high-dimensional probability distributions. As such, they have played a pivotal role in recent advances in machine learning, enabling applications such as the generation of images, translation of text, or composition of music~\cite{vaswani:2017}. Moreover, the generative modeling approach is naturally suited to address problems in many-body physics, which often deals with the fundamental challenge of describing probability distributions over large state spaces. In statistical physics, Boltzmann distributions have been described by generative models ranging from mean-field ansatzes to autoregressive networks~\cite{wu:2019}. Similarly, various approaches have been developed to express quantum states, including mean-field ansatzes and tensor networks~\cite{schollwock:2011}, as well as machine-learning inspired generative models, such as restricted Boltzmann machines~\cite{carleo:2017}, or recurrent neural networks~\cite{hibat:2020}, and transformers~\cite{cha:2021}.
+
+\indent One of the most important tasks in many-body physics is the characterization of phase diagrams~\cite{goldenfeld:2018,sachdev:2011}. Traditionally, this is done by identifying a small set of physical quantities, like response functions or order parameters, guided by human intuition. An exciting recent development has been the usage of machine learning methods to automate this task, replacing the physicist in the process~\cite{dawid:2022}. To this end, the problem of mapping out a phase diagram is, e.g., cast as a classification task~\cite{carrasquilla:2017,van:2017,schaefer:2019}. By solving these classification tasks using discriminative classifiers, the phase diagrams of a large variety of physical systems have successfully been revealed in both simulation~\cite{carrasquilla:2017,van:2017,schaefer:2019,liu:2018,beach:2018,suchsland:2018,lee:2019,greplova:2020,arnold:2021,gavreev:2022,zvyagintseva:2022,schlomer:2023} and experiment~\cite{rem:2019,bohrdt:2021,miles:2023}.
+
+\indent In this Letter, we show how generative models native to the realm of many-body physics can be used to construct classifiers for solving phase-classification tasks more efficiently. This results in a powerful and general framework for the automated characterization of classical and quantum phase diagrams in arbitrary-dimensional parameter spaces featuring multiple phases.
+
+\begin{figure}[bth!]
+	\centering
+		\includegraphics[width=0.85\linewidth]{fig_1.pdf}
+		\caption{Schematic illustration of (a) the discriminative and (b) generative modeling approach to a binary classification problem with labels $y \in \{1,2 \}$. In the discriminative approach, $P(y|\bm{x})$ is learned directly from data (crosses). In the generative approach, the class-conditional distributions $P(\bm{x}|y)$ are learned instead.}
+		\label{fig:1}
+\end{figure}
+
+\indent \emph{Phase classification}.---We assume our physical system to be characterized by a vector $\bm{\gamma}\in \mathbb{R}^{d}$ of tuning parameters and the sampled set of tuning parameters is denoted by $\Gamma$, where $|\Gamma|$ is the number of sampled points. The probability to obtain the results $\bm{x}\in \mathcal{X}$ when performing a measurement on the system described by $\bm{\gamma}$ is $P(\bm{x}|\bm{\gamma})$. In a phase-classification task, the label $y\in \mathcal{Y}$ specifies a set of points $\Gamma_{y}$ in the space of tuning parameters. In the following, we choose a uniform distribution over the set of parameters associated with each class, i.e., $P(\bm{\gamma}|y) = 1 / |\Gamma_{y}|$ for $\bm{\gamma}\in \Gamma_{y}$ and zero otherwise. With this choice, the coarse-grained measurement probability is $P(\bm{x}|y) = \sum_{\bm{\gamma}} P(\bm{x}|\bm{\gamma}) P(\bm{\gamma}|y) = \frac{1}{|\Gamma_{y}|}\sum_{\bm{\gamma} \in \Gamma_{y}} P(\bm{x}|\bm{\gamma})$. Using Eq.~\eqref{eq:Bayes_1}, we have
+\begin{equation}\label{eq:Bayes_2}
+    P(y|\bm{x}) =  \frac{\frac{1}{|\Gamma_{y}|}\sum_{\bm{\gamma} \in \Gamma_{y}} P(\bm{x}|\bm{\gamma})}{\sum_{y' \in \mathcal{Y}}\frac{1}{|\Gamma_{y'}|}\sum_{\bm{\gamma}' \in \Gamma_{y'}} P(\bm{x}|\bm{\gamma}')},
+\end{equation}
+where, \emph{a priori}, we consider each label to be equally likely, i.e., $P(y)=1/|\mathcal{Y}|$. In previous work~\cite{van:2017}, the prior probability $P(y)$ was not uniform and instead 
+chosen as $P(y)=\frac{|\Gamma_{y}|}{\sum_{y' \in \mathcal{Y}}|\Gamma_{y'}|}$. In this case, class imbalances are not accounted for and can lead to an unfavorable signal for detecting phase boundaries~\cite{suppl}. In the following, we discuss three distinct approaches for mapping out phase diagrams that differ in how the parameter space is labeled, i.e., in the choice of $\{ \Gamma_{y}\}_{y \in \mathcal{Y}}$.
+
+First, let us assume that we have some prior knowledge of the phase diagram. In particular, assuming we know the number of distinct phases $K$ and their rough location in parameter space, we can choose $\mathcal{Y} = \{1,\dots,K \}$ and $\Gamma_{y}$ to be composed of a set of points characteristic of each phase $y$~\cite{carrasquilla:2017}. Next, we compute the posterior probability $P(y|\bm{\gamma}) = \mathbb{E}_{\bm{x} \sim P(\bm{x}|\bm{\gamma})}\left[ P(y|\bm{x}) \right]$ associated with each phase across a parameter region of interest [see Eq.~\eqref{eq:Bayes_2}]. Rapid changes in the posterior probability are characteristic of phase boundaries. We capture these by the following scalar indicator of phase transitions
+\begin{align*}\label{eq:ISL}
+    I_{1}(\bm{\gamma}) &= \frac{1}{K} \sum_{y \in \mathcal{Y}} \norm{\nabla_{\bm{\gamma}} P(y|\bm{\gamma}) }_{2},\\
+    &= \frac{1}{K}\sum_{y \in \mathcal{Y}} \norm{\mathbb{E}_{\bm{x} \sim P(\bm{x}|\gamma)}\left[P(y|\bm{x}) \nabla_{\bm{\gamma}} \ln P(\bm{x}|\bm{\gamma})\right]}_{2} \numberthis,
+\end{align*}
+where $\| \cdot \|_{2}$ denotes the Euclidean norm and we used the log-derivative trick.
+
+\indent The above approach requires partial knowledge of the phase diagram which may be unavailable. To get around this, the authors of Ref.~\cite{van:2017} have proposed a different labeling strategy for one-dimensional parameter spaces which is phase-agnostic. Let $\mathcal{Y} = \{1,2\}$ and for each point $\gamma$ partition the parameter space into two sets $\Gamma_{1} = \{ \gamma' \in \Gamma 
+ |\gamma' \leq \gamma\}$ and $\Gamma_{2} = \{ \gamma' \in \Gamma | \gamma' > \gamma\}$. Each parameter $\gamma$ defines a bipartition and in turn a classification task whose average error probability is
+\begin{equation}\label{eq:LBC_err}
+    p_{\rm err}(\gamma) = \frac{1}{2}\sum_{y \in \{1,2 \}} \frac{1}{|\Gamma_{y}|}\sum_{\gamma' \in \Gamma_{y}}\mathbb{E}_{\bm{x} \sim P(\bm{x}|\gamma')} \left[p_{\rm err}(\bm{x})\right],
+\end{equation}
+where $p_{\rm err}(\bm{x}) = {\rm min}\left\{ P(1|\bm{x}), P(2|\bm{x}) \right\}$ is the error probability associated with the sample $\bm{x}$. Intuitively, one expects $p_{\rm err}(\gamma)$ to be lowest at a phase boundary where the data is partitioned according to the underlying phase structure. Thus, phase boundaries can be detected as local maxima in the indicator $I(\gamma) =  1- 2 p_{\rm err}(\gamma)$ which takes on values between 0 and 1 given that a classifier \emph{at worst} achieves $p_{\rm err}=1/2$.
+
+\indent In Ref.~\cite{liu:2018}, this procedure was extended to two-dimensional parameter spaces by considering the predicted phase boundary as a parametrized curve that partitions the parameter space locally and is driven via internal forces (e.g., preventing bending and stretching), as well as external forces aiming to minimize the overall classification error. This approach turns out to be unreliable and computationally costly without some partial prior knowledge of the phase diagram (details in Ref.~\cite{suppl}). Instead, we propose an alternative robust generalization that is applicable to parameter spaces of arbitrary dimension. This generalization builds upon the idea of a local bipartition introduced in Ref.~\cite{liu:2018}. At each sampled point $\bm{\gamma} \in \Gamma$, we bipartition the parameter space along each direction. For a given direction $1 \leq i \leq d$, this yields two sets, $\Gamma_{1}^{(i)}(\bm{\gamma})$ and $\Gamma_{2}^{(i)}(\bm{\gamma})$, each comprised of the $l$ points closest to $\bm{\gamma}$ along the $i$th direction in part 1 and 2 of the split parameter space, respectively. Based on these sets, we compute an indicator component $I_{2}^{(i)}(\bm{\gamma}) = 1 - 2 p_{\rm err}^{(i)}(\bm{\gamma})$ [see Eq.~\eqref{eq:LBC_err}]. The overall scalar indicator is then given as 
+\begin{equation}\label{eq:ILBC}
+    I_{2}(\bm{\gamma}) = \sqrt{\sum_{i=1}^{d} \left(I_{2}^{(i)}(\bm{\gamma})\right)^2 }.
+\end{equation}
+
+\begin{figure*}[tbh!]
+	\centering
+		\includegraphics[width=0.99\linewidth]{fig_2.png}
+		\caption{Results for the anisotropic Ising model on a square lattice [Eq.~\eqref{eq:ising_hamiltonian}, $L=20$]. (a) Schematic illustration of the phase diagram with the characteristic spin configurations of each of the four ordered phases. (b) Heat capacity per spin $C_{v}(\bm{\gamma})/Nk_{\rm B}= \left(\langle E^2 \rangle_{\bm{\gamma}} - \langle E \rangle_{\bm{\gamma}}^2\right)/Nk_{\rm B}^2T^2$, where $N=L^2$ is the number of spins. (c) $I_{1}(\bm{\gamma})$ [Eq.~\eqref{eq:ISL}] where the set of points $\{ \Gamma_{y}\}_{y \in \mathcal{Y}}$ representative of each phase is marked by blue crosses ($\mathcal{Y} = \{1,2,3,4,5\}$). (d) $I_{2}(\bm{\gamma})$ [Eq.~\eqref{eq:ILBC}] with $l=1$. (e) $I_{3}(\bm{\gamma})$ [Eq.~\eqref{eq:IPBM}] where $\hat{\bm{\gamma}}(\bm{x})$ is estimated element-wise from line scans. The set $\Gamma$ is composed of a uniform grid with 60 points for each axis. Each data set $\mathcal{D}_{\bm{\gamma}}$ consists of $10^5$ spin configurations. Onsager's analytical solution for the phase boundary is shown as a black dashed line ($J_y/k_{\rm B}T=-\ln[\tanh(J_x/k_{\rm B}T)]/2 $ for $J_x, J_y >0$; similarly for the other three sectors).}
+		\label{fig:ising}
+\end{figure*}
+
+\indent While this procedure does not require partial knowledge of the phase diagram, it requires solving a multitude of phase-classification problems (one for each bipartition). This has been addressed by the phase-agnostic labeling strategy proposed in Ref.~\cite{schaefer:2019} where each sampled value of the tuning parameter is considered its own class $\Gamma_{y} = \{ \bm{\gamma}_{y}\}, \; y \in \mathcal{Y} = \{1,\dots,|\Gamma| \}$. The mean predicted value of the tuning parameter
+\begin{equation}
+    \hat{\bm{\gamma}}(\bm{\gamma}) = \mathbb{E}_{\bm{x} \sim P(\bm{x}|\bm{\gamma})}\left[ \hat{\bm{\gamma}}(\bm{x})\right] = \mathbb{E}_{\bm{x} \sim P(\bm{x}|\bm{\gamma})}\left[ \sum_{y \in \mathcal{Y}} P(y|\bm{x})\bm{\gamma}_{y}\right]
+\end{equation}
+is expected to be most sensitive at phase boundaries. We capture this susceptibility by the following indicator
+\begin{align*}\label{eq:IPBM}
+    I_{3}(\bm{\gamma}) &= \sqrt{\sum_{i=1}^{d} \left(\frac{\partial \hat{\gamma}_{i}(\bm{\gamma}) / \partial \gamma_{i} }{\sigma_{i}(\bm{\gamma})}\right)^2},\\
+    &=  \norm{ \mathbb{E}_{\bm{x} \sim P(\bm{x}|\bm{\gamma})}\left[\frac{\hat{\bm{\gamma}}(\bm{x})}{\bm{\sigma}(\bm{\gamma})} \nabla_{\bm{\gamma}} \ln P(\bm{x}|\bm{\gamma}) \right]}_{2} \numberthis,
+\end{align*}
+where $\bm{\sigma}(\bm{\gamma}) = \sqrt{\mathbb{E}_{\bm{x} \sim P(\bm{x}|\bm{\gamma})}\left[ \hat{\bm{\gamma}}(\bm{x})^2\right] - \left(\mathbb{E}_{\bm{x} \sim P(\bm{x}|\bm{\gamma})}\left[ \hat{\bm{\gamma}}(\bm{x})\right]\right)^2}$ is the associated standard deviation. Here, operations are carried out element-wise and we used the log-derivative trick. Dividing the signal $\partial \hat{\gamma}_{i}/\partial \gamma_{i}$ by its standard deviation $\sigma_{i}$ [cf.~Eq.~\eqref{eq:IPBM}] is found to yield more reliable phase diagrams and alleviate problems encountered in previous studies~\cite{schaefer:2019,arnold:2022} (see~\cite{suppl} for a comparison).
+
+\indent \emph{Discriminative vs. generative modeling}.---By casting the determination of a phase diagram as a classification task, we have reduced the problem to the computation of a scalar indicator of phase transitions $I(\bm{\gamma})$ across the region of interest [see Eqs.~\eqref{eq:ISL}, \eqref{eq:ILBC}, and~\eqref{eq:IPBM}]. Up to now, this computation has typically been approached in a data-driven discriminative way. Given a set of samples $\mathcal{D}_{\bm{\gamma}}$ drawn from $P(\bm{x}|\bm{\gamma})$ for each $\bm{\gamma} \in \Gamma_{y}$, a model $\tilde{P}(y|\bm{x})$ is constructed. Most often, a parametric approach is chosen in which $\tilde{P}(y|\bm{x})$ is represented as a neural network whose parameters are optimized in a supervised fashion to solve the respective classification task~\cite{suppl}. An estimate of the indicator can be computed by substituting $P(y|\bm{x})$ with $\tilde{P}(y|\bm{x})$ and replacing the expected value with a sample mean $\mathbb{E}_{\bm{x} \sim P(\bm{x}|\bm{\gamma})} \rightarrow \frac{1}{|\mathcal{D}_{\bm{\gamma}}|}\sum_{\bm{x} \in \mathcal{D}_{\bm{\gamma}}}$.
+
+\indent The main idea of this Letter is to approach the problem of mapping out a phase diagram in a generative manner. Given a model of the probability distributions underlying the measurement statistics at various discrete points in parameter space $\{ \tilde{P}(\bm{x}|\bm{\gamma}) \}_{\bm{\gamma} \in \Gamma}$ from which one can efficiently sample, an estimate of an indicator [Eqs.~\eqref{eq:ISL}, \eqref{eq:ILBC}, and~\eqref{eq:IPBM}] can be computed by substituting $P(\bm{x}|\bm{\gamma})$ with $\tilde{P}(\bm{x}|\bm{\gamma})$ and replacing the expectation value with a sample mean $\mathbb{E}_{\bm{x} \sim P(\bm{x}|\bm{\gamma})} \rightarrow \frac{1}{|\tilde{\mathcal{D}}_{\bm{\gamma}}|}\sum_{\bm{x} \in \tilde{\mathcal{D}}_{\bm{\gamma}}}$, where $\tilde{\mathcal{D}}_{\bm{\gamma}}$ denotes the set of samples drawn from the model $\tilde{P}(\bm{x}|\bm{\gamma})$. In machine learning terms, one desires generative models with explicit, tractable densities~\cite{goodfellow2:2016}. Popular examples belonging to this class are autoregressive networks, such as fully visible belief networks or recurrent neural networks, normalizing flows, or tensor networks. However, one can also consider non-parametric models, e.g., based on histogram binning, as well as numerically exact (or even analytical) probability distributions if available.
+
+ \begin{figure*}[tbh!]
+	\centering
+		\includegraphics[width=\linewidth]{fig_3.png}
+		\caption{Results for the cluster-Ising model [Eq.~\eqref{eq:cluster_hamiltonian}, $L=71$]. (a) Schematic illustration of the phase diagram featuring three distinct phases: a Néel-type antiferromagnetic phase (bottom), an SPT phase (middle), and a paramagnetic phase (top). (b) Magnitude of the derivative of the string order parameter $|\partial \langle \mathcal{S}\rangle_{\bm{\gamma}}/\partial \gamma_{2}|$. (c) $I_{1}(\bm{\gamma})$ [Eq.~\eqref{eq:ISL}] where the sets of points $\{\Gamma_{y}\}_{y\in \mathcal{Y}}$ representative of each phase are marked by blue crosses ($\mathcal{Y} = \{1,2,3\}$). (d) $I_{2}(\bm{\gamma})$ [Eq.~\eqref{eq:ILBC}] with $l=1$. (e) $I_{3}(\bm{\gamma})$ [Eq.~\eqref{eq:IPBM}] where $\hat{\bm{\gamma}}(\bm{x})$ is estimated element-wise from line scans. The set $\Gamma$ is composed of a uniform grid with 101 points for each axis. Each data set $\tilde{\mathcal{D}}_{\bm{\gamma}}$ consists of $10^3$ measurement outcomes. Estimated phase boundaries (black dashed lines) are determined from maxima in $|\partial^2 \langle H \rangle_{\bm{\gamma}} /\partial \gamma_{2}^2|$.}
+		\label{fig:SPT}
+\end{figure*}
+
+
+\indent Note that $\tilde{P}(\bm{x}|\bm{\gamma})$ models the measurement statistics underlying the physical system. Thus, in contrast to $\tilde{P}(y|\bm{x})$, $\tilde{P}(\bm{x}|\bm{\gamma})$ it is of fundamental nature and can enable other downstream tasks (e.g., the computation of physical observables). In particular, in numerical investigations, one often has direct access to a description of the system in terms of a generative model. The generative approach to classification can use this information to create a classifier, bypassing an explicit data-driven construction as in the discriminative approach, making the former more efficient. In the following, we showcase how this can be done in the case of classical equilibrium systems and quantum ground states.
+
+\indent \emph{Classical equilibrium systems}.---For a classical system at equilibrium with a large thermal reservoir, the probability to find the system in state $\bm{x} \in \mathcal{X}$ is given by $P(\bm{x}| \bm{\gamma}) = e^{-\mathcal{H}(\bm{x},\bm{\gamma})}/Z(\bm{\gamma})$,
+where $Z(\bm{\gamma})$ is the partition function. Here, we consider dimensionless Hamiltonians of the form $\mathcal{H} = H/k_{\rm B}T = \sum_{i=1}^{d} \gamma_{i} X_{i}(\bm{x})$. The large state space $\mathcal{X}$ renders modeling such distributions a hard task. However, such Boltzmann distributions belong to the exponential family and $\bm{X} = \left( X_{1}(\bm{x}), \dots, X_{d}(\bm{x}) \right)$ is a minimal sufficient statistic for $\bm{\gamma}$, i.e., the map $\bm{x} \rightarrow \bm{X}$ corresponds to an optimal lossless compression with respect to $\bm{\gamma}$. Thus, to map out phase diagrams by computing an indicator it suffices to model $\{ P(\bm{X}|\bm{\gamma})\}_{\bm{\gamma} \in \Gamma}$ (proof in~\cite{suppl}). Crucially, the dimensionality of the minimal sufficient statistic $\bm{X}$, ${\rm dim}(\bm{X}) = d$, can be independent of the system size. This enables simple non-parametric modeling approaches which are asymptotically unbiased.
+
+\indent As a concrete example, we study the anisotropic Ising model on an $L \times L$ square lattice described by the Hamiltonian
+\begin{equation}\label{eq:ising_hamiltonian}
+H= -\sum_{j,k=1}^L  \left( J_x \sigma_{j,k} \sigma_{j, k+1} + J_y \sigma_{j+1,k} \sigma_{j, k} \right),
+\end{equation}
+where $\sigma_{j,k} \in \{ \pm 1\}$ denote Ising spins and $J_x$ and $J_y$ are the coupling strengths in the horizontal and vertical direction, respectively. At low temperatures, there exist four ordered phases (related by symmetry) each of which undergoes a second-order phase transition to a paramagnetic phase as the temperature is increased [Fig.~\ref{fig:ising}(a)]. The two tuning parameters are $\bm{\gamma} = \left( J_x/k_{\rm B}T, J_y/k_{\rm B}T \right)$ and for a given spin configuration $\bm{\sigma}$ the minimal sufficient statistic is
+\begin{equation*}
+    \bm{X}(\bm{\sigma}) = \left( -\sum_{j,k=1}^L \sigma_{j,k} \sigma_{j, k+1}\;,\; -\sum_{j,k=1}^L \sigma_{j+1,k} \sigma_{j, k} \right),
+\end{equation*}
+which corresponds to the nearest-neighbor correlation in $x$- and $y$-direction, respectively. We draw spin configurations from $\{ P(\bm{x}|\bm{\gamma})\}_{\bm{\gamma} \in \Gamma}$ via Markov chain Monte Carlo~\cite{suppl} from which we compute the sufficient statistic and construct models $\{ \tilde{P}(\bm{X}|\bm{\gamma})\}_{\bm{\gamma} \in \Gamma}$ using histogram binning. Based on these models, we compute the three indicators of phase transitions [Eqs.~\eqref{eq:ISL}, \eqref{eq:ILBC}, and~\eqref{eq:IPBM}], see Figs.~\ref{fig:ising}(c)-(e). The newly proposed indicators $I_{2}$ and $I_{3}$ reproduce the known phase diagram quantitatively and are consistent with physics-informed quantities, such as the heat capacity [cf. Fig.~\ref{fig:ising}(b)]. These indicators are generic and do not require prior knowledge of the phase diagram. The simple indicator $I_{1}$ only reproduces the phase diagram qualitatively and the result depends on the choice of $\{\Gamma_{y}\}_{y\in \mathcal{Y}}$, i.e., on the amount of prior knowledge of the phase diagram being utilized.
+
+\indent \emph{Quantum ground states}.---For a quantum system subjected to a measurement described by a positive operator-valued measure (POVM), the probability to obtain the measurement outcome $\bm{x} \in \mathcal{X}$ associated with the POVM element $\Pi_{\bm{x}}$ is given by $P(\bm{x}|\bm{\gamma}) = {\rm tr}\left(\Pi_{\bm{x}} \rho(\bm{\gamma})\right)$. The large state space $\mathcal{X}$ renders modeling such distributions a hard task. However, numerous ansatzes, ranging from mean-field to tensor networks~\cite{schollwock:2011}, as well as machine-learning inspired architectures based on autoregressive neural networks~\cite{sharir:2020,hibat:2020} have been developed to approximate ground states on the basis of the variational principle. 
+
+\indent As an example, we consider a spin-$1/2$ chain of length $L$ (odd) governed by a cluster-Ising Hamiltonian~\cite{smacchia:2011}
+\begin{equation}\label{eq:cluster_hamiltonian}
+    H = -\sum_{i=1}^{L} \left(JZ_{i-1}X_{i}Z_{i+1} + h_{1}X_{i} + h_{2} X_{i}X_{i+1} \right),
+\end{equation}
+where $\{X_{i}, Y_{i}, Z_{i}\}$ are the Pauli operators acting on the spin at site $i$ and we consider open boundary conditions defined by $Z_{0} = Z_{L+1}=X_{L+1} = \mathbb{I}$. Here, the tuning parameters $\bm{\gamma} = \left( h_{1}/J,h_{2}/J \right)$ correspond to the external field strength and nearest-neighbor Ising-type coupling, respectively. The ground state phase diagram of this model features three distinct phases [Fig.~\ref{fig:SPT}(a)]: At finite $h_{1}/J$, for  $h_{2}/J \rightarrow \infty$ the system is in a paramagnetic phase with all spins pointing in the $x$-direction, whereas for $h_{2}/J \rightarrow - \infty$  it is in a Néel-type antiferromagnetic phase. At $h_{1}/J = h_{2}/J = 0$, the ground state is a cluster state giving rise to a symmetry-protected topological (SPT) quantum phase ($\mathbb{Z}_{2} \times \mathbb{Z}_{2}$ symmetry) characterized by a non-zero expectation value of the string order parameter $\mathcal{S} = Z_{1}X_{2}X_{4}\cdots X_{L-3}X_{L-1}Z_{L}$. This system has recently been investigated using classical~\cite{sadoune:2023} and quantum discriminative classifiers~\cite{herrmann:2022}. To avoid any information loss and for the sake of generality, we consider informationally complete POVMs, i.e., measurements whose statistics completely specify the quantum state at hand. For a single qubit, the Pauli-$6$ POVM is a simple and common choice. It consists of the six POVM elements $\{ \frac{1}{3}| 0 \rangle \langle 0 |,\frac{1}{3}| 1 \rangle \langle 1 |,\frac{1}{3}| + \rangle \langle + |,\frac{1}{3}| - \rangle \langle - |,\frac{1}{3}| +i \rangle \langle +i |,\frac{1}{3}| -i \rangle \langle -i | \}$, where $\{ | 0 \rangle, | 1 \rangle\}$, $\{ | + \rangle, | - \rangle\}$, and $\{ | +i \rangle, | -i \rangle\}$ denote the eigenstates of the Pauli operators $Z$, $X$, and $Y$, respectively. A POVM for the entire many-qubit Hilbert space can be constructed using tensor products $\Pi_{\bm{x}} = \Pi_{x_{1}}^{(1)} \otimes \Pi_{x_{2}}^{(2)} \otimes \dots \otimes \Pi_{x_{L}}^{(L)}$, leading to $|\mathcal{X}| = 6^L$ possible measurement outcomes. We construct models for the measurement statistic $\{ \tilde{P}(\bm{x}|\bm{\gamma})\}_{\bm{\gamma} \in \Gamma}$ using a matrix product state ansatz that is optimized via the density matrix renormalization group algorithm~\cite{suppl}. Based on these generative models, we compute indicators of phase transitions [Eqs.~\eqref{eq:ISL}, \eqref{eq:ILBC}, and~\eqref{eq:IPBM}], see Figs.~\ref{fig:SPT}(c)-(e). The signals are found to correctly reproduce the phase diagram obtained from physics-informed quantities, such as the string order parameter [cf. Fig.~\ref{fig:SPT}(b)].
+
+\emph{Conclusions}.---In this Letter, we have introduced generative classifiers as alternatives to discriminative classifiers to solve the classification tasks required for mapping out phase diagrams in an autonomous fashion. The generative approach naturally allows for the incorporation of system knowledge, such as the Hamiltonian or the functional form of the relevant family of probability distributions. This makes it favorable for numerical investigations where such information is readily available. We have explicitly demonstrated this advantage for classical systems in equilibrium as well as quantum ground states.
+
+Extensions to classical nonequilibrium systems, as well as other quantum states, are possible by adapting the generative model. If system knowledge is scarce, e.g., when characterizing quantum states prepared in an experiment~\cite{carrasquilla:2019,gomez:2022}, generative models can also be constructed in a data-driven manner. This makes generative classifiers extremely versatile and applicable in various contexts. Since generative models play a fundamental role in many-body physics, it is expected that many more classification tasks in this domain can benefit from a generative approach. 
+
+\indent A Julia~\cite{bezanson:2012} implementation of our work is available at Ref.~\cite{github}.\\
+
+\indent We would like to thank Niels Lörch and Flemming Holtorf for their helpful suggestions on the manuscript. We thank Alexander Gresch, Lennart Bittel, Martin Kliesch, Niels Lörch, Difei Zhang, Petr Zapletal, and Flemming Holtorf for stimulating discussions. J.A. and C.B. acknowledge financial support from the Swiss National Science Foundation individual grant (grant no. 200020 200481). Computation time at sciCORE (scicore.unibas.ch) scientific computing core facility at the University of Basel is gratefully acknowledged. We acknowledge financial support from the MIT-Switzerland Lockheed Martin Seed Fund and MIT International Science and Technology Initiatives (MISTI). 
+%This material is based upon work supported by the National Science Foundation under grant no. OAC-1835443, grant no. SII-2029670, grant no. ECCS-2029670, grant no. OAC-2103804, and grant no. PHY-2021825. The information, data, or work presented herein was funded in part by the Advanced Research Projects Agency-Energy (ARPA-E), U.S. Department of Energy, under Award Number DE-AR0001211 and DE-AR0001222. We also gratefully acknowledge the U.S. Agency for International Development through Penn State for grant no. S002283-USAID. The views and opinions of authors expressed herein do not necessarily state or reflect those of the United States Government or any agency thereof. This material was supported by The Research Council of Norway and Equinor ASA through Research Council project "308817 - Digital wells for optimal production and drainage". Research was sponsored by the United States Air Force Research Laboratory and the United States Air Force Artificial Intelligence Accelerator and was accomplished under Cooperative Agreement Number FA8750-19-2-1000. The views and conclusions contained in this document are those of the authors and should not be interpreted as representing the official policies, either expressed or implied, of the United States Air Force or the U.S. Government. The U.S. Government is authorized to reproduce and distribute reprints for Government purposes notwithstanding any copyright notation herein.
+
+\bibliography{refs.bib}
+\newpage
+\pagebreak
+
+\input{arxiv_supp}
+
+\end{document}

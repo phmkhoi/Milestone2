@@ -1,0 +1,190 @@
+% !TEX TS-program = pdflatex
+% !TEX encoding = UTF-8 Unicode
+\documentclass[3p,times]{elsarticle}
+
+%=============================================
+% Font for notes 
+\newcommand{\rred}[1]{\textcolor{red}{#1}}
+\newcommand{\ccyan}[1]{\textcolor{black}{#1}}
+\newcommand{\bblue}[1]{\textcolor{blue}{#1}}
+
+\newcommand{\raphael}{\textcolor{ForestGreen}}
+\newcommand{\ema}{\textcolor{orange}}
+\newcommand{\giovanni}[1]{\textcolor{purple}{#1}}
+%==============================================
+
+%==============================================
+%==========  A L L    I N C L U D E S
+\input{include.tex}
+%============================================
+\usepackage[normalem]{ulem}
+
+\journal{Journal of Computational Physics}
+
+\begin{document} 
+%!=============================================
+%!
+%!      F R O N T    M A T T E R 
+%!
+\begin{frontmatter}
+%---------------------------------------------
+% TITLE
+\title{An almost fail-safe a-posteriori limited high-order CAT scheme} 
+%--------------------------------------------
+
+%--------------------------------------------
+% AUTHORS
+\author[catania]{Emanuele Macca$^{*}$}
+\ead{emanuele.macca@unict.it}
+\cortext[cor1]{Corresponding author}
+
+\author[bordeaux]{Rapha{\"e}l Loub{\`e}re}
+\ead{raphael.loubere@math.u-bordeaux.fr}
+
+\author[malaga]{Carlos Par{\'e}s}
+\ead{pares@uma.es}
+
+\author[catania]{Giovanni Russo}
+\ead{giovanni.russo1@unict.it}
+
+%------------------------------------------
+
+%------------------------------------------
+% INSTITUTIONS
+\address[bordeaux]{Universit{\'e} de Bordeaux, CNRS, Bordeaux INP, IMB, UMR 5251, F-33400 Talence, France}
+\address[malaga]{Departamento de An{\'a}lisis Matem{\'a}tico, Estad{\'i}stica e Investigaci{\'o}n Operativa, y Matem{\'a}tica aplicada, Universidad de M{\'a}laga, Bulevar Louis Pasteur, 31, 29010, Málaga, Spain}
+\address[catania]{Dipartimento di Matematica ed Informatica Universit{\'a} di Catania, Viale Andrea Doria 6, 95125, Catania, Italy}
+%-----------------------------------------
+
+%-----------------------------------------
+% ABSTRACT
+\begin{abstract}
+In this paper we blend the high order Compact Approximate Taylor (CAT) numerical schemes with an \textit{a posteriori} Multi-dimensional Optimal Order Detection (MOOD) paradigm to solve hyperbolic systems of conservation laws in 2D. The resulting scheme presents high accuracy on smooth solutions, essentially non-oscillatory behavior on irregular ones, and, almost fail-safe property concerning positivity issues. 
+The numerical results on a set of sanity test cases and demanding ones are presented assessing the appropriate behavior of the CAT-MOOD scheme.
+\end{abstract}
+%-----------------------------------------
+
+%-----------------------------------------
+% KEY WORDS
+\begin{keyword}
+ High-order scheme \sep
+ CAT \sep
+ MOOD \sep
+ HLL/HLLC \sep Rusanov \sep
+ Hyperbolic system of conservation laws \sep
+ Hydrodynamics.
+%\PACS 
+%\MSC
+\end{keyword}
+%----------------------------------------
+\end{frontmatter}
+%=========================================
+
+
+%==========================================
+%==========   T A B L E    O F    C O N T E N T S
+%\newpage
+%\tableofcontents
+%===========================================
+
+
+%==========================================
+%% ======== I N T R O D U C T I O N =======
+\section{Introduction} \label{sec:introduction}
+% Kick-ass sentence
+Peter Lax and Burton Wendroff have presented their seminal finite difference numerical method more than 80 years ago in \cite{LaxWendroff}.
+This scheme was designed to solve generic hyperbolic systems of conservation laws.
+At the core of the Lax-Wendroff (LW) scheme lays the so-called LW procedure which relies on Taylor expanding  the solution in time up to second-order of accuracy, then replacing the time derivative by the space derivative according to the governing equations, and, finally, approximating the space derivatives by finite differences.
+This procedure revealed extremely fruitful. This is still used to design modern numerical schemes, for instance the Approximate Taylor methods introduced by Zorio et al. \cite{ZBM2017}, or, the Compact Approximate Taylor (CAT) family \cite{Carrillo-Pares,CPZMR2020,Macca-Pares,TesiPhD}, and others. 
+
+When dealing with discontinuous solutions which may occur for any hyperbolic system of Partial Differential Equations (PDEs), the key point of most of numerical methods is their ability to dissipate appropriately. In other words extra dissipation must be added. The questions of where, when, and how much dissipation is to be added are of paramount importance to assure that the numerical method can handle smooth flows and discontinuous solutions equally well.
+%\raphael{
+Limiting second-order schemes has been achieved with slope or flux limiters relying on maximum principle preservation, or alternative related procedures. 
+Beyond second-order accuracy, the limiting is not anymore a well-agreed subject of research. The most known technique is presumably the ENO/WENO procedure \cite{Shu1} for finite volume (FV) or finite differences (FD) schemes. Most of the limiting techniques rely on blending the first-order scheme/flux/reconstruction with a high-order one, using some \textit{a priori} sensor to determine where this blending would be appropriate.
+The limiting entirely depends on the 
+quality of the \textit{a priori} sensor which must determine "where to act?" and the amount of blending, i.e.\ "how much dissipation?" to ensure that the numerical solution is physically and numerically acceptable.
+Based on this philosophy, high-order CAT schemes have been supplemented with an automatic limiting procedure in \cite{Macca-Pares}, called ACAT.
+However this procedure suffers from the same drawback: it relies on \textit{a priori} sensors which are difficult to design. \\
+Contrarily, in this work we operate a shift and will couple the high-order CAT schemes with the \textit{a posteriori} MOOD limiting procedure \cite{CDL1,CDL2,CDL3}. 
+The philosophical statement in MOOD is that it is easier to observe the inappropriate consequences of using a high-order scheme rather than predicting them with \textit{a priori} sensors. Consequently within a MOOD loop the unlimited high-order explicit scheme is used for the current time-step to produce a candidate numerical solution which is further tested against detection criteria stating if some cells are invalid. While the valid ones are kept, the invalid ones are recomputed with a low-accurate but more robust scheme, possibly a second-order limited scheme, or, more drastically a robust first order one.
+The goal of this paper is to provide a proof of concept for the design and validation of a CAT-MOOD scheme for systems of conservation laws.
+%}
+
+% Outline
+The rest of this paper is organized as follows. 
+The second section introduces the governing equations.
+Next, the Lax-Wendroff procedure and the CAT schemes are presented.
+We re-derive the second-, fourth- and sixth-order accurate versions of CAT schemes
+and the generic CAT2P scheme, along with their adaptive limiter.
+The fourth section presents the blending of CAT schemes with the \textit{a posteriori} MOOD procedure to replace the adaptive limiter.
+Numerical results are gathered in the fifth section to assess the good behavior of the CAT-MOOD sixth order scheme on smooth or discontinuous solutions.
+Conclusions and perspectives are finally drawn.
+% =========================================
+
+
+%==========================================
+%% ======== C O N T E X T =============
+\input{1_Context.tex}
+% =========================================
+
+%==========================================
+%% ======== C A T S C H E M E =============
+\input{2_Schemes.tex}
+% =========================================
+
+%============================================
+%%== N U M E R I C A L    S E C T I O N   ===
+\input{3_NumericalTests.tex}
+%============================================
+
+
+%============================================
+%%=======  C O N C L U S I O N S ============
+\section{Conclusion and Perspectives} \label{sec:conclusion}
+% Conclusions
+In this paper we have presented an \aposteriori way of 
+limiting finite difference CAT2P schemes using MOOD paradigm.
+We have focused on CAT2P schemes of even orders devoted to solve Euler equations on 2D Cartesian mesh with a maximal order of accuracy $6$.
+CAT2P schemes are nominally of order $2P$ on smooth solutions. 
+Some extra dissipative mechanism must be supplemented to deal with steep gradients or discontinuous solutions, likewise for any high order scheme.
+Originally, CAT2P schemes were coupled with an automatic \apriori limiter which blends high- and low-order fluxes as in \cite{CPZMR2020}.
+However the difficulty with \apriori limiters is the fact that they must (i) anticipate the occurrence of possible spurious oscillations from data at time $t^n$,
+(ii) tailor the appropriate amount of dissipation to stabilize the scheme, and, (iii) ensures that a physically admissible numerical solution is always produced.
+For $2$nd order schemes such \apriori limiters are available, but for higher orders they are not always performing well either on smooth solutions (lack of accuracy) or to ensure the physical admissibility (lack of robustness).
+In this work we rely on an \aposteriori MOOD paradigm which computes an unlimited high-order candidate solution at time $t^{n+1}$, and, further detects troubled cells which are recomputed with a lower-order accurate scheme \cite{CDL2}.
+The detection procedure marks troubled cells according to Physical, Numerical and Computer admissible criteria which are at the core of our definition of an acceptable numerical solution.
+For a proof of concept, in this work, we have tested the so-called CATMOOD6 scheme based on the cascade of schemes: CAT6$\rightarrow$CAT2$\rightarrow$ 1st, where the last scheme is a first order robust scheme.  \\
+We have tested this scheme on a test suite of smooth solutions (isentropic vortex), simple shock waves (cylindrical Sedov blastwave), complex self-similar solutions involving contact, shock and rarefaction interacting waves  (four state 2D Riemann problems) and, at last, on an extreme Mach $2000$ astrophysical-like jet.
+CATMOOD6 has passed these tests. It has preserved the optimal accuracy on smooth parts of the solutions, an essentially-non-oscillatory behavior close to steep gradients, and, a physically valid solution. CATMOOD6 has been compared to  some $1$st order schemes to challenge its robustness and to unlimited CAT2P schemes to challenge its accuracy and cost.
+We have observed that the percentage of cells updated with the 6th order accurate scheme is in the range $85-100\%$, leaving only few percents to be re-computed by the low order schemes. 
+As such CATMOOD6 has a total cost $20\%$ superior to the unlimited CAT6 scheme on smooth solution, and, $10\%$ less expensive than limited ACAT6 scheme on discontinuous solution (for which ACAT6 does not fail).
+From our test campaign we have observed that CATMOOD6 presents the robustness of its $1$st order scheme, and, the accuracy of its $6$th order one where appropriate. The detection procedure being able to sort out troubled cells from valid ones. \\
+% Perspectives
+%As already mentioned this work presents a proof of concept made in 2D on Euler model and Cartesian grids.
+Concerning the perspectives, 
+the extension to 3D is solely a question of implementation and testing in a parallel environment. 
+%Designing the family of CAT2P schemes to unstructured meshes would be a true challenge, but once it is achieved then the coupling CATMOOD would be relatively easy to test.
+A last, some extensions would be to consider different systems of PDEs, with source terms and well-balanced property, possibly stiff, or, more complex models such as Navier-Stokes equations.
+%============================================
+
+
+%============================================
+%==========    A C K N O W L E D G M E N T S
+\section*{Acknowledgments}
+We would like to thank Simone Chiochetti for providing some reference for Sedov problem.
+
+This research has received funding from the European Union’s NextGenerationUE – Project: Centro Nazionale HPC, Big Data e Quantum Computing, “Spoke 1” (No. CUP E63C22001000006). E. Macca was partially supported by GNCS No. CUP E53C22001930001 Research Project “Metodi numerici per problemi differenziali multiscala: schemi di alto ordine, ottimizzazione, controllo”. E. Macca and G. Russo are members of the INdAM Research group GNCS. The  research  of C. Parés  is part of the research project PDC2022-133663-C21 funded by MCIN/AEI/10.13039/501100011033 end the European Union \lq Next GenerationEU/PRTR\rq and it was  partially  supported  by  the Regional Government of Andalusia through the research group FQM-216.
+%============================================
+
+%============================================
+%==========  B I B L I O G R A P H Y
+\bibliographystyle{plain}
+\bibliography{./biblio}
+%============================================
+
+%============================================
+%==========  A P P E N D I X
+\input{Appendix}
+%============================================
+
+\end{document}

@@ -1,0 +1,303 @@
+
+
+\section{Algorithms}
+We describe the detailed algorith ms for meta-training and meta-test of ProtoDiff as following Algorithm~\ref{alg:train} and~\ref{alg:test}, respectively:
+
+\begin{algorithm}[ht]
+\caption{Meta-training phase of ProtoDiff. \\ \textbf{Input:} $p(\mathcal{T})$: distribution over tasks; $\theta$: diffusion parameters; $\phi$: feature extractor parameters; $T$:  diffusion steps.\\
+\textbf{Output:} $\mathbf{z}_{\theta}$: diffusion network, $f_{\phi}$: feature extractor.}
+\label{alg:train}
+\begin{algorithmic}[1]
+\REPEAT
+\STATE \text{Sample batch of tasks $\mathcal{T}^i \sim p(\mathcal{T})$}
+\FOR{all $\mathcal{T}^i$}
+\STATE Sample support and query set $\{\mathcal{S}^i, \mathcal{Q}^i\}$ from $\mathcal{T}^i$
+\STATE Compute the vanilla prototype $\tilde{\mathbf{z}}^i = f(\mathcal{S}^i)$
+\REPEAT
+    \STATE Take some gradient step on $\nabla \mathcal{L}_{\mathrm{CE}}(\mathcal{S}^i, \mathcal{Q}^i)$, updating $\phi^i$ 
+\UNTIL{$\mathcal{L}_{\mathrm{CE}}(\mathcal{S}_i, \mathcal{Q}_i)$ converges}
+\STATE Compute the overfitted prototype by using the updated $\phi^i$, $\mathbf{z}^{i, *} = f_{\phi^i}(\mathcal{S}_i)$
+    \STATE $t \sim Uniform({1...T})$
+\STATE $\epsilon = \mathcal{N}(\mathbf{0},\mathbf{1})$
+\STATE $\beta_t = \frac{10^{-4}(T-t) + 10^{-2}(t-1)}{T-1}$,$\alpha_t = 1-\beta_t$,
+$\bar{\alpha}_t = \Pi_{k=0}^{k=t} \alpha_k $
+\STATE $\hat{\mathbf{z}}_t^i = \sqrt{\bar{\alpha_t}}(\mathbf{z}^{i, *} - \tilde{\mathbf{z}}^i) + \sqrt{1-\bar{\alpha_t}^2}\epsilon$  
+\STATE Compute diffusion loss $\mathcal{L}_{\mathrm{diff}}$ with Equation (9) and the final loss $\mathcal{L}_{\mathcal{T}^i}$ with Equation (10)
+\STATE Update $\{\phi, \theta\} \leftarrow \{\phi, \theta\} - \beta \nabla_{\{\phi, \theta\}} \sum_{\mathcal{T}^i \sim p(\mathcal{T})} \mathcal{L}_{\mathcal{T}^i}$ using query data of each task.
+\ENDFOR
+\UNTIL{$f_{\phi}$ and $\mathbf{z}_{\theta}$ converges}
+\end{algorithmic}
+\end{algorithm}
+
+
+\begin{algorithm}[ht]
+\caption{Meta-test phase of ProtoDiff. \\ \textbf{Input:} $\tau= \{\mathcal{S}, \mathcal{Q}\}$: meta-test task, $\mathbf{z}_{\theta}$: trained diffusion network parameters,  $f_{\phi}$: trained feature extractor network parameters, $T$:  diffusion steps.}
+\label{alg:test}
+\begin{algorithmic}[1]
+\STATE $\mathbf{z}_{T} \sim \mathcal{N}(\mathbf{0}, \mathbf{I})$
+\STATE Compute vanilla prototype $\tilde{\mathbf{z}}$ with support set $f(\mathcal{S})$
+\FOR{t=$T, \cdots$, 1}
+\STATE $\epsilon = N(\mathbf{0},\mathbf{1})$
+\STATE $\beta_t = \frac{10^{-4}(T-t) + 10^{-2}(t-1)}{T-1}$,$\alpha_t = 1-\beta_t$,
+$\bar{\alpha}_t = \Pi_{k=0}^{k=t} \alpha_k $ 
+\STATE $\mathbf{z}_{t-1} = \mathbf{z}_{\theta}(\mathbf{z}_{t}, \tilde{\mathbf{z}},t)$
+\ENDFOR
+\STATE Compute the final prediction $\mathbf{y}^q$ by with Equation (1) based on  $\mathbf{z}_0 + \tilde{\mathbf{z}}$
+\end{algorithmic}
+\end{algorithm}
+
+\section{Per-task prototype overfitting architecture}
+To enhance our comprehension of the Per-task prototype overfitting part, we propose a succinct architectural representation depicted in Figure~\ref{fig:overfit}. The initial step entails the computation of the conventional prototypes $\tilde{\mathbf{z}}$ for a meta-training task. Subsequently, Equation (1) is employed to calculate the predictions for the query sample. The backbone's parameters are subsequently updated through $I$ iterations. Through the utilization of parameters from the final iteration, we ultimately obtain the prototypes $\mathbf{z}^{*}$ that exhibit overfitting characteristics.
+
+
+\begin{figure}[ht]
+  \centering 
+\includegraphics[width=1.\linewidth] {graph/overfitted.pdf}\\
+    \caption{\textbf{Per-task prototype overfitting.}}
+    \label{fig:overfit}
+\end{figure}
+
+
+\section{Residual prototype learning architecture}
+In order to gain a more comprehensive understanding of our residual prototype learning, we have crafted a succinct architecture diagram illustrated in Figure~\ref{fig:residuals}. Our proposition involves the prediction of the prototype update, denoted as $\mathbf{z}^* -\tilde{\mathbf{z}}$, instead of directly predicting the overfitted prototype $\mathbf{z}^*$. This distinctive approach also allows us to initialize ProtoDiff with the capability to perform the identity function, achieved by assigning zero weights to the decoder. Notably, we have discovered that the amalgamation of a global residual connection and the identity initialization substantially expedites the training process. By harnessing this mechanism, we have successfully enhanced the performance of ProtoDiff in the context of few-shot learning tasks.
+
+
+
+\begin{figure}[h]
+  \centering 
+\includegraphics[width=0.7\linewidth] {graph/residual.pdf}\\
+    \caption{\textbf{Residual prototype learning.}}
+    \label{fig:residuals}
+\end{figure}
+
+
+\section{Datasets}
+
+\textbf{Within-domain few-shot.}
+For this setting we focus on 5-way 1-shot/5-shot tasks, which aligns with previous research \cite{snell2017prototypical}. The within-domain few-shot experiments are performed on three datasets: \textit{mini}Imagenet \cite{vinyals2016matching} \textit{tiered}Imagenet \cite{ren2018meta}, and  ImageNet-800~\cite{chen2021meta}.  \textit{mini}Imagenet consists of 100 randomly selected classes from ILSVRC-2012~\cite{russakovsky2015imagenet}, while \textit{tiered}Imagenet is composed of 608 classes that are grouped into 34 high-level categories. We measure the accuracy of 600 tasks randomly sampled from the meta-test set to evaluate the performance. Following~\cite{chen2021meta}, we also evaluate our model on ImageNet-800, a dataset obtained by randomly dividing the 1,000 classes of ILSVRC-2012 into 800 base classes and 200 novel classes. The base classes consist of images from the original training set, while the novel classes comprise images from the original validation set. 
+
+\textbf{Cross-domain few-shot.}
+In the 5-way 5-shot cross-domain few-shot classification experiments, the training domain is \textit{mini}Imagenet \cite{vinyals2016matching}, and the testing is conducted on four different domains. These domains are CropDisease \cite{mohanty2016}, which contains plant disease images; EuroSAT \cite{helber2019eurosat}, a collection of satellite images; ISIC2018 \cite{tschandl2018ham10000}, consisting of dermoscopic images of skin lesions, and ChestX \cite{wang2017chestx}, a dataset of X-ray images.
+
+\textbf{Few-task few-shot.}
+Few-task few-shot learning~\cite{yao2021meta} 
+challenges the common meta-training assumption of having many tasks available. We conductt experiments on four few-task meta-learning challenges, namely \textit{mini}Imagenet-S~\cite{vinyals2016matching}, ISIC~\cite{milton2019automated}, DermNet-S~\cite{Dermnetdataset}, and Tabular Murris~\cite{cao2020concept}. To reduce the number of tasks and make it comparable to previous works, we followed~\cite{yao2021meta} by limiting the number of meta-training classes to 12 for miniImagenet-S, with 20 meta-test classes. ISIC~\cite{milton2019automated} involves classifying dermoscopic images across nine diagnostic categories, with 10,015 images available for training in eight different categories, of which we selected four as meta-training classes. DermNet~\cite{Dermnetdataset}, which contains over 23,000 images of skin diseases, was utilized to construct Dermnet-S by selecting 30 diseases as meta-training classes, following \cite{yao2021meta}. Finally, Tabular Murris~\cite{cao2020concept}, which deals with cell type classification across organs and includes nearly 100,000 cells from 20 organs and tissues, was utilized to select 57 base classes as meta-training classes, again following the same approach as \cite{yao2021meta}.
+
+\section{Implementation details}
+In our within-domain experiments, we utilize a Conv-4 and ResNet-12 backbone for \textit{mini}Imagenet and \textit{tiered}Imagenet. A ResNet-50 is used for ImageNet-800. We follow the approach described in \cite{chen2021meta} to achieve better performance and initially train a feature extractor on all the meta-training data without episodic training. We use the SGD optimizer with a momentum of 0.9, a learning rate starting from 0.1, and a decay factor of 0.1. For \textit{mini}Imagenet, we train for 100 epochs with a batch size of 128, where the learning rate decays at epoch 90. For tieredImageNet, we train for 120 epochs with a batch size of 512, where the learning rate decays at epochs 40 and 80. Lastly, for ImageNet-800, we train for 90 epochs with a batch size of 256, where the learning rate decays at epochs 30 and 60. The weight decay is 0.0005 for ResNet-12 and 0.0001 for  ResNet-50. Standard data augmentation techniques, including random resized crop and horizontal flip, are applied. For episodic training, we use the SGD optimizer with a momentum of 0.9, a fixed learning rate of 0.001, and a batch size of 4, meaning each training batch consists of 4 few-shot tasks to calculate the average loss.
+%
+For our cross-domain experiments, we use a ResNet-10 backbone to extract image features, which is a common choice for cross-domain few-shot classification \cite{guo2020broader, ye20}. The training configuration for this experiment is the same as the within-domain \textit{mini}Imagenet training. 
+%
+For few-task few-shot learning, we follow \cite{yao2021meta} using a network containing four convolutional blocks and a classifier layer. Each block comprises a 32-filter 3 {$\times$} 3 convolution, a batch normalization layer, a ReLU nonlinearity, and a 2 {$\times$} 2 max pooling layer.
+All experiments are performed on a single A100 GPU, each taking approximately 20 hours.
+We will release all our code.
+
+
+\section{Visualization of diffusion process}
+The ProtoDiff method utilizes a task-guided diffusion model to generate prototypes that provide efficient class representations, as discussed in the previous section. To better understand the effectiveness of our proposed approach, we provide a visualization by Grad-Cam~\cite{selvaraju2017grad} in Figure of the diffusion process, demonstrating how ProtoDiff gradually aggregates towards the desired class prototype during meta-training.  The vanilla prototype is shown in the first row on the left, which does not exclusively focus on the \textit{guitar}. In contrast, the overfitted prototype in the second row on the left provides the highest probability for the \textit{guitar}. ProtoDiff, with the diffusion process, randomly selects certain areas to add noise and perform diffusion, resulting in a prototype that gradually moves towards the \textit{guitar} with the highest probability at t=0. Moreover, ProtoDiff with residual learning produces a more precise prototype. The comparison between these different prototypes demonstrates the effectiveness of the ProtoDiff diffusion process in generating a more accurate and informative prototype for few-shot learning tasks.
+
+
+\begin{figure*} [t!]
+\centering
+\includegraphics[width=0.99\linewidth]{graph/diff_process.pdf
+}
+\caption{\textbf{Visualization of the diffusion process.} The first row on the right shows the vanilla prototype, which does not exclusively focus on the \textit{guitar}. In contrast, the overfitted prototype in the second row on the right provides the highest probability for the \textit{guitar}. ProtoDiff randomly selects certain areas to predict during the diffusion process, with the lowest probability at the beginning time step. As time progresses,  the prototype gradually aggregates towards the \textit{guitar}, with the highest probability at t=0. In comparison, ProtoDiff with residual learning produces a more precise prototype.}
+ \label{fig:visualize}
+\end{figure*}
+
+
+\section{More results}
+
+\textbf{Effect of transformer structure}
+Our ProtoDiff model is constructed using a design inspired by GPT-2. This includes a 12-layer transformer, a 512-dimensional linear transformation, an attention mechanism with 16 heads, and an MLP with a hidden dimensionality 512. These configurations are in line with GPT-2's default parameters. The configuration files can be accessed in our code repository for more detailed parameter setup. Our experiments in the table~\ref{tab:transformer} and ~\ref{tab:head_num} highlight that our model achieves optimal performance with these settings. 
+
+\begin{table}[ht]
+\caption{Effect of transformer structures}
+ \begin{subtable}{.5\linewidth}
+\caption{Results on the different transformer structures.}
+\centering
+\begin{tabular}{lcc}
+\toprule 
+ &  \multicolumn{2}{c}{\textbf{\textit{mini}Imagenet}}  \\
+\textbf{Structures} & \textbf{1-shot} & \textbf{5-shot}   \\
+\midrule 
+3-layers  & 62.17\textcolor{mygray}{\scriptsize{$\pm$0.25}} & 78.93\textcolor{mygray}{\scriptsize{$\pm$0.17}} \\
+6-layers & 63.25\textcolor{mygray}{\scriptsize{$\pm$0.22}} & 79.63\textcolor{mygray}{\scriptsize{$\pm$0.15}}  \\
+9-layers & 65.21\textcolor{mygray}{\scriptsize{$\pm$0.21}} & 80.13\textcolor{mygray}{\scriptsize{$\pm$0.18}}  \\
+\rowcolor{softblue}
+12-layers & 66.63\textcolor{mygray}{\scriptsize{$\pm$0.21}} & 83.48\textcolor{mygray}{\scriptsize{$\pm$0.15}}  \\
+{15-layers}  & \textbf{64.15}\textcolor{mygray}{\scriptsize{$\pm$0.25}} & \textbf{80.93}\textcolor{mygray}{\scriptsize{$\pm$0.18}} 
+\\
+\bottomrule
+\end{tabular}
+\label{tab:transformer}
+\end{subtable}
+ \begin{subtable}{.5\linewidth}
+\caption{Results on the different heads numbers.}
+\centering
+\begin{tabular}{lcc}
+\toprule 
+ &  \multicolumn{2}{c}{\textbf{\textit{mini}Imagenet}}  \\
+\textbf{Nodes numbers} & \textbf{1-shot} & \textbf{5-shot}   \\
+\midrule 
+node  = 1   & 63.28\textcolor{mygray}{\scriptsize{$\pm$0.24}} & 79.97\textcolor{mygray}{\scriptsize{$\pm$0.15}} \\
+node  = 4 & 64.43\textcolor{mygray}{\scriptsize{$\pm$0.22}} & 80.13\textcolor{mygray}{\scriptsize{$\pm$0.14}}  \\
+node  = 8 & 65.91\textcolor{mygray}{\scriptsize{$\pm$0.23}} & 81.91\textcolor{mygray}{\scriptsize{$\pm$0.16}}  \\
+\rowcolor{softblue}
+node  = 16 & \textbf{66.63}\textcolor{mygray}{\scriptsize{$\pm$0.21}} & \textbf{83.48}\textcolor{mygray}{\scriptsize{$\pm$0.15}} 
+\\
+\bottomrule
+\end{tabular}
+\label{tab:head_num}
+\end{subtable}
+\end{table}
+
+
+\textbf{Effect of different time steps}
+We have selected the diffusion time step T for the diffusion process to be 100. We've adopted the DDIM sampling strategy to accelerate prediction with 
+. This effectively reduces the total sample requirement to just 10. We've conducted comparative experiments using varying diffusion times and intermediate intervals. As presented in the tables~\ref{tab:diff_time} and \ref{tab:diff_tau}, we observe that as the diffusion timesteps increase, both the performance and the inference time increase. Simultaneously, when is increased, the inference time decreases, making the process more efficient.
+
+
+\begin{table}[ht]
+\small
+\caption{Results with the different diffusion timesteps on \textbf{\textit{mini}}Imagenets.}
+\centering
+\begin{tabular}{lcccc}
+\toprule 
+dim($\tau$) = 10, \textbf{Timesteps} & \textbf{1-shot} & \textbf{5-shot}  & \textbf{1-shot inference time}  & \textbf{5-shot inference time}   \\
+\midrule 
+T =10  & 63.98\textcolor{mygray}{\scriptsize{$\pm$0.24}} & 80.12 \textcolor{mygray}{\scriptsize{$\pm$0.15}} &1 ms &  2 ms\\
+T = 50 & 65.93\textcolor{mygray}{\scriptsize{$\pm$0.21}} & 82.93\textcolor{mygray}{\scriptsize{$\pm$0.17}}  &5 ms &  7 ms\\
+T = 100 & 66.63\textcolor{mygray}{\scriptsize{$\pm$0.21}} & 83.48\textcolor{mygray}{\scriptsize{$\pm$0.15}}   &9 ms &  14 ms\\
+T = 500 & 66.65\textcolor{mygray}{\scriptsize{$\pm$0.23}} & 83.59\textcolor{mygray}{\scriptsize{$\pm$0.14}}  &53 ms &  93 ms\\
+T = 1000 & 66.74\textcolor{mygray}{\scriptsize{$\pm$0.20}} & 83.97\textcolor{mygray}{\scriptsize{$\pm$0.17}}   &102 ms &  192 ms\\
+\bottomrule
+\end{tabular}
+\label{tab:diff_time}
+\end{table}
+
+
+\begin{table}[ht]
+\caption{Results with the different diffusion timesteps on \textbf{\textit{mini}}Imagenets.}
+\centering
+\begin{tabular}{lccc}
+\toprule 
+dim($\tau$), T = 100 & \textbf{1-shot} & \textbf{5-shot}  & \textbf{Speed}   \\
+\midrule 
+$\tau$ =1  & 66.78\textcolor{mygray}{\scriptsize{$\pm$0.21}} & 83.62 \textcolor{mygray}{\scriptsize{$\pm$0.14}}  &  99 ms\\
+$\tau$ = 5 & 66.15\textcolor{mygray}{\scriptsize{$\pm$0.23}} & 83.44\textcolor{mygray}{\scriptsize{$\pm$0.16}}  &  45 ms\\
+$\tau$ = 10  & 66.63\textcolor{mygray}{\scriptsize{$\pm$0.21}} & 83.48 \textcolor{mygray}{\scriptsize{$\pm$0.15}}  &  9 ms\\
+$\tau$ = 20  & 66.12\textcolor{mygray}{\scriptsize{$\pm$0.21}} & 82.79 \textcolor{mygray}{\scriptsize{$\pm$0.13}}  &  5 ms\\
+$\tau$ = 100  & 63.15\textcolor{mygray}{\scriptsize{$\pm$0.23}} & 81.27 \textcolor{mygray}{\scriptsize{$\pm$0.14}}  &1 ms\\
+\bottomrule
+\end{tabular}
+\label{tab:diff_tau}
+\end{table}
+
+
+
+\textbf{Effect of more support images}
+To prove more support images during meta-training to obtain more accurate prototypes, we conducted an experimental comparison using different numbers of support sets during meta-training. The results in the table~\ref{tab:num_supports} illustrate that augmenting the number of support images for each class during the meta-training phase enhances performance across various shots. 
+
+
+
+\begin{table}[ht]
+\caption{Results of the different support sets for each class.}
+\centering
+\begin{tabular}{lcc}
+\toprule 
+ &  \multicolumn{2}{c}{\textbf{\textit{mini}Imagenet}}  \\
+\textbf{Structures} & \textbf{1-shot} & \textbf{5-shot}   \\
+\midrule 
+1  & 66.63\textcolor{mygray}{\scriptsize{$\pm$0.21}} & 73.12\textcolor{mygray}{\scriptsize{$\pm$0.15}} \\
+5 & 70.25\textcolor{mygray}{\scriptsize{$\pm$0.22}} & 83.48\textcolor{mygray}{\scriptsize{$\pm$0.13}}  \\
+8 & 73.91\textcolor{mygray}{\scriptsize{$\pm$0.21}} & 84.72\textcolor{mygray}{\scriptsize{$\pm$0.13}}  \\
+16 & 82.21\textcolor{mygray}{\scriptsize{$\pm$0.23}} & 84.98\textcolor{mygray}{\scriptsize{$\pm$0.17}}  \\
+\bottomrule
+\end{tabular}
+\label{tab:num_supports}
+\end{table}
+
+\textbf{Meta-training and meta-test wall-clocks times per task}
+We have compiled the wall-clock time for both the meta-training and meta-testing phases of ProtoDiff and compared these against the respective times for ProtoNet in the Tables~\ref{tab:meta_train_time} and ~\ref{tab:meta_test_time}. In meta-training and meta-testing wall-clock times per task, our ProtoDiff is slower by factors of ProtoNet $5 \times$ and 15 $\times$, respectively. As part of future work, we will investigate and address this limitation to further enhance the efficiency of our approach. 
+
+
+\begin{table}[ht]
+\caption{Meta-training and meta-test wall-clock times on each task.}
+ \begin{subtable}{.5\linewidth}
+\caption{Meta-training.}
+\centering
+\begin{tabular}{lcc}
+\toprule 
+ &  \multicolumn{2}{c}{\textbf{\textit{mini}Imagenet}}  \\
+\textbf{Meta-training} & \textbf{1-shot} & \textbf{5-shot}   \\
+\midrule 
+ProtoNet  & 0.6 ms & 1.2 ms \\
+ProtoDiff & 3 ms & 5.3 ms \\
+\bottomrule
+\end{tabular}
+\label{tab:meta_train_time}
+\end{subtable}
+ \begin{subtable}{.5\linewidth}
+\caption{Meta-test.}
+\centering
+\begin{tabular}{lcc}
+\toprule 
+ &  \multicolumn{2}{c}{\textbf{\textit{mini}Imagenet}}  \\
+\textbf{Meta-test} & \textbf{1-shot} & \textbf{5-shot}   \\
+\midrule 
+ProtoNet  & 0.6 ms & 1.2 ms \\
+ProtoDiff & 9 ms & 14 ms \\
+\bottomrule
+\end{tabular}
+\label{tab:meta_test_time}
+\end{subtable}
+\end{table}
+
+
+\textbf{Rationale for Conditioning} We utilize the “vanilla” prototype as a guiding condition, gradually enabling the diffusion model to generate class-specific prototypes. We also explored two alternative strategies for conditioning in the table~\ref{tab:conditions}: one without any conditions and another with learned class embeddings. When not conditioned, the performance tends to be arbitrary due to the absence of class-specific cues during diffusion. On the other hand, employing learned class embeddings as a condition yielded subpar results compared to the vanilla prototype, potentially due to outliers in each class's learned embeddings.
+
+
+\begin{table}[ht]
+\caption{Results of different conditions.}
+\centering
+\begin{tabular}{lcc}
+\toprule 
+ &  \multicolumn{2}{c}{\textbf{\textit{mini}Imagenet}}  \\
+\textbf{Conditions} & \textbf{1-shot} & \textbf{5-shot}   \\
+\midrule 
+w/o conditions  & 20.27\textcolor{mygray}{\scriptsize{$\pm$0.25}} & 22.32\textcolor{mygray}{\scriptsize{$\pm$0.15}} \\
+Learnt class embeddings & 66.17 \textcolor{mygray}{\scriptsize{$\pm$0.22}} & 81.17\textcolor{mygray}{\scriptsize{$\pm$0.16}}  \\
+Vanilla prototype & 66.63 \textcolor{mygray}{\scriptsize{$\pm$0.21}} & 83.48\textcolor{mygray}{\scriptsize{$\pm$0.15}}  \\
+\bottomrule
+\end{tabular}
+\label{tab:conditions}
+\end{table}
+
+\textbf{Results of our pre-trained model}
+We also give the results of our own pre-trained model before applying ProtoDiff to provide a clear comparison and demonstrate our method's improvements. We have prepared the results of our pre-trained model (trained with CE loss on the whole training set) and will present it in table~\ref{tab:pretrained}. 
+\begin{table*}[t]
+% \small
+% \scriptsize
+\caption{Results of our pre-trained model on different datasets}
+\centering
+\scalebox{0.72}{
+\begin{tabular}{lccccccc}
+\toprule 
+ & & \multicolumn{2}{c}{\textbf{\textit{mini}Imagenet}} & \multicolumn{2}{c}{\textbf{\textit{tiered}Imagenet}} & \multicolumn{2}{c}{\textbf{Imagenet-800}}  \\
+ & & \textbf{1-shot} & \textbf{5-shot} & \textbf{1-shot} & \textbf{5-shot}  & \textbf{1-shot} & \textbf{5-shot}  \\
+\midrule 
+
+Pretrained from Chen \etal~\cite{chen2021meta} & Classifier-Baseline & 58.91\textcolor{mygray}{\scriptsize{$\pm$0.23}} & 77.76\textcolor{mygray}{\scriptsize{$\pm$0.17}} & 68.07\textcolor{mygray}{\scriptsize{$\pm$0.29}} & 83.74\textcolor{mygray}{\scriptsize{$\pm$0.18}}  & 86.07\textcolor{mygray}{\scriptsize{$\pm$0.21}} & 96.14\textcolor{mygray}{\scriptsize{$\pm$0.08}} \\
+Pretrained from Chen \etal~\cite{chen2021meta} & \textbf{ProtoDiff}  & \textbf{66.63\textcolor{mygray}{\scriptsize{$\pm$0.21}}} & \textbf{83.48\textcolor{mygray}{\scriptsize{$\pm$0.15}}} & \textbf{72.95\textcolor{mygray}{\scriptsize{$\pm$0.24}}} &  \textbf{85.15\textcolor{mygray}{\scriptsize{$\pm$0.18}}} & \textbf{92.13\textcolor{mygray}{\scriptsize{$\pm$0.20}}} &  \textbf{98.21\textcolor{mygray}{\scriptsize{$\pm$0.08}}}
+\\
+
+Pretrained from ours & Classifier-Baseline & 58.75\textcolor{mygray}{\scriptsize{$\pm$0.21}} & 77.86\textcolor{mygray}{\scriptsize{$\pm$0.17}} & 68.15\textcolor{mygray}{\scriptsize{$\pm$0.28}} & 83.95\textcolor{mygray}{\scriptsize{$\pm$0.17}}  & 85.97\textcolor{mygray}{\scriptsize{$\pm$0.22}} & 96.03\textcolor{mygray}{\scriptsize{$\pm$0.09}} \\
+Pretrained from ours & \textbf{ProtoDiff}  & \textbf{66.49\textcolor{mygray}{\scriptsize{$\pm$0.25}}} & \textbf{83.51\textcolor{mygray}{\scriptsize{$\pm$0.14}}} & \textbf{73.01\textcolor{mygray}{\scriptsize{$\pm$0.24}}} &  \textbf{85.72\textcolor{mygray}{\scriptsize{$\pm$0.17}}} & \textbf{92.05\textcolor{mygray}{\scriptsize{$\pm$0.21}}} &  \textbf{98.11\textcolor{mygray}{\scriptsize{$\pm$0.18}}}
+\\
+\bottomrule
+\end{tabular}}
+\label{tab:pretrained}
+\end{table*}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

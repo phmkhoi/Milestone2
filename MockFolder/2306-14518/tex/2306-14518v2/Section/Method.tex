@@ -1,0 +1,48 @@
+% In this section, we provide a clear definition of our goal: overcoming the prediction bias of the deep neural network, and we define our problem formulation in \ref{sec:method_problem}. Afterward, in Section \ref{sec:method_main}, we introduce our main approach, multi-exit (ME) training framework and the early exit policy, which allow us to improve the fairness of state-of-the-arts.
+\begin{figure*}[ht]
+% \setlength{\belowcaptionskip}{-20pt} 
+\begin{center}
+
+% width=0.9\linewidth
+\includegraphics[width=0.9\linewidth]{Fig/Method_ready.png}
+% \includegraphics[width=0.9\columnwidth]{Fig/Method.png}
+\caption{Illustration of the proposed multi-exit training framework. $l_t$ and $l_s$ are the loss function related to target and sensitive attributes, respectively. The classifiers $CLF_{1}$ through $CLF_{n}$ refer to internal classifiers, while $CLF_{f}$ refers to the original final classifier.
+}
+\label{Fig.Method}
+\end{center}
+\end{figure*}
+
+\subsection{Problem Formulation}
+\label{sec:method_problem}
+
+% \left{ \frac{a}{b} \right}
+% Y {\in} \left{1, 2, ..., N \right}
+In the classification task, define input features $ x \in X = \mathbb{R}^{d}$,
+target class, $ y \in Y = \{1,2, ..., N \} $, and sensitive attributes $a \in A = \{1,2, ..., M \} $. In this paper, we focus on the sensitive attributes in binary case, that is $a \in A = \{0, 1\} $. The goal is to learn a classifier $f : X \rightarrow Y$ that predicts the target class $y$ to achieve high accuracy while being unbiased to the sensitive attributes $a$. 
+
+% Several criteria are proposed to evaluate the bias against sensitive attributes $A$, and we will discuss the fairness criteria in our experiments in Section \ref{sec:evaluation_metrics}.
+
+\subsection{Multi-Exit (ME) Training Framework}
+\label{sec:method_main}
+
+% Fundamental to our approach is that although deep neural networks often achieve high accuracy in the deeper layer, their predictions can be unfair to different sensitive groups such as race and gender. To address this issue, we leverage the early exit policy, which allows us to select a result at a shallow layer with high confidence and maintain accuracy while solving the fairness problem. 
+
+% We depict our multi-exit framework in a general form in Fig. \ref{Fig.Method}. In this paper, we proposed a new loss function as $loss = (l_t+\lambda l_s)$, where $l_t$ denotes the conventional classification loss, and $l_s$ is the fairness regularization loss, e.g. Maximum Mean Discrepancy (MMD) \cite{jung2021fair} and Hilbert-Schmidt Independence Criterion (HSIC) \cite{quadrianto2019discovering}. In addition, the loss function is duplicated for each internal classifier ($CLF$). The final loss is obtained through a weighted summation of each $CLF$'s loss, $loss=\alpha_1\cdot loss^{CLF_{1}}+\alpha_2\cdot loss^{CLF_{2}}+\alpha_3\cdot loss^{CLF_{3}}+\alpha_f\cdot loss^{CLF_{f}}$, where, $\lambda$ is a hyperparameter regulating the balance between accuracy and fairness. Similar to \cite{lee2015deeply,kaya2019shallow}, $\alpha_n$ is determined by the depth of each $CLF$. Our approach ensures that the model optimizes for accuracy and fairness, leveraging shallow and deep layer features in the loss function. Although without any fairness regularization ($\lambda=0$), the experiments in Section \ref{sec:result} also show a noteworthy fairness improvement.
+
+% Our framework is also extensible to other pruning-based fairness methods such as FairPrune that deviate from our original training strategy. We can first optimize the multi-exit model using the original multi-exit loss function and then prune it using the corresponding pruning strategy. The effectiveness of our approach is demonstrated in Section \ref{sec:result}.
+
+% During inference, we maintain fairness and accuracy by allowing high-confidence instances from an internal classifier to exit early based on a predefined confidence threshold $\theta$. We select the earliest internal classifier with confidence above $\theta$ for an optimal prediction in terms of accuracy and fairness. 
+
+Our approach is based on the observation that deep neural networks can exhibit bias against certain sensitive groups, despite achieving high accuracy in deeper layers. To address this issue, we propose a framework leveraging an early exit policy, which allows us to select a result at a shallower layer with high confidence while maintaining accuracy and mitigating fairness problems.
+
+% $loss=\alpha_1\cdot loss^{CLF_{1}}+\alpha_2\cdot loss^{CLF_{2}}+\alpha_3\cdot loss^{CLF_{3}}+\alpha_f\cdot loss^{CLF_{f}}$
+
+We illustrate our multi-exit framework in Figure \ref{Fig.Method}. Our proposed loss function consists of the cross-entropy loss, $l_t$, and a fairness regularization loss, $l_s$, such as the Maximum Mean Discrepancy (MMD) \cite{jung2021fair} or the Hilbert-Schmidt Independence Criterion (HSIC) \cite{quadrianto2019discovering}, which are replicated for each internal classifier ($CLF_n$) and original final classifier ($CLF_f$). The final loss is obtained through a weighted sum of each $CLF$'s loss, i.e., $loss = (\sum_{k=1}^{n} \alpha _{k}(l_{t}^{CLF_{k}} + \lambda l_{s}^{CLF_{k}})) + \alpha _{f}(l_{t}^{CLF_{f}} + \lambda l_{s}^{CLF_{f}})$, where $\alpha$ is determined by the depth of each $CLF$, similar to \cite{kaya2019shallow,lee2015deeply}. Moreover, the hyperparameter $\lambda$ controls the trade-off between accuracy and fairness. Our approach ensures that the model optimizes for accuracy and fairness, leveraging both shallow and deep layer features in the loss function. Even without any fairness regularization ($\lambda=0$), our experiments demonstrate a notable improvement in fairness (see Section \ref{ME_different_baseline}). 
+
+Our framework can also be extended to other pruning-based fairness methods, such as FairPrune \cite{wu2022fairprune}. We first optimize the multi-exit model using the original multi-exit loss function and then prune it using the corresponding pruning strategy. Our approach has been shown to be effective (see Section \ref{Compare_SOTA}).
+
+During inference, we calculate the softmax score of each internal classifier’s prediction, taking the maximum probability value as the confidence score. We use a confidence threshold $\theta$ to maintain fairness and accuracy. High-confidence instances exit early, and we select the earliest internal classifier with confidence above $\theta$ for an optimal prediction of accuracy and fairness.
+
+% During inference, we use a confidence threshold $\theta$ to maintain fairness and accuracy. High-confidence instances from an internal classifier exit early. We calculate the softmax score of each internal classifier’s prediction, taking the maximum probability value as the confidence score. We select the earliest internal classifier with confidence above $\theta$ for an optimal prediction in terms of accuracy and fairness.
+
+% During inference, we maintain fairness and accuracy by allowing high-confidence instances from an internal classifier to exit early based on a predefined confidence threshold $\theta$. We select the earliest internal classifier with confidence above $\theta$ for an optimal prediction in terms of accuracy and fairness.

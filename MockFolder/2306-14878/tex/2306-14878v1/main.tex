@@ -1,0 +1,182 @@
+\pdfoutput=1
+\documentclass{article}
+
+
+% if you need to pass options to natbib, use, e.g.:
+%     \PassOptionsToPackage{numbers, compress}{natbib}
+% before loading neurips_2023
+
+
+% ready for submission
+\usepackage[preprint]{neurips_2023}
+\setcitestyle{square,numbers}
+\setcitestyle{citesep={,}}
+
+% to compile a preprint version, e.g., for submission to arXiv, add add the
+% [preprint] option:
+%     \usepackage[preprint]{neurips_2023}
+
+
+% to compile a camera-ready version, add the [final] option, e.g.:
+%     \usepackage[final]{neurips_2023}
+
+
+% to avoid loading the natbib package, add option nonatbib:
+%    \usepackage[nonatbib]{neurips_2023}
+
+\usepackage{graphicx}
+\usepackage[utf8]{inputenc} % allow utf-8 input
+\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{url}            % simple URL typesetting
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{amsfonts}       % blackboard math symbols
+\usepackage{nicefrac}       % compact symbols for 1/2, etc.
+\usepackage{microtype}      % microtypography
+\usepackage{xcolor}         % colors
+\usepackage{subfigure}
+%\usepackage{subcaption}
+\usepackage{caption}
+\usepackage{zref}
+\usepackage{amssymb}
+\usepackage{enumerate}
+\usepackage{natbib}
+\usepackage{pifont}
+\newcommand{\cmark}{\ding{51}}%
+\newcommand{\xmark}{\ding{55}}%
+%\usepackage{subfigure}
+\usepackage{tabulary}
+\usepackage[colorlinks=true,citecolor=brown,urlcolor=gray]{hyperref}
+\usepackage{wrapfig}
+\usepackage{bbm, comment}
+\usepackage{color}
+\usepackage{float}
+\usepackage{thm-restate}
+\usepackage{bigstrut, tabularx, multirow, makecell, diagbox}
+\usepackage{algorithm}
+\usepackage{algorithmicx} 
+\usepackage{algpseudocode} % 
+\let\oldReturn\Return
+\renewcommand{\Return}{\State\oldReturn}
+\usepackage[utf8]{inputenc}
+\newenvironment{proofs}{%
+  \renewcommand{\proofname}{Proof sketch}\proof}{\endproof}
+
+%%%%%%%%%% Danger zone %%%%%%%%%%%%
+\def\setstretch#1{\renewcommand{\baselinestretch}{#1}}
+\setstretch{0.965}
+%%%%%%%%%% Danger zone %%%%%%%%%%%%
+
+  
+\newcommand{\yx}[1]{{\color{black!50!cyan} [Yilun: #1]}}
+\newcommand{\xc}[1]{{\color{black!10!blue} [Xiang: #1]}}
+\newcommand{\md}[1]{{\color{black!10!red} [Mingyang: #1]}}
+\newcommand{\yt}[1]{{\color{black!50!orange} [Yonglong: #1]}}
+
+\newcommand{\indep}{\mathrel{\text{\scalebox{1.07}{$\perp\mkern-10mu\perp$}}}}
+\newcommand{\tmin}{t_{\textrm{min}}}
+\newcommand{\tmax}{t_{\textrm{max}}}
+
+\input{cmd.tex}
+\usepackage{varwidth}
+\newsavebox\tmpbox
+
+
+
+\title{Restart Sampling for Improving Generative Processes }
+
+
+% The \author macro works with any number of authors. There are two commands
+% used to separate the names and addresses of multiple authors: \And and \AND.
+%
+% Using \And between authors leaves it to LaTeX to determine where to break the
+% lines. Using \AND forces a line break at that point. So, if LaTeX puts 3 of 4
+% authors names on the first line, and the last on the second line, try using
+% \AND instead of \And before the third author name.
+
+
+
+\author{Yilun Xu\thanks{Equal Contribution.}\\
+MIT\\
+\texttt{ylxu@mit.edu}\\
+\And
+Mingyang Deng\footnotemark[1]\\
+MIT\\
+\texttt{dengm@mit.edu}
+\And
+Xiang Cheng\footnotemark[1]\\
+MIT\\
+\texttt{chengx@mit.edu}
+  \And
+  Yonglong Tian \\
+  Google Research \\
+  \texttt{yonglong@google.com} \\
+  \AND
+  Ziming Liu \\
+  MIT \\
+  \texttt{zmliu@mit.edu} \\
+  \And
+  Tommi Jaakkola \\
+  MIT \\
+  \texttt{tommi@csail.mit.edu}
+  % \And
+  % Coauthor \\
+  % Affiliation \\
+  % Address \\
+  % \texttt{email} \\
+}
+
+
+\begin{document}
+
+
+\maketitle
+
+
+\begin{abstract}
+\input{abstract}
+\end{abstract}
+
+\section{Introduction}
+\input{intro}
+
+\vspace{-3pt}
+\section{Background on Generative Models with Differential Equations}
+\vspace{-3pt}
+\input{background}
+
+\section{Explaining SDE and ODE performance regimes}
+\label{sec:dilemma}
+\input{sde_ode}
+
+\section{Harnessing stochasticity with Restart}
+
+\input{method}
+
+%\input{theory}
+
+\section{Experiments}
+\label{sec:exp}
+
+\input{experiments}
+
+\vspace{-2pt}
+\section{Conclusion and future direction}
+\label{sec:conclusion}
+\vspace{-1pt}
+
+In this paper, we introduce the Restart sampling for generative processes involving differential equations, such as diffusion models and PFGMs. By interweaving a forward process that adds a significant amount of noise with a corresponding backward ODE, Restart harnesses and even enhances the individual advantages of both ODE and SDE. Theoretically, Restart provides greater contraction effects of stochasticity while maintaining ODE-level discretization error. Empirically, Restart achieves a superior balance between quality and time, and improves the text-image alignment/visual quality and diversity trade-off in the text-to-image Stable Diffusion models.
+
+A current limitation of the Restart algorithm is the absence of a principled way for hyperparameters selection, including the number of iterations $K$ and the time interval $[\tmin, \tmax]$. At present, we adjust these parameters based on the heuristic that weaker/smaller models, or more challenging tasks, necessitate a stronger Restart strength. In the future direction, we anticipate developing a more principled approach to automating the selection of optimal hyperparameters for Restart based on the error analysis of models, in order to fully unleash the potential of the Restart framework. 
+
+\section*{Acknowledgements}
+
+YX and TJ acknowledge support from MIT-DSTA Singapore collaboration, from NSF Expeditions grant (award 1918839) "Understanding the World Through Code", and from MIT-IBM Grand Challenge project. Xiang Cheng acknowledges support from NSF CCF-2112665 (TILOS AI Research Institute).
+
+\clearpage
+\bibliographystyle{plain}
+\bibliography{ref}
+\newpage
+\appendix
+\input{appendix}
+
+\end{document}

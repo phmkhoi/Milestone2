@@ -1,0 +1,1034 @@
+%\documentclass[twoside]{article}
+
+%\usepackage{aistats2023}
+
+
+
+% If your paper is accepted, change the options for the package
+% aistats2023 as follows:
+%
+%\usepackage[accepted]{aistats2023}
+%
+% This option will print headings for the title of your paper and
+% headings for the authors names, plus a copyright note at the end of
+% the first column of the first page.
+
+% If you set papersize explicitly, activate the following three lines:
+%\special{papersize = 8.5in, 11in}
+%\setlength{\pdfpageheight}{11in}
+%\setlength{\pdfpagewidth}{8.5in}
+
+% If you use natbib package, activate the following three lines:
+%\usepackage[round]{natbib}
+%\renewcommand{\bibname}{References}
+%\renewcommand{\bibsection}{\subsubsection*{\bibname}}
+
+% If you use BibTeX in apalike style, activate the following line:
+%\bibliographystyle{apalike}
+
+\begin{document}
+
+% If your paper is accepted and the title of your paper is very long,
+% the style will print as headings an error message. Use the following
+% command to supply a shorter title of your paper so that it can be
+% used as headings.
+%
+%\runningtitle{I use this title instead because the last one was very long}
+
+% If your paper is accepted and the number of authors is large, the
+% style will print as headings an error message. Use the following
+% command to supply a shorter version of the authors names so that
+% they can be used as headings (for example, use only the surnames)
+%
+%\runningauthor{Surname 1, Surname 2, Surname 3, ...., Surname n}
+
+% Supplementary material: To improve readability, you must use a single-column format for the supplementary material.
+\onecolumn
+\aistatstitle{PWSHAP: a path-wise explanation model for targeted variables: \\
+Supplementary Materials}
+
+
+
+\section{CAUSAL INFERENCE BACKGROUND}
+\label{sec:ci}
+
+\paragraph{Confounder}{A confounder is a variable that is associated with both the exposure and the outcome, causing a spurious correlation. For instance, summer is associated with eating ice cream and getting sunburns, but there is no causal relationship between the two.}
+\paragraph{Mediator}{A mediator is a variable that is both an effect of the exposure and a cause of the outcome. In presence of a mediator, the total effect can be broken into two parts: the direct and indirect effect.}
+\paragraph{Moderator}{A mediator is a pre-exposure variable for which the causal effect is heterogeneous in subgroups.}
+\paragraph{Propensity score model}{A propensity score model is a function that predicts exposure from the observed covariates. We note it $\pi^*(c) = P(T=1|C=c)$ and note $\pi$ an estimate of $\pi^*$.}
+\paragraph{Potential outcome}{As defined by the Rubin causal model \citeAppendix{rubin2005causal}, a potential outcome $Y(t)$ is the value that $Y$ would take if $T$ were set by (hypothetical) intervention to the value $t$.}
+\paragraph{Identification assumptions}
+\begin{itemize}
+    \item \textbf{No interference} For a given individual $i$, this assumption implies that $Y_i(t)$ represents the value that $Y$ would have taken for individual i if $T$ had been set to $t$ for individual $i$, i.e\ the potential value of $Y_i$ if $T_i$ had been set to $t$.
+    \item \textbf{Consistency} For a given individual $i$, $T_{i}=t \Rightarrow Y_{i}=Y_{i}(t)$. This means that for individuals who actually received exposure level $t$, their observed outcome is the same as what it would have been had they received exposure level $t$ via an hypothetical intervention. 
+    \item \textbf{Conditional exchangeability} For a given individual $i$, we assume that conditional on $C$, the actual exposure level $T$ is independent of each of the potential outcomes: \\
+    $Y(t) \perp T \mid \mathbf{C}, \forall t$
+\end{itemize}
+\textbf{Average Treatment Effect (ATE)}{The Average Treatment Effect for a binary treatment is the average difference in potential outcomes: $\mathbb{E}[Y(1)-Y(0)]$}
+\textbf{Conditional Average Treatment Effect (CATE)}{The Conditional Average Treatment Effect for a binary treatment, conditioned on $C$ is the average difference in potential outcomes: $\mathbb{E}[Y(1)-Y(0)|C=c]$. If $C$ is a sufficient adjustment set, i.e. conditional exchangeability wrt $C$ holds then the CATE can be identified as $\mathbb{E}[Y|T=1,C=c]-\mathbb{E}[Y|T=0,C=c]$.}
+\paragraph{Controlled Direct Effect}{Let $Y(t,m)$ be the potential outcome under exposure level $T = t$ and mediator level $M = m$. The controlled direct effect of $T$ on outcome $Y$ comparing $T=t$ with $T=t^{*}$ and setting $M$ to $m$ measures the effect of $T$ on $Y$ not mediated through $M$ i.e.\ the effect of $T$ on $Y$ after intervening to fix the mediator to some value $m$. The controlled direct effect for individual $i$ is then $\operatorname{CDE}_i(t, t^*, m)=Y_i(t,m)-Y_i(t^{*},m)$ \citeAppendix{VanderWeele2009ConceptualIC}}
+\paragraph{Natural Direct Effect}{The natural direct effect is defined as the difference between the value of the counterfactual outcome if the individual were exposed to $T = t$ and the value of the counterfactual outcome if the same individual were instead exposed to $T = t^*$, with the mediator $M$ taking whatever value it would have taken at the reference value of the exposure $T = t^*$: $Y(t,M(t^*)) – Y(t^*,M(t^*))$ \citeAppendix{VanderWeele2009ConceptualIC}}
+\paragraph{Natural Indirect Effect}{The natural indirect effect is the difference, having set the exposure to a fixed level  $T = t$, between the value of the counterfactual outcome if the mediator $M$ took whatever value it would have taken at a level of the exposure $T = t$ and the value of the counterfactual outcome if the mediator assumed whatever value it would have taken at a reference level of the exposure $T = t^*$: $Y(t, M(t)) – Y(t, M(t^*))$ \citeAppendix{VanderWeele2009ConceptualIC}}
+
+
+\section{NOTATIONS} \label{sec:notations}
+
+\begin{itemize}
+    \item Coalition-wise Shapley *values*  $\phi^{f}_{ST}{c,t}$ are the individual terms for a coalition in the weighted sum of the original definition of Shapley value, hence the term, *value*. It is common to use $\phi$ -even if specific to a coalition S- in reference to Shapley values. 
+    \item Coalition-wise Shapley *effects* $\psi_{T \rightarrow Y | C_{S}}$ are the causal *effects* identified in  coalition-wise Shapley *values* after dividing by the outlying propensity weights. We use $\psi$ for effects, and describe the effect of $T$ on $Y$ along the multiple paths through the covariates $C_S$. We symbolise this by using the subscript $T \rightarrow Y | C_{S}$.
+    \item Path-wise Shapley *effects* $\psi_{C_i}$ are similar to coalition-wise *effects* since they are also obtained after dividing by the weights. However, the conditioning is only on the features on a single causal pathway. We thus still use $\psi$ as it is an effect, but show that the conditioning only bears upon a path using the subscript $C_i$.
+\end{itemize}
+
+\section{FURTHER RELATED WORK} \label{sec:further}
+
+\subsection{Shapley values axioms} \label{subsec:shap_axioms}
+
+Shapley values have been shown to satisfy the four following axioms.
+\paragraph{Dummy:}{A feature $j$ receives a zero attribution if it has no possible contribution, i.e. $v(S \cup \{j\})=v(S)$ for all $S \subseteq\{1, \ldots, m\}$.}
+\paragraph{Symmetry:}{Two features that always have the same contribution receive equal attribution, i.e. $v(S \cup i)=v(S \cup \{j\})$ for all $S$ not containing $i$ or $j$ then $\phi_{i}(v)=\phi_{j}(v)$.}
+\paragraph{Efficiency:} {The attributions of all features sum to the total value of all features. Formally, $\sum_{j} \phi_{j}(v)=v(\{1, . ., m\})$.}
+\paragraph{Linearity:} {For any value function $v$ that is a linear combination of two other value functions $u$ and $w$ (i.e. $v(S)=\alpha u(S)+\beta w(S)$ ), the Shapley values of $v$ are equal to the corresponding linear combination of the Shapley values of $u$ and $w$ (i.e. $\left.\phi_{i}(v)=\alpha \phi_{i}(u)+\beta \phi_{i}(w)\right)$.}
+
+
+\subsection{Causal Shapley values} \label{subsec:causal_shap}
+
+Heskes et. al introduced the Causal Shapley values in 2020 \citeAppendix{heskes2020causal}. For a coalition $S$, the contribution of feature $j$ $\phi_{j}(S)$  is decomposed into a direct and an indirect effect:
+$$
+\begin{aligned}
+\phi_{j}(S)
+&= \mathbb{E}\left[f\left(X_{\bar{S}}, x_{S \cup \{j\}}\right) \mid d o\left(X_{S \cup \{j\}}=x_{S \cup \{j\}}\right)\right]-\mathbb{E}\left[f\left(X_{\bar{S} \cup \{j\}}, x_{S}\right) \mid d o\left(X_{S}=x_{S}\right)\right]\\
+&= \mathbb{E}\left[f\left(X_{\bar{S}}, x_{S \cup \{j\}}\right) \mid d o\left(X_{S}=x_{S}\right)\right]-\mathbb{E}\left[f\left(X_{\bar{S} \cup \{j\}}, x_{S}\right) \mid d o\left(X_{S}=x_{S}\right)\right] \\
+&+ \mathbb{E}\left[f\left(X_{\bar{S}}, x_{S \cup \{j\}}\right) \mid d o\left(X_{S \cup \{j\}}=x_{S \cup \{j\}}\right)\right]-\mathbb{E}\left[f\left(X_{\bar{S}}, x_{S \cup \{j\}}\right) \mid d o\left(X_{S}=x_{S}\right)\right] 
+\end{aligned}
+$$
+where, in the last equality, the first line is the direct effect and the second line the indirect effect. The direct effect measures the expected change in prediction when the stochastic feature $X_{j}$ is replaced by its feature value $x_{j}$, without changing the distribution of the other 'out-of-coalition' features. The indirect effect measures the difference in expectation when the distribution of the other 'out-of-coalition' features changes due to the additional intervention $d o\left(X_{j}=x_{j}\right)$. The direct and indirect parts of Shapley values are then be computed by taking a, possibly weighted, average over all coalitions. 
+
+We note that in the problem setup of Section \ref{subsec:problem_Setup}
+, if all covariates are pre-treatment then under mild assumptions the indirect effect of the treatment will be zero, as outlined in the following Proposition.
+
+
+\begin{property}[Indirect part of Causal Shapley] \label{prop:indirect_part} Let $S$ be a coalition containing pre-treatment covariates only. We assume that an unobserved (latent) variable generates all pre-treatment covariates. Then the indirect part of the Causal Shapley values of an exposure is null, i.e.~we have
+\begin{align}
+    \mathbb{E}\left[f\left({C}_{\bar{S}}, c_{S}, t\right) \mid \Do({C}_{S}=c_S, T=t)\right]-\mathbb{E}\left[f\left(C_{\bar{S}}, c_{S}, t\right) \mid \Do({C}_{S}=c_{S})\right]  = 0.
+\end{align}
+\end{property}
+\vspace*{-0.2cm}
+The proof can be found in Supplement  \ref{proof:indirect_part}.
+\subsection{Edge-based/flow-based approaches to Shapley values} 
+\label{subsec:further_graph_based}
+Given that the proposed approach is model-agnostic, in this paragraph we will not review model-specific approaches that are considered to be "bespoke in nature and do not solve the problem of explainability in general" \citeAppendix{frye2019asymmetric}. Similarly, we do not review methods that violate \textit{implementation invariance}\footnote{Implementation invariance imposes that two black-box models that compute the same mathematical function have identical attributions for all features, regardless of how being implemented differently.}. Pan et. al \citeAppendix{pan2021explaining} leverage Shapley values computation to define a new quantity that distributes credit for model disparity amongst the paths in a causal graph. However, the resulting quantity isn't a Shapley value itself. Shapley Flow (SF) assigns credits to "sink-to-node" paths. To do so, SF only considers orderings that are consistent with a depth first search. Furthermore, SF modifies the original definition of Shapley values by only explaining within successive cuts of the graphs or "explanation boundaries". Such cuts are considered as alternative models to be explained. Given this modification, it is unclear what connection the explanations generated by SF exhibit with the overall model. Recursive Shapley \citeAppendix{singal2021flow} is an edge-based approach which only considers active edges. Although it provides useful insights for mediation analysis, this method overlooks the impact of confounders. Ultimately, unlike our approach both Shapley Flow and Recursive Shapley aren't additive methods, but instead hold the property of "flow conservation" which allows a parent node to split its credit amongst its children. In contrast, the \textit{efficiency} axiom of Shapley values ensure that the attributions of all features sum up to the model outcome $\blackbox(x)$. We argue that Shapley efficiency is more relevant in a regression setting, whereas flow conservation should be used for analysis of data with intrinsic ordering. 
+
+
+\subsection{Other causal approaches to interpreting black-box models} 
+\label{subsec:further_causal}
+Explaining black-box models in a causal manner remains challenging to this day. Zhao et. al \citeAppendix{zhao2021causal} expand on the use of partial dependence plot (PDP), where the dependence on a set of covariates is computed by taking the expectation of the model over the marginal distribution of all other covariates. They note that the PDP formula is similar to Pearl’s back-door adjustment. More specifically, marrying Shapley values with causal reasoning has been an active research question. Janzing et. al \citeAppendix{janzing2020feature} considers the model’s prediction process itself to be a causal process: from features to model inputs and ultimately model output. The authors claim that marginal Shapley values can be apprehended in terms of \textit{do}-calculus, if we consider that setting a feature to a given value is equivalent to intervening on it. As such, marginal or so-called interventional Shapley values may be sufficient to explain that specific causal process but this approach is contrived as it does not consider the real-world causal relationships between features. This approach however does not acknowledge any underlying causal structure from the real world. New causality based formulations of Shapley values have been proposed to compute feature attributions from a hypothesised causal structure of the data. Asymmetric Shapley values \citeAppendix{frye2019asymmetric} use conditioning by observation but only consider causally-consistent coalitions i.e coalitions such that known causal ancestors precede their descendants. The resulting explanations quantify the impact a given feature has on model prediction while its descendants remain unspecified. As a result, they ignore downstream effects in favour of root causes \citeAppendix{wang2021shapley}. 
+
+Below is a table showing a summary comparison of existing causality-based or graph-based Shapley approaches with PWSHAP.
+Node efficiency refers to the original efficiency property of Shapley values: $\blackbox(x)=\phi^{\blackbox}_{0}(x)+\sum_{i=1}^{M} \phi^{\blackbox}_{i}(x)$, where $\phi^{\blackbox}_{j}(x)$ is the contribution of feature $j$ to $\blackbox(x)$ and $\phi^{\blackbox}_{0}(x)=\mathbb{E} [f(X))]$ is the averaged prediction with the expectation over the observed data distribution. By game at each node/within each boundary we describe the fact that Shapley Flow and Recursive Shapley consider successive cuts from the graphs. Flow conservation or cut efficiency is the equivalent efficiency property, within such a cut. We refer the reader to the corresponding papers for further details. 
+
+
+\begin{table}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lccccc}
+\cline{2-6}
+                                                                               & Shapley Flow & Recursive Shapley & Asymmetric Shapley        & CS & PWSHAP \\ \toprule
+\begin{tabular}[c]{@{}l@{}}Flow conservation or \\ cut efficiency\end{tabular} & X            & X                 &                           &    &        \\
+\midrule
+Node efficiency                                                                &              &                   & X                         & X  & X      \\
+\midrule
+Node-based                                                                     &              &                   & X                         & X  & X      \\
+
+\midrule
+Edge-based                                                                     &              & X                 &                           &    &        \\
+\midrule
+\begin{tabular}[c]{@{}l@{}}Source-to-sink \\ path-based\end{tabular}           & X            &                   &                           &    &        \\
+\midrule
+Path-based                                                                     &              &                   &                           &    & X      \\
+\midrule
+\begin{tabular}[c]{@{}l@{}}Game at each node or \\ within each boundary \\ of explanation\end{tabular} & X & X &  &  &  \\
+\midrule
+Ignores direct effects                                                         &              &                   & X                         &    &        \\
+\midrule
+Fidelity to original Shapley                                                   &              &                   & \begin{tabular}[c]{@{}c@{}}X \\ (but violates symmetry axiom)\end{tabular} & X  & X      \\ \bottomrule
+\end{tabular}%
+}
+\caption{Comparison between PWSAP and existing causality-based or graph-based Shapley approaches}
+\label{tab:compar}
+\end{table}
+
+\subsection{Bias, Mediation and Moderation analysis}
+\label{sec:other_analyses}
+
+Our approach has added value compared to existing methods for sensitivity, mediation and moderation analysis. In the following paragraph, we review the state of the art with regards to each of these objectives. \\
+
+\paragraph{Moderation analysis} A common approach to assess moderation is to (i) fit an Heterogeneous Treatment Effect (HTE) model that predicts an individual's treatment effect from a set of covariates (ii) find subgroups with similar treatment effects. Subgroups can be infered directly from the data \citeAppendix{imai2013estimating, wang2017causal}, from the individual predicted treatment effects \citeAppendix{foster2011subgroup} or using statistical hypothesis tests \citeAppendix{athey2016recursive, song2007method, holmes2018machine}. The main drawback of subgroup findings methods is that they are prone under-powered and time-consuming. Holmes et. al \citeAppendix{holmes2018machine} introduce a partitioning method which controls the type I error, however it is still limited to comparing subgroups two by two. Another approach to moderation analysis is to use interpretable models to predict HTEs. Nilsson et. al \citeAppendix{nilsson2019assessing} build two potential outcomes models (treated/untreated) and fit a regression model to predict their difference from the covariates of interest. Regression coefficients are ultimately used as a measure of moderation, but this solution is prone to model misspecification. Explanation methods, and in particular feature attribution models allow for a finer-grained understanding of the sources of heterogeneity. More recently, Wu et. al suggested to use Distillation to generate explanations of HTE models and assess moderation induced by each covariate \citeAppendix{wu2021distilling}. However, explanation models such as Distillation that involve building a simpler surrogate model have received criticism for \textit{approximating} the target black-box function instead of explaining it \citeAppendix{rudin2019stop}. Ultimately, HTE models are built without taking the causal structure into consideration the causal structure e.g. not conditioning on post-treatment features. To the best of our knowledge, our approach is the first method that can assign attribution to moderators directly from the outcome regression model whilst acknowledging the posited causal structure and the rules of \textit{do}-calculus by Pearl. 
+
+ 
+
+
+\paragraph{Sensitivity analysis}
+
+%\citeAppendix{vanderweele2017sensitivity, rosenbaum2005sensitivity, wang2018sensitivity}
+In most treatment effect estimation studies, it is assumed that all confounders of treatment and outcome are observed. This is a strong assumption and one might wonder whether results will be greatly perturbed or not by the presence of an unobserved confounder. Sensitivity analysis generally aims at determining what the impact of a given amount of unobserved confounding would be on causal conclusions of the study. In particular, as we have no access to the unobserved confounder, we make assumptions about its relationship with treatment and outcome. One line of work is to assume parameters for this relationship and infer the rest of the model when values of these parameters are fixed, e.g.~via maximum likelihood \citeAppendix{veitch2020sense, rosenbaum1983assessing, imbens2003sensitivity}. As a result, one can check the change in treatment effects with fixed values of the unobserved confounder \citeAppendix{rosenbaum1983assessing} or draw contour plots showing the bias depending on the parameters \citeAppendix{veitch2020sense, imbens2003sensitivity}. Another line of work assumes a fixed ratio between the propensity score with only observed covariates and a variation of the propensity score that also includes unobserved confounders \citeAppendix{rosenbaum2005sensitivity, tan2006distributional, jesson2022scalable}. This ratio quantifies how much hidden confounding is present (with a ratio of 1 being no hidden confounding) and is set by the user. As a result, one can deduce intervals for inference quantities like p-values or treatment effects from a given ratio. This can be leveraged to find the lowest ratio that makes the interval reach thresholds invalidating causal conclusions, e.g.~0.05 for a p-value or zero for the treatment effects. The higher the ratio has to be, the more robust to unobserved confounding the study. This idea is close to the E-value, a scalar metric representing the minimal amount of unobserved confounding needed to fully explain away the treatment-outcone relationship \citeAppendix{vanderweele2017sensitivity}. Although sensitivity analysis can also be applied to assess the role of a given observed confounder \citeAppendix{veitch2020sense, imbens2003sensitivity}, it remains different from our local bias analysis approach that only applies to observed confounders. However, unlike most sensitivity analysis methods, our approach does not rely on parameters or assumptions other than the joint distribution of the data, and it summarises the confounding of a given pre-treatment covariate in a single bias scalar.
+
+\paragraph{Mediation analysis}\label{sec:med_analysis}
+
+The state-of-the-art approach to mediation analysis is based on Natural Direct and Indirect Effects \citeAppendix{VanderWeele2009ConceptualIC}. Computation of Natural Direct/Indirect Effects requires four assumptions \citeAppendix{VanderWeele2009ConceptualIC} : 1) no unmeasured confounding for the exposure-outcome relationship, 2) no unmeasured confounding for the mediator-outcome relationship, 3) no unmeasured confounding for the exposure-mediator relationship, 4) no mediator-outcome confounding that is itself affected by the exposure. These are strong hypotheses, with the latter typically being considered to be unrealistic. In contrast, PWSHAP only requires assumptions 1, 2 and 3, which means that local mediation analysis using the difference in CDEs will be applicable and causally relevant in more realistic settings. It is common to assume unconfoundedness of the exposure-outcome relationship. Ultimately, the exposure is naturally randomised in most mediation analysis settings. Also, without confounders, PWSHAP effects are causal under the assumption that treatment is experimentally or naturally randomised. This covers a wide range of mediation analysis settings where the exposure is naturally randomised (e.g. sex) such as fairness studies. Further, our approach to mediation analysis is more faithful to causal inference than Causal Shapley. By comparing CDEs, we assess the effect of setting the given mediator to its value. By contrast, CS breaks the relationship between treatment and mediator when intervening on the mediator in the indirect effect. A local mediation analysis example is given in Supplement \ref{subsec:local_mediation}. Supplement \ref{sec:further_blocks} details the application of PWSHAP to dependent mediators or in presence of both confounders and mediators.
+
+
+
+
+\section{DETAILED RESULTS FOR THE ``BUILDING BLOCKS'' EXAMPLES} \label{sec:detailed_building_blocks}
+
+\subsection{Local moderation analysis} \label{subsec:local_moderation}
+
+\textbf{In the following, we prove the result of the first example where treatment is randomised} \\
+We assume the following model
+\begin{align*}
+    C_1, C_2 &\sim \text{Uniform}(0,1), \ \ \ C_1 \indep C_2 \\
+    Y &= \beta T + \gamma_1C_1 + \gamma_2C_2 + \alpha_1TC_1 + \alpha_2TC_2 + \epsilon
+\end{align*}
+with $\mathbb{E}[\epsilon|T,C_1,C_2] = 0$. Assuming the true outcome model is known, our aim is to explain the following black-box: $f^*(c_1, c_2, t) = \beta t + \gamma_1c_1 + \gamma_2c_2 + \alpha_1tc_1 + \alpha_2tc_2$. We further assume that treatment is randomised by taking $T \sim \text{Bernoulli}(p)$.
+
+We note that, from Property \ref{prop:shapley_decomposition},
+\begin{align*}
+\coalitionshapley{f^*,\text{obs}}{\{C_1,C_2\}}{T}{c_1,c_2,t} = \coalitionshapley{f^*,\text{causal}}{\{C_1,C_2\}}{T}{c_1,c_2,t}  &= (t - p)(\beta + \alpha_1c_1 + \alpha_2c_2) \\
+    \coalitionshapley{f^*,\text{obs}}{\{C_1\}}{T}{c_1,t} = \coalitionshapley{f^*,\text{causal}}{\{C_1\}}{T}{c_1,t} &= (t - p)(\beta + \alpha_1c_1 + \alpha_2/2) \\
+    \coalitionshapley{f^*,\text{obs}}{\{C_2\}}{T}{c_2,t} = \coalitionshapley{f^*,\text{causal}}{\{C_2\}}{T}{c_2,t} &= (t - p)(\beta + \alpha_1/2 + \alpha_2c_2) \\
+    \coalitionshapley{f^*,\text{obs}}{\emptyset}{T}{t} = \coalitionshapley{f^*,\text{causal}}{\emptyset}{T}{t} &= (t - p)(\beta + \alpha_1/2 + \alpha_2/2) \\ \\
+\end{align*}
+
+
+All of these Causal Shapley values only correspond to direct effects, as the indirect effect is zero from Property \ref{prop:indirect_part}.
+
+\subsection{Local bias analysis}
+\label{subsec:local_bias}
+
+We compare PWSHAP with Causal Shapley on a bias analysis example where $C_1$ and $C_2$ are distributed as before, but we assume instead that treatment allocation depends only on one covariate $C_1$: $\mathbb{E}[T|C_1,C_2] = C_1^\alpha$ which implies that $C_1$ is both a confounder and a moderator whereas $C_2$ only acts as a moderator. PWSHAP effects are then given as:
+\begin{align*}
+\effect^{f^*}_{T \leftarrow C_1 \rightarrow Y, \atop C_1: T \rightarrow Y} = \alpha_1(c_1 - \frac{\alpha+1}{\alpha+2}) - \gamma_1\frac{\alpha+1}{2(\alpha+2)}             &  &\effect^{f^*}_{C_2: T \rightarrow Y} = \alpha_2(c_2 - \frac{1}{2})              \\
+\effect^{f^*}_{T \rightarrow Y | \emptyset} = \beta + \gamma_1\frac{\alpha+1}{2(\alpha + 2)} + \alpha_1\frac{\alpha+1}{\alpha+2} + \frac{\alpha_2}{2}.          &  & 
+\end{align*}
+
+We note that $\mathbb{E}[\effect^{f^*}_{C_2: T \rightarrow Y}(C_1,C_2)] = 0$ but $\mathbb{E}[\effect^{f^*}_{T \leftarrow C_1 \rightarrow Y, \atop C_1: T \rightarrow Y}(C_1,C_2)] \neq 0$. This illustrates not only Lemma \ref{lemma:local_confounding_effect}, but also to the following corollary where we do not assume the model is true.
+
+\begin{corollary}[Integration of the local confounding effect, black-box model] \label{cor:local_confounding_effect_blackbox}
+ Let $C_1, C_2$ be two pre-treatment covariates such that $C_2 \indep T | C_1$. Then the integral of the local confounding effect w.r.t. $C_2$ on the joint distribution of covariates is null \\
+\centerline{ $ \mathbb{E}[\effect^f_{T \leftarrow C_2 \rightarrow Y}(C_1,C_2)] = 0.$ }
+\end{corollary}
+The proof can be found in Supplement \ref{proof:local_confounding_effect_blackbox}.
+By comparison, in Causal Shapley values, only the direct part is non null: 
+\begin{align*}
+    &\phi^{f^*,\text{causal}}_{T,\text{direct}} = \beta \big(t - \frac{c_1^\alpha}{2} - \frac{1}{2(\alpha+1)} \big)
+     + \alpha_1 \big(\frac{c_1}{2}(t - c_1^\alpha) +\frac{1}{2}( \frac{t}{2} - \frac{1}{\alpha+2}) \big) \\
+     & \hspace{2cm} + \alpha_2 \big((\frac{c_2}{3} + \frac{1}{12})(t - c_1^\alpha) + (\frac{c_2}{6} + \frac{1}{6}(t - \frac{1}{\alpha+1}) \big). \\
+\end{align*}
+
+\textbf{Proof :} First let's note that
+
+\begin{align*}
+    \mathbb{E}[Y|T=1,C_1=c_1,C_2=c_2] - \mathbb{E}[Y|T=0,C_1=c_1,C_2=c_2] = \beta + \alpha_1c_1 + \alpha_2a_2
+\end{align*}
+
+
+Then we show that :
+
+\begin{align*}
+    &\mathbb{E}[Y|T=1,C_1=c_1] - \mathbb{E}[Y|T=0,C_1=c_1] = \beta + \alpha_1c_1 + \frac{a_2}{2} \\
+    &\mathbb{E}[Y|T=1,C_2=c_2] - \mathbb{E}[Y|T=0,C_2=c_2] = \beta + \gamma_1\frac{\alpha+1}{2(\alpha+2)} + \alpha_1\frac{\alpha+1}{\alpha+2} + \alpha_2c_2 \\
+    &\mathbb{E}[Y|T=1] - \mathbb{E}[Y|T=0] = \beta + \gamma_1\frac{\alpha + 1}{2(\alpha + 2)} + \alpha_1\frac{\alpha+1}{\alpha+2} + \frac{\alpha_2}{2}   \\
+\end{align*}
+
+
+
+First, let us note that, using independence of $C_1$ and $C_2$,
+\begin{align*}
+    &\mathbb{E}[T|C_1=c_1] =  \mathbb{E}[\mathbb{E}[T|C_1=c_1,C_2]|C_1=c_1] = \mathbb{E}[ c_1^\alpha |C_1=c_1] = c_1^\alpha \\
+    &\mathbb{E}[T|C_2=c_2] =  \mathbb{E}[\mathbb{E}[T|C_2=c_2,C_1]|C_2=c_2] = \mathbb{E}[ C_1^\alpha |C_2=c_2] = \frac{1}{\alpha+1} \\
+    &\mathbb{E}[T] = \frac{1}{\alpha+1}
+\end{align*}
+
+By Bayes's rule and independence of $C_1$ and $C_2$,
+\begin{align*}
+    p(c_2|c_1,t=1) = \frac{p(t=1|c_1,c_2)p(c_1)p(c_2)}{p(t=1|c_1)p(c_1)} = \frac{p(t=1|c_1,c_2)}{p(t=1|c_1)} = \frac{c_1^\alpha }{c_1^\alpha} = 1
+\end{align*}
+and, similarly,
+\begin{align*}
+    p(c_2|c_1,t=0) = 1
+\end{align*}
+As a result,
+\begin{align*}
+&\mathbb{E}[C_2|c_1,t=1] = \mathbb{E}[C_2|c_1,t=0] = \frac{1}{2} \\
+&\mathbb{E}[C_2|c_1,t=1] - \mathbb{E}[C_2|c_1,t=0] = 0
+\end{align*}
+and
+\begin{align*}
+    \mathbb{E}[Y|T=1,C_1=c_1] - \mathbb{E}[Y|T=0,C_1=c_1] &= \beta + \gamma_2(\mathbb{E}[C_2|c_1,t=1] - \mathbb{E}[C_2|c_1,t=0]) + \alpha_1c_1 + \alpha_2\mathbb{E}[C_2|c_1,t=1] \\
+    &= \beta + \alpha_1c_1 + \frac{a_2}{2} \\
+\end{align*}
+which proves the first equality. For the second equality, we have
+\begin{align*}
+    p(c_1|c_2,t=1) = \frac{p(t=1|c_1,c_2)p(c_1)p(c_2)}{p(t=1|c_2)p(c_2)} = \frac{c_1^\alpha}{\frac{1}{\alpha+1}} = (\alpha+1)c_1^\alpha
+\end{align*}
+and, similarly,
+\begin{align*}
+    p(c_1|c_2,t=0) = \frac{1 - c_1^\alpha}{1 - \frac{1}{\alpha+1}}
+\end{align*}
+Thereby, we obtain
+\begin{align*}
+&\mathbb{E}[C_1|c_2,t=1] = \frac{\alpha+1}{\alpha+2} \\
+&\mathbb{E}[C_1|c_2,t=0] = \frac{\alpha+1}{2(\alpha+2)} \\
+&\mathbb{E}[C_1|c_2,t=1] - \mathbb{E}[C_1|c_2,t=0] = \frac{\alpha+1}{2(\alpha+2)}
+\end{align*}
+and
+\begin{align*}
+    \mathbb{E}[Y|T=1,C_2=c_2] - \mathbb{E}[Y|T=0,C_1=c_1] &= \beta + \gamma_1(\mathbb{E}[C_1|c_2,t=1] - \mathbb{E}[C_1|c_2,t=0]) \\
+    & \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ + \alpha_2c_2 + \alpha_1\mathbb{E}[C_1|c_2,t=1] \\
+    &= \beta + \gamma_1\frac{\alpha+1}{2(\alpha+2)} + \alpha_2c_2 + \alpha_1\frac{\alpha+1}{\alpha+2} \\
+\end{align*}
+
+Similarly, for the third equality, we note that, as before,
+\begin{align*}
+    p(c_2|t=1) &= 1 \\
+    p(c_2|t=0) &= 1 \\
+    p(c_1|t=1) &= (\alpha+1)c_1^\alpha \\
+    p(c_1|t=0) &= \frac{1 - c_1^\alpha}{1 - \frac{1}{\alpha+1}}
+\end{align*}
+which leads to, as before,
+\begin{align*}
+&\mathbb{E}[C_2|t=1] = \frac{1}{2} \\
+&\mathbb{E}[C_2|t=0] = \frac{1}{2} \\
+&\mathbb{E}[C_2|t=1] - \mathbb{E}[C_2|c_1,t=0] = 0 \\
+&\mathbb{E}[C_1|t=1] = \frac{\alpha+1}{\alpha+2} \\
+&\mathbb{E}[C_1|t=0] = \frac{\alpha+1}{2(\alpha+2)} \\
+&\mathbb{E}[C_1|t=1] - \mathbb{E}[C_1|c_2,t=0] = \frac{\alpha+1}{2(\alpha+2)}
+\end{align*}
+thereby
+\begin{align*}
+    \mathbb{E}[Y|T=1] - \mathbb{E}[Y|T=0] &= \beta + \gamma_1 (\mathbb{E}[C_1|T=1] - \mathbb{E}[C_1|T=0] ) \\
+    &+ \gamma_2(\mathbb{E}[C_2|T=1] - \mathbb{E}[C_2|T=0]) \\
+    &+ \alpha_1\mathbb{E}[C_1|T=1] + \alpha_2\mathbb{E}[C_2|T=1]  \\
+    &= \beta + \gamma_1\frac{\alpha + 1}{2(\alpha + 2)} + \alpha_1\frac{\alpha+1}{\alpha+2} + \frac{a_2}{2}
+\end{align*}
+
+Now, for Causal Shapley values, we can show that
+\begin{align*}
+    \mathbb{E}[Y|\Do(t,c_1,c_2)] - \mathbb{E}[Y|\Do(c_1,c_2)] &= (t - c_1^\alpha )(\beta + \alpha_1c_1 + \alpha_2c_2) \\
+    \mathbb{E}[Y|\Do(t,c_1)] - \mathbb{E}[Y|\Do(c_1)] &= \beta (t - c_1^\alpha) + \alpha_1c_1(t - c_1^\alpha) + \alpha_2(\frac{t}{2} - \frac{c_1^\alpha}{2}) \\
+    \mathbb{E}[Y|\Do(t,c_2)] - \mathbb{E}[Y|\Do(c_2)] &= \beta (t - \frac{1}{\alpha+1}) + \alpha_2c_2(t - \frac{1}{\alpha+1}) + \alpha_1(\frac{t}{2} - \frac{1}{\alpha+2}) \\
+    \mathbb{E}[Y|\Do(t)] - \mathbb{E}[Y] &= \beta(t - \frac{1}{\alpha+1}) + \alpha_1(\frac{t}{2} - \frac{1}{\alpha+2}) + \alpha_2(\frac{t}{2} - \frac{1}{2(\alpha+1)}) \\
+\end{align*}
+as $\mathbb{E}[TC_1|c_1] = c_1^{\alpha+1}$, $\mathbb{E}[TC_1|c_2] = \mathbb{E}[TC_1] = \frac{1}{\alpha+2}$, $\mathbb{E}[TC_2|c_1] = \frac{c_1^\alpha}{2}$, $\mathbb{E}[TC_2|c_2] = \frac{c_2}{\alpha+1}$, $\mathbb{E}[TC_2] = \frac{1}{2(\alpha+1)}$
+
+
+
+
+\subsection{Local mediation analysis} \label{subsec:local_mediation}
+
+We compare PWSHAP with Causal Shapley on a mediation analysis example inspired by the Berkeley dataset \citeAppendix{bickel1975sex}. An algorithm predicts the probability of success of an applicant to a college. In this example, $X=(T,Q,D)$ where $T$ is the gender of the applicant $Q$ is an exam result and $D$ is the department. We assume $Q \sim \text{Uniform}(0,1)$, $D | T=0 \sim \text{Bernoulli}(0.8)$ and $D | T=1 \sim \text{Bernoulli}(0.2)$. $D$ is a mediator of gender however $Q$ is only an ancestor of the outcome, and not a mediator. Our black-box is the true outcome model, and $Y = \alpha_Q Q + \alpha_D D + \alpha_T T + \alpha_{DT} DT + \alpha_{QT} QT + \epsilon$, with $\mathbb{E}[\epsilon | D, Q, T] = 0$.
+%\vspace{-0.05cm}
+\begin{align*}
+    \effect^{f^*}_{T \rightarrow D \rightarrow Y} = 0.6 \alpha_D + \alpha_{DT} (d - \frac{1}{5})  & & \effect^{f^*}_{T \rightarrow Q \rightarrow Y} = \alpha_{QT}(q - \frac{1}{2}) 
+\end{align*}
+%\vspace{-0.45cm}
+\begin{align*}
+    \effect^{f^*}_{T \rightarrow Y | \emptyset} &= \alpha_T - 0.6 \alpha_D + \frac{\alpha_{DT}}{5} + \frac{\alpha_{QT}}{2}  \\
+    \phi^{f^*,\text{causal}}_{T,\text{direct}} &= \alpha_T(t - \frac{1}{2}) + \alpha_{DT}[\frac{d}{2}(t - \frac{1}{2}) + \frac{1}{2}(\frac{t}{2} - \frac{1}{10})] + \frac{\alpha_{QT}}{2}(t - \frac{1}{2})(q + \frac{1}{2}) \\
+    \phi^{f^*,\text{causal}}_{T,\text{indirect}} &= \frac{\alpha_D}{2}  (\frac{3}{10} - \frac{3t}{5}) \\
+\end{align*}
+We note that $\int_{q} \effect^{f^*}_{T \rightarrow Q \rightarrow Y}(p,q) dp(q) = 0$ but $\int_{d} \effect^{f^*}_{T \rightarrow D \rightarrow Y}(p,q) dp(d) \neq 0$.
+
+
+\textbf{Proof :} Coalition-wise Shapley effects are :
+\begin{align*}
+     \effect^{f^*}_{T \rightarrow Y | D, Q}(d,q)
+     &= \text{CDE}(d,q) \\
+     &= \mathbb{E}[Y|T=1,D=d,Q=q] - \mathbb{E}[Y|T=0,D=d,Q=q] \\ 
+     &= \alpha_T + \alpha_{DT}d + \alpha_{QT}q \\
+    \effect^{f^*}_{T \rightarrow Y | D}(d)
+     &= \text{CDE}(d) \\
+     &= \mathbb{E}[Y|T=1,D=d] - \mathbb{E}[Y|T=0,D=d] \\ 
+     &= \alpha_T + \alpha_{DT}d + \alpha_{QT}\mathbb{E}[Q|T=1] \\
+     &= \alpha_T + \alpha_{DT}d + \alpha_{QT}\mathbb{E}[Q] \\
+     &= \alpha_T + \alpha_{DT}d + \alpha_{QT}\frac{1}{2} \\
+    \effect^{f^*}_{T \rightarrow Y | Q}(q)
+     &= \text{CDE}(q) \\
+     &= \mathbb{E}[Y|T=1,Q=q] - \mathbb{E}[Y|T=0,Q=q] \\ 
+     &= \alpha_T + \alpha_{DT}\mathbb{E}[D|T=1] + \alpha_{QT}q + \alpha_D(\mathbb{E}[D|T=1] - \mathbb{E}[D|T=0]) \\
+     &= \alpha_T + \frac{\alpha_{DT}}{5} + \alpha_{QT}q + \alpha_D\frac{3}{5} \\
+    \effect^{f^*}_{T \rightarrow Y | \emptyset}(q)
+     &= \text{ATE} \\
+     &= \mathbb{E}[Y|T=1] - \mathbb{E}[Y|T=0] \\ 
+     &= \alpha_T + \alpha_{DT}\mathbb{E}[D|T=1] + \alpha_{QT}\mathbb{E}[Q|T=1] + \alpha_D(\mathbb{E}[D|T=1] - \mathbb{E}[D|T=0]) \\
+     &= \alpha_T + \frac{\alpha_{DT}}{5} + \frac{\alpha_{QT}}{2} + \alpha_D\frac{3}{5} \\
+\end{align*}
+
+As a result, we deduce path-wise effects
+\begin{align*}
+    &\effect^{f^*}_{T \rightarrow D \rightarrow Y} = \effect^{f^*}_{T \rightarrow Y | D, Q} - \effect^{f^*}_{T \rightarrow Y | Q} = 0.6 \alpha_D + \alpha_{DT} (d - \frac{1}{5}) \\
+    &\effect^{f^*}_{T \rightarrow Q \rightarrow Y} = \effect^{f^*}_{T \rightarrow Y | D, Q} - \effect^{f^*}_{T \rightarrow Y | D} = \alpha_{QT}(q - \frac{1}{2}) \\
+\end{align*}
+
+Causal Shapley values are :
+\begin{align*}
+    \coalitionshapley{f^*,\text{causal}}{\{D,Q\},\text{direct}}{T}{d,q,t} &= (\alpha_T + \alpha_{DT} d + \alpha_{QT} q)(t - \frac{1}{2} ) \\
+    &= \mathbb{E}[f(d,q,t) | \Do(d,q)] - \mathbb{E}[f(d,q,T) | \Do(d,q)] \\
+    &= \alpha_T(t - \mathbb{E}[T]) + \alpha_{DT}(dt - d\mathbb{E}[T]) + \alpha_{QT}(qt - q\mathbb{E}[T]) \\
+    &= (t - \frac{1}{2})(\alpha_T + \alpha_{DT}d + \alpha_{QT}q) \\
+    \coalitionshapley{f^*,\text{causal}}{\{D,Q\},\text{indirect}}{T}{d,q,t} 
+    &=  \mathbb{E}[f(d,q,t) | \Do(d,q,t)] - \mathbb{E}[f(d,q,t) | \Do(d,q)] \\
+    &= 0 \\
+    \coalitionshapley{f^*,\text{causal}}{\{D\},\text{direct}}{T}{d,t}
+    &= \mathbb{E}[f(d,Q,t) | \Do(d)] - \mathbb{E}[f(d,Q,T) | \Do(d)] \\
+    &= \alpha_T(t - \mathbb{E}[T]) + \alpha_{DT}(dt - d\mathbb{E}[T]) + \alpha_{QT}(\mathbb{E}[Q]t - \mathbb{E}[QT]) \\
+    &= (\alpha_T + \alpha_{DT} d + \frac{\alpha_{QT}}{2} )(t - \frac{1}{2} ) \\
+    \coalitionshapley{f^*,\text{causal}}{\{D\},\text{indirect}}{T}{d,t}
+    &=  \mathbb{E}[f(d,Q,t) | \Do(d,t)] - \mathbb{E}[f(d,Q,t) | \Do(d)] \\
+    &= 0 \\
+    \coalitionshapley{f^*,\text{causal}}{\{Q\},\text{direct}}{T}{q,t}
+    &= \mathbb{E}[f(D,q,t) | \Do(q)] - \mathbb{E}[f(D,q,T) | \Do(q)] \\
+    &= \alpha_T(t - \mathbb{E}[T]) + \alpha_{DT}(\mathbb{E}[D]t - \mathbb{E}[DT]) + \alpha_{QT}(qt - q\mathbb{E}[T]) \\
+    &=  \alpha_T(t - \frac{1}{2}) +  \alpha_{DT}(\frac{t}{2} - \frac{1}{10}) + \alpha_{QT}q (t - \frac{1}{2}) \\
+    \coalitionshapley{f^*,\text{causal}}{\{Q\},\text{indirect}}{T}{q,t}  \\
+    &=  \mathbb{E}[f(D,q,t) | \Do(q,t)] - \mathbb{E}[f(D,q,t) | \Do(q)] \\
+    &= \alpha_D (\mathbb{E}[D|t] - \mathbb{E}[D]) \\
+    &= \alpha_D (\frac{3}{10} - \frac{3t}{5}) \\
+    \coalitionshapley{f^*,\text{causal}}{\emptyset,\text{direct}}{T}{t}
+    &= \mathbb{E}[f(D,Q,t)] - \mathbb{E}[f(D,Q,T)] \\
+    &= \alpha_T(t - \mathbb{E}[T]) + \alpha_{DT}(\mathbb{E}[D]t - \mathbb{E}[DT]) + \alpha_{QT}(\mathbb{E}[Q]t - q\mathbb{E}[QT]) \\
+    &=  \alpha_T(t - \frac{1}{2}) + \alpha_{DT}(\frac{t}{2} - \frac{1}{10}) + \frac{\alpha_{QT}}{2} (t - \frac{1}{2}) \\
+    \coalitionshapley{f^*,\text{causal}}{\emptyset,\text{indirect}}{T}{t} \\
+    &=  \mathbb{E}[f(D,Q,t) | \Do(t)] - \mathbb{E}[f(D,Q,t)] \\
+    &= \alpha_D (\mathbb{E}[D|t] - \mathbb{E}[D]) \\
+    &= \alpha_D (\frac{3}{10} - \frac{3t}{5}) \\
+\end{align*}
+Summing them altogether with appropriate binomial weights, we have
+
+\begin{align*}
+    \phi^{f^*,\text{causal}}_{T,\text{direct}} &= \alpha_T(t - \frac{1}{2}) + \alpha_{DT}[\frac{d}{2}(t - \frac{1}{2}) + \frac{1}{2}(\frac{t}{2} - \frac{1}{10})] + \frac{\alpha_{QT}}{2}(t - \frac{1}{2})(q + \frac{1}{2}) \\
+    \phi^{f^*,\text{causal}}_{T,\text{indirect}} &= \frac{\alpha_D}{2}  (\frac{3}{10} - \frac{3t}{5}) \\
+\end{align*}
+
+
+\section{FURTHER RESULTS FOR MORE COMPLEX ``BUILDING BLOCKS'' DAGS} \label{sec:further_blocks}
+
+\subsection{A mix of confounders and mediators}
+
+
+\iffalse
+\begin{property}[Ancestors of outcome with confounders] \label{prop:local_mediator_effect_confounders} Let $M_1, M_2$ be post-treatment and pre-outcome variables. %that for a given $i = 1, \ldots, p$, $M^i$, 
+and assume that covariates $C$ include all confounders of the relationships between $T$, $Y$ and $(M_1,M_2)$. Further assume that $M_2 \indep T, M_1 | C$; that is, $M_2$ is not really a mediator because $M_2 \indep T | C$, and is independent of $M_1$ conditionally on $T, C$. Then, for any value $c$ of confounders $C$ and $m_1$ of $M_1$
+\begin{align*}
+\mathbb{E}[\effect^{f^*}_{T \rightarrow M_2 \rightarrow Y}(c,m_1,M_2) \mid C=c] = 0
+\end{align*}
+\end{property}
+\vspace*{-11pt}
+\fi
+
+We now assume the model :
+\begin{align*}
+    C_1 &\sim \text{Bernoulli}(\frac{1}{2}) \\
+    C_2 &\sim \text{Bernoulli}(\frac{1}{2}) \\
+    Q | C_1 &\sim \text{Bernoulli}(1 - C_1) \\
+    T | C_1 &\sim \text{Bernoulli}(C_1) \\
+    D | T,C_1 &\sim \text{Bernoulli}(\frac{4}{5} - \frac{3}{5}\frac{T+C_1}{2}) \\
+    Y &= \alpha_Q Q + \alpha_D D + \alpha_T T + \alpha_1 C_1 + \alpha_2 C_2 + \alpha_{DT} DT + \alpha_{QT} QT \\
+    & \ \ \ \ \ + \alpha_{1T} C_1T + \alpha_{2T} C_2T   + \epsilon, \text{ with } \mathbb{E}[\epsilon | D, Q, T] = 0.
+\end{align*}
+We have,
+\begin{align*}
+    \effect^{f^*}_{T \rightarrow Y | C_1, C_2, D, Q}(c_1,c_2,d,q) &= \alpha_T + \alpha_{DT}d + \alpha_{QT}q + \alpha_{1T}c_1 + \alpha_{2T}c_2 \\
+    \effect^{f^*}_{T \rightarrow Y | C_1, C_2, Q}(c_1,c_2,q) &= \alpha_T + \alpha_{DT}\mathbb{E}[D|T=1,c_1,c_2,q] + \alpha_{QT}q + \alpha_{1T}c_1 + \alpha_{2T}c_2 \\
+    & \ \ \ \ \ + \alpha_D (\mathbb{E}[D|T=1,c_1,c_2,q] - \mathbb{E}[D|T=0,c_1,c_2,q]) \\
+    &= \alpha_T + \alpha_{DT}(\frac{1}{2} - \frac{3c_1}{10}) + \alpha_{QT}q + \alpha_{1T}c_1 + \alpha_{2T}c_2 - \frac{3\alpha_D}{10} \\
+    \effect^{f^*}_{T \rightarrow Y | C_1, C_2, D}(c_1,c_2,d) &= \alpha_T + \alpha_{DT}d + \alpha_{QT}\mathbb{E}[D|T=1,c_1,c_2,d] + \alpha_{1T}c_1 + \alpha_{2T}c_2 \\
+    & \ \ \ \ \ + \alpha_Q (\mathbb{E}[Q|T=1,c_1,c_2,d] -  \mathbb{E}[Q|T=0,c_1,c_2,d]) \\
+    &= \alpha_T + \alpha_{DT}d + \alpha_{QT}(1 - c_1) + \alpha_{1T}c_1 + \alpha_{2T}c_2 \\
+    \effect^{f^*}_{T \rightarrow Y | C_1, D, Q}(c_1,d,q) &= \alpha_T + \alpha_{DT}d + \alpha_{QT}q + \alpha_{1T}c_1 + \frac{\alpha_{2T}}{2} \\
+    \effect^{f^*}_{T \rightarrow Y | C_2, D, Q}(c_2,d,q) &= \alpha_T + \alpha_{DT}d + \alpha_{QT}q + \alpha_{2T}c_2 + \alpha_{1T}\mathbb{E}[C_1|T=1,d,q]\\
+    & \ \ \ \ \ + \alpha_1(\mathbb{E}[C_1|T=1,d,q] - \mathbb{E}[C_1|T=0,d,q]) \\
+    & \ \ \ \ \ \ \ \ \ \ \text{ with, in the general case, } \mathbb{E}[C_1|T=t,d,q] \neq 0 \ \ \forall t \\
+    & \ \ \ \ \ \ \ \ \ \ \text{ and } \mathbb{E}[C_1|T=1,d,q] - \mathbb{E}[C_1|T=0,d,q] \neq 0
+\end{align*}
+Thereby,
+\begin{enumerate}
+    \item Local mediating effects are given as
+    \begin{align*}
+        \effect^{f^*}_{Q}(c_1,c_2,d,q) = \alpha_{QT}(q - (1-c_1)) \ \text{ and } \ \effect^{f^*}_{D}(c_1,c_2,d,q) = \frac{3\alpha_D}{10} + \alpha_{DT}(\frac{3c_1}{10} - \frac{1}{2})
+    \end{align*}
+    so $\mathbb{E}[\effect^{f^*}_{Q}(c_1,c_2,d,Q) | c_1, c_2] = 0$ but $\mathbb{E}[\effect^{f^*}_{D}(c_1,c_2,D,q) | c_1, c_2] \neq 0$. This illustrates the relevance of Property \ref{prop:local_mediator_effect_confounders} to isolate the fact that $Q$ is not an actual mediator conditionally on confounders.
+    \item Local confounding effects are given as
+    \begin{align*}
+        \effect^{f^*}_{C_2}(c_1,c_2,d,q) &= \alpha_{2T}(c_2 - \frac{1}{2}) \\
+        \effect^{f^*}_{C_1}(c_1,c_2,d,q) &= \alpha_1(\mathbb{E}[C_1|T=0,d,q] - \mathbb{E}[C_1|T=1,d,q]) - \alpha_{1T}\mathbb{E}[C_1|T=1,d,q] \\
+    \end{align*}
+    so $\mathbb{E}[\effect^{f^*}_{C_2}(C_1,C_2,d,q)] = 0$ but $\mathbb{E}[\effect^{f^*}_{C_1}(C_1,C_2,D,q)] \neq 0$. This illustrates the relevance of the two following results, which themselves generalise results of Section \ref{sec:local_bias}, to isolate the fact that $C_2$ is not an actual confounder of the relationship between treatment-outcome, treatment-mediator and mediator-outcome relationships.
+    \end{enumerate}
+    \begin{lemma}[Integration of the local confounding effect with mediators, true model] \label{lemma:local_confounding_effect_mediators}
+ Let $M$ denote post-treatment and pre-outcome variables. Define $\mathcal{H}(C)$ as follows :
+ \begin{align*}
+ \mathcal{H}(C) : \ \ \forall t, m, \ Y(t,m) \indep T | C \text{ and } Y(t,m) \indep M | T, C,
+ \end{align*}
+ or, in other words, $C$ includes all confounders of the treatment-outcome and mediator-outcome relationships. We further assume consistency of the potential outcome, i.e. $Y(T,M) = Y$. Let $C_1, C_2$ be two pre-treatment covariates such that $\mathcal{H}(C_1, C_2)$ holds. If, additionally, $C_2$ is not a confounder, i.e.\ $\mathcal{H}(C_1)$ holds, then the integral of the local confounding effect of $f^*$ w.r.t. $C_2$ on the joint distribution of covariates for fixed values of mediators is null, i.e.
+\begin{align*}
+    \forall m, \ \ \mathbb{E}[\effect^{f^*}_{C_2}(C_1,C_2,m)] = 0.
+\end{align*}
+\end{lemma}
+\vspace*{-11pt}
+\begin{corollary}[Integration of the local confounding effect with mediators, black-box model] \label{cor:local_confounding_effect_blackbox_mediators}
+ Let $C_1, C_2$ be two pre-treatment covariates and $M$ post-treatment and pre-outcome variables such that $C_2 \indep T, M | C_1$. Then the integral of the local confounding effect w.r.t. $C_2$ on the joint distribution of covariates is null, i.e.
+\centerline{ $\forall m, \ \ \mathbb{E}[\effect^{f}_{C_2}(C_1,C_2,m)] = 0.$ }
+\end{corollary}
+\vspace{-11pt}
+The proofs can be found in Supplements \ref{proof:local_confounding_effect_mediators} and \ref{proof:local_confounding_effect_blackbox_mediators}
+
+\subsection{Dependent mediators}
+
+We now assume the model :
+\begin{align*}
+    Q &\sim \text{Uniform}(0,1) \\
+    T &\sim \text{Bernoulli}(0.5) \\
+    D|T,Q &\sim \text{Bernoulli}(\frac{4}{5} - \frac{3}{5}\frac{T+Q}{2}) \\
+    Y &= \alpha_Q Q + \alpha_D D + \alpha_T T + \alpha_{DT} DT + \alpha_{QT} QT + \epsilon, \ \ \ \ \ \mathbb{E}[\epsilon | D, Q, T] = 0.
+\end{align*}
+
+We have
+\begin{align*}
+    \effect^{f^*}_{T \rightarrow Y | D, Q}(d,q) &= \alpha_T + \alpha_{DT}d + \alpha_{QT}q \\
+    \effect^{f^*}_{T \rightarrow Y | Q}(q)
+    &= \alpha_T + \alpha_{DT}\mathbb{E}[D|T=1,q] + \alpha_{QT}q + \alpha_D(\mathbb{E}[D|T=1,q] - \mathbb{E}[D|T=0,q])   \\
+    &= \alpha_T + \alpha_{DT}(\frac{1}{2} - \frac{3q}{10}) + \alpha_{QT}q - \frac{3\alpha_D}{10} \\
+    \effect^{f^*}_{T \rightarrow Y | D}(d) &= \alpha_T + \alpha_Q(\mathbb{E}[Q|T=1,d] - \mathbb{E}[Q|T=0,d] ) +  \alpha_{DT}d + \alpha_{QT}\mathbb{E}[Q|T=1,d] \\
+    &= \alpha_T - \frac{3\alpha_Q}{(13 - 6d)(7 + 6d)} +  \alpha_{DT}d + \alpha_{QT}\frac{7 - 4d}{13 - 6d} \\
+    \effect^{f^*}_{T \rightarrow Y | \emptyset}
+    &= \alpha_T + \alpha_{DT}\mathbb{E}[D|T=1] + \alpha_{QT}q + \alpha_D(\mathbb{E}[D|T=1] - \mathbb{E}[D|T=0])   \\
+        &= \alpha_T + \frac{7\alpha_{DT}}{20} + \alpha_{QT}q - \frac{3\alpha_D}{10}   \\
+\end{align*}
+where we used
+\begin{align*}
+    \mathbb{E}[Q|T=1,d] &= \frac{7 - 4d}{13 -6d} \\
+    \mathbb{E}[Q|T=0,d] &= \frac{4 + 2d}{7 + 6d} \\
+    \mathbb{E}[Q|T=1,d] - \mathbb{E}[Q|T=0,d] &= \frac{-3}{(13 - 6d)(7 + 6d)} 
+\end{align*}
+which we prove from
+\begin{align*}
+    p(d|q,t)
+    &= dp(d=1|q,t) + (1-d)p(d=0|q,t) \\
+    &= d(\frac{4}{5} - \frac{3}{10}(t+q)) + (1-d)(\frac{1}{5} + \frac{3}{10}(t+q) ) \\
+    p(d|t)
+    &= \mathbb{E}[p(d|Q,t) | t] \\
+    &= \mathbb{E}[p(d|Q,t)] \text{ as } Q \indep T \\
+    &= \frac{7}{20} + \frac{3t}{10} + \frac{3d}{5}(\frac{1}{2} - t) \\
+    p(q|d,t)
+    &= \frac{p(d|q,t)p(q|t)p(t)}{p(d|t)p(t)} \\
+    &= \frac{p(d|q,t)}{p(d|t)} \\
+    &= \frac{1 + \frac{3}{2}(t+q) + 3d(1 - t - q)}{\frac{7}{4} + \frac{3t}{2} + 3d(\frac{1}{2} - t)} \\
+    \mathbb{E}[Q|T=1,d]
+    &= \int \frac{1 + \frac{3}{2} + \frac{3q}{2} - 3dq}{\frac{7}{4} + \frac{3}{2} - \frac{3d}{2}}q dq \\
+    &= \frac{\frac{1}{2}\frac{5}{2} + \frac{1}{3}(\frac{3}{2} - 3d)}{\frac{13}{4} - \frac{3d}{2}} \\
+    &= \frac{7 - 4d}{13 - 6d} \\
+    \mathbb{E}[Q|T=0,d]
+    &= \int \frac{1 + 3d + q(\frac{3}{2} - 3d)}{\frac{7}{4} + \frac{3d}{2}}q dq \\
+    &= \frac{\frac{1}{2}(1 + 3d) + \frac{1}{3}(\frac{3}{2} - 3d)}{\frac{7}{4} + \frac{3d}{2}} \\
+    &= \frac{4 + 2d}{7 + 6d}
+\end{align*}
+Thereby,
+\begin{align*}
+    \effect^{f^*}_{Q}(d,q)
+    &= \effect^{f^*}_{T \rightarrow Y | D, Q}(d,q) - \effect^{f^*}_{T \rightarrow Y | D}(D) \\
+    &= \frac{3\alpha_Q}{(13 - 6d)(7 + 6d)} - \alpha_{QT}\frac{7 - 4d}{13 - 6d}
+\end{align*}
+Notably, we note that $\mathbb{E}[\effect^{f^*}_{Q}(d,Q)] \neq 0$. Thereby, the local mediating effect as defined in Definition \ref{def:local_mediating_effect} is not able to isolate the absence of mediation from $Q$. However, defining
+\begin{align} \label{eq:alternative_pathwise_effect}
+    \effect^{f}_{C_i, \text{alternative}}(q) := \effect^{f}_{T \rightarrow Y | C_i}(c_i) - \effect^{f}_{T \rightarrow Y | \emptyset}
+\end{align}
+we note that $\mathbb{E}[\effect^{f^*}_{Q, \text{alternative}}(Q)] = 0$ and $\mathbb{E}[\effect^{f^*}_{D, \text{alternative}}(D,q)] \neq 0$. Thereby, an alternative definition of the local mediating effect, as given in \ref{eq:alternative_pathwise_effect}, is able to isolate the absence of mediation from $Q$. This actually holds in a more general setting.
+\begin{property}[Ancestor of outcome] \label{prop:local_mediator_effect_alternative} Let $M$ be a post-treatment and pre-outcome variable. %that for a given $i = 1, \ldots, p$, $M^i$, 
+Assume that $M \indep T$, or in other words $M$ is not really a mediator. Then, 
+\begin{align*}
+\mathbb{E}[\effect^f_{T \rightarrow M \rightarrow Y}(M)] = 0
+\end{align*}
+The proof can be found in Supplement \ref{proof:local_mediator_effect_alternative}. Thereby, the original definition of the local mediating effect is not always suited for mediation analysis. However, picking up the alternative definition given above will mean we will not be able to use the same quantity for mediation, bias analysis and mediation analysis. Solving this dilemma is left for future work.
+
+\end{property}
+\section{FURTHER EXPERIMENTAL RESULTS AND DETAILS}
+\label{sec:exp_details}
+
+\subsection{Details of experiments on synthetic datasets}
+
+\textbf{Models :} We model the outcome and propensity models using linear and logistic regression, respectively. Conditional distributions for PWSHAP are inferred by training an iterative imputer. Linear regressions with second order polynomial features are used to infer outcome models and logistic regressions for propensity models.
+
+\textbf{Causal Shapley :} Regarding Causal Shapley, we model the $ \mathbb{E}\left[f\left(X_{\bar{S}}, x_{S \cup \{j\}}\right) \mid d o\left(X_{S}=x_{S}\right)\right]$ term that is added and subtracted to obtain the direct and indirect effects (see Supplement \ref{subsec:causal_shap}) by using an iterative imputer on the dataset obtained by removing the treatment column from the original dataset. $\text{do}-$distributions are modelled differently depending on the situation. They involve making variables independent from others. This is made by reshuffling the columns of these variables in the train set, then training the imputer on this modified dataset again.
+
+\textbf{Datasets :} datasets are generated according to the models in Supplement \ref{subsec:local_bias} for local bias analysis and in Supplement \ref{subsec:local_mediation} for local mediation analysis. 200 samples are generated and between training and testing sets as a 50/50 split. We change the links between treatment and covariates to model confounding and mediation, in the following way :
+\begin{itemize}
+    \item Local bias analysis :
+    \begin{itemize}
+        \item No confounders : $p(T=1|C_1,C_2) = 0.5$
+        \item $C_1$ is a confounder, $C_2$ is not : $p(T=1|C_1,C_2) = C_1$
+        \item $C_1$ and $C_2$ are confounders : $p(T=1|C_1,C_2) = C_1C_2$
+    \end{itemize}
+    \item Local mediation analysis :
+    \begin{itemize}
+        \item No mediators : $Q|T \sim \text{Uniform}(0,1), D|T \sim \text{Binomial}(0.5)$.
+        \item $D$ is a mediator but not $Q$ : $Q|T \sim \text{Uniform}(0,1), D|T \sim \text{Binomial}(\frac{4}{5} - \frac{3}{5}T)$
+        \item $Q$ and $D$ are mediators : $D|T \sim \text{Binomial}(\frac{4}{5} - \frac{3}{5}T)$ and $Q = \frac{3}{5} \cdot T \cdot U + (1-T) \cdot (\frac{3}{5} \cdot U + \frac{2}{5})$ where $U \sim \text{Uniform}(0,1)$
+    \end{itemize}
+\end{itemize}
+
+\subsection{Further results on UCI dataset}
+
+\begin{table}
+\begin{tabular}{cccccc}
+\hline
+\toprule
+\multicolumn{2}{c}{Causal SHAP} & \multicolumn{4}{c}{ PWSHAP}  \\
+\midrule
+$\phi_{\text{direct}}$    & $\phi_{\text{indirect}}$    & $\effect^{f}_{\text{Occ} \rightarrow \text{Inc}}$  & $\effect^{f}_{\text{Occ} \leftarrow \text{Cntr} \rightarrow \text{ Inc}}$  & $\effect^{f}_{\text{Occ} \leftarrow \text{Cntr} \rightarrow  \text{Capg} \rightarrow \text{Inc}}$  & $\effect^{f}_{ \text{Relation:} \text{Occ} \rightarrow \text{Inc}}$ \\
+\small 0.132 (0.22)             & \small 0  (0.027)             & \small 0.152 (1.98)     & \small 0.083     & \small 0.147 (1.13)    & \small 0.217  (0.831)  \\ \bottomrule
+\end{tabular}%
+\caption{Results for additional experiment on Census Income dataset where treatment is the individual's occupation}
+\label{tab:uci_occ}
+\end{table}
+
+In an additional experiment, we consider the treatment of interest to the occupation of the individual. We focus on the question: \textit{``Under what mechanisms did having a managerial occupation impact the model prediction?''}. Results comparing PWSHAP with CS are shown in Table \ref{tab:uci_occ}. Occupation seems to have a considerable impact throughout the cohort, with the base treatment effect showing that having a managerial job increases the predicted probability of high income by 15.2 points. Moderation by relationship status had a predominant effect in the model prediction for our individual. Being unmarried has increased the positive effect of having a managerial occupation by another 21.7 points. CausalSHAP does not capture this phenomenon as all the effect of occupation is deemed direct by definition. This further shows the high resolution of PWSHAP and impossibility of explaining. The local confounding effect of the pathway through country and capital gain also had an important impact.
+
+
+\subsection{Experimental details on UCI}
+
+\paragraph{UCI dataset}
+The UCI dataset --also known as "Census Income" dataset-- predicts whether income exceeds \$50K/yr based on census data. It includes 11 features and 32,561 individuals. We select a random subsample of 5000 individuals and only consider the following 7 features: age, capital gain, native country,  income, marital status, race and relationship. The occupation (Occ) and race variables were dichotomised, respectively into managerial/non-managerial and white/non-white. Other categorical features, namely native-country, marital status and relationship were encoded into numerical values. The URL for this dataset is \url{https://archive.ics.uci.edu/ml/datasets/adult}.
+
+\paragraph{Pre-processing and model performance}
+We use a Random Forest with 500 estimators and balanced class weights for all three models: the outcome model, the race propensity score model, the occupation propensity score model. We further used a Bayesian Ridge to learn the joint distribution on all covariates. Note that we could have inferred a propensity score model from the Bayesian Ridge but decided to fit a separate model so both weights and outcome models would be modelled with a classification tree. \newline
+The 5000 observations in the set were subsampled again 10 times, by taking out 20\% of the sample. Each time, we use the subsample as both a training and testing set for our models. We further use it as a reference population. The goal is to explain how the model learned on this set, therefore using the same training set for testing isn't problematic. We ultimately want a model that has high accuracy whilst limiting the compute time. Means and standard deviations over all 10 subsamples are reported.
+
+The accuracy of our outcome model is 0.827 and the AUC 0.944. \newline
+The accuracy of our race propensity score model is 0.894 and the AUC 0.950. \newline
+The accuracy of our occupation propensity score model is 0.757 and the AUC 0.863.
+
+\paragraph{Computation and packages}
+Random Forest and Bayesian Ridge were implemented using the \verb sklearn package. We use the \verb dataset_fetcher function from the Explanation  GAME\citeAppendix{merrick2020explanation}, available at \url{https://github.com/fiddler-labs/ the-explanation-game-supplemental} (no license). Experiments were ran using a 2,6 GHz 6-Core Intel Core i7. The amount of compute time was approximately 2,500 clock-time seconds.
+
+\vspace*{-0.2cm}
+\section{RUNNING EXAMPLE}
+\label{sec:running_exp}
+\vspace*{-0.2cm}
+
+We give examples of the current definitions using the running example described in Figure \ref{fig:dag_motivate}. More precisely, we work with three variables Sex (binary, actually denoting the female sex), Surg (binary, denoting the execution of a surgery), Preg (binary, denoting whether the subject is pregnant), and Death, the logit of the probability of death as a result of the surgery, of its absence. We look at the effect of sex on death. The model is as follows
+\begin{align*}
+    \mathbb{E}[\text{Sex}] &= 0.5 \\
+    \mathbb{E}[\text{Preg}|\text{Sex}] &= p_\text{Preg} \cdot \text{Sex} \\
+    \mathbb{E}[\text{Surg}|\text{Sex}] &=  p_\text{Surg} \cdot \text{Sex} \\
+    \mathbb{E}[\text{Death}|\text{Sex, Surg, Preg}] &= f(\text{Sex, Surg, Preg}) := \alpha_\text{Sex} \text{Sex} + \alpha_\text{Surg} \text{Surg} + \alpha_\text{Preg} \text{Preg}  \\
+\end{align*}
+\begin{figure}
+  \begin{minipage}{.5\textwidth}
+    \centering
+    \includegraphics[width=50mm]{graphics/dag_motivate_new.png}
+
+  \end{minipage}
+      \caption{DAG for the running example}
+      \label{fig:dag_motivate}
+  \end{figure}
+
+
+We outline a few definitions and concepts applied to this example :
+\begin{itemize}
+    \item Observational Shapley value for \text{Sex} on the empty coalition :
+    \begin{align*}
+        \phi^{f,\text{obs}}_{\text{Sex},\emptyset}(\text{sex}) &= (\alpha_\text{Sex} \text{sex} + \alpha_\text{Surg} \mathbb{E}[\text{Surg}|\text{sex}] + \alpha_\text{Preg} \mathbb{E}[\text{Preg}|\text{sex}])\\
+        & \ \ \ \ - (\alpha_\text{Sex} \mathbb{E}[\text{Sex}] + \alpha_\text{Surg} \mathbb{E}[\text{Surg}] + \alpha_\text{Preg} \mathbb{E}[\text{Preg}]) 
+    \end{align*}
+    \item Interventional Shapley value for \text{Sex} on the empty coalition :
+    \begin{align*}
+        \phi^{f,\text{interventional}}_{\text{Sex},\emptyset}(\text{sex}) &= (\alpha_\text{Sex} \text{sex} + \alpha_\text{Surg} \mathbb{E}[\text{Surg}] + \alpha_\text{Preg} \mathbb{E}[\text{Preg}])\\
+        & \ \ \ \ - (\alpha_\text{Sex} \mathbb{E}[\text{Sex}] + \alpha_\text{Surg} \mathbb{E}[\text{Surg}] + \alpha_\text{Preg} \mathbb{E}[\text{Preg}]) \\
+        &= \alpha_\text{Sex} (\text{Sex} - \mathbb{E}[\text{Sex}])
+    \end{align*}
+    \item Causal Shapley value for \text{Sex} on the empty coalition :
+    \begin{align*}
+        \phi^{f,\text{causal}}_{\text{Sex},\emptyset}(\text{sex})
+        &= (\alpha_\text{Sex} \text{sex} + \alpha_\text{Surg} \mathbb{E}[\text{Surg}|\text{do(Sex)}] + \alpha_\text{Preg} \mathbb{E}[\text{Preg}|\text{do(Sex)}])\\
+        & \ \ \ \ - (\alpha_\text{Sex} \mathbb{E}[\text{Sex}] + \alpha_\text{Surg} \mathbb{E}[\text{Surg}] + \alpha_\text{Preg} \mathbb{E}[\text{Preg}]) \\
+        &= (\alpha_\text{Sex} \text{sex} + \alpha_\text{Surg} \mathbb{E}[\text{Surg}|\text{sex}] + \alpha_\text{Preg} \mathbb{E}[\text{Preg}|\text{sex}])\\
+        & \ \ \ \ - (\alpha_\text{Sex} \mathbb{E}[\text{Sex}] + \alpha_\text{Surg} \mathbb{E}[\text{Surg}] + \alpha_\text{Preg} \mathbb{E}[\text{Preg}]) \\
+        &= \phi^{f,\text{obs}}_{\text{Sex},\emptyset}(\text{sex}) \ \ \ \ \text{ for this value in this specific example}.
+    \end{align*}
+    \item Coalition-specific Shapley effect (for \text{Sex}, our treatment of interest) on the empty coalition : one can note that the observational Shapley value can be decomposed as
+    \begin{align*}
+        \phi^{f,\text{obs}}_{\text{Sex},\emptyset}(\text{sex}) = (\text{sex} - \mathbb{E}[\text{Sex}]) (\alpha_\text{Sex} + \alpha_\text{Preg} \cdot p_\text{Preg} + \alpha_\text{Surg} \cdot p_\text{Surg})
+    \end{align*}
+    where the second factor on the right-hand side is the coalition-specific Shapley effect, which here is written as
+    \begin{align*}
+        \psi^{f}_{\text{Sex} \rightarrow \text{Death}|\emptyset} = \mathbb{E}[f(\text{sex}=1,\text{Surg,Preg})] - \mathbb{E}[f(\text{sex}=0,\text{Surg,Preg})]
+    \end{align*}
+    \item Path-wise Shapley effect of \text{Surg} : here it is expressed as
+    \begin{align*}
+\effect^f_{\text{Surg}} &= \effect^f_{Sex \rightarrow Death | Surg, Preg}(\text{surg, preg})  - \effect^f_{Sex \rightarrow Death| Preg}(\text{preg})
+\end{align*}
+We can interpret as an effect through the path $Sex \rightarrow Surg \rightarrow Death$, re-noting it as $\effect^f_{Sex \rightarrow Surg \rightarrow Death}$.
+\end{itemize}
+
+\vspace*{-0.2cm}
+
+\iffalse
+\section{Experiments on synthetic datasets}
+\label{sec:exp_synth}
+\vspace*{-0.2cm}
+
+We now illustrate PWSHAP's ability to capture confounding and mediation on a set of synthetic datasets, some of which being drawn from the examples developed above. We infer path-specific Shapley effects following the procedure described in \ref{sec:estimation_procedure}  and compute their averages $\bar{\psi}$ across the testing set. To mitigate variations in results due to the scale of the outcome, we present these averages divided by the empirical standard deviation of outcome $\sigma_Y$, computed across the training set. Conditional distributions are inferred by training an iterative imputer, linear regressions with 2nd order polynomial features are used to infer outcome models and logistic regressions for propensity models, all of this corresponding in part to a typical user behaviour, agnostic to the examples outlined below. 
+
+ \textit{Local bias analysis, single pre-treatment covariate} :  we assume that the logit of the probability of death ("Death") is known and depends linearly on an age variable ("Age") and a surgery indicator ("Surg") which is our treatment of interest, the linear predictor is $logit(\text{Death}) = \alpha_\text{Age} \text{Age} + \alpha_\text{Surg} \text{Surg}$. We look at scenarios where the surgery indicator is randomised with fixed expectation 0.5 ("Rand. surg."), or it depends on the age variable as $p(\text{Surg} | \text{Age}) = \sigma(0.15 \cdot (\text{Age} - \mathbb{E}[\text{Age}]))$ ("Non-rand. surg."), and where the outcome model is the true model ("True model"), depending on both age and surgery as outline above, or is made dependent on the surgery variable only, as $logit(\text{Death}) = \alpha_\text{Age} \mathbb{E}[\text{Age}] + \alpha_\text{Surg} \text{Surg}$, becoming unconfounded ("Unconfounded model"). We evaluate the local confounding effect of the age variable. Results are presented in Table \ref{tab:synthetic_xp_localbias_singlevar}. The pathwise-effect-to-standard-deviation ratio is significantly lower in absolute value for the two scenarios where surgery is not confounded by age than for the scenario where it is. These results are consistent with Lemma \ref{lemma:local_confounding_effect}. We compute analoguous ratios for both Causal Shapley and observational Shapley values, on both $\{\text{Age}\}$ and $\emptyset$ coalitions. We notably observe that for any scenario, these ratios are always near-zero. Thereby, any combination of coalition-wise causal or observational Shapley values, e.g. the difference as our method or the sum to yield the complete Shapley value, will also be near-zero. This shows that Causal Shapley and observational Shapley are unsuited to detect confounding in this example with a linear model without interactions. More specifically, for Causal Shapley, this somewhat surprising finding stems from the Shapley values being identical for both a randomised and a non-randomised treatment, as a result of the do-operations. For both CS and SHAP, this finding is further caused by the linear model without no interaction. This can be generalised to any number of independent pre-treatment covariates in the absence of interactions. 
+    
+\begin{table}
+\begin{tabular}{lcccc}
+\hline
+ & \makecell{Rand. surg., \\ True model}  & \makecell{Non-rand. surg.,\\ true model} & \makecell{Non-rand. surg.,\\ unconfounded model} \\ \hline
+ $\bar{\psi}^f_{\text{Surg} \leftarrow \text{Age} \rightarrow \text{Death}} / \sigma_Y$ & 0.005 & 0.348 & -0.034 \\ \hline 
+  $\bar{\phi}^{f,\text{CS}}_{\text{Surg}, \{\text{Age}\}} / \sigma_Y$ & 0.012 & 0.055 & 0.055 \\ \hline
+    $\bar{\phi}^{f,\text{CS}}_{\text{Surg}, \emptyset} / \sigma_Y$ & -0.034 & -0.010 & -0.050 \\ \hline
+  $\bar{\phi}^{f,\text{SHAP}}_{\text{Surg}, \{\text{Age}\}} / \sigma_Y$ & 0.011 & 0.054 & 0.055 \\ \hline
+    $\bar{\phi}^{f,\text{SHAP}}_{\text{Surg}, \emptyset} / \sigma_Y$ & 0.005 & -0.015 & 0.053 \\ \hline
+\end{tabular}
+  \caption{Results on local bias analysis, one single pre-treatment covariate. %Mean and standard deviation computed from subsampling our set.
+  }%
+\label{tab:synthetic_xp_localbias_singlevar}
+\end{table}
+    
+\textit{Local bias analysis, two pre-treatment covariates} : we now assume the model with two pre-treatment covariates $C_1$ and $C_2$ and the model described in Section \ref{sec:local_moderation}. We look at the local confounding effects of $C_1$ and $C_2$. Using the functional form of the propensity score, we further assume that neither $C_1$ nor $C_2$ are confounders ($p(T=1|C_1,C_2) = 0.5$), that $C_1$ is a confounder but $C_2$ is not ($p(T=1|C_1,C_2) = C_1$), and finally that both are confounders ($p(T=1|C_1,C_2) = C_1C_2$). Results are presented in Table \ref{tab:synthetic_xp_localbias_twovars}. We note that pathwise-effect-to-standard-deviation ratios are significantly higher in absolute value for variables that are confounders than variables that are not confounders, except for $C_2$ as a confounder in the third scenario, although it does remain higher than for scenarios where $C_2$ is not a confounder. All of this further supports the validity of PWSHAP's local confounding effect to isolate individual non-confounders in pre-treatment covariates, in accordance with Lemma \ref{lemma:local_confounding_effect}.
+    
+    
+\begin{table}
+\begin{tabular}{lccc}
+\hline
+Scenario & $C_1, C_2$ non-confounders & \makecell{$C_1$ confounder,\\$C_2$ non-confounder} & $C_1, C_2$ confounders \\ \hline
+ $\bar{\psi}^f_{T \leftarrow C_1 \rightarrow Y} / \sigma_Y$ & -0.024 & -0.589 & -0.387 \\ \hline
+ $\bar{\psi}^f_{T \leftarrow C_2 \rightarrow Y} / \sigma_Y$ & -0.051 & -0.036 & -0.095 \\
+\end{tabular}
+  \caption{Results on local bias analysis, two synthetic pre-treatment covariates. %Mean and standard deviation computed from subsampling our set.
+  }%
+\label{tab:synthetic_xp_localbias_twovars}
+\end{table}
+
+\textit{Local mediation analysis, two post-treatment covariates} : we now assume the model for college admissions described in Section \ref{subsec:local_mediation} where a gender indicator $T$ can influence exam results $Q$ and the choice of a competitive department $D$, and all of $T, Q, D$ determine the outcome $Y$ taken as the logit of the probability of admission. We look at the local mediating effects of $Q$ and $D$, in three scenarios : (i) $T$ influences neither $Q$ or $D$, so neither is a mediator, (ii) $T$ influences $D$ but not $Q$, so the former is a mediator but the latter is not, (iii) $T$ influences both $Q$ and $D$, so both are mediators. Results are presented in Table \ref{tab:synthetic_xp_localmediation_twovars}. We note that pathwise-effect-to-standard-deviation ratios are significantly higher in absolute values for variables that are mediators than variables that are not mediators. All of this further supports the validity of PWSHAP's local mediating effect to isolate individual non-mediators in pre-treatment covariates, in accordance with Property \ref{prop:local_mediator_effect_confounders}.
+    
+\begin{table}
+\begin{tabular}{lccc}
+\hline
+Scenario & $Q, D$ non-mediators & \makecell{$Q$ mediator,\\$D$ non-mediator} & $Q, D$ mediators \\ \hline
+ $\bar{\psi}^f_{T \rightarrow Q \rightarrow Y} / \sigma_Y$ & -0.016 & 0.015 & 2.074 \\ \hline
+ $\bar{\psi}^f_{T \rightarrow D \rightarrow Y} / \sigma_Y$ & -0.022 & 0.577 & 0.953 \\
+\end{tabular}
+  \caption{Results on local mediation analysis, two synthetic post-treatment covariates. %Mean and standard deviation computed from subsampling our set.
+  }%
+\label{tab:synthetic_xp_localmediation_twovars}
+\end{table}
+
+ Empirically, all of these results suggest that having a ratio $\bar{\psi}^f_{C_i} / \sigma_Y$ below 0.05 in absolute value indicates that some given statistical dependencies of interest like confounding or mediation might be cut off. We do not have a clear recommendation for such a threshold however, especially as these ratios or simply the path-specific effects do not reach negligible values, eg below $10^{-5}$, even in the absence of confounding or mediation. This can be understood as a limitation of our approach. We do, however, advocate the use of some normalisation, eg dividing by the standard deviation of outcomes $\sigma_Y$, to isolate near-zero pathwise effects indicating the absence of confounding or mediation, as these pathwise effects can otherwise be made arbitrarily large or small by scaling the outcomes. Other than the outcome, the propensity score model can also lead to less stable estimates of pathwise Shapley effects when its values are closer to 0 or when it is not correctly fitted. On the other hand, PWSHAP values are estimated in a manner agnostic to the example developed, while Causal Shapley must be computed in a different way depending on the DAG under scrutiny. Further, we have found an example where CS is not suited to provide causal interpretations of the data under scrutiny, whereas an agnostic approach for PWSHAP yields causal interpretations that are consistent with theoretical developments in all above examples. 
+\fi
+\vspace*{-0.2cm}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+\section{PROOFS OF PROPERTIES AND LEMMAS} \label{sec:proofs}
+
+
+\subsection{Proof of Property \ref{prop:shapley_decomposition}}
+\label{proof:shapley_decomposition}
+It suffices to show that
+\begin{align*}
+    \coalitionshapley{f}{S}{T}{c,t} &= w^*_{S} \times \big(v_f(S \cup \{T\},c,1) - v_f(S \cup \{T\},c,0) \big)
+\end{align*}
+where 
+\begin{align*}
+     v_{f}(S \cup \{T\},c,t) &= v_{f}(S \cup \{T\},c_S,t) = \mathbb{E}_{p(C_{\bar{S}} | c_S, t)} [f(c_S, C_{\bar{s}}, t] \\
+     v_{f}(S, c) &= \mathbb{E}_{p(C_{\bar{S}}, T | c_S)} [f(c_S, C_{\bar{s}}, T] \\
+     w^*_{S} = w^*(c_S, t) &= t -  P(T=1| C_S=c_S)
+\end{align*}
+In other words we want to show that
+\begin{align*}
+    \coalitionshapley{f}{S}{T}{c,t} &= (t - p(T=1 | C_S=c_S)) \times \big(\mathbb{E}_{p(C_{\bar{S}} | c_S, 1)} [f(c_S, C_{\bar{s}}, 1]  - \mathbb{E}_{p(C_{\bar{S}} | c_S, 0)} [f(c_S, C_{\bar{s}}, 0]  \big)
+\end{align*}
+
+We note that
+\begin{align*}
+    v_f(S,c) &=  \mathbb{E}[f(c_S, C_{\bar{S}}, T) | c_S = c_S] \\
+    &=  \mathbb{E} [\mathbb{E}[f(c_S, C_{\bar{S}}, T) | c_S = c_S, T] | c_S=c_S] \\
+    &= p(T=t | c_S) \times \mathbb{E}[f(c_S, C_{\bar{S}}, t)|c_S=c_S, T=t]  \\ 
+    & \ \ \ \ + p(T=1-t|c_S) \times \mathbb{E}[f(c_S, C_{\bar{S}}, 1-t)|c_S=c_S, T=1-t] \\
+    &= p(T=t|c_S) \times v_{f}(S \cup \{T\},c,t)  \\ 
+     & \ \ \ \ + p(T=1-t|c_S) \times v_{f}(S \cup \{T\},c,1-t)
+\end{align*}
+and, from $1=p(T=t | c_S)+p(T=1-t | c_S)$,
+\begin{align*}
+    &v_{f}(S \cup \{T\},c,t) - v_{f}(S,c) \\
+    &= p(T=t | c_S) v_{f}(S \cup \{T\},c,t)  + p(T=1-t | c_S) v_{f}(S \cup \{T\},c,t) \\
+    & \ \ \ - p(T=t | c_S) v_{f}(S \cup \{T\},c,t) - p(T=1-t | c_S) v_{f}(S \cup \{T\},c,1-t).
+\end{align*}
+So terms in $p(T=t | c_S)$ cancel out and we get:
+\begin{align*}
+    v_{f}(S \cup \{T\},c,t) - v_{f}(S,c) &=  p(T=1-t | c_S) \times [ v_{f}(S \cup \{T\},c,t)   - v_{f}(S \cup \{T\},c,1-t)] \\
+    &= (t - \pi^*_S(c_S)) \times [v_{f}(S \cup \{T\},c,1)  - v_{f}(S \cup \{T\},c,0)]
+\end{align*}
+where $\pi^*_S(c_S) = P(T=1|C_s=c_S)$ and the second equality comes from $t \in \{0,1\}$. 
+
+\subsection{Proof of Property \ref{prop:integration_pathwise_effect}}
+\label{proof:integration_pathwise_effect}
+Let $c_{-i}$ be a value of $C_{-i}$. It suffices to show that $\mathbb{E}[\effect^f_{T \rightarrow Y | C_i, C_{-i}}(C_i,c_{-i}) | C_{-i} = c_{-i}] = \effect^f_{T \rightarrow Y | C_{-i}}(c_{-i})$, which is true as
+\begin{align*}
+    &\mathbb{E}[\effect^f_{T \rightarrow Y | C_i, C_{-i}}(C_i,c_{-i}) | C_{-i} = c_{-i}] \\
+    &= \int_{c_i} (v_f(S^* \cup \{T\}, c_i, c_{-i}, 1) - v_f(S^* \cup \{T\}, c_i, c_{-i}, 0)) \text{d}p(c_i | c_{-i}) \\
+    &= \int_{c_i} (f(c_i, c_{-i}, 1) - f(c_i, c_{-i}, 0)) \text{d}p(c_i | c_{-i}) \\
+    &= \int_{c_i} f(c_i, c_{-i}, 1)\text{d}p(c_i | c_{-i}) - \int_{c_i}f(c_i, c_{-i}, 0) \text{d}p(c_i | c_{-i}) \\
+    &= \int_{c_i} f(c_i, c_{-i}, 1)\text{d}p(c_i | c_{-i}, t=1) - \int_{c_i}f(c_i, c_{-i}, 0) \text{d}p(c_i | c_{-i}, t=0) \text{ as } T \indep C_i | C_{-i} \\
+    &= \mathbb{E}[f(C_i, c_{-i}, 1) | C_{-i}=c_{-i}, T=1] - \mathbb{E}[f(C_i, c_{-i}, 0) | C_{-i}=c_{-i}, T=0] \\
+    &= v_f((S^* \backslash \{i\}) \cup \{T\}, c_{-i}, 1) - v_f((S^* \backslash \{i\}) \cup \{T\}, c_{-i}, 0) \\
+    &= \effect^f_{T \rightarrow Y | C_{-i}}(c_{-i})
+\end{align*}
+which completes the proof.
+
+
+
+\subsection{Proof of Property \ref{prop:error_bounds_outcome}}
+\label{proof:error_bounds_outcome}
+We assume that
+    \begin{align*}
+    \forall c, t, N, | \hat{f}_N(c,t) - f^*(c,t) | \leq e^\text{outcome}_N
+    \end{align*}
+
+Then, for any coalition $S$ without $T$, $c$ and $N$,
+\begin{align*}
+&| \effect^{\hat{f}_N}_{ T \rightarrow Y | C_S}(c) - \effect^{f^*}_{ T \rightarrow Y | C_S}(c)| \\
+&\leq |(\mathbb{E}_{p(C_{\bar{S}}|C_S=c_s,T=1)}[\hat{f}_N(c_S,C_{\bar{S}},1)] - \mathbb{E}_{p(C_{\bar{S}}|C_S=c_s,T=0)}[\hat{f}_N(c_S,C_{\bar{S}},0)]) \\
+& \ \ - (\mathbb{E}_{p(C_{\bar{S}}|C_S=c_s,T=1)}[f^*(c_S,C_{\bar{S}},1)] - \mathbb{E}_{p(C_{\bar{S}}|C_S=c_s,T=0)}[f^*(c_S,C_{\bar{S}},0)])| \\
+&= |(\mathbb{E}_{p(C_{\bar{S}}|C_S=c_s,T=1)}[\hat{f}_N(c_S,C_{\bar{S}},1) - f^*(c_S,C_{\bar{S}},1)] \\
+& \ \ \ \ \  - \mathbb{E}_{p(C_{\bar{S}}|C_S=c_s,T=0)}[\hat{f}_N(c_S,C_{\bar{S}},0) - f^*(c_S,C_{\bar{S}},0)])| \\
+&\leq |\mathbb{E}_{p(C_{\bar{S}}|C_S=c_s,T=1)}[\hat{f}_N(c_S,C_{\bar{S}},1) - f^*(c_S,C_{\bar{S}},1)]|  \\
+& \ \ \ \ \  + |\mathbb{E}_{p(C_{\bar{S}}|C_S=c_s,T=0)}[\hat{f}_N(c_S,C_{\bar{S}},0) - f^*(c_S,C_{\bar{S}},0)]| \text{ from the triangle inequality} \\
+&\leq \mathbb{E}_{p(C_{\bar{S}}|C_S=c_s,T=1)}[|\hat{f}_N(c_S,C_{\bar{S}},1) - f^*(c_S,C_{\bar{S}},1)|]  \\
+& \ \ \ \ \  + \mathbb{E}_{p(C_{\bar{S}}|C_S=c_s,T=0)}[|\hat{f}_N(c_S,C_{\bar{S}},0) - f^*(c_S,C_{\bar{S}},0)|] \text{ from Jensen's inequality} \\
+&\leq \mathbb{E}_{p(C_{\bar{S}}|C_S=c_s,T=1)}[e^\text{outcome}_N] + \mathbb{E}_{p(C_{\bar{S}}|C_S=c_s,T=0)}[e^\text{outcome}_N] \text{ by assumption} \\
+&= 2e^\text{outcome}_N
+\end{align*}
+which shows bound 1. Now, let $S$ as before, c, t, N,
+
+\begin{align*}
+&|\coalitionshapley{\hat{f}_N}{S}{T}{c,t}  - \coalitionshapley{f^*}{S}{T}{c,t} | \\
+&= |w_S^*(t,c_S) \cdot ( \effect^{\hat{f}_N}_{ T \rightarrow Y | C_S}(c) - \effect^{f^*}_{ T \rightarrow Y | C_S}(c))| \\
+&= |w_S^*(t,c_S)| | \effect^{\hat{f}_N}_{ T \rightarrow Y | C_S}(c) - \effect^{f^*}_{ T \rightarrow Y | C_S}(c)| \\
+&\leq | \effect^{\hat{f}_N}_{ T \rightarrow Y | C_S}(c) - \effect^{f^*}_{ T \rightarrow Y | C_S}(c)| \text{ as } |w^*_S(t,c_S)| \leq 1 \\
+&\leq  2e^\text{outcome}_N \text{ from the previous bound} \\
+\end{align*}
+which proves bound 2. Now, for any covariate feature $i$ as before, $c, N$
+\begin{align*}
+&| \effect^{\hat{f}_N}_{C_i}(c) - \effect^{f^*}_{C_i}(c) | \\
+&= |\effect^{\hat{f}_N}_{ T \rightarrow Y | C_{S^*}}(c) - \effect^{\hat{f}_N}_{ T \rightarrow Y | C_{S^*\backslash \{i\} }}(c_{S^*\backslash \{i\}})   - (\effect^{f^*}_{ T \rightarrow Y | C_{S^*}}(c) - \effect^{f^*}_{ T \rightarrow Y | C_{S^*\backslash \{i\} }}(c_{S^*\backslash \{i\}}))| \\
+&\leq |\effect^{\hat{f}_N}_{ T \rightarrow Y | C_{S^*}}(c) - \effect^{f^*}_{ T \rightarrow Y | C_{S^*}}(c)| \\
+& \ \ \ \ + |\effect^{\hat{f}_N}_{ T \rightarrow Y | C_{S^*\backslash \{i\} }}(c_{S^*\backslash \{i\}}) - \effect^{f^*}_{ T \rightarrow Y | C_{S^*\backslash \{i\} }}(c_{S^*\backslash \{i\}})| \\
+& \ \ \ \ \ \ \ \text{from the triangle inequality} \\
+&\leq 2e^\text{outcome}_N + 2e^\text{outcome}_N \ \ \ \text{ from the bound on the coalition-wise Shapley effect} \\
+\end{align*}
+which proves bound 3.
+
+\subsection{Proof of Property \ref{prop:error_bounds_shapley}} 
+\label{proof:error_bounds_shapley}
+We assume that
+\begin{align*}
+\forall S \text{ s.t. } T \notin S, c, N, |\estcoalitionshapley{N}{\hat{f}_N}{S}{T}{c,t} - \coalitionshapley{f^*}{S}{T}{c,t} | \leq e^\text{Shapley}_N,
+\end{align*}
+that the arbitrary propensity score model $\pi^N$ and $\pi^*$ verify $\epsilon$-strong overlap, ie $\epsilon \leq \pi^N \leq 1 - \epsilon$, and $\epsilon \leq \pi^* \leq 1 - \epsilon$ , and that we have $\forall c, N, |\pi^N(c) - \pi^*(c) | \leq e^\text{propensity}_N$.
+
+Then, for any $S$ s.t. $T \notin S$, we note that $\epsilon$-strong overlap for $\pi^N$ and $\pi^*$ implies $\epsilon$-strong overlap for $\pi^N_S(c_S) := \mathbb{E}_{p(C_{\bar{S}}|C_S=c_S)}[\pi^N(c_S,C_{\bar{S}})]$ and $P(T=1|C_S=c_S) = \mathbb{E}_{p(C_{\bar{S}}|C_S=c_S)}[\pi^*(c_S,C_{\bar{S}})]$ (by taking the expectation wrt $p(C_{\bar{S}} | c_S)$) and also Jensen's inequality yields
+\begin{align*}
+    \forall c, N, |\mathbb{E}_{p(C_{\bar{S}}|C_S=c_S)}[\pi^N(c_S,C_{\bar{S}})] -P(T=1|C_S=c_S) | \leq e^\text{propensity}_N,
+\end{align*}
+which further gives $\forall t, c, N, |w^N_S(c,t) - w^*_S(c,t) | \leq e^\text{propensity}_N$.
+
+So for any $S$ s.t. $T \notin S$, $c$, $N$,
+\begin{align*}
+    &|w^N_S(c,0)| = |-\pi^N_S(c)| = \pi^N_S(c) \geq \epsilon \\
+    &|w^N_S(c,1)| = |1-\pi^N_S(c)| = 1-\pi^N_S(c) \geq \epsilon
+\end{align*}
+Thereby, for any $S$ s.t. $T \notin S$, $t$, $c$, $N$,
+\begin{align*}
+    \frac{1}{|w^N_S(c,t)|} \leq \frac{1}{\epsilon}
+\end{align*}
+and, similarly,
+\begin{align*}
+    \frac{1}{|w^*_S(c,t)|} \leq \frac{1}{\epsilon}.
+\end{align*}
+We also show that $|\coalitionshapley{f^*}{S}{T}{c,t}| \leq 2||f^*||_\infty$: indeed,
+\begin{align*}
+    |\coalitionshapley{f^*}{S}{T}{c,t}|
+    &= |w^*_S(c,t)| |\mathbb{E}_{p(C_{\bar{S}}|C_S=c_s,T=1)}[f^*(c_S,C_{\bar{S}},1)] - \mathbb{E}_{p(C_{\bar{S}}|C_S=c_s,T=0)}[f^*(c_S,C_{\bar{S}},0)]| \\
+    &\leq \mathbb{E}_{p(C_{\bar{S}}|C_S=c_s,T=1)} [|f^*(c_S,C_{\bar{S}},1)|] + \mathbb{E}_{p(C_{\bar{S}}|C_S=c_s,T=0)} [|f^*(c_S,C_{\bar{S}},0)|] \\
+    & \ \ \ \ \ \ \ \text{ from } |w^*_S(c,t)| \leq 1
+     \text{ and the triangle inequality and Jensen's inequality} \\
+     &\leq \mathbb{E}_{p(C_{\bar{S}}|C_S=c_s,T=1)} [||f^*||_\infty] + \mathbb{E}_{p(C_{\bar{S}}|C_S=c_s,T=0)} [||f^*||_\infty] \\
+     &= 2 ||f^*||_\infty
+\end{align*}
+
+In the end, we have
+\begin{align*}
+   &|\hat{\effect}^{N,\hat{f}_N}_{ T \rightarrow Y | C_S}(c)  - \effect^{f^*}_{ T \rightarrow Y | C_S}(c)|\\
+   &=  | \frac{\estcoalitionshapley{N}{\hat{f}_N}{S}{T}{c,t}}{w^N_S(c,t)} - \frac{\coalitionshapley{f^*}{S}{T}{c,t}}{w^*_S(c,t)} | \\
+   &= | \frac{\estcoalitionshapley{N}{\hat{f}_N}{S}{T}{c,t} - \coalitionshapley{f^*}{S}{T}{c,t}}{w^N_S(c,t)} + \coalitionshapley{f^*}{S}{T}{c,t}(\frac{1}{w^N_S(c,t)}-\frac{1}{w^*_S(c,t)}) | \\
+    &= | \frac{\estcoalitionshapley{N}{\hat{f}_N}{S}{T}{c,t} - \coalitionshapley{f^*}{S}{T}{c,t}}{w^N_S(c,t)} + \coalitionshapley{f^*}{S}{T}{c,t}\frac{w^*_S(c,t) - w^N_S(c,t)}{w^*_S(c,t) w^N_S(c,t)} | \\
+    &\leq \frac{|\estcoalitionshapley{N}{\hat{f}_N}{S}{T}{c,t} - \coalitionshapley{f^*}{S}{T}{c,t}|}{|w^N_S(c,t)|} + |\coalitionshapley{f^*}{S}{T}{c,t}|\frac{|w^*_S(c,t) - w^N_S(c,t)|}{|w^*_S(c,t)| |w^N_S(c,t)|}  \ \  \ \text{from Jensen's inequality} \\
+    &\leq \frac{2e^\text{Shapley}_N}{\epsilon} + 2||f^*||_\infty \cdot \frac{e^\text{propensity}_N}{\epsilon^2}
+\end{align*}
+which proves bound 4. Bound 5 is proven similarly to bound 3 above.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\subsection{Proof of Lemma \ref{lemma:local_confounding_effect}.}
+
+\label{proof:local_confounding_effect}
+If unconfoundess wrt $C_1, C_2$ holds then
+\begin{align*}
+    \mathbb{E}[\effect^{f^*}_{T \rightarrow Y | C_1, C_2}(C_1, C_2)] = \mathbb{E}[\mathbb{E}[Y|T=1,C_1,C_2] - \mathbb{E}[Y|T=0,C_1,C_2]] = \text{ATE}.
+\end{align*}
+If unconfoundess wrt $C_1$ also holds then
+\begin{align*}
+    \mathbb{E}[\effect^{f^*}_{T \rightarrow Y | C_1}(C_1)] = \mathbb{E}[\mathbb{E}[Y|T=1,C_1] - \mathbb{E}[Y|T=0,C_1]] = \text{ATE}
+\end{align*}
+In the end,
+\begin{align*}
+    \mathbb{E}[\effect^{f^*}_{T \leftarrow C_2 \rightarrow Y}(C_1,C_2)] = \mathbb{E}[\effect^{f^*}_{T \rightarrow Y | C_1, C_2}(C_1, C_2) - \effect^{f^*}_{T \rightarrow Y | C_1}(C_1)] = \text{ATE} - \text{ATE} = 0.
+ \end{align*}
+ 
+ 
+ 
+ \iffalse
+ We also show that
+ \begin{itemize}
+     \item $\forall t, Y(t) \indep T \mid C_1, C_2$
+     \item $T \indep C_2 \mid C_1$
+ \end{itemize}
+ imply $\forall t, Y(t) \indep T \mid C_1$. Indeed, let $t \in \{0,1\}$,
+ \begin{align*}
+     P(Y(t), T | C_1)
+     &= \int P(Y(t), T | C_1, C_2 = c_2)dP_{C_2 | C_1}(c_2) \\
+     &= \int P(Y(t) | T, C_1, C_2 = c_2)P(T | C_1, C_2 = c_2)dP_{C_2 | C_1}(c_2) \\
+     &= \int P(Y(t) | C_1, C_2 = c_2)P(T | C_1)dP_{C_2 | C_1}(c_2) \text{ due to assumptions} \\ 
+      &= P(T | C_1) \cdot \int P(Y(t) | C_1, C_2 = c_2)dP_{C_2 | C_1}(c_2)  \\ 
+        &= P(T | C_1) P(Y(t) | C_1)  \\ 
+ \end{align*}
+ which completes this part of the proof. Finally, we show that
+ \begin{itemize}
+     \item $\forall t, Y(t) \indep T \mid C_1, C_2$
+     \item $\forall t, Y(t) \indep C_2 \mid C_1$
+ \end{itemize}
+ imply $\forall t, Y(t) \indep T \mid C_1$. Indeed, let $t \in \{0,1\}$,
+ \begin{align*}
+     P(Y(t), T | C_1)
+     &= \int P(Y(t), T | C_1, C_2 = c_2)dP_{C_2 | C_1}(c_2) \\
+     &= \int P(Y(t) | T, C_1, C_2 = c_2)P(T | C_1, C_2 = c_2)dP_{C_2 | C_1}(c_2) \\
+     &= \int P(Y(t) | C_1, C_2 = c_2)P(T | C_1, C_2 = c_2)dP_{C_2 | C_1}(c_2) \text{ due to the first assumption} \\ 
+      &= \int P(Y(t) | C_1)P(T | C_1, C_2 = c_2)dP_{C_2 | C_1}(c_2) \text{ due to the second assumption} \\ 
+      &= P(Y(t) | C_1) \cdot \int P(T | C_1, C_2 = c_2)dP_{C_2 | C_1}(c_2)  \\ 
+        &= P(Y(t) | C_1)P(T | C_1)   \\ 
+ \end{align*}
+ which completes the proof.
+ 
+ 
+\textbf{Remark :} the condition $Y \indep C_2 | C_1, T$ (or the outcome model not depending on $C_2$) is \emph{not} a sufficient condition for unconfoundness wrt $C_1$ to hold if unconfoundness wrt $C_1, C_2$ holds. Indeed, take $C_2$ to be binary, $T$ to be the exact copy of $C_2$, and $\forall t, Y(t) = C_1 + t \cdot C_2$. Then it turns out that $Y = C_1$ so $Y \indep C_2 | C_1, T$ holds. However, unconfoundness wrt $C_1, C_2$ holds but not unconfoundness wrt $C_1$ alone. We note however that the overlap assumption is violated in this example. If all assumptions making identification of $P(Y(t) | C_1, C_2) = P(Y | T=t, C_1, C_2)$ are possible, then the condition $Y \indep C_2 | C_1, T$ and the above condition $\forall t, Y(t) \indep C_2 \mid C_1$ are equivalent.
+
+\fi
+
+\subsection{Proof of Property \ref{prop:local_mediator_effect_confounders}}
+
+\label{proof:local_mediator_effect_confounders}
+
+Let $c$ and $m_1$ be values of $C$ and $M_1$, respectively. We note that
+\begin{align*}
+    &\mathbb{E}[\effect^f_{T \rightarrow M_2 \rightarrow Y}(c,m_1,M_2) | C=c] \\
+    &= \mathbb{E}[\effect^f_{T \rightarrow M_2 \rightarrow Y}(c,m_1,M_2) | C=c, M_1=m_1]  \text{ as } M_1 \indep M_2 | C \\
+    &= 0 \ \ \ \ \ \ \ \ \ \ \ \text{ from Property \ref{prop:integration_pathwise_effect} as } M_1 \indep T | M_2, C \\
+\end{align*}
+which completes the proof.
+ 
+
+\subsection{Proof of Property \ref{prop:indirect_part}}
+\label{proof:indirect_part}
+
+If a latent variable generates all pre-treatment covariates of $T$, then we can factorise the distribution of $(T,C_S,C_{\bar{S}},f\left({C}_{\bar{S}}, c_{S}, t\right))$ in the ADMG with those variables as nodes and edges $C_S \leftrightarrow C_{\bar{S}} \rightarrow f\left({C}_{\bar{S}}, c_{S}, t\right)$ and $C_{\bar{S}} \rightarrow T \gets C_S$.  We aim to apply rule 3 of Pearl's do-calculus. If we remove edges pointing into $C_S$ and $T$, we obtain an ADMG with only the edge $C_{\bar{S}} \rightarrow f\left({C}_{\bar{S}}, c_{S}, t\right)$. In this graph $T$ and $f\left({C}_{\bar{S}}, c_{S}, t\right)$ are m-separated by ${C}_{\bar{S}}$. Therefore, rule of 3 of do-calculus applies and we can remove the $T=t$ term in the do-operator of the left-hand term, yielding the right-hand term. Hence the indirect effect is zero.
+
+
+
+
+\subsection{Proof of Corollary \ref{cor:local_confounding_effect_blackbox}}
+\label{proof:local_confounding_effect_blackbox}
+We note that
+\begin{align*}
+    \mathbb{E}[\effect^f_{T \leftarrow C_2 \rightarrow Y}(C_1,C_2)]
+    &= \mathbb{E}[\mathbb{E}[\effect^f_{T \leftarrow C_2 \rightarrow Y}(C_1,C_2) | C_1]] \text{ from the tower property} \\
+    &= \mathbb{E}[0] \text{ from Property \ref{prop:integration_pathwise_effect} as } C_2 \indep T | C_1 \\
+    &= 0 \\
+\end{align*}
+
+\subsection{Proof of Lemma \ref{lemma:local_confounding_effect_mediators}.}
+\label{proof:local_confounding_effect_mediators}
+Let $m$ be a value of $M$. If $\mathcal{H}(C)$ holds then for any $t = 0, 1$
+\begin{align*}
+    \mathbb{E}[Y(t,m)]
+    &= \mathbb{E}[\mathbb{E}[Y(t,m) | C]] \\
+    &= \mathbb{E}[\mathbb{E}[Y(t,m) | C, t]] \text{ from } Y(t,m) \indep T | C \\
+    &= \mathbb{E}[\mathbb{E}[Y(t,m) | C, t, m]] \text{ from } Y(t,m) \indep M | T, C \\
+    &= \mathbb{E}[\mathbb{E}[Y | C, t, m]] \text{ from consistency.} \\
+\end{align*}
+so
+\begin{align*}
+    \mathbb{E}[\effect^{f^*}_{T \rightarrow Y | C, M}(C, m)]
+    &= \mathbb{E}[\mathbb{E}[Y|C,t=1,m]] - \mathbb{E}[\mathbb{E}[Y|C,t=0,m]] \\
+    &= \mathbb{E}[Y(1,m)] - \mathbb{E}[Y(0,m)] \text{ from the above} \\
+    &= \text{CDE}(m).
+\end{align*}
+So if both $\mathcal{H}(C_1,C_2)$ and $\mathcal{H}(C_1)$ hold then
+\begin{align*}
+    \mathbb{E}[\effect^{f^*}_{C_2}(C_1,C_2,m)]
+    &= \mathbb{E}[\effect^{f^*}_{T \rightarrow Y | C_1, C_2, M}(C_1, C_2, m) - \effect^{f^*}_{T \rightarrow Y | C_1, M}(C_1, m)] \\
+    &= \text{CDE}(m) - \text{CDE}(m) \\
+    &= 0. \\
+ \end{align*}
+
+\subsection{Proof of Corollary \ref{cor:local_confounding_effect_blackbox_mediators}}
+\label{proof:local_confounding_effect_blackbox_mediators}
+First, let's note that $C_2 \indep T, M | C_1$ implies $C_2 \indep M | C_1$ and $C_2 \indep T | C_1, M$. Let $m$ be a value of $M$. We note that
+\begin{align*}
+    \mathbb{E}[\effect^f_{C_2}(C_1,C_2)]
+    &= \mathbb{E}[\mathbb{E}[\effect^f_{C_2}(C_1,C_2) | C_1]] \text{ from the tower property} \\
+        &= \mathbb{E}[\mathbb{E}[\effect^f_{C_2}(C_1,C_2) | C_1, M]] \text{ from the property } C_2 \indep M | C_1 \\
+    &= \mathbb{E}[0] \text{ from Property \ref{prop:integration_pathwise_effect} as } C_2 \indep T | C_1, M \\
+    &= 0 \\
+\end{align*}
+which completes the proof.
+
+\subsection{Proof of Property \ref{prop:local_mediator_effect_alternative}}
+\label{proof:local_mediator_effect_alternative}
+It suffices to show that $\mathbb{E}[\effect^{f}_{T \rightarrow Y | M}(M)] = \effect^{f}_{T \rightarrow Y | \emptyset}$, which is true as
+\begin{align*}
+    &\mathbb{E}[\effect^f_{T \rightarrow Y | M}(M)] \\
+    &= \int_{m} (v_f(\{M, T\} , m, t=1) - v_f(\{M, T\} , m, t=0)) \text{d}p(m) \\
+        &= \int_{m} (\mathbb{E}[f(C,m,t=1) | m, t=1] - \mathbb{E}[f(C,m,t=0) | m, t=0) \text{d}p(m) \\
+    &= \int_{m} \mathbb{E}[f(C,m,t=1) | m, t=1]\text{d}p(m) - \int_{m}\mathbb{E}[f(C,m,t=0) | m, t=0]\text{d}p(m) \\
+    &= \int_{m} \mathbb{E}[f(C,m,t=1) | m, t=1]\text{d}p(m|t=1) - \mathbb{E}[f(C,m,t=1) | m, t=0]\text{d}p(m|t=0) \ \ \ \text{ as } M \indep T  \\
+        &= \mathbb{E}[f(C,M,t=1) | t=1] - \mathbb{E}[f(C,M,t=1) | t=0] \\
+        &=  v_f(T, t=1) - v_f(T, t=0) \\
+    &= \effect^{f}_{T \rightarrow Y | \emptyset} 
+\end{align*}
+which completes the proof.
+
+
+\bibliographyAppendix{bibliography}
+\bibliographystyleAppendix{apalike}
+
+\vfill
+
+\end{document}

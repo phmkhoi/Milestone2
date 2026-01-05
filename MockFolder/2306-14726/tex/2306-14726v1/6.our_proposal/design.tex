@@ -1,0 +1,89 @@
+\subsection{Design}
+% Compared to the advanced approaches, \base is relatively effective for \vts by considering the frequency of code tokens in every part of vulnerable functions. However, not all the parts of a vulnerable function are equally important for determining the type of vulnerabilities in it. 
+%
+%
+% There are certain kinds of code element which are more crucial than the others in determining vulnerability types. 
+%
+%
+%  
+%
+%
+%
+%
+
+% \textbf{Attention.} Criticize other attentions. Extract distinguishing token in a selective locations. 
+% To realize the above idea, attention mechanism~\cite{attention} could be a great option. However, this mechanism has its own drawbacks. This method adds more weight parameters to the neural network model. This could significantly increase training time. Furthermore, attention mechanisms are applicable for NN models but not traditional models. 
+
+\begin{definition}{\textit{\textbf{(Syntactic Code Element).}}}
+A syntactic code element is a syntactical part of programs defined by the programming language in use. 
+\end{definition}
+
+In this work, we use Joern~\cite{joern}, which is widely applied in the existing studies~\cite{vuldeeppeaker,sysevr,ivdetect,linevd,velvet}, to analyze vulnerable functions and extract their syntactic code elements.
+%
+%
+In BigVul, about 95\% of vulnerable statements are/contain either \textit{function calls} (78\%), \textit{assignments} (44\%), \textit{control structures} (38\%), or \textit{return statements} (19\%). Instead of considering all code elements equally important in VTI, focusing on those crucial kinds of elements in vulnerable functions could improve VTI performance.
+%
+%
+%
+Based on the observation, we design a lightweight technique that can be applied as an independent step to improve \base's performance. 
+%
+Our idea is that the code tokens, which can be used to distinguish each vulnerability type from the others (so-called, \textit{distinguishing tokens}), are identified by statistically analyzing the training set on the selective syntactic code elements which are critical for VTI such as \textit{function calls}, \textit{assignments}, \textit{control structures}, and \textit{return statements}. 
+%
+For example, \textit{Buffer Overflow} vulnerabilities usually cause by the \textit{assignments} (e.g., assigning too large index) or \textit{function calls} (e.g., copying data larger a buffer's capacity).
+%
+%
+%
+%
+These distinguishing tokens are used to refine the predictions produced by \base. Particularly, a function $f$ should or should not be of a type $t$ if $f$ has the distinguishing tokens of $t$.
+
+
+\begin{definition}{\textit{\textbf{(Distinguishing Token).}}}
+For a type $t \in T$, a distinguishing token in a syntactic code element is a code token which is more/less \textit{prevalent} in the syntactic code elements of the functions having vulnerabilities of type $t$ than in any other types.
+\end{definition}
+%
+Among $D_t$, which is the collection of cases of type $t$, the prevalence of a token $c$ regarding a syntactic code element $e$, ($prev(c, e, D_t)$), is reflected via the ratio of the syntactic code elements $e$ of cases containing $c$ in $D_t$. Formally, $prev(c, e, D_t) = \frac{count(c, e, D_t)}{\|D_t\|}$, where $count(c, e, D_t)$ is the number of cases where the elements $e$ contain $c$. Token $c$ is a \textit{positive distinguishing tokens} of $t$, $c \in \Delta^+(t, e)$, if $c$ is more prevalent in the cases of type $t$ than any other types: 
+%
+$$
+dis^+(c, e, t, D) = \frac{prev(c, e, D_t)}{\max_{t' \in T \setminus \{t\}} prev(c, e, D_{t'})} > 1
+$$
+%
+%
+When $\max_{t' \in T \setminus \{t\}} prev(c, e, D_{t'}) = 0$, then $dis^+(c, e, t, D)$ is infinity. In that case, $c$ appears in $D_t$ only, not in the others.
+%
+%
+
+Meanwhile, regarding a syntactic code element $e$, there are certain tokens which are more prevalent in the cases of the other types rather than $t$. Such code tokens are considered as \textit{negative distinguishing tokens} of $t$ regarding $e$, $c \in \Delta^-(t, e)$. Formally, $c \in \Delta^-(t, e)$ if $c$ satisfies the following condition:
+% when $c$ is less prevalent in $D_t$ than in the cases where $c$ is least prevalent:
+%
+% $$
+% dis^-(c, e, t, D) = \frac{prev(c, e, D_t)}{\min_{t' \in T \setminus \{t\}} prev(c, e, D_{t'})} < 1
+% $$
+$$
+dis^-(c, e, t, D) = \frac{\min_{t' \in T \setminus \{t\}} prev(c, e, D_{t'})}{prev(c, e, D_t)} > 1
+$$
+%
+%
+%
+% Figure X shows the numbers of positive and negative distinguishing tokens of the popular types in a training dataset (8/10 random folds of Big-Vul). 
+%
+If $c$ is never in any case of type $t$, then $prev(c, e, D_t) = 0$ and $dis^-(c, e, t, D) = \infty$.
+%
+Intuitively, regarding a syntactic code element, \textit{when a case has a positive distinguishing token of type $t$, then the vulnerable function is likely to have a vulnerability of $t$} (\rp). Similarly, \textit{if the case has a negative distinguishing token of type $t$, the vulnerable function is likely to be a case of any types other than $t$} (\rn).
+
+
+%TODO: Update, reverse condition
+A vulnerable function $f$ might satisfy neither \rp nor \rn. The prediction for $t$ has to rely on the prediction of \base. Thus, we apply \rp and \rn to design a technique which can be used as \textit{\textbf{an independent component}} combined with the VTI model. Particularly, for the prediction $Z$ of $f$ produced by \base, we apply \rp and \rn to refine $Z$ to produce the final prediction $Z'$. Particularly, for a type $t \in T$, $Z'[t]$, which is the syntactic code element corresponding $t$ in $Z'$, is refined based on that of $Z$ (i.e., $Z[t]$):
+%TODO: Update, reverse condition
+\begin{itemize}
+    \item If a syntactic code element $e$ of $f$ contains $c \in \Delta^+(t, e)$, yet $Z[t] = 0$, then $Z'[t] = 1$.
+    \item If a syntactic code element $e'$ of $f$ contains $c' \in \Delta^-(t, e)$, yet $Z[t] = 1$, then $Z'[t] = 0$.
+    \item Otherwise, $Z'[t] = Z[t]$.
+\end{itemize}
+
+In fact, applying the observation, that certain syntactic code elements are more important than others in VTI, as a lightweight independent component could expand the applicability of our technique.
+%
+Indeed, the refining step using our technique could be applied as an independent component of any VTI approach. 
+%
+% TODO: \textbf{INDEPENDENCE} discussion
+%
+We will show the performance of the other approaches when combined with our technique in Sec.~\ref{sec:our_results}. 

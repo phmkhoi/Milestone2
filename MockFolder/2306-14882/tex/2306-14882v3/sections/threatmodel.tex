@@ -1,0 +1,45 @@
+\section{Defining Security}
+To achieve security, we rely on both the hardware to enforce some isolation and on the fact the software verifies some requirements: we do not protect all-software out-of-the-box.
+
+Intuitively, for a given security property, if the isolation enforced by the hardware is stronger, then the requirements on the software are weaker and we can enforce the security property for more programs.
+
+\noindent\textbf{Previous Work}
+Previous work looking at enclaves in a context of transient execution attacks \cite{bourgeat2019mi6}
+aims at limiting the attacker's view to the enclave final output.
+Completion time was considered outside of the threat model and could be independently handled using traffic shaping techniques (padding) techniques.
+Unfortunately, this security property is too restrictive as it only considers a limited class of programs that do not communicate with the outside world.
+
+\noindent\textbf{Public Shared Memory}
+We define a weaker security property in order to consider a more important class of programs to run securely.
+Our goal is for the system to guarantee that an attacker should only be able to observe the transcript of 
+\emph{non-speculative} accesses to a shared memory region. 
+In particular, we don't want an attacker to be able to observe any speculative accesses to shared memory from the victim nor any other microarchitectural state (accesses to private memory, branch predictors, TLBs etc...).
+However, similarly to previous work, we do not consider the timing of each access is observable by the attacker, i.e., there are no timestamps for the non-speculative shared memory accesses.
+We consider that leakage through the timing of shared memory accesses should be addressed using orthogonal traffic-shaping techniques such as \cite{deutsch2022dagguise, wang2014timing, shafiee2015avoiding, zhou2017camouflage} and is left for future work.
+
+\noindent\textbf{Hardware \& Software Requirements}
+We now define what kind of requirements the hardware will needs to enforce and how the hardware restricts the victim program speculation model to help it achieve the just described security guarantee.
+1) the hardware should properly isolate private microarchitectural state.
+2) together, the hardware and the software need to prevent secrets from leaking through speculative accesses to shared memory.
+Intuitively, the more restrictive the speculation model of shared memory accesses enforced by the hardware, the lighter the conditions on the program to finally achieve security, but the least performance we get.
+
+We first experiment with a restrictive speculative model where the victim program is not able to perform speculative accesses to shared memory.
+This effectively prevents the existence of any speculative transmitters between the victim and the attacker.
+The program only needs to make sure that the explicit shared memory accesses don't leak information about the program secrets.
+Any constant-time cryptographic code satisfies these restrictions.
+Unfortunately this restrictive model gives us poor performance.
+
+We experiment with a second speculative model called \emph{Burst mode} where speculation on shared memory accesses is allowed, but all the predictors are deactivated and hard-coded to $pc+4$.
+The rationale is to allow pipelined accesses to shared memory to improve performance.
+Burst mode is intended to be only activated for code segments with straight-lined, burst accesses to shared memory.
+Under this less conservative speculation model, the software requirements are more important and the programs needs to verify that straight-line speculation ($pc+4$) within these segments will not leak any secrets. Outside of the said segments, we use the first speculation model.
+
+\subsection{Attacker Capabilities}
+
+We now complete our threat model by describing the attacker's capabilities.
+The attacker is collocated on the same machine as the victim and can mount any software-based attack, including microarchitectural side channels and transient execution attacks. The attacker has compromised the majority of the software stack, including the operating system (OS) except for a limited trusted code base (TCB) including the secure bootloader, the SM (together 15K lines of code (LOC)) and the enclave. 
+For the rest of this paper, we refer to any code outside of the TCB as the OS.
+We ignore attacks requiring physical access to the machine such as physical (e.g., noise, electromagnetic field, etc.) side channels. 
+We also ignore side channels that can be mounted in software, but exploit the physical layer like power side channels.
+We do not consider Rowhammer attacks.
+As highlighted by our security definition, we are worried about enclave privacy and do not consider denial of service.

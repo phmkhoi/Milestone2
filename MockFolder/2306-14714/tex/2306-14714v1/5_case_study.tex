@@ -1,0 +1,114 @@
+% Learning Skills Policy
+% Robot Applications
+\section{Robot Applications}
+\label{sec_case_studies}
+
+While task accuracy has improved~\cite{Levine2017ijrr, Andrychowicz2020ijrr}, based on large-scale data and large numbers of trials, the dynamics of real-world environments are long-term and complex, requiring a wide range of task motions to be realized in a limited amount of motion data.
+Because several practical tasks are essentially long-term tasks with multiple steps, an approach that divides and combines them into short-term operations is effective~\cite{Sacerdoti1974ai,Wolpert1998,Schaal2003isrr}.
+The ``combined generation of robot motions'' improve the efficiency of training data collection and the versatility of the motion generation model.
+\begin{itemize}
+    \item Diversion of subtasks included in the learning task to other tasks (module reuse)
+    \item Combination of subtasks to execute new tasks (extension of functions)
+\end{itemize}
+
+With the above background, this section discusses factors required to generate complex robot motions and presents examples of applications using real robots with deep predictive learning.
+
+First, a simple approach to generating complex robotic motions is to coordinate each modularized function. In general, a robotic system consists of a set of multiple modules, and their coordination determines a set of outputs. In robot operation, it can be assumed that by combining or switching models with different functions in parallel, the overall task function can be extended without increasing the computational load of each model. Another advantage of the distributed system configuration is the ability to continuously add functions by modifying or adding modules.
+
+Next is the local composite generation, which focuses on a single module. As the task is further subdivided, having the ability to perform multiple subtasks in each module is desirable. The dynamics must be represented in the module in a combinable format for composite multiple robot motions. By selecting the appropriate dynamics within the model in response to inputs to the model, it is possible to perform long-term task motion in response to environmental changes.
+
+Finally, we ground each segmented subtask with its linguistic representation. By learning that each task execution is semantically grounded in a given linguistic instruction, the model can acquire internal dynamics as a representation, with the semantic and syntactic structure of the language system as a constraint. The resulting model can be deployed to use cases in which it sequentially generates motions while communicating with collaborators. In addition, linking one-time motion generation with discrete symbols having abstracted meanings in the real world with many disturbances and high situational dependence will bring benefits such as improved learning efficiency and robustness of motion generation and generalizability to operate in novel situations. Based on the above ideas, we aimed to inductively represent the relationship ~\cite{Harned1990pd} between motions and symbols in the sensorimotor information inside the model. In the following, we describe examples of robot applications for each element.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Multiple model switching based on prediction error}
+One method of switching subtask modules mentioned in element (i) is based on the prediction error of the learner. The model can hold various dynamics from the time series data learning process as a unique internal state. During motion generation, the next state is predicted based on the internal state and current sensorimotor information, but the prediction error tends to increase in unlearned states. Therefore, when the prediction error increases during motion generation, the system switches from the learned dynamics to minimize the prediction error; this property can be used for module switching. If a large prediction error cannot be handled in real-time, state transition that pulls in individual RNNs as described in Section \ref{sec_cognitive}, cannot be used alone. In such cases, it is necessary to coordinate multiple modules according to the prediction error size and adjust the overall sensory prediction and motion generation.
+
+In \cite{Ito2022sr}, we developed a method to reduce prediction error in more complex tasks by introducing multiple prediction models and a novel switching mechanism between them according to prediction error (Figure \ref{fig_doorrobot}). The robot trains the prediction model for each motion, such as ``opening a door'' or ``passing through,'' and combines them to perform a series of tasks. Each prediction model uses information from sensors to generate a prediction image and compares it with the visual image of the actual robot (real image) to calculate in real time the change over time of an index (confidence), indicating how accurately the robot can work with the real state. In addition, the robot autonomously selects the prediction model with the highest confidence level to perform motions appropriate to the situation. Because the robot performs real-time calculations, it can handle complex tasks that cannot be handled by a single prediction model without having to precisely design the timing of motion switching and motion sequence. The verification results show that the robot can flexibly generate motions for unlearned door positions and changes in the color and pattern of door panels due to the retraction motion of the prediction models. In the task, ``opening a door,'' when a sudden change of situation occurred, the robot was moved to another location while in the process of opening a door. Normally, the robot would perform the motions of approaching the door, opening the door, and passing through the door in the same order. However, when a disturbance occurs, the robot immediately recognizes that the situation has changed and generates the motion of approaching the door again, eventually allowing the robot to pass through the door. Another task that changes the motion sequence is when a person opens the door that the robot is trying to open. The robot can perform a seamless operation by stopping the door-opening operation and switching to the door-passing operation when the door suddenly opens.
+
+
+%-------------------- Fig --------------------
+\setlength\textfloatsep{5pt}
+\begin{figure}[t]
+\centering
+\includegraphics[width=73mm]{DoorRobotv2.eps}
+\caption{Real-time motion switching of multiple prediction models based on prediction error}
+\label{fig_doorrobot}
+\hspace{10mm}
+\end{figure}
+
+
+In contrast, in \cite{Suzuki2021ral}, using multiple control modules with different characteristics, the authors addressed robot states (undefined motions) that cannot be predicted by learning-based controllers, including a prediction model and are not present in the training data. In the proposed method, a model-based controller compensates for the RNN output and switches it appropriately according to the error between the predicted and actual trajectories. Here, we assume that the internal state of the RNN contains the most recent information necessary to perform the task. Therefore, we train an additional task that directly predicts the past trajectory from the internal state. By adding a neuron to the internal state that predicts the additional task, we can add an error recovery function without affecting the performance of the main task learned by the RNN. Our experiments confirmed that error recovery is possible for different perturbations (contact and environmental changes) of cooperative operators by combining it with the dynamic design method of RNN internal states, which is described in the next section.
+
+In general robot systems, much development and adjustment work is required because responses to unexpected situations must be programmed separately in addition to the expected sequence of operations. In addition, when an unexpected disturbance occurs in the working environment, the robot operates slowly because it has time to re-recognize and re-plan the situation. In \cite{Ito2022sr,Suzuki2021ral}, multiple controllers can be switched to cope with sudden changes in the situation, and operation procedures and approaches, such as the mixture-of-expert, based on these prediction errors are effective for autonomous task execution in response to environmental changes.
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Designing the dynamics within the model}
+Next, we discuss the method of ``designing the dynamics within the model,'' corresponding to local composite generation within a single module as described in local composite generation. The methods described in the previous section focused on switching between modules, but for scalability, a mechanism that allows each module to switch its motion is desirable. We implement this by explicitly embedding sensorimotor dynamics in the learner on a subtask-by-subtask basis.
+
+Although combining multiple subtask modules using an attractor structure is possible, the intended attractor structure must be embedded for switching. In \cite{Kase2018icra}, an attractor structure was embedded in the RNN using a loss function for the internal state of the RNN to combine multiple tasks. By constraining the attractor to have a common state that can be switched between the attractors of each subtask, an attractor pull-in motion was generated that reduced the prediction error in the designed switching state. In our experiments, we achieved motion generation in arbitrary subtask order by combining multiple subtasks for the put-in-box task\footnote{https://youtu.be/QwogmDqOxfE}. Furthermore, in \cite{Kase2019iros}, the loss function of the internal state of the RNN was extended to design an arbitrary attractor structure, thereby increasing the degree of freedom of the motion-switching posture.
+
+In \cite{Suzuki2018ral}, a hierarchical structure of motion instruction input and RNN was introduced to learn subtask switching during a long-term task. By inputting a motion instruction vector that combines the collaborator's intention with the designed fixed-point attractor, it is possible to handle motion switching in ambiguous situations that cannot be judged based on sensor information alone. In the experiment, we verified a multi-motion folding task and executed the motion according to the motion instructions. In addition, we confirmed that the RNN's internal state has an attractor structure with motion instructions embedded in the upper long-term time-scale layer and motion in the short-term time-scale layer. In addition, it appropriately combines task context, text language, and image input.
+
+While these methods of combining and switching motions using attractor structures require the prior design of subtasks, they can somewhat incorporate the designer's intentions. More flexible robot motion switching is expected when combined with grounding using the language described below.
+
+
+
+%-------------------- Fig --------------------
+\setlength\textfloatsep{5pt}
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{icra2018_attractor_v2.eps}
+\caption{Embedding attractor structure into the internal state of RNN}
+\label{fig_kase_attractor}
+\hspace{10mm}
+\end{figure}
+
+
+
+\subsection{Integrated representation of language and motion}
+Finally, we describe the integrated language and motion learning method for complex motion generation. The correspondence between language, which is a discrete representation, and robot motion in the continuous space implies changes depending on the past context and current situation. For example, even for a simple instruction such as ``hit the blue bell,'' the motion to accomplish this differs depending on the location of the blue bell or the robot's posture while waiting. The robot needs to acquire an internal representation in a form that can realize such a polysemous and unique grounding each time, i.e., a form that can be generalized even in unknown situations.
+
+Deep predictive learning embeds the understanding of language instructions and motion generation into a set of attractor structures. In \cite{Yamada2016fn}, an RNN predictively learns a sequence of multiple iterations of episodes comprising waiting, language instruction, and robot motion generation, thereby acquiring a circumferential attractor representing the above episodic iterations as the internal dynamics of the model (Figure~\ref{fig_language_reduce}). When a language command is input to the robot waiting at the fixed point attractor, it is integrated with the environmental information given as visual information, and the internal state of the RNN transitions in a branching manner according to the situation. The robot's motion is then generated according to the meaning of the instruction in the environment. Finally, the internal state reconverges to the fixed point and waits for the next instruction. The generalization ability to generate appropriate motions for new situations without teaching all combinations of environmental states and instructions is demonstrated.
+
+%-------------------- Fig --------------------
+\setlength\textfloatsep{5pt}
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{rsj2022_language_reduce.eps}
+\caption{Grounding of language instructions and motion generation in the internal dynamics of RNNs}
+\label{fig_language_reduce}
+\hspace{10mm}
+\end{figure}
+
+The context that can be learned as a precondition for motion generation includes environmental information and the robot state. In \cite{Yamada2017fn}, a flag-raising game is learned using the framework in \cite{Yamada2016fn}. Fixed point attractors, corresponding to the four standby postures of the robot (up-up, up-down, down-up, down-down), are structured as the internal dynamics of the RNN. When instructions are given, the internal state is raised according to the flag color at that time and converges to one of the fixed points while generating appropriate motions. It is expected to be deployed in use cases where robots work in response to sequential instructions from humans.
+
+Furthermore, the model can be extended to a format that can be used for bidirectional conversion, i.e., conversion from motion to verbal description and vice versa. In \cite{Yamada2018ral}, two autoencoders, for language and sensorimotor, were prepared and trained with the constraint that the feature vectors are close in the corresponding sentences and movements. After training, the model realized bi-directional conversion from linguistic instructions to robot motion and from robot motion to linguistic explanations via feature vectors. Furthermore, \cite{Toyoda2021ral} used a distributed representation conversion module for words using the Word2vec model, which has recently attracted attention in natural language processing, to generate appropriate motions for instructions containing novel words similar to the trained words.
+
+
+In the example above, we introduced a method for integrating robot motions by giving instructions as language. The language instructions are given in word units, but a generic planning description language (e.g., planning domain description language (PDDL)) used in conventional automatic planning methods can also be used. In \cite{Kase2020icra}, the method is learned by grounding images with descriptive expressions that define the environment using the description language (Figure~\ref{fig_kase2022icra}). Based on the discrete symbolic representations extracted from the images, designing motions using arbitrary automatic planning methods is possible. Conventional methods, such as PDDL, plan in advance, making it difficult to respond to environmental changes, but dynamic planning methods allow to dynamically determine the robot's motion. In addition, this research aims to realize a robust system using a deep learner to generate motions based on the motion planning guidelines.
+
+%-------------------- Fig --------------------
+\setlength\textfloatsep{5pt}
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{icra2020_overview.eps}
+\caption{Grounding with generic planning description language and feature extraction}
+\label{fig_kase2022icra}
+\hspace{10mm}
+\end{figure}    
+
+
+\subsection{Examples of various task}
+We have introduced several methods for complex motion generation. We have applied deep predictive learning, which is the basis of these methods, to various robot or object manipulation tasks to verify the generality of the concept. One difficult task with conventional robot technology is manipulating irregularly shaped objects, such as cloth or string, whose shape changes upon contact, making it difficult to describe the entire situation programmatically. To address this problem, \cite{Koma2016ral} generalized the robot's experience by training the robot to fold several towels and performing integrated learning based on the acquired image-motion information. Moreover, from the limited training data, the robot repeatedly performed motions corresponding to object misalignment and different objects (such as books). Unlike conventional methods for handling flexible objects, the robot could generate movements naturally without modeling, image processing, or other costly processing\footnote{https://youtu.be/YH1TrL1q6Po}.
+
+We have since extended the deep predictive learning model to realize a knot--tying ~\cite{Suzuki2021iros} and button-hanging ~\cite{Fujii2022sii} tasks with the same model. We confirmed that including detailed object information such as proximity and tactile sensors as model inputs improved prediction performance ~\cite{Suzuki2021iros,Ito2022sii}. In particular, \cite{ichiwara2022contact} realized a task of unzipping a cloth bag of various shapes and colors by introducing an attention mechanism that extracts useful information (such as the position and direction of the object) from the robot's visual and tactile information. Because the attention mechanism focuses only on important details during task execution, it can generate robust movements in response to environmental and lighting conditions.
+
+In addition, we are developing a similar hierarchical prediction model for use in robotic simulations of neurodevelopmental disorders.
+Specifically, by reproducing functional disconnections between hierarchical layers \cite{idei2021paradoxical} and excitatory-inhibitory imbalances \cite{idei2020homogeneous} of neurons, it has been shown that real robots can produce abnormalities in sensory accuracy and the prediction accuracy of upper layers, observed as behavioral abnormalities.
+
+

@@ -1,0 +1,89 @@
+\section{Experiment Details}
+\label{appx:experiments}
+
+\subsection{Model Details}
+\label{appx:experiments:details}
+
+We do not perform any model training for configuring the methods or running the experiments discussed in this project. Our evaluations use inference call requests to OpenAI, PaLM, and HuggingFace API endpoints to run the baseline models on the \benchmark{} tasks. For OpenAI models, we set temperature to $0$, \texttt{top\_p} to $1$, \texttt{max\_tokens} to 512, and \texttt{n} (number of completions) to $1$. For PaLM models, we set temperature to $0$, \texttt{top\_p} to $1$, and \texttt{candidate\_count} (number of completions) to $1$. For open source models, we set \texttt{max\_new\_tokens} (maximum number of tokens to generate) to $100$ and temperature to $0.01$. Due to constraints in the context window size, we limit the length of each observation to a maximum of $1000$ tokens across all inference calls. The code for configuring API calls can be found in the linked repository.
+
+\subsection{Additional Experiments \& Analysis}
+\label{appx:experiments:additional_expr}
+
+
+
+\textbf{SQL schema ablation.} To confirm that the benefits of interaction exceed a simple disparity in information between the Single Turn and Try Again settings, we add the full SQL database schema, providing holistic details of tables necessary to the given instruction, to the \texttt{Question} message of both prompts, then re-run the comparison for several. Table~\ref{table:ablation-handicap-sql} indicates that while Single Turn performance improves drastically, a non-trivial difference in favor of Try Again remains. Manual inspection of task episode trajectories shows that selective and fine-grained context discovery (i.e. inspecting specific table records and file content that affect query construction) is still critical to solving tasks efficiently.
+
+\input{figures/tables/expr-ablation-handicap-sql}
+
+\textbf{Trends of admissible actions.}
+Table~\ref{table:error-rate} shows that for the SQL task, models generate admissible actions with increasingly higher rates early on; in initial turns, models will tend to hallucinate a query with fabricated table and column names at a high frequency. The drop in error rate between the first and second turns can largely be attributed to the model's decision to begin exploring context; $60.3\%$ of second turn actions contain either the \texttt{SHOW TABLES} or \texttt{DESC} keywords. Prompting strategies (i.e. ReAct, Plan \& Solve), explicit phrasing that encourages exploration, and demonstrations diminish a model's default tendency to hallucinate a query in the first turn. This trend is not found in Bash. This can likely be attributed to the nature of the instructions; unlike the SQL instructions which simply pose a question and do not have any explicit references to SQL commands or clauses, Bash instructions will typically include keywords that correspond directly to useful Linux commands or give insight into the file system's internal structure. These signals reduce the need for context discovery. Therefore, successful task completion in Bash tends to lean towards 1) Figuring out which flags, options, and arguments to configure a command with and 2) How to string together commands or pass outputs from one command to the next correctly.
+
+For both Bash and SQL, in later turns, the rate of admissible actions does not improve consistently. The actions in these later turns are usually attempts to answer the original instruction.
+At these stages, a model will tend to make small, cursory adjustments to the prior action based on execution feedback, often resulting in both a repetition of the same types of mistakes and hallucinations that introduce new issues.
+In these moments, compared to such minor perturbations, alternative reasoning capabilities such as context discovery and modularized problem solving are often more efficient ways to get the relevant insights needed to better decide how to fix the prior turns' issues.
+As corroborated by Figure~\ref{fig:turn_stats}, models struggle to take advantage of additional context in longer task episodes or horizons.
+Making the most of multiple queries is an open challenge with exciting implications for solving more difficult coding tasks.
+
+\input{figures/tables/expr-err-rate}
+
+\textbf{Robustness results.}
+We conducted an evaluation to assess the robustness of the reported accuracy metrics for the models. In order to maintain consistency in the evaluation, we focused on the performance across file systems 2, 3, and 4 (shown in Figure~\ref{fig:nl2b_filesystems}), which were designed to have similar difficulty levels. File system 1, intentionally made harder, was not included in this analysis.
+The standard errors for the Single Turn and Try Again modes are presented in Table~\ref{table:bash-error-bars}. The Try Again mode leverages interaction to consistently outperform the Single Turn mode across all models.
+
+\input{figures/tables/expr-bash-error-bars}
+
+\subsection{Additional Prompting Strategy}
+\label{appx:experiments:additional_strategies}
+
+To gauge the significance of designing prompting strategies that can successfully solve the interactive coding task, we attempt to devise a more performant approach by chaining together existing techniques, where each technique is meant to elicit a different, relevant reasoning skill. To this end, we design a hybrid prompting strategy that combines Plan \& Solve and Try Again, which we refer to as "Plan \& Solve + Refine". This strategy is meant to complement a model's planning, modularized task completion, and context discovery abilities with error correction. Figure~\ref{fig:psr_visual} visualizes this prompting strategy's workflow. The full prompting template is included in \S~\ref{appx:experiments:templates}.
+
+\input{figures/images/psr_visual}
+
+We run small-scale experiments in the same fashion as discussed in Section~\ref{sec:experiments:strategy_compare} on the SQL task for $44$ randomly selected task instances. These preliminary tests have an average Success Rate of 45.5, a Number of Turns of 6.34 (across both planning and refinement stages), and an Error \% of 22.4. Compared to the original Plan \& Solve performance presented in Section~\ref{sec:experiments:strategy_compare}, this strategy does not yield a significant improvement. Upon inspection of the trajectories, it is evident that while models are capable of specific reasoning techniques, it is not enough to elicit specific strategies in a pre-determined order. In addition, compared to human problem solvers, such reasoning frameworks do not intuitively allow for adjustment in strategy based on execution output. Therefore, mechanisms that allow a model to freely self-determine what strategies at any turn in task episode are integral to improving Success Rate and non-trivial because simple adjustments in existing prompting strategies are not enough to close this gap. 
+
+\subsection{Task Trajectory Analyses}
+\label{appx:experiments:trajectory_analyses}
+
+In this section, we discuss some of the behaviors and phenomena in different prompting schemes. We also include annotated trajectories that are representative of these observations.
+
+\input{figures/tables/appx-default-behaviors}
+
+\textbf{Default model behaviors.} In both the Single Turn and Try Again setups, the templates describe the interactive coding task and do not provide the model with any reasoning framework or strategy, providing insight into a model's default approach when given the instruction and task environment. As evident in Table~\ref{table:expr-default-behavior}, across both the Bash and SQL tasks, a model tends to directly generate an answer in the very first turn. For Try Again, the model will then perform error correction, then make slight adjustments to the answer to resolve the issue(s) reflected in prior execution output across the next several turns. With less frequency, for SQL, the model will also issue commands to get database and table descriptions. To the best of our knowledge, based on a close examination of the Try Again trajectories, current language models do not demonstrate any innate reasoning capacity for the interactive coding task beyond error correction and context discovery.
+
+\input{figures/tables/expr-traj-analysis}
+
+\textbf{Prompting strategy effects.} In contrast with Try Again, the ReAct prompting strategy briefly introduces the interactive task environment and proposes a reasoning framework for the model to abide by. Table~\ref{table:expr-traj-analysis} presents a side-by-side comparison of the Try Again and ReAct~\cite{yao2023react} strategies. The figure reflects the richer types of problem-solving that a model exhibits when prompted to reason on its own thoughts about the execution output. This reflects that through better strategies, it may be possible to make significant advancements in the interactive coding task with prompting strategies that attempt to elicit reasoning via an appropriate framework that also permits the model to be expressive and creative in devising its own solutions. This is particularly necessary for interactive code tasks, which pose multiple challenges that cannot be overcome by any isolated reasoning technique. As demonstrated in \S~\ref{appx:experiments:additional_strategies}, this direction is non-trivial, and \benchmark{} is designed to facilitate the bench-marking of such approaches.
+
+\subsection{Capture the Flag Analysis}
+\label{appx:experiments:ctf_analysis}
+
+CTF challenges typically necessitate a trial-and-error methodology, where participants employ diverse techniques and exploit vectors to identify vulnerabilities to solve challenges. Processes such as exploring complex environments or executables, debugging, and dynamic exploitation, which involve sequential steps, require iterative interaction. Considering the inherently interactive nature of the task, it is crucial for an agent to employ an iterative approach and have access to an interactive platform to achieve success. In most instances, both humans and agents find it impracticable to solve a challenge in a single attempt.
+
+Similar to the aforementioned exploitation task (Figure~\ref{fig:traj_ctf}), we now present a more intricate forensics task in Figure~\ref{fig:traj_ctf_forensics}. 
+
+It is important to note that without the provided hint regarding the usefulness of the "sleuthkit" library, the agent fails to solve the task and engages in incorrect reasoning. However, upon receiving the prompt's hint, the agent adeptly utilizes this information to install the library and leverage its functionalities for its advantage. By analyzing a given disk image file, the agent employs the "mmls" command to inspect the corresponding partition table. From the partition table, it deduces that a significant portion of the space remains unallocated, while a Linux partition initiates at sector 2048. Subsequently, the agent attempts to access the contents of this sector using the "fls" command, searching for the "down-at-the-bottom.txt" file, which it anticipates will contain the flag. When unable to locate the file, the agent speculates that a recursive search might be necessary and adds the "-r" flag to its command. Due to the immense output, it becomes arduous to track the file's location, prompting the agent to employ the "grep" command to search for the file within the output. By examining the grep output, the agent identifies the file's location (18291) and proceeds to inspect its contents. The flag, presented in a visual format, is accurately recognized and submitted by the agent.
+
+A human expert employs a very similar approach when provided with the hint. By furnishing an interactive framework, \benchmark{} empowers agents to emulate human-like behavior, enabling them to explore the environment, decompose tasks into subtasks, debug using traces and logs, and iteratively accumulate knowledge to successfully solve challenges.
+
+\input{figures/images/trajectory-ctf-forensics}
+
+\subsection{Human Performance Baseline}
+\label{appx:experiments:human_perf}
+
+To explore the gap between human and agent performance on the interactive coding task, we the authors, all proficient in SQL, act as human task workers and perform the task on a random sample of $15$ \benchmark{}-SQL task instances within the same task environment identical to the agent's setting. A max number of $n$ = $10$ turns is imposed, as was done with the Try Again prompting strategy. Similar to ReAct and Plan \& Solve, the human task worker decides when to \texttt{submit}; in other words, the task does not terminate automatically when reward = $1$. The trajectories for these $15$ instances and the code for facilitating human interaction with the \benchmark{}-SQL environment are available in the codebase.
+
+The human task worker was able to complete 13 of 15 tasks (Success Rate = $0.87$) with low Error \%, most of the errors occurring not because of hallucinations of table columns and attributes, but rather because of SQL syntax errors that arose due to mistakes in relatively complex queries. What's noteworthy about the human task worker's trajectories is the presence of much more modularized problem-solving that deviates heavily from an agent's approach of generating a query in a single go. Even with context discovery and error correction, an agent's action to produce an answer for the instruction will tend to be a single, self-contained command that generates the answer in one go. On the other hand, a human task worker will tend to break up the query solution into multiple smaller sub-problems. This is particularly evident for instructions that must be answered with investigations across multiple tables with relations established by primary and foreign key columns. As an example, given an instruction "Find the average weight of the dog breed that is owned by the majority of pet owners", a human task worker might write commands that query the \texttt{pet\_owners} table to determine what the most popular dog breed is, and then use the answer to this sub-problem as a field in the \texttt{WHERE} clause of a second query that then determines the average weight using the \texttt{pets} table.
+
+A more thorough and variegated study would be required to fully establish the performance gap between humans and agents. Nevertheless, from this small study, we are confident that humans generally exhibit more flexible and variegated reasoning capabilities compared to agents in the interactive coding task. Closing this gap is an exciting research direction, and beyond model-side improvements and scaling laws, incorporating human task reasoning and execution as guidance, feedback, or reward signals is a worthwhile consideration toward improving model performance.
+
+\subsection{Prompt Templates}
+\label{appx:experiments:templates}
+As discussed in the paper, the main baseline evaluations for \benchmark{} consist of presenting a language agent with an instruction and a prompting strategy that have been adapted for \benchmark{}'s interactive task setting. Each prompting strategy is defined as a template with three components:
+
+\begin{itemize}[noitemsep,topsep=0pt]
+    \item Initial Message: This is the first message presented to the agent. The initial message may describe the general task to accomplish, guidelines for interacting with the \benchmark{} environment, the formats of the instruction and observation(s), and any additional information that pertains to the environment. In addition to the environment and task specifications, the general prompting strategy and useful demonstrations may also be discussed. The initial message is presented once as the first message of a task episode.
+    \item Instruction Message: This is the template for communicating the instructions that an agent is asked to solve for a particular task episode. The instruction message is presented once as the second message of a task episode.
+    \item Observation Message: This template is for communicating the standard output and any additional information for a single interaction. This observation is what the agent will use to generate the next action. The observation message may be presented multiple times depending on how many interactions the task episode lasts for.
+\end{itemize}
+
+Figures~\ref{appx:table:multi-turn-prompt}, ~\ref{appx:table:prompt-react}, ~\ref{appx:table:prompt-ctf}, and ~\ref{appx:table:prompt-plan-solve} present the corresponding prompt templates for the Try Again, ReAct, and Plan \& Solve experiments, along with a specific version for the toy Capture the Flag task.

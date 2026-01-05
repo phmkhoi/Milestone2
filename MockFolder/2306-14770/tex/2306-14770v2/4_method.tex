@@ -1,0 +1,112 @@
+%\section{Methodology}
+
+
+
+\section{Methodology}
+This section outlines our approach to training prototypical networks via task-guided diffusion. We begin by explaining how to obtain task-specific overfitted prototypes in Section~\ref{sec:overfit}. Next, we introduce the task-guided diffusion method for obtaining diffused prototypes in Section~\ref{sec:task-guided}. In the same section, we also introduce residual prototype learning, which accelerates training. Figure~\ref{fig:diff_process} visualizes the diffusion process of diffused prototypes by our ProtoDiff.
+
+% \cs{The section titles/modules do not appear in Figure 1.}
+
+
+% \begin{figure*} [t!]
+% \centering
+% \includegraphics[width=0.99\linewidth]{graph/overview.png}
+% \caption{\textbf{Illustration of proposed ProtoDiff.} \cs{The figure requires a lot of effort from the reader to comprehend. Seems to complex.}
+% (a) Per-task overfitting phase. \cs{One short line on what happens here. Also maybe this component should be positioned below task-guided diffusion?} (b) Task-guided diffusion. We first introduce noise to the overfitted prototype as the input of the diffusion forward process. The diffusion input also includes the vanilla prototype $\tilde{\mathbf{z}}$ and a random time step $t$. The resulting output is the diffused prototype $\mathbf{z}_t$. 
+% (c) \cs{How is this component related to (b)?} Residual prototype learning. We further propose to predict the residual of the prototypes to accelerate training.
+% \cs{Not sure yet whether this should be Figure 1, as it is a bit related to implementation, I'd rather have a figure here that visualizes the intuition (the one discussed with Zehao). Then this can become Figure 2.}
+% }
+% 	\label{fig:framework}
+% \end{figure*}
+
+% \begin{figure*} [t!]
+% \centering
+% \includegraphics[width=0.9\linewidth]{graph/overview4.pdf}
+% \caption{\textbf{ProtoDiff illustration.} Overfitted prototype first obtained by the per-task prototype overfitting. We then add noise to the overfitted prototype, which inputs the diffusion forward process. The diffusion input also includes the vanilla prototype $\tilde{\mathbf{z}}$ and a random time step $t$. The resulting output is the diffused prototype $\mathbf{z}_t$. \cs{Legend below, and caption on the right?}
+% }
+% 	\label{fig:framework}
+% \end{figure*}
+
+
+
+\subsection{Per-task prototype overfitting}
+\label{sec:overfit}
+
+
+
+Our approach utilizes a modified diffusion process as its foundation. Firstly, a meta-learner, denoted by $f_{\phi}(\mathcal{T}^i) {=} f(\mathcal{T}^i, \phi)$, is trained on the complete set of tasks, $\mathcal{T}$. Here, $\phi$ corresponds to the learned weights of the model over the entire task set.
+Subsequently, fine-tuning is performed on each individual task $\mathcal{T}^i$ to obtain task-specific overfitted prototypes denoted by $\mathbf{z}^{i, *} {=} f{{\phi}^i}(\mathcal{S}^i, \mathcal{Q}^i)$. This involves running the meta-learner $f_{\phi}$ on the support set $\mathcal{S}^i$ and a query set $\mathcal{Q}^i$ of the task $\mathcal{T}^i$.
+\begin{align}
+\phi^{i} = \phi - \eta \sum^{\mathcal{T}_i}_{(\mathbf{x}, \mathbf{y}) \sim \mathcal{T}_i} \mathcal{L}_{\mathrm{CE}}(f(\mathcal{S}^i, \mathbf{x}^{q^i}, \phi), \mathbf{y}^{q^i}),
+\end{align}    
+where $\mathcal{L}_{\mathrm{CE}}$ is the cross-entropy loss  minimized in the meta-learner training.  The support set $\mathcal{S}^i$ and query set $\mathcal{Q}^i {=} \{\mathbf{x}^{q^i}, \mathbf{y}^{q^i}\}$ correspond to the data used for fine-tuning task $\mathcal{T}^i$. During fine-tuning, we obtain the $\phi^i$ through several iterations of gradient descent. We illustrate the overall framework of the per-task  prototype learning in the appendix.
+
+Our proposed method, ProtoDiff, for few-shot learning, relies on acquiring task-specific overfitted prototypes that can be considered as the  ``optima'' prototypes due to their high confidence in final predictions, approaching a value of 1. To achieve this, we employ fine-tuning of the meta-learner and extract task-specific information that surpasses the accuracy and reliability of generic prototypes used in the meta-training stage.
+However, accessing the query set in the meta-test stage is not feasible. Hence, we need to rely on the vanilla prototype to meta-learn the process of generating the overfitted prototype during the meta-training stage. In the forthcoming section, we will introduce the task-guided diffusion model, which facilitates the learning process transitioning from the vanilla prototype to the overfitted prototype.
+
+\begin{figure*} [t!]
+\centering
+\includegraphics[width=\linewidth]{graph/diffusion_process.pdf}
+\caption{\textbf{Visualization of the diffusion process.}  ProtoDiff randomly selects certain areas to predict during the diffusion process, with the lowest probability at the beginning time step. As time progresses,  the prototype gradually aggregates towards the \textit{dog}, with the highest probability at t=0. }
+	\label{fig:diff_process}
+\end{figure*}
+\begin{SCfigure}
+\centering
+% \includegraphics[width=.7\linewidth]{graph/training1.pdf}
+\includegraphics[width=.65\linewidth]{graph/training3.pdf}
+\caption{\textbf{ProtoDiff illustration.} We first obtain an overfitted prototype by the per-task prototype overfitting. We then add noise to the overfitted prototype, which inputs the diffusion forward process. The  input of task-guided diffusion includes the vanilla prototype $\tilde{\mathbf{z}}$ and a random time step $t$. The resulting output is the diffused prototype $\mathbf{z}_t$. 
+}
+\label{fig:framework}
+\end{SCfigure}
+
+\subsection{Task-guided diffusion}
+\label{sec:task-guided}
+Our generative overfitted prototype is based on diffusion~\cite{sohl2015deep}, a robust framework for modeling the prototypes instead of images. The length of the diffusion process $T$ determines the number of forward passes needed to generate a new prototype, rather than the dimensionality of the data. Our model uses diffusion to progressively denoise the overfitted prototype $\mathbf{z}^*$.
+
+\textbf{Meta-training phase.} Diffusion models can be configured to predict either the signal or the noise when presented with a noisy input~\cite{ho2020denoising, nichol2021glide}. Previous research in the image domain has suggested that noise prediction is superior to signal prediction. However, we discovered empirically that signal prediction performs better than noise prediction in our experiments, so we parameterized the diffusion model to output the prototype. 
+%
+
+The generative diffusion process is devised to reconstruct the overfitted prototype $\mathbf{z}^*$ by iteratively operating on a random noise vector $\mathbf{z}_T \sim \mathcal{N}(\textbf{0}, \boldsymbol{I})$, which possesses the same dimensions as $\mathbf{z}^*$. This process continues with $\mathbf{z}_t$, where $t$ denotes the number of diffusion steps. Consequently, the reconstructed $\mathbf{z}_0$ should exhibit proximity to $\mathbf{z}^*$ for a given task.
+
+
+
+Specifically, during the forward diffusion process at time step $t$, we obtain the noised overfitted prototype $\hat{\mathbf{z}}_t$. Subsequently, we input the noised prototype $\hat{\mathbf{z}}_t$, the vanilla prototype $\tilde{\mathbf{z}}$, and the time step $t$ into the task-guided diffusion. This yields the diffused prototype $\mathbf{z}_t$, which then allows us to predict the final results of the query set using Equation (\ref{eqn:protonetProb}). For each task, our task-guided diffusion entails two components: the variational lower bound $\mathcal{L}_{\mathrm{diff}}$ for the diffused prototype, and the cross-entropy loss $\mathcal{L}_{\mathrm{CE}}$.
+
+The objective is to minimize the simplified variational lower bound, which involves predicting the denoised overfitted prototype:
+\begin{align}
+\label{eq:vlb}
+\mathcal{L}_{\mathrm{diff}} = |\mathbf{z}^* - \mathbf{z}_\theta(\sqrt{\bar{\alpha}_t}\mathbf{z}^* +\sqrt{1-\bar{\alpha}_t}\boldsymbol{\epsilon}, \tilde{\mathbf{z}}, t)|^2,
+\end{align}
+Here, $\mathbf{z}_\theta(\cdot, \cdot)$ is implemented by the transformer model~\cite{vaswani2017attention} operating on prototype tokens from $\mathbf{z}^*$, $\tilde{\mathbf{z}}$, and the time step.
+
+By utilizing equation~(\ref{eqn:protonetProb}), we derive the final prediction $\hat{\mathbf{y}}^q$ using the diffused prototype $\mathbf{z}_t$. The ultimate objective is expressed as follows:
+ \begin{align}
+\label{eq:final_loss}
+\mathcal{L} = \sum^{|Q|}_{{(\mathbf{x}, \mathbf{y}) \sim \mathcal{Q}}} \Big[ - \mathbb{E}{q(\mathbf{z}_t|\mathbf{z}_{t+1}, \tilde{\mathbf{z}})}\big[\log p(\mathbf{y}^q|\mathbf{x}^q,\mathbf{z}_t)\big] + \beta |\mathbf{z}^* - \mathbf{z}_\theta(\sqrt{\bar{\alpha}_t}\mathbf{z}^* +\sqrt{1-\bar{\alpha}_t}\boldsymbol{\epsilon}, \tilde{\mathbf{z}}, t)|^2\Big],
+\end{align}   
+where $\beta$ represents a hyperparameter, and $|Q|$ denotes the query size.
+
+To prepare the two input prototypes $\mathbf{z}^*$ and $\tilde{\mathbf{z}}$ for processing by the transformer, we assign each position token inspired by~\cite{dosovitskiy2020image}. We also provide the scalar input diffusion timestep $t$ as individual tokens to the transformer. To represent each scalar as a vector, we use a frequency-based encoding scheme~\cite{mildenhall2021nerf}. Our transformer architecture is based on GPT-2~\cite{radford2019language}. The decoder in the final layer of our ProtoDiff maps the transformer's output to the diffused prototype.  Note that only the output tokens for the noised overfitted prototypes $\hat{\mathbf{z}}_t$ are decoded to predictions. The overall meta-training phase of ProtoDiff is shown in Figure~\ref{fig:framework}. 
+
+
+
+\textbf{Meta-test phase.}
+We can not obtain the overfitted prototype during the meta-test phase since we can not access the query set. Thus, diffusion sampling begins by feeding-in Gaussian noise $\mathbf{z}_T$ as the $\hat{\mathbf{z}}$ input and gradually denoising it. 
+Specifically, to handle a new task $\tau {=} \{\mathcal{S}, \mathcal{Q}\}$, we first compute the vanilla prototype $\tilde{\mathbf{z}}$ using the support set $\mathcal{S}$. We then randomly sample noise $\epsilon$ from $\mathcal{N}(\textbf{0}, \boldsymbol{I})$. We input both $\tilde{\mathbf{z}}$and $\epsilon$ to the learned task-guided diffusion model to obtain the diffused prototype $\mathbf{z}_{T-1} {=} \mathbf{z}_{\theta}(\mathbf{z}_T, \tilde{\mathbf{z}}, T)$. 
+After $T$ iterations, the final diffused prototype can be obtained as $\mathbf{z}_0 = \mathbf{z}_{\theta}(\mathbf{z}_{1}, \mathbf{z}, t_0)$. Once the final diffused prototype $\mathbf{z}_0$ is obtained, we calculate the final prediction $\hat{\mathbf{y}}^q$ using equation~(\ref{eqn:protonetProb}).  Figure~\ref{fig:meta_test} illustrates sampling in the meta-test stage.  We also provide the detailed algorithm of the meta-training and meta-test phase in the appendix.
+
+% Our ProtoDiff method for few-shot learning relies heavily on the task-guided diffusion model, which is a critical component. This model is designed to learn the underlying distribution of each task by modeling the diffusion process within the prototype space. We generate informative and discriminative class representations by applying the task-guided diffusion process to the task-specific prototype. This approach allows for the modeling of complex distributions and the generation of informative prototypes that capture the task-specific characteristics of each class. Overall, task-guided diffusion enables effective few-shot learning by producing task-specific prototypes that better capture the underlying distribution of each task.
+
+
+\begin{SCfigure}
+\centering
+\includegraphics[width=.7\linewidth]{graph/testing2.pdf}
+\caption{\textbf{Diffusion sampling during meta-test.} Sampling starts from a random noise  $\mathbf{z_{T}}$ and gradually denoises it to the diffused prototypes $\mathbf{z_{t}}$. At each time step $t$ is sampled by taking the $\mathbf{z_{t+1}}$, vanilla prototypes $\tilde{\mathbf{z}}$, and time step $t$ as inputs. The diffused prototypes $\mathbf{z_0}$ are used to predict the query set. 
+}
+ \label{fig:meta_test}
+\vspace{-5mm}
+\end{SCfigure}
+
+\textbf{Residual prototype learning.}
+To further enhance the performance of ProtoDiff, we introduce a residual prototype learning mechanism in our framework. We observe that the differences between the overfitted prototype $\mathbf{z}^*$ and its vanilla prototype $\tilde{\mathbf{z}}$ are not significant, as the vector $\mathbf{z}^* - \tilde{\mathbf{z}}$ contains many zeros. Therefore, we propose to predict the prototype update $\mathbf{z}^* -\tilde{\mathbf{z}}$ instead of directly predicting the overfitted prototype $\mathbf{z}^*$ itself. This approach also enables us to initialize ProtoDiff to perform the identity function by setting the decoder weights to zero. Moreover, we find that the global residual connection, combined with the identity initialization, significantly speeds up training. By utilizing this mechanism, we improve the performance of ProtoDiff in few-shot learning tasks. 
+
