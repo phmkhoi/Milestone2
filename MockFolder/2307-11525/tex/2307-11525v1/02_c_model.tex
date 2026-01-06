@@ -1,0 +1,124 @@
+\pagebreak 
+
+\subsection{Model Development}
+Developing models that execute a specific task in a reliable and fair way is challenging. The AI Act phrases the requirements for (high-risk) AI systems in Article 15 (1): \emph{``High-risk AI systems shall be designed and developed in such a way that they achieve [...] an appropriate level of accuracy, robustness and cybersecurity, and perform consistently in those respects throughout their lifecycle.''} To achieve this, there are several concerns such as explainability, fairness, feature engineering and others. % preprocessing, model choice, choice of metrics, hyper-parameter optimization, confidence calibration, the ability to generalize, and testing in a real-word setting. 
+For documenting all these pillars, we build on the work of \citet{Mitchell2019_ModelCards}. While some points overlap, we added  and complemented others, i.e., \ac{XAI} and testing in real world settings. % Ethical considerations on the other hand, are moved to the use case card.
+
+\subsubsection{Explainability}
+First, the requirements for \ac{XAI} should be determined. In this regard, different aspects of explainability methods needs to be considered.
+The first important aspect is to distinguish between the need to explain a single decision (local explainability) or the entire ML model (global explainability).
+The first might be important in cases where lay users need to be able to understand a decision made about them (e.g., financial advise), while the latter might be more important to make sure a model does not decide based on sensitive features.
+These explanations can be derived via different means, with most taxonomies listing post-hoc explainability vs. explainability by nature or design, also so-called \ac{IML}.
+The former describes using a black-box model for a decision and generating explanations afterwards, most often via simpler approximations, with the most prominent examples being LIME \citep{ribeiro2016_lime} and SHAP \citep{lundberg2017_shap}.
+For post-hoc explainability, it is important to note that most \ac{XAI}-methods provide no formal guarantees, thus explanations might not conform to the ML-model's decision in all cases.
+Another important factor and currently open problem is how to evaluate such explanation methods. While many evaluation metrics and tests have been proposed, none has been widely adopted and consistently been used throughout the literature \citep{nauta2022_XAIreview, Burkart_Explainability}.
+Currently it seems that explanation methods should be tested in real-world scenarios, including people with the same explainability needs as the target group of the explanations, as e.g. ML-engineers might need different explanations than lay users.
+Additionally to the requirements regarding explainability and transparency itself, \ac{XAI}-methods might be needed to fulfill other legal requirements.
+If, for example, users of an ML-system have a right to object to decisions (as given through the \ac{GDPR} in Europe), they must be sufficiently informed of a decision to be able to make use of their rights.
+In general, we advise to think of explainability demands before choosing a model, as use cases with a high demand for transparency might need to provide some guarantees for correct explanations and could thus be limited to \ac{IML} models.
+Furthermore,  considerations regarding explainability can also influence other development steps, especially data preprocessing.
+Here, non-interpretable features as for example obtained by \ac{PCA} can severely limit the expressiveness of explainability approaches.
+Regarding the use of explainability for AI systems, norms are currently specified, but not yet published \citep{DIN-Spec-92001-3,ISO6254-explainability}.
+
+\subsubsection{Feature Engineering, Feature Selection, and Preprocessing}
+While some of the preprocessing is addressed in the data card, here we consider only the processing that is not part of the dataset itself, but is model specific. Feature engineering and selection as well as data augmentation and preprocessing steps should always be meaningful in the context of the use case and the used model. Feature selection can be seen as an optimization problem to find the most relevant features for the model. While the performance of deep learning algorithms might not change, the computation cost will increase and consume time and resources \citep{cai2018_featureSelection}. To prevent data leakage, all steps, including feature selection, feature engineering, and preprocessing, should be performed after splitting the data \citep{Kapoor22_LeakageAndReproducibility, reunanen2003variableselection}. This also holds for k-fold cross validation, where feature engineering and preprocessing must be executed on each fold independently.
+
+\subsubsection{Model Selection}
+The range of usable models depends on the given use case and its requirements such as on explainability, prediction performance and inference time, just to name a few. With those limitations, the amount of meaningful models will narrow down. It is good practice to compare the selected model to standard baselines. A good starting point are easy to train  and for the use case established state of the art models. Also, rule-based systems or heuristic algorithms can be used as a baseline. Trying different classes of models that have shown good results on a given set of problems is always recommended \citep{Lones2021_AvoidMLPitfalls, ding2018model}. According to the no free lunch theorem, there is no single machine learning algorithm that can outperform all others across all possible problems and datasets \citep{wolpert2002supervised}.
+The choice of the algorithm needs to be appropriate for the underlying problem class and the amount and quality of the available data. Usually, there are fine-tuned algorithms for  natural language processing, computer vision, time series and other fields. Note that deep learning models will not always be the best option. \cite{grinsztajn2022tree} show that tree based models often outperform deep learning in tabular data. In time series forecasting, there is no clear best algorithm class. Statistical and tree based methods regularly are on par with deep learning models  \citep{zeng2022transformers}. However, achieving this improved performance often requires a significant increase in computational resources \citep{makridakis2023statistical}. In general, simpler models are preferred over more complex models if they provide similar levels of performance, according to the principle of Ockham's razor, because they are less prone to overfitting and easier to interpret.
+
+\subsubsection{Metrics}
+Similar to model choice, the metrics should also be selected carefully. Depending on the use case,  recall or precision might be more appropriate metrics than general ones like accuracy or F1-score \citep{poretschkin2021_IAIS_Leitfaden}. The choice of model also influences the choice of useful metrics  \citep{naser2021_metrics, ferri2009metrics}. Furthermore, the minimum acceptable score for the selected metrics should be determined to create value in the specific use case. It is always recommended to involve domain experts to address the minimum requirements.
+
+\subsubsection{Hyper-parameter Optimization}
+\ac{HPO} is usually the most computational heavy task in model development with up to hundreds of hyper-parameters to tune. It can help to understand the underlying problem and the used algorithms to be able to reduce the space for the optimal set of hyper-parameters. For large sets of hyper-parameters there are advanced optimization techniques like Bayesian optimization and early stopping. \citet{feurer2019hyperparameter} and \citet{yang2020_hyperparameter} give good overviews on this.
+
+Furthermore, \ac{HPO} is another pitfall of leakage. It is best to ``lock'' the test set to prevent leakage, i.e., to not use the test data until \ac{HPO} is completed. In most cases, using (stratified) k-fold cross-validation is the best practice. However, cross-validation and methods for \ac{HPO} might introduce some unwanted variance \citep{Bouthillier2021_Variance, Wong2019_ReliableCV, yang2020_hyperparameter, bischl2021_hyperparameter}. 
+
+\subsubsection{Model Evaluation}
+To evaluate model performance, prevent over-fitting or under-fitting, and test generalizability, models must be evaluated against test data. As stated above, the test set must not be used for \ac{HPO} or any kind of ``intermediate evaluation''. The performance should be evaluated against the previously defined minimum requirements for the use case. If the performance of the model is low, there are many possible causes, e.g., noisy data, model choice, or metrics. If the model over-performs on the test set, i.e., the test error is smaller than the training error, one should be cautious of potential errors such as leakage. \citet{zhang2020_MLtesting, Braiek2018_MLtesting} give an overview over the topic. On the standardization side, \cite{ISO4213} addresses the classification performance of \ac{ML} models.
+
+\subsubsection{Model Confidence}
+\citet{Guo2017_Calibration} show that the confidence values calculated by modern \ac{ML} models is often poorly calibrated, i.e., the underlying correct likelihood of a  class is not represented by the predicted probability of the model. Even though this might not be a big issue in many cases, it can lead to unwanted behavior of models in production and unstable results. Therefore, confidence values should be evaluated and calibrated if necessary \citep{Guo2017_Calibration, abdar2021_uncertainty}. 
+Instead of calibrating models post-hoc, conformal prediction allows to train algorithms with a fixed confidence \citep{shafer2008tutorial}.
+
+\subsubsection{Testing in Real-World Setting}
+Apart from model evaluation on the test set, a model must be tested and benchmarked in the real-world setting \citep{Arp_DosDonts, larson2021_regulatory}. Domain experts should be involved in the testing design, and it should ideally be done before the first model is trained. %In practice, this will be infeasible most of the time and the testing design should be developed as soon as model performance is satisfying. 
+The design should consider edge cases, disturbances, changes of the environment, and all other likely settings and changes. Testing in a real-world setting will also uncover possible leakage and other shortcomings that might slip the model evaluation. % It also leads to better acceptance by users %, if they get involved in this process, as the interviews have shown.
+If real world testing is not possible, computational stress tests should be done \citep{young2021_stresstest}.
+
+%\newpage
+{\small
+\renewcommand\arraystretch{1.3}
+\begin{longtable}{p{0.15\linewidth}|p{0.35\linewidth}p{0.15\linewidth}p{0.35\linewidth}} 
+    \toprule
+    \multicolumn{4}{c}{\bf{Model Card}}\\
+    \toprule
+    \bf{Step}   & \bf{Requirement}   &  \bf{AI Act}   & \bf{References} \\
+    \hline
+    \hline
+    \multirow{6}{=}{General}    
+            & Provide Name and details of a contact person            \\\cline{2-4}
+            & Provide Name of the person who created the model      &   & \cite{Mitchell2019_ModelCards}\\\cline{2-4}
+            & Document the creation date and version of the model           &   & \cite{Mitchell2019_ModelCards}\\\cline{2-4}
+            & Describe intended use of the model              &   & \cite{Mitchell2019_ModelCards}\\
+            
+    \specialrule{.075em}{0em}{0em}
+    \multirow{10}{=}{Description}       
+            & Describe the architecture of the used model    &   & \cite{Mitchell2019_ModelCards}\\\cline{2-4}
+            & Describe the used hyper-parameters           &   & \\\cline{2-4}
+            & Document the training, validation, and test error     &   & \cite{Mitchell2019_ModelCards}\\\cline{2-4}
+             & Document computation complexity, training time and energy consumption (for foundation models describe steps taken to reduce energy consumption) & Art. 28 & \cite{yang2017energy, garcia2019energy}\\
+                        
+    \specialrule{.075em}{0em}{0em}
+    \multirow{6}{=}{Explainability and interpretability}    
+            & Document the demand for explainability and interpretability & Art. 13 (1, 2), Art. 15 (2)\\\cline{2-4}
+            & Describe taken actions if any & Art. 15 (2) & \cite{ISO6254-explainability, ribeiro2016_lime, nauta2022_XAIreview, Schaaf_XAI, Burkart_Explainability}\\     
+
+    \specialrule{.075em}{0em}{0em}
+    \multirow{7}{=}{Feature engineering, feature selection and preprocessing}   
+            & Describe the consideration of explainability and interpretability (if relevant) & Art. 10 (3, 4) & \\\cline{2-4}
+            & Describe feature engineering and selection with (domain specific) reasoning   &   & \cite{Mitchell2019_ModelCards, Kapoor22_LeakageAndReproducibility, cai2018_featureSelection}\\\cline{2-4}
+            & Describe and reason of preprocessing steps  &   & \cite{Mitchell2019_ModelCards, Kapoor22_LeakageAndReproducibility}\\
+
+    \specialrule{.075em}{0em}{0em}
+    \pagebreak
+    \specialrule{.075em}{0em}{0em}
+    \multirow{18}{=}{Model selection}   
+            & Describe the consideration of explanibility and interpretability (if relevant)\\\cline{2-4}
+            & Describe the base line model and its evaluation   &       & \cite{Lones2021_AvoidMLPitfalls}\\\cline{2-4}
+            & Describe the reasoning for the model choice       &       & \cite{Lones2021_AvoidMLPitfalls} \\\cline{2-4}
+            & Describe why the complexity of model is justified and needed & & \\\cline{2-4}
+            & Document the comparison to other considered models \\\cline{2-4}
+            & Document the approach of hyper-parameter optimization   &   &   \cite{Bouthillier2021_Variance, Wong2019_ReliableCV, yang2020_hyperparameter, feurer2019hyperparameter, tuningplaybookgithub, Raschka2018_ModelEvaluationAndSelection}\\\cline{2-4}
+            & Describe the model evaluation  & Art. 5, 6, 7, 9    & \cite{Zhang2022_SliceTeller, zhang2020_MLtesting, Braiek2018_MLtesting, Raschka2018_ModelEvaluationAndSelection, ISO4213}\\
+            
+    \specialrule{.075em}{0em}{0em}
+    \multirow{6}{=}{Choice of metrics}  
+            & Describe selected metrics and describe reasoning regarding use case and fairness    &  & \cite{Mitchell2019_ModelCards, Wachter2021_BiasPreservation, ferri2009metrics, poretschkin2021_IAIS_Leitfaden, ISO12791_Fairness}\\\cline{2-4}
+            & Define the minimum requirement for use in production (domain specific reasons)\\
+            
+    \specialrule{.075em}{0em}{0em}
+    \multirow{3.5}{=}{Model confidence}     
+            & Document and quantify uncertainty of the model    &   & \cite{abdar2021_uncertainty}\\\cline{2-4}
+            & Document approach of dealing with uncertainty     &   & \cite{Guo2017_Calibration, shafer2008tutorial}\\
+
+    \specialrule{.075em}{0em}{0em}
+    \multirow{7}{=}{Testing in real world setting}      
+            & Describe the test design &  Art. 5, 6, 7, 9  & \\\cline{2-4}
+            & Describe possible risks, edge cases and worst case scenarios and create (or simulate) them if possible & Art. 15 (3), Art. 28\\\cline{2-4}
+            & Describe limitations and shortcomings of the model & & \\\cline{2-4}
+            & Describe the test results\\\cline{2-4}
+            & Explain the derived actions\\
+
+    \specialrule{.075em}{0em}{0em}
+    \multirow{2}{=}{More}       
+            & Describe further recommendations or shortcomings of the model \\
+            
+    \specialrule{.075em}{0em}{0em}
+    \multirow{2}{=}{Involvement of Individuals}     
+            & If feasible, describe involvement of affected individuals & Art. 29 (5) a) & \\     
+    \bottomrule
+\end{longtable}
+}
+%\end{table*}
