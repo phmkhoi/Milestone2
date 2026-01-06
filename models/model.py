@@ -79,37 +79,3 @@ class Model:
             if return_object:
                 file_test_name = os.path.join(self.dirname, 'eval',  f"pred_{paper_id.split('/')[-1]}.json")
                 self.save_pred(file_test_name, ground_truth, prediction, type)
-
-# print(ground_truth_valid)
-# print(json.dumps(cite_arkiv_test, indent=4))
-# print(log_loss(ground_truth_valid, proba))
-
-#Can phai co cac bien
-#Khi train va valid chi can 2 cai nay la du:
-#vector_train: list[vector]: dung de train, valid
-#ground_truth: list[]: [0, 1, 0, 1]
-
-#Khi inferences:
-#vector_train: "2306-14522": {
-#     "Ziegel2016": [
-#         {
-#             "arxiv_id": "2007-082829",
-#             "vector": [0,9, 1, 1]
-#         },
-            # {
-            #     "arkiv"
-            # }
-#     ]
-# }
-
-#Tra ve gom 
-#Ghi vao file giong pred.json
-#Neu no la test thi tra ve top-k co format la:
-# "2306-14522": {
-#     "Ziegel2016": [
-#         {
-#             "arxiv_id": "2007-082829",
-#             "prob": 0.9
-#         }
-#     ]
-# }

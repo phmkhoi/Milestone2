@@ -1,5 +1,6 @@
 import os
 import re
+import shutil
 
 def find_root_file(directory):
     for _, _, files in os.walk(directory):
@@ -78,8 +79,7 @@ def get_paper_content(current_file_path, parent_dir_name=None):
     with open(current_file_path, 'r', encoding='utf-8', errors='ignore') as fr:
         content = re.sub(r'(?<!\\)%.*', '', fr.read())
         
-        
-    input_pattern = r'\\(?:input|include)\b\{?([^}\s%]+)\}?'
+    INPUT_PATTERN = r'\\(?:input|include)\b\{?([^}\s%]+)\}?'
     
     def replace_content(match):
         included_file_name = match.group(1).strip()
@@ -89,4 +89,56 @@ def get_paper_content(current_file_path, parent_dir_name=None):
         
         return get_paper_content(included_file_name, parent_dir_name)
     
-    return re.sub(input_pattern, replace_content, content)
+    return re.sub(INPUT_PATTERN, replace_content, content)
+
+
+def normalize_equation(text: str) -> str:
+    '''
+        This function is used to normalize the equation text.
+        Convert to $$ if it is an inline mathematics, to \\begin{equation}...\\end{equation} if it is a block mathematics
+    '''
+    def replace(match):
+        replace.i += 1
+        if replace.i % 2 == 1:
+            return r'\begin{equation}'
+        else:
+            return r'\end{equation}'
+        
+    inline_math = [
+        (r"\(", r'\)'),
+        (r"\begin{math}", r"\end{math}")
+    ]
+    display_math = [
+        (r"$$", r"$$"),
+        (r"\[", r"\]"),
+        (r"\begin{align}", r"\end{align}"),
+        (r"\begin{align*}", r"\end{align*}"),
+        (r"\begin{equation*}", r"\end{equation*}")
+    ]
+    
+    for formula in display_math:
+        first_formula = formula[0]
+        second_formula = formula[1]
+        
+        if first_formula == "$$":
+            replace.i = 0
+            text = re.sub(r"\$\$", replace, text)
+        if first_formula in text and second_formula in text:
+            text = text.replace(first_formula, r"\begin{equation}").replace(second_formula, r"\end{equation}")
+    
+    for formula in inline_math:
+        first_formula = formula[0]
+        second_formula = formula[1]
+        
+        if first_formula in text and second_formula in text:
+            text = text.replace(first_formula, "$").replace(second_formula, "$")
+    
+    return text
+
+
+def remove_tex_folder(folder_path: str) -> None:
+    dirs = os.listdir(folder_path)
+    
+    for dir in dirs:
+        tex_path = os.path.join(folder_path, dir, 'tex')
+        shutil.rmtree(tex_path)
