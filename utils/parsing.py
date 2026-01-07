@@ -242,16 +242,23 @@ def clean_formatting_commands(raw_content):
         return None
     
     content = normalize_equation(raw_content)
+    content = re.sub(r'\[[^\]]*\]', '', content)
     
-    REPLACES = [r'\\label\s*\{([^}]+)\}', 
+    TABLE_COMMANDS = [r'\\midrule', r'\\toprule', r'\\bottomrule', r'\\hline', r'\\arrayrulecolor']
+    for command in TABLE_COMMANDS:
+        content = re.sub(command, '', content)
+    
+    LAYOUT_COMMANDS = [r'\\label\s*\{([^}]+)\}', 
                 r'\\quad', r'\\noindent', 
                 r'\\item', r'\\\\',
                 r'\\smallskip',
-                r'\\centering']
+                r'\\centering', r'\\newpage']
     
-    for replace in REPLACES:
-        content = re.sub(replace, '', content)
-        
+    for command in LAYOUT_COMMANDS:
+        content = re.sub(command, '', content)
+    
+    content = re.sub(r'\\label\{[^}]+\}', '', content)
+    
     return content
     
 
@@ -263,6 +270,10 @@ def parse_paper(folder_path, return_tree=False):
     version_folders = os.listdir(tex_path)
     
     if not version_folders:
+        return
+    
+    output_path = os.path.join(folder_path, 'hierarchy.json')
+    if os.path.isfile(output_path):
         return
     
     versions = {}
@@ -284,7 +295,6 @@ def parse_paper(folder_path, return_tree=False):
             versions[f'{idx + 1}'] = (tree, folder_name)
 
     result_dict = get_hierarchy_structure(versions)
-    output_path = os.path.join(folder_path, 'hierarchy.json')
 
     with open(output_path, 'w', encoding='utf-8') as fw:
         json.dump(result_dict, fw, ensure_ascii=False, indent=4)   

@@ -156,6 +156,10 @@ def read_bibs_in_dir(dir_path: str):
             continue
         
         bib_path = os.path.join(dir_path, bib_file)
+        
+        if not os.path.isfile(bib_path):
+            continue
+        
         with open(bib_path, "r", encoding="utf-8", errors="ignore") as f:
             content = f.read()
             content = content
@@ -264,7 +268,7 @@ def get_references(folder_path:str, filter_list:list=None)->list[dict]:
     
     if not os.listdir(tex_folder):
         return []
-
+    
     for folder_version_path in os.listdir(tex_folder):
         full_path = os.path.join(tex_folder, folder_version_path)
         ref_dicts = read_bibs_in_dir(full_path)
@@ -296,6 +300,10 @@ def get_references(folder_path:str, filter_list:list=None)->list[dict]:
 
 def save_bibs(folder_path:str)->None:
     references = get_references(folder_path)
+    
+    bib_path = os.path.join(folder_path, 'refs.bib')
+    if os.path.isfile(bib_path):
+        return
     
     if references:
         unique_data = deduplicate_references(references)

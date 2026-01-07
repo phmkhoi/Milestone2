@@ -99,7 +99,7 @@ def get_dataset(folder_path, threshold=0.9, nums=1500):
         if not extract_refs or not converted_refs:
             continue
         
-        if len(converted_refs) < 5:
+        if len(converted_refs) < 20:
             continue
         
         entries.append(extract_refs)

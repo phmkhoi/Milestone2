@@ -6,7 +6,7 @@ from sklearn.utils import shuffle
 from utils.parsing import parse_paper
 from utils.dataset import get_dataset, get_manual_dataset
 from utils.extracting import save_bibs
-from utils.utils import remove_tex_folder
+from utils.utils import remove_tex_folder, count_ref_file
 from utils.manual import MANUAL_ID, GROUNDTRUTHS
 from utils.feature_engineering import prepare_dataset
 from models.model import Model
@@ -17,10 +17,10 @@ def process_matching(folder_path:str):
     tool_entries, tool_refs, tool_groundtruth = get_dataset(folder_path, threshold=THRESHOLD, nums=NUM_PAPERS_USING_TOOL)
     manual_entries, manual_refs, manual_groundtruth = get_manual_dataset(folder_path, MANUAL_ID, GROUNDTRUTHS)
     
-    tool_entries, tool_refs = shuffle(tool_entries, tool_refs, random_state=0)
+    tool_entries, tool_refs = shuffle(tool_entries, tool_refs)
     
     if manual_entries:
-        manual_entries, manual_refs = shuffle(manual_entries, manual_refs, random_state=0)
+        manual_entries, manual_refs = shuffle(manual_entries, manual_refs)
         
         groundtruth = tool_groundtruth.copy()
         groundtruth.update(manual_groundtruth)
@@ -67,14 +67,34 @@ def main_function(folder_path:str):
     logger.setLevel(logging.ERROR)
     
     dirs = os.listdir(folder_path)
-
-    for dir in tqdm(dirs, desc='Processing Papers'):
+    
+    checkpoint_file = os.path.abspath('./checkpoint.txt')
+    if os.path.exists(checkpoint_file):
+        with open(checkpoint_file, 'r') as fr:
+            value = int(fr.read())
+    else:
+        value = 0
+    
+    for i, dir in enumerate(tqdm(dirs[value:], desc='Processing Papers')):
         path = os.path.join(folder_path, dir)
         parse_paper(path, return_tree=RETURN_TREE)
         save_bibs(path)
         
+        current_checkpoint_idx = value + i + 1
+        
+        if current_checkpoint_idx % 10 == 0:
+            with open(checkpoint_file, 'w') as fw:
+                fw.write(str(current_checkpoint_idx))
+    
+        
     process_matching(folder_path)
     remove_tex_folder(folder_path)
+    num_refs = count_ref_file(folder_path)
+    
+    
+    print('==================== Done! ====================')
+    print(f'Number of succesful extracting references: {num_refs}/{len(dirs)}')
+    print(f'Percentage of sucessful extracting references: {(num_refs / len(dirs)) * 100:.2f}%')
 
     
 if __name__ == "__main__":

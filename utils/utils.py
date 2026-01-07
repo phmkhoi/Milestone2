@@ -8,6 +8,10 @@ def find_root_file(directory):
         for file in files:
             if file.endswith('.tex'):
                 path = os.path.normpath(os.path.join(directory, file))
+                
+                if not os.path.isfile(path):
+                    continue
+                
                 with open(path, 'r', encoding='utf-8', errors='ignore') as fr:
                     content = fr.read()
                     if r'\begin{document}' in content:
@@ -142,3 +146,16 @@ def remove_tex_folder(folder_path: str) -> None:
     for dir in dirs:
         tex_path = os.path.join(folder_path, dir, 'tex')
         shutil.rmtree(tex_path)
+        
+        
+def count_ref_file(folder_path: str) -> int:
+    dirs = os.listdir(folder_path)
+    cnt = 0
+    
+    for dir in dirs:
+        refs_path = os.path.join(folder_path, dir, 'refs.bib')
+        
+        if os.path.isfile(refs_path):
+            cnt += 1
+            
+    return cnt
