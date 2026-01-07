@@ -12,6 +12,7 @@ from utils.feature_engineering import prepare_dataset
 from models.model import Model
 from config import RETURN_TREE, THRESHOLD, NUM_PAPERS_USING_TOOL, NUM_EPOCHS, FOLDER_PATH
 
+
 def process_matching(folder_path:str):
     tool_entries, tool_refs, tool_groundtruth = get_dataset(folder_path, threshold=THRESHOLD, nums=NUM_PAPERS_USING_TOOL)
     manual_entries, manual_refs, manual_groundtruth = get_manual_dataset(folder_path, MANUAL_ID, GROUNDTRUTHS)
@@ -59,6 +60,7 @@ def process_matching(folder_path:str):
     model.predict_top_k(object_train, 5, groundtruth, 'train')
     model.predict_top_k(object_valid, 5, groundtruth, 'valid')
     model.predict_top_k(object_test, 5, groundtruth, 'test', return_object=True)
+
 
 def main_function(folder_path:str):
     logger = logging.getLogger('bibtexparser')
